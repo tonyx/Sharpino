@@ -9,12 +9,18 @@ module Conf =
 
     // the key of each element is the name of the storage - storageName in the root type of each aggregate
     let syncobjects = 
-        [("_tags", new obj()); ("_todo", new obj())] 
+        [
+            ("_tags", new obj()) 
+            ("_todo", new obj())
+        ] 
         |> Map.ofList
 
     // Update those two entries with the name of the root type of each aggregate.
     let intervalBetweenSnapshots = 
-        [("_tags", 5); ("_todo", 5)] 
+        [
+            ("_tags", 5)
+            ("_todo", 5)
+        ] 
         |> Map.ofList
 
     // it is highly impertive that we are able to use properly dev and prod.

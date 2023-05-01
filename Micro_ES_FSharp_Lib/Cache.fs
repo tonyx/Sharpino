@@ -9,11 +9,11 @@ open FSharp.Core
 
 module Cache =
     type EventCache<'A when 'A: equality> private () =
-
         let dic = Generic.Dictionary<'A * List<Event<'A>>, Result<'A, string>>()
         let queue = Generic.Queue<'A * List<Event<'A>>>()
         static let instance = EventCache<'A>()
         static member Instance = instance
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         member private this.TryAddToDictionary (arg, res) =
             try
