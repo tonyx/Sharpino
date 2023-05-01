@@ -179,7 +179,6 @@ module DbStorage =
                 let (events2, name2) = arg2
                 let statement1 = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name1
                 let statement2 = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name2
-
                 try 
                     let _ =
                         TPConnectionString

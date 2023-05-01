@@ -7,7 +7,6 @@ open System
 
 module MemoryStorage=
     type MemoryStorage private() =
-
         let mutable event_id_seq = [] |> Map.ofList
         let mutable snapshot_id_seq = [] |> Map.ofList
         let mutable events: Map<string, List<StorageEvent>> = [] |> Map.ofList

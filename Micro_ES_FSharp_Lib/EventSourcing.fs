@@ -18,6 +18,6 @@ module Core =
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
                 match acc with
-                    | Error err -> Error err
+                    | Error err -> Error err // this should never happen
                     | Ok h -> h |> e.Process
             ) (h |> Ok)
