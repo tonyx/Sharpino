@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="aggregates/Todos/models/CategoriesModel.fs" />
+    <Compile Include="aggregates/Todos/models/TodosModel.fs" />
+    <Compile Include="aggregates/Todos/Aggregate.fs" />
+    <Compile Include="aggregates/Todos/Events.fs" />
+    <Compile Include="aggregates/Todos/Commands.fs" />
+    <Compile Include="aggregates/Tags/models/TagsModel.fs" />
+    <Compile Include="aggregates/Tags/Aggregate.fs" />
+    <Compile Include="aggregates/Tags/Events.fs" />
+    <Compile Include="aggregates/Tags/Commands.fs" />
+    <Compile Include="App.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Micro_ES_FSharp_Lib\Micro_ES_FSharp_Lib.fsproj" />
+  </ItemGroup>
+
+</Project>

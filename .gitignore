@@ -1,0 +1,17 @@
+.DS_Store
+*.fs.js
+*.fs.js.map
+.fake/
+.farmer/
+.idea/
+.vscode/
+.ionide/
+.vs/
+deploy/
+obj/
+bin/
+output/
+packages/
+*.orig
+*.DotSettings.user
+*.trx
