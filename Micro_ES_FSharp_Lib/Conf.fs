@@ -3,7 +3,7 @@ namespace Tonyx.EventSourcing
 module Conf =
     type StorageType = Postgres | Memory
 
-    let storageType = Postgres
+    let storageType = Memory
 
     let isTestEnv = true
 
