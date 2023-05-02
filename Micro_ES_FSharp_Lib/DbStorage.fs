@@ -174,6 +174,9 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
+            // This adds only two events at the moment. Can be generalized easily. 
+            // different story is from the caller side (Repository.fs that has members like "runTwoCommands", future will be "runThreeCommans"...
+            // and must stay that way I think)
             member this.MultiAddEvents(arg1: List<Json> * Name) (arg2: List<Json> * Name): Result<unit,string> = 
                 let (events1, name1) = arg1
                 let (events2, name2) = arg2

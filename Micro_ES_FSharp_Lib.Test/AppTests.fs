@@ -35,6 +35,34 @@ let appTests =
             let todos = App.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
 
+        testCase "add two todos - Ok" <| fun _ -> // this is for checking the case of a command returning two events
+            let _ = setUp()
+            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let result = App.add2Todos (todo1, todo2)
+            Expect.isOk result "should be ok"
+            let todos = App.getAllTodos().OkValue 
+            Expect.equal (todos |> Set.ofList) ([todo1; todo2] |> Set.ofList)  "should be equal"
+
+        testCase "add two todos, one has an unexisting category - Ko" <| fun _ -> // this is for checking the case of a command returning two events
+            let _ = setUp()
+            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let result = App.add2Todos (todo1, todo2)
+            Expect.isError result "should be error"
+
+            let todos = App.getAllTodos().OkValue 
+            Expect.equal todos [] "should be equal"
+
+        testCase "add two todos, one has an unexisting tag - Ko" <| fun _ -> // this is for checking the case of a command returning two events
+            let _ = setUp()
+            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [Guid.NewGuid()] }
+            let result = App.add2Todos (todo1, todo2)
+            Expect.isError result "should be error"
+            let todos = App.getAllTodos().OkValue 
+            Expect.equal todos [] "should be equal"
+
         testCase "add a todo with an unexisting tag - Ok" <| fun _ ->
             let _ = setUp()
             let id1 = Guid.NewGuid()

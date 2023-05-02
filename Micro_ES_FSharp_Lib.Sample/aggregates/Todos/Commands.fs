@@ -16,6 +16,7 @@ module TodoCommands =
         | AddCategory of Category
         | RemoveCategory of Guid
         | RemoveTagRef of Guid
+        | Add2Todos of Todo * Todo
 
         interface Command<TodosAggregate, TodoEvent> with
             member this.Execute (x: TodosAggregate) =
@@ -45,4 +46,14 @@ module TodoCommands =
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g]) with
                         | Ok _ -> [TagRefRemoved g] |> Ok
                         | Error x -> x |> Error
+                | Add2Todos (t1, t2) -> 
+                    let evolved =
+                        fun () ->
+                        [TodoAdded t1; TodoAdded t2]
+                        |> evolve x
+                    match
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoAdded t1; TodoAdded t2]) with
+                        | Ok _ -> [TodoAdded t1; TodoAdded t2] |> Ok
+                        | Error x -> x |> Error
+
 
