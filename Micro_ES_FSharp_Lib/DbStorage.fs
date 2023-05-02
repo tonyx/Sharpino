@@ -30,7 +30,7 @@ type IStorage =
     abstract member TryGetEvent: int -> Name -> Option<StorageEvent>
     abstract member SetSnapshot: int * Json -> Name -> Result<unit, string>
     abstract member AddEvents: List<Json> -> Name -> Result<unit, string>
-    abstract member MultiAddEvents: (List<Json> * Name) -> (List<Json> * Name)  -> Result<unit, string>
+    abstract member MultiAddEvents: List<List<Json> * Name>  -> Result<unit, string>
     abstract member GetEventsAfterId: int -> Name -> List<int * string >
 
 module DbStorage =
@@ -174,47 +174,34 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            // This adds only two events at the moment. Can be generalized easily. 
-            // different story is from the caller side (Repository.fs that has members like "runTwoCommands", future will be "runThreeCommans"...
-            // and must stay that way I think)
-            member this.MultiAddEvents(arg1: List<Json> * Name) (arg2: List<Json> * Name): Result<unit,string> = 
-                let (events1, name1) = arg1
-                let (events2, name2) = arg2
-                let statement1 = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name1
-                let statement2 = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name2
+            member this.MultiAddEvents(arg: List<List<Json> * Name>) : Result<unit,string> = 
+                let cmdList = 
+                    arg 
+                    |> List.map 
+                        (
+                            fun (events, name) -> 
+                                let statement = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name
+                                statement, events
+                                |>> 
+                                (
+                                    fun x ->
+                                        [
+                                            ("@event", Sql.jsonb x);
+                                            ("timestamp", Sql.timestamp (System.DateTime.Now))
+                                        ]
+                                )
+                        )
                 try 
                     let _ =
                         TPConnectionString
                         |> Sql.connect
-                        |> Sql.executeTransactionAsync
-                            [
-                                statement1,
-                                events1
-                                |>> 
-                                (
-                                    fun x ->
-                                        [
-                                            ("@event", Sql.jsonb x);
-                                            ("timestamp", Sql.timestamp (System.DateTime.Now))
-                                        ]
-                                )
-
-                                statement2,
-                                events2
-                                |>> 
-                                (
-                                    fun x ->
-                                        [
-                                            ("@event", Sql.jsonb x);
-                                            ("timestamp", Sql.timestamp (System.DateTime.Now))
-                                        ]
-                                )
-                            ]
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
+                        |> Sql.executeTransactionAsync cmdList
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
                     () |> Ok
                 with
                     | _ as ex -> (ex.ToString()) |> Error
+
 
             member this.GetEventsAfterId id name =
                 let query = sprintf "SELECT id, event FROM events%s WHERE id > @id ORDER BY id" name

@@ -102,10 +102,15 @@ module Repository =
                     let! events2 =
                         state2
                         |> command2.Execute
+
                     let! eventsAdded =
-                        storage.MultiAddEvents 
-                            (events1 |>> JsonConvert.SerializeObject, 'A1.StorageName)
-                            (events2 |>> JsonConvert.SerializeObject, 'A2.StorageName)
+                        let serEv1 = events1 |>> JsonConvert.SerializeObject
+                        let serEv2 = events2 |>> JsonConvert.SerializeObject
+                        storage.MultiAddEvents
+                            [
+                                (serEv1, 'A1.StorageName)
+                                (serEv2, 'A2.StorageName)
+                            ]
                     return ()
                 }
 

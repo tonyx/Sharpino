@@ -75,32 +75,25 @@ module MemoryStorage=
                     ]
                 events <- events.Add(name, ev)
                 () |> Result.Ok
-            member this.MultiAddEvents(arg1: List<Json> * Name) (arg2: List<Json> * Name): Result<unit,string> = 
-                let ev1 =
-                    (arg1 |> snd |> getEvents)
-                    @
-                    [
-                        for e in arg1 |> fst do
-                            yield {
-                                Id = next_event_id (arg1 |> snd)
-                                Event = e
-                                Timestamp = DateTime.Now
-                            }
-                    ]
-                let ev2 =
-                    (arg2 |> snd |> getEvents)
-                    @
-                    [
-                        for e in arg2 |> fst do
-                            yield {
-                                Id = next_event_id (arg2 |> snd)
-                                Event = e
-                                Timestamp = DateTime.Now
-                            }
-                    ]
-                events <- events.Add(arg1 |> snd, ev1)
-                events <- events.Add(arg2 |> snd, ev2)
-                () |> Result.Ok
+
+            member this.MultiAddEvents(arg: List<List<Json> * Name>) : Result<unit,string> = 
+                arg
+                |> List.iter 
+                    (fun (xs, name) ->
+                        let ev =
+                            (name |> getEvents)
+                            @
+                            [
+                                for e in xs do
+                                    yield {
+                                        Id = next_event_id name
+                                        Event = e
+                                        Timestamp = DateTime.Now
+                                    }
+                            ]
+                        events <- events.Add(name, ev)
+                    )
+                () |> Ok
 
             member this.GetEventsAfterId id name =
                 name |> getEvents |> List.filter (fun x -> x.Id > id) |>> fun x -> x.Id, x.Event
