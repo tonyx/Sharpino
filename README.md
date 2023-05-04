@@ -13,7 +13,7 @@ __Micro_ES_FSharp_Lib__:
 - [DbStorage.fs](Micro_ES_FSharp_lib/DbStorage.fs) and [MemoryStorage.fs](Micro_ES_FSharp_lib/MemoryStorage.fs): Manages persistency of Events and Snapshots.
 - [Utils.fs](Micro_ES_FSharp_lib/Utils.fs): some common functions to manage serialization, Result and Railway Oriented Error management.
 - [Cache.fs](Micro_ES_FSharp_lib/Cache.fs). Caching of events processed and snapshots availables.
-- [Config.fs](Micro_ES_FSharp_lib/Conf.fs) define storage type, lock object for aggregates, interval between snapshots.
+- [Conf.fs](Micro_ES_FSharp_lib/Conf.fs) define storage type, lock object for aggregates, interval between snapshots.
 
 
 __Micro_ES_FSharp_Lib.Sample__:
