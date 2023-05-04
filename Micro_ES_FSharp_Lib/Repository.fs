@@ -114,19 +114,6 @@ module Repository =
                     return ()
                 }
 
-    [<MethodImpl(MethodImplOptions.Synchronized)>]
-    let inline mkEvents<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'E :> Event<'A>>  (command: Command<'A, 'E>)  =
-        ceResult {
-            let! (_, state) = getState<'A, 'E>()
-            let! events =
-                state
-                |> command.Execute
-            return events
-        }
-
     let inline mksnapshot<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
