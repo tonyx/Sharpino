@@ -202,8 +202,7 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-
-            member this.GetEventsAfterId id name =
+            member this.GetEventsAfterId id name =    
                 let query = sprintf "SELECT id, event FROM events%s WHERE id > @id ORDER BY id" name
                 TPConnectionString
                 |> Sql.connect
