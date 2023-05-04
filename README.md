@@ -8,7 +8,7 @@ The solution is divided in three subprojects
 
 __Micro_ES_FSharp_Lib__:
 
-- [EventSourcing.fs](Micro_ES_FSharp_lib/EventSourcing.fs): Abstract definition of Events and Commands. Definition of the "evolve" function
+- [EventSourcing.fs](Micro_ES_FSharp/EventSourcing.fs): Abstract definition of Events and Commands. Definition of the "evolve" function
 - Repository.fs: get and store snapthos. Run commands, and store related events.
 - [DbStorage.fs](Micro_ES_FSharp_lib/DbStorage.fs) and [MemoryStorage.fs](Micro_ES_FSharp_lib/MemoryStorage.fs): Manages persistency of Events and Snapshots.
 - [Utils.fs](Micro_ES_FSharp_lib/Utils.fs): some common functions to manage serialization, Result and Railway Oriented Error management.
