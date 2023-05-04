@@ -2,7 +2,7 @@
 An event sourcing micro library in FSharp based on Postgres or in memory storage.
 The solution consists on the library by itself, a sample project and the tests of the sample.
 
-The solution is divided in three
+The solution is divided in three subprojects
 
 ## Single Projects:
 
@@ -11,8 +11,9 @@ __Micro_ES_FSharp_Lib__:
 - [EventSourcing.fs](Micro_ES_FSharp_lib/EventSourcing.fs): Abstract definition of Events and Commands. Definition of the "evolve" function
 - Repository.fs: get and store snapthos. Run commands, and store related events.
 - [DbStorage.fs](Micro_ES_FSharp_lib/DbStorage.fs) and [MemoryStorage.fs](Micro_ES_FSharp_lib/MemoryStorage.fs): Manages persistency of Events and Snapshots.
-- [Utils.fs](Micro_ES_FSharp_lib/Utils.fs): some common functions to manage serialization, Result and Railway Oriented Error management
-- [Config.fs](Micro_ES_FSharp_lib/Conf.fs) define storage type, lock object for aggregates, interval between snapshots
+- [Utils.fs](Micro_ES_FSharp_lib/Utils.fs): some common functions to manage serialization, Result and Railway Oriented Error management.
+- [Cache.fs](Micro_ES_FSharp_lib/Cache.fs). Caching of events processed and snapshots availables.
+- [Config.fs](Micro_ES_FSharp_lib/Conf.fs) define storage type, lock object for aggregates, interval between snapshots.
 
 
 __Micro_ES_FSharp_Lib.Sample__:
