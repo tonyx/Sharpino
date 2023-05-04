@@ -5,6 +5,8 @@ module Conf =
 
     let storageType = Postgres
 
+    type Serialization = JsonSer | BinarySer // for future use
+
     let isTestEnv = true
 
     // the key of each element is the name of the storage - storageName in the root type of each aggregate

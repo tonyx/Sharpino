@@ -104,8 +104,8 @@ module Repository =
                         |> command2.Execute
 
                     let! eventsAdded =
-                        let serEv1 = events1 |>> JsonConvert.SerializeObject
-                        let serEv2 = events2 |>> JsonConvert.SerializeObject
+                        let serEv1 = events1 |>> Utils.serialize 
+                        let serEv2 = events2 |>> Utils.serialize
                         storage.MultiAddEvents
                             [
                                 (serEv1, 'A1.StorageName)
@@ -121,7 +121,7 @@ module Repository =
         ceResult
             {
                 let! (id, state) = getState<'A, 'E>()
-                let snapshot = JsonConvert.SerializeObject(state, Utils.serSettings)
+                let snapshot = Utils.serialize<'A> state
                 let! result = storage.SetSnapshot (id, snapshot) 'A.StorageName
                 return result
             }

@@ -15,6 +15,8 @@ module Utils =
         | ex  ->
             printf "error deserialize: %A" ex
             Error (ex.ToString())
+    let serialize<'A> (x: 'A): string =
+        JsonConvert.SerializeObject(x, serSettings)
 
     type CeResultBuilder()  =
         member this.Bind(x, f) =
