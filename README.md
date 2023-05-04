@@ -19,12 +19,12 @@ __Micro_ES_FSharp_Lib.Sample__:
 
 - For each branch: 
 
-- an entry point of the applications available for external calls: [App.fs](Micro_ES_FSharp_Lib.Sample/App.fs)
+- - an entry point of the applications available for external calls: [App.fs](Micro_ES_FSharp_Lib.Sample/App.fs)
 
-- __Two Aggregates__:
-- -  For each branch an aggregate a definition of Commands and events as follows: [ Todos Commands.fs](Micro_ES_FSharp_lib.Sample/aggregates/Todos/Commands.fs) and [Todos Events.fs](Micro_ES_FSharp_lib.Sample/aggregates/Todos/Events.fs)
-- - Models (entities, value object, whatever is needed by the aggregate)
-- - minimal scripts to define snapshots and events table for Postgres, if wanted as storage: [sqlSetup.sql](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/sqlSetup.sql)
+- - __Two Aggregates__:
+- - -  For each branch an aggregate a definition of Commands and events as follows: [ Todos Commands.fs](Micro_ES_FSharp_lib.Sample/aggregates/Todos/Commands.fs) and [Todos Events.fs](Micro_ES_FSharp_lib.Sample/aggregates/Todos/Events.fs)
+- - -  Models (entities, value object, whatever is needed by the aggregate)
+- - - minimal scripts to define snapshots and events table for Postgres, if wanted as storage: [sqlSetup.sql](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/sqlSetup.sql)
 
 __Micro_ES_FSharp_Lib.tests__:
 - the tests are grouped into tests of models, tests of aggregates and application layer tests. They use the actual configuration (Conf.fs) to decide if using memory or postgres storage.
