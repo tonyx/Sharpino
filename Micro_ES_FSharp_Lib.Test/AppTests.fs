@@ -16,11 +16,11 @@ open Tonyx.EventSourcing
 let db = Repository.storage
 
 let setUp() =
-    db.Reset TodosAggregate.StorageName
+    db.Reset "_01" TodosAggregate.StorageName 
     Cache.EventCache<TodosAggregate>.Instance.Clear()
     Cache.SnapCache<TodosAggregate>.Instance.Clear()
 
-    db.Reset TagsAggregate.StorageName
+    db.Reset "_01" TagsAggregate.StorageName
     Cache.EventCache<TagsAggregate>.Instance.Clear()
     Cache.SnapCache<TagsAggregate>.Instance.Clear()
 

@@ -13,6 +13,7 @@
     <Compile Include="aggregates/Todos/models/TodosTests.fs" />
     <Compile Include="aggregates/Todos/models/CategoriesTests.fs" />
     <Compile Include="AppTests.fs" />
+    <Compile Include="App_02_Tests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
