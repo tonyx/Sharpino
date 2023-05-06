@@ -1,7 +1,7 @@
-namespace Tonyx.EventSourcing.Sample
+namespace Tonyx.EventSourcing.Sample_02
 
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
-open Tonyx.EventSourcing.Sample
+open Tonyx.EventSourcing.Sample_02.Tags.Models.TagsModel
+open Tonyx.EventSourcing.Sample_02
 open System
 
 module TagsAggregate =
@@ -17,6 +17,8 @@ module TagsAggregate =
         // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_tags"
+        static member Version =
+            "_02"
         member this.AddTag(t: Tag) =
             ceResult {
                 let! result = this.Tags.AddTag(t)

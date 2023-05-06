@@ -1,21 +1,20 @@
-namespace Tonyx.EventSourcing.Sample
+namespace Tonyx.EventSourcing.Sample_02
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Repository
 
-open Tonyx.EventSourcing.Sample.TodosAggregate
-open Tonyx.EventSourcing.Sample.Todos.TodoEvents
-open Tonyx.EventSourcing.Sample.Todos.TodoCommands
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
+open Tonyx.EventSourcing.Sample_02.TodosAggregate
+open Tonyx.EventSourcing.Sample_02.Todos.TodoEvents
+open Tonyx.EventSourcing.Sample_02.Todos.TodoCommands
+open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
 
-open Tonyx.EventSourcing.Sample.TagsAggregate
-open Tonyx.EventSourcing.Sample.Tags.TagsEvents
-open Tonyx.EventSourcing.Sample.Tags.TagCommands
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
+open Tonyx.EventSourcing.Sample_02.TagsAggregate
+open Tonyx.EventSourcing.Sample_02.Tags.TagsEvents
+open Tonyx.EventSourcing.Sample_02.Tags.TagCommands
+open Tonyx.EventSourcing.Sample_02.Tags.Models.TagsModel
 open System
 open FSharpPlus
 
-module App =
-    // let repo = Repository'()
+module App_02 =
     let getAllTodos() =
         ceResult {
             let! (_, state) = getState<TodosAggregate, TodoEvent>()

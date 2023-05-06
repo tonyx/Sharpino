@@ -22,6 +22,8 @@ module TodosAggregate =
         // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_todo"
+        static member Version =
+            "_01"
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 

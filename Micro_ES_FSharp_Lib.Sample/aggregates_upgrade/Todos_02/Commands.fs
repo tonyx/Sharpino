@@ -1,12 +1,12 @@
-namespace Tonyx.EventSourcing.Sample.Todos
+namespace Tonyx.EventSourcing.Sample_02.Todos
 
 open System
 open Tonyx.EventSourcing.Core
 
-open Tonyx.EventSourcing.Sample.Todos.TodoEvents
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample.TodosAggregate
+open Tonyx.EventSourcing.Sample_02.Todos.TodoEvents
+open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
+open Tonyx.EventSourcing.Sample_02.Todos.Models.CategoriesModel
+open Tonyx.EventSourcing.Sample_02.TodosAggregate
 open Tonyx.EventSourcing.Cache
 
 module TodoCommands =
@@ -23,7 +23,6 @@ module TodoCommands =
                 match this with
                 | AddTodo t ->
                     match
-
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoAdded t]) with
                         | Ok _ -> [TodoAdded t] |> Ok
                         | Error x -> x |> Error

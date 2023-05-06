@@ -12,8 +12,10 @@ module Conf =
     // the key of each element is the name of the storage - storageName in the root type of each aggregate
     let syncobjects = 
         [
-            ("_tags", new obj()) 
-            ("_todo", new obj())
+            (("_01","_tags"), new obj()) 
+            (("_01","_todo"), new obj())
+            (("_02","_tags"), new obj()) 
+            (("_02","_todo"), new obj())
         ] 
         |> Map.ofList
 
@@ -30,7 +32,7 @@ module Conf =
     let connectionString =
         if isTestEnv then
             "Server=127.0.0.1;"+
-            "Database=safe2;" +
+            "Database=es_01;" +
             "User Id=safe;"+
             "Password=safe;"
         else

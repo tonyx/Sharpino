@@ -8,7 +8,7 @@ open Tonyx.EventSourcing
 
 type Json = string
 type Name = string
-
+type version = string
 type StorageEvent =
     {
         Event: Json
@@ -22,42 +22,43 @@ type StorageSnapshot = {
     EventId: int
 }
 type IStorage =
-    abstract member Reset: Name -> unit
-    abstract member TryGetLastSnapshot: Name -> Option<int * int * Json>
-    abstract member TryGetLastEventId: Name -> Option<int>
-    abstract member TryGetLastSnapshotEventId: Name -> Option<int>
-    abstract member TryGetLastSnapshotId: Name -> Option<int>
-    abstract member TryGetEvent: int -> Name -> Option<StorageEvent>
-    abstract member SetSnapshot: int * Json -> Name -> Result<unit, string>
-    abstract member AddEvents: List<Json> -> Name -> Result<unit, string>
-    abstract member MultiAddEvents: List<List<Json> * Name>  -> Result<unit, string>
-    abstract member GetEventsAfterId: int -> Name -> List<int * string >
+    abstract member Reset: version -> Name -> unit
+    abstract member TryGetLastSnapshot: version -> Name -> Option<int * int * Json>
+    abstract member TryGetLastEventId: version -> Name -> Option<int>
+    abstract member TryGetLastSnapshotEventId: version -> Name -> Option<int>
+    abstract member TryGetLastSnapshotId: version -> Name -> Option<int>
+    abstract member TryGetEvent: version -> int -> Name -> Option<StorageEvent>
+    abstract member SetSnapshot: version -> int * Json -> Name -> Result<unit, string>
+    abstract member AddEvents: version -> List<Json> -> Name -> Result<unit, string>
+    abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<unit, string>
+    abstract member GetEventsAfterId: version -> int -> Name -> List<int * string >
 
 module DbStorage =
     let TPConnectionString = Conf.connectionString
     let ceResult = CeResultBuilder()
     type PgDb() =
         interface IStorage with
-            member this.Reset name =
+            member this.Reset version name =
                 if (Conf.isTestEnv) then
                     // additional precautions to avoid deleting data in non dev/test env 
                     // is configuring the db user rights in prod accordingly (only read and write/append)
                     let _ =
                         TPConnectionString
                         |> Sql.connect
-                        |> Sql.query (sprintf "DELETE from snapshots%s" name)
+                        |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQuery
                     let _ =
                         TPConnectionString
                         |> Sql.connect
-                        |> Sql.query (sprintf "DELETE from events%s" name)
+                        |> Sql.query (sprintf "DELETE from events%s%s" version name)
                         |> Sql.executeNonQuery
                     ()
                 else
                     failwith "operation allowed only in test db"
 
-            member this.TryGetLastSnapshot name =
-                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s ORDER BY id DESC LIMIT 1" name
+            member this.TryGetLastSnapshot version name =
+                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                printf "debug 1: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query
@@ -72,8 +73,9 @@ module DbStorage =
                 |> Async.RunSynchronously
                 |> Seq.tryHead
 
-            member this.TryGetLastSnapshotId name =
-                let query = sprintf "SELECT id FROM snapshots%s ORDER BY id DESC LIMIT 1" name
+            member this.TryGetLastSnapshotId version name =
+                let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                printf "debug 2: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query
@@ -86,8 +88,9 @@ module DbStorage =
                 |> Async.RunSynchronously
                 |> Seq.tryHead
 
-            member this.TryGetLastEventId name =
-                let query = sprintf "SELECT id FROM events%s ORDER BY id DESC LIMIT 1" name
+            member this.TryGetLastEventId version name =
+                let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
+                printf "debug 3: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query 
@@ -96,8 +99,9 @@ module DbStorage =
                 |> Async.RunSynchronously
                 |> Seq.tryHead
 
-            member this.TryGetLastSnapshotEventId name =
-                let query = sprintf "SELECT event_id FROM snapshots%s ORDER BY id DESC LIMIT 1" name
+            member this.TryGetLastSnapshotEventId version name =
+                let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                printf "debug 4: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query
@@ -106,8 +110,9 @@ module DbStorage =
                 |> Async.RunSynchronously
                 |> Seq.tryHead
 
-            member this.TryGetEvent id name =
-                let query = sprintf "SELECT * from events%s where id = @id" name
+            member this.TryGetEvent version id name =
+                let query = sprintf "SELECT * from events%s%s where id = @id" version name
+                printf "debug 5: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query 
@@ -125,11 +130,12 @@ module DbStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
 
-            member this.SetSnapshot (id: int, snapshot: Json) name =
-                let command = sprintf "INSERT INTO snapshots%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" name
+            member this.SetSnapshot version (id: int, snapshot: Json) name =
+                let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
+                printf "debug 6: %s\n" command
                 ceResult
                     {
-                        let! event = ((this :> IStorage).TryGetEvent id name) |> optionToResult
+                        let! event = ((this :> IStorage).TryGetEvent version id name) |> optionToResult
                         let _ =
                             TPConnectionString
                             |> Sql.connect
@@ -149,8 +155,9 @@ module DbStorage =
                         return ()
                     }
 
-            member this.AddEvents (events: List<Json>) name =
-                let command = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name
+            member this.AddEvents version (events: List<Json>) name =
+                let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
+                printf "debug 7: %s\n" command
                 try
                     let _ =
                         TPConnectionString
@@ -174,13 +181,14 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            member this.MultiAddEvents(arg: List<List<Json> * Name>) : Result<unit,string> = 
+            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
                 let cmdList = 
                     arg 
                     |> List.map 
                         (
-                            fun (events, name) -> 
-                                let statement = sprintf "INSERT INTO events%s (event, timestamp) VALUES (@event, @timestamp)" name
+                            fun (events, version,  name) -> 
+                                let statement = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
+                                printf "debug 8: %s\n" statement
                                 statement, events
                                 |>> 
                                 (
@@ -202,8 +210,9 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            member this.GetEventsAfterId id name =    
-                let query = sprintf "SELECT id, event FROM events%s WHERE id > @id ORDER BY id" name
+            member this.GetEventsAfterId version id name =    
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id" version name
+                printf "debug 9: %s\n" query
                 TPConnectionString
                 |> Sql.connect
                 |> Sql.query query

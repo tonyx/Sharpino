@@ -7,22 +7,48 @@ open System
 
 // memory storage should be used only for testing and developing
 module MemoryStorage =
-    type MemoryStorage private() =
+    type MemoryStorage () =
+        let mutable event_id_seq': Map<version, Map<Name, obj>> = [] |> Map.ofList
         let mutable event_id_seq = [] |> Map.ofList
+        let mutable snapshot_id_seq': Map<version, Map<Name, obj>>  = [] |> Map.ofList
         let mutable snapshot_id_seq = [] |> Map.ofList
+        let mutable events': Map<version,Map<string, List<StorageEvent>>> = [] |> Map.ofList
         let mutable events: Map<string, List<StorageEvent>> = [] |> Map.ofList
+        let mutable snapshots': Map<string, Map<string, List<StorageSnapshot>>> = [] |> Map.ofList
         let mutable snapshots: Map<string, List<StorageSnapshot> > = [] |> Map.ofList
-        static let instance = MemoryStorage()
         let getSnapshots name =
             if (snapshots |> Map.containsKey name |> not) then
                 []
             else
                 snapshots.[name]
+        let getSnapshots' version name =
+            if 
+                (   
+                    snapshots'.ContainsKey version |> not
+                    || 
+                    snapshots'.[version].ContainsKey name |> not
+                ) then
+                []
+            else
+                (snapshots'.[version]).[name]
+
+        let getEvents' version name =
+            if 
+                (
+                    events'.ContainsKey version |> not
+                    ||
+                    (events'.[version]).ContainsKey name |> not
+                ) then
+                    []
+            else        
+                (events'.[version]).[name]
+
         let getEvents name =
             if (events |> Map.containsKey name |> not) then
                 []
             else
                 events.[name]
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id name =
             if (event_id_seq |> Map.containsKey name |> not) then
@@ -39,42 +65,42 @@ module MemoryStorage =
             snapshot_id_seq <- snapshot_id_seq.Add(name, result + 1)
             result
 
-        static member Instance = instance
+        // static member Instance = instance
 
         interface IStorage with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.Reset name =
+            member this.Reset version name =
                 events <- events.Add(name, [])
                 snapshots <- snapshots.Add(name, [])
                 event_id_seq <- event_id_seq.Add(name, 1)
                 snapshot_id_seq <- snapshot_id_seq.Add(name, 1)
 
-            member this.TryGetLastSnapshot name =
+            member this.TryGetLastSnapshot version name =
                 name 
                 |> getSnapshots 
                 |> List.tryLast 
                 |>> (fun x -> (x.Id, x.EventId, x.Snapshot))
 
-            member this.TryGetLastEventId name =
+            member this.TryGetLastEventId version name =
                 name 
                 |> getEvents 
                 |> List.tryLast 
                 |>> (fun x -> x.Id)
-            member this.TryGetLastSnapshotEventId name =
+            member this.TryGetLastSnapshotEventId version name =
                 name 
                 |> getSnapshots 
                 |> List.tryLast 
                 |>> (fun x -> x.EventId)
 
-            member this.TryGetLastSnapshotId name =
+            member this.TryGetLastSnapshotId version name =
                 name 
                 |> getSnapshots 
                 |> List.tryLast 
                 |>> (fun x -> x.Id)
 
-            member this.TryGetEvent(id: int) name =
+            member this.TryGetEvent version (id: int) name =
                 name |> getEvents  |> List.tryFind (fun x -> x.Id = id)
-            member this.AddEvents xs name =
+            member this.AddEvents version xs name =
                 let ev =
                     (name |> getEvents)
                     @
@@ -89,10 +115,10 @@ module MemoryStorage =
                 events <- events.Add(name, ev)
                 () |> Result.Ok
 
-            member this.MultiAddEvents(arg: List<List<Json> * Name>) : Result<unit,string> = 
+            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
                 arg
                 |> List.iter 
-                    (fun (xs, name) ->
+                    (fun (xs, _, name) ->
                         let ev =
                             (name |> getEvents)
                             @
@@ -108,12 +134,12 @@ module MemoryStorage =
                     )
                 () |> Ok
 
-            member this.GetEventsAfterId id name =
+            member this.GetEventsAfterId version id name =
                 name 
                 |> getEvents 
                 |> List.filter (fun x -> x.Id > id) 
                 |>> fun x -> x.Id, x.Event
-            member this.SetSnapshot (id, snapshot) name =
+            member this.SetSnapshot version (id, snapshot) name =
                 let newSnapshot =
                     {
                         Id = next_snapshot_id name
