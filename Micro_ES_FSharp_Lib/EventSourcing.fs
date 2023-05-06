@@ -1,11 +1,9 @@
 namespace Tonyx.EventSourcing
-open Tonyx.EventSourcing.Utils
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 
 module Core =
-    let ceResult = CeResultBuilder()
 
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
