@@ -4,148 +4,201 @@ open FSharp.Data.Sql
 open System.Runtime.CompilerServices
 open FSharpPlus
 open System
+open System.Collections
 
-// memory storage should be used only for testing and developing
 module MemoryStorage =
     type MemoryStorage () =
-        let mutable event_id_seq': Map<version, Map<Name, obj>> = [] |> Map.ofList
-        let mutable event_id_seq = [] |> Map.ofList
-        let mutable snapshot_id_seq': Map<version, Map<Name, obj>>  = [] |> Map.ofList
-        let mutable snapshot_id_seq = [] |> Map.ofList
-        let mutable events': Map<version,Map<string, List<StorageEvent>>> = [] |> Map.ofList
-        let mutable events: Map<string, List<StorageEvent>> = [] |> Map.ofList
-        let mutable snapshots': Map<string, Map<string, List<StorageSnapshot>>> = [] |> Map.ofList
-        let mutable snapshots: Map<string, List<StorageSnapshot> > = [] |> Map.ofList
-        let getSnapshots name =
-            if (snapshots |> Map.containsKey name |> not) then
-                []
-            else
-                snapshots.[name]
-        let getSnapshots' version name =
-            if 
-                (   
-                    snapshots'.ContainsKey version |> not
-                    || 
-                    snapshots'.[version].ContainsKey name |> not
-                ) then
-                []
-            else
-                (snapshots'.[version]).[name]
-
-        let getEvents' version name =
-            if 
-                (
-                    events'.ContainsKey version |> not
-                    ||
-                    (events'.[version]).ContainsKey name |> not
-                ) then
-                    []
-            else        
-                (events'.[version]).[name]
-
-        let getEvents name =
-            if (events |> Map.containsKey name |> not) then
-                []
-            else
-                events.[name]
+        let event_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
+        let snapshot_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
+        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEvent>>>()
+        let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshot>>>()
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
-        let next_event_id name =
-            if (event_id_seq |> Map.containsKey name |> not) then
-                event_id_seq <- event_id_seq.Add(name, 1)
-            let result = event_id_seq.[name]
-            event_id_seq <- event_id_seq.Add(name, result + 1)
-            result
+        let next_event_id version name =
+            let event_id_seq =
+                if (event_id_seq_dic.ContainsKey version |> not) then
+                    1
+                else
+                    if (event_id_seq_dic.[version].ContainsKey name |> not) then
+                        1
+                    else
+                        event_id_seq_dic.[version].[name]
+            if (event_id_seq_dic.ContainsKey version |> not) then
+                let dic = new Generic.Dictionary<Name, int>()
+                dic.Add(name, event_id_seq + 1)
+                event_id_seq_dic.Add(version, dic)
+            else
+                let dic = event_id_seq_dic.[version]
+                if (dic.ContainsKey name |> not) then
+                    dic.Add(name, event_id_seq + 1)
+                else
+                    dic.[name] <- event_id_seq + 1
+            event_id_seq
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
-        let next_snapshot_id name =
-            if (snapshot_id_seq |> Map.containsKey name |> not) then
-                snapshot_id_seq <- snapshot_id_seq.Add(name, 1)
-            let result = snapshot_id_seq.[name]
-            snapshot_id_seq <- snapshot_id_seq.Add(name, result + 1)
-            result
-
-        // static member Instance = instance
+        let next_snapshot_id version name =
+            let snapshot_id_seq =
+                if (snapshot_id_seq_dic.ContainsKey version |> not) then
+                    1
+                else
+                    if (snapshot_id_seq_dic.[version].ContainsKey name |> not) then
+                        1
+                    else
+                        snapshot_id_seq_dic.[version].[name]
+            if (snapshot_id_seq_dic.ContainsKey version |> not) then
+                let dic = new Generic.Dictionary<Name, int>()
+                dic.Add(name, snapshot_id_seq + 1)
+                snapshot_id_seq_dic.Add(version, dic)
+            else
+                let dic = snapshot_id_seq_dic.[version]
+                if (dic.ContainsKey name |> not) then
+                    dic.Add(name, snapshot_id_seq + 1)
+                else
+                    dic.[name] <- snapshot_id_seq + 1
+            snapshot_id_seq
 
         interface IStorage with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.Reset version name =
-                events <- events.Add(name, [])
-                snapshots <- snapshots.Add(name, [])
-                event_id_seq <- event_id_seq.Add(name, 1)
-                snapshot_id_seq <- snapshot_id_seq.Add(name, 1)
+                events_dic.Clear()
+                snapshots_dic.Clear()
+                event_id_seq_dic.Clear()
+                snapshot_id_seq_dic.Clear()
 
             member this.TryGetLastSnapshot version name =
-                name 
-                |> getSnapshots 
-                |> List.tryLast 
-                |>> (fun x -> (x.Id, x.EventId, x.Snapshot))
+                let result =
+                    if snapshots_dic.ContainsKey version |> not then 
+                        None 
+                    else
+                        if snapshots_dic.[version].ContainsKey name |> not then
+                            None
+                        else
+                            snapshots_dic.[version].[name]
+                            |> List.tryLast
+                            |>> (fun x -> x.Id, x.EventId, x.Snapshot)
+                result
 
             member this.TryGetLastEventId version name =
-                name 
-                |> getEvents 
-                |> List.tryLast 
-                |>> (fun x -> x.Id)
+                let result =
+                    if events_dic.ContainsKey version |> not then 
+                        None 
+                    else
+                        if events_dic.[version].ContainsKey name |> not then
+                            None
+                        else
+                            events_dic.[version].[name]
+                            |> List.tryLast
+                            |>> (fun x -> x.Id)
+                result
+
             member this.TryGetLastSnapshotEventId version name =
-                name 
-                |> getSnapshots 
-                |> List.tryLast 
-                |>> (fun x -> x.EventId)
+                let result =    
+                    if snapshots_dic.ContainsKey version |> not then 
+                        None 
+                    else
+                        if snapshots_dic.[version].ContainsKey name |> not then
+                            None
+                        else
+                            snapshots_dic.[version].[name]
+                            |> List.tryLast
+                            |>> (fun x -> x.EventId)
+                result
 
             member this.TryGetLastSnapshotId version name =
-                name 
-                |> getSnapshots 
-                |> List.tryLast 
-                |>> (fun x -> x.Id)
+                if snapshots_dic.ContainsKey version |> not then 
+                    None 
+                else
+                    if snapshots_dic.[version].ContainsKey name |> not then
+                        None
+                    else
+                        snapshots_dic.[version].[name]
+                        |> List.tryLast
+                        |>> (fun x -> x.Id)
 
             member this.TryGetEvent version (id: int) name =
-                name |> getEvents  |> List.tryFind (fun x -> x.Id = id)
+                let result =
+                    if events_dic.ContainsKey version |> not then 
+                        None 
+                    else
+                        if events_dic.[version].ContainsKey name |> not then
+                            None
+                        else
+                            events_dic.[version].[name]
+                            |> List.tryFind (fun x -> x.Id = id)
+                result
             member this.AddEvents version xs name =
-                let ev =
-                    (name |> getEvents)
-                    @
-                    [
-                        for e in xs do
+                let existingEvents =
+                    if events_dic.ContainsKey version |> not then 
+                        [] 
+                    else
+                        if (events_dic.[version]).ContainsKey name |> not then
+                            []
+                        else
+                            events_dic.[version].[name]
+
+                let result =
+                    existingEvents@
+                        [for e in xs do
                             yield {
-                                Id = next_event_id name
+                                Id = next_event_id version name
                                 Event = e
                                 Timestamp = DateTime.Now
                             }
-                    ]
-                events <- events.Add(name, ev)
-                () |> Result.Ok
+                        ]
 
-            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
-                arg
+                if (events_dic.ContainsKey version |> not) then
+                    let toAdd = new Generic.Dictionary<Name, List<StorageEvent>>() 
+                    toAdd.Add(name, result)
+                    events_dic.Add(version, toAdd) |> ignore
+                else
+                    if (events_dic.[version]).ContainsKey name |> not then
+                        let toAdd = new Generic.Dictionary<Name, List<StorageEvent>>() 
+                        toAdd.Add(name, result)
+                        events_dic.[version].Add(name, result) |> ignore
+                    else
+                        events_dic.[version].[name] <- result
+                () |> Ok
+
+            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit, string> = 
+                arg 
                 |> List.iter 
-                    (fun (xs, _, name) ->
-                        let ev =
-                            (name |> getEvents)
-                            @
-                            [
-                                for e in xs do
-                                    yield {
-                                        Id = next_event_id name
-                                        Event = e
-                                        Timestamp = DateTime.Now
-                                    }
-                            ]
-                        events <- events.Add(name, ev)
-                    )
+                    (fun (xs, version, name) ->
+                        (this :> IStorage).AddEvents version xs name |> ignore
+                    ) 
                 () |> Ok
 
             member this.GetEventsAfterId version id name =
-                name 
-                |> getEvents 
-                |> List.filter (fun x -> x.Id > id) 
-                |>> fun x -> x.Id, x.Event
+                if events_dic.ContainsKey version |> not then 
+                    [] 
+                else
+                    if events_dic.[version].ContainsKey name |> not then
+                        []
+                    else
+                        events_dic.[version].[name]
+                        |> List.filter (fun x -> x.Id > id)
+                        |>> (fun x -> x.Id, x.Event)
             member this.SetSnapshot version (id, snapshot) name =
+                let existingSnapshots =
+                    if snapshots_dic.ContainsKey version |> not then 
+                        [] 
+                    else
+                        if (snapshots_dic.[version]).ContainsKey name |> not then
+                            []
+                        else
+                            snapshots_dic.[version].[name]
                 let newSnapshot =
                     {
-                        Id = next_snapshot_id name
+                        Id = next_snapshot_id version name
                         Snapshot = snapshot
                         TimeStamp = DateTime.Now
                         EventId = id
                     }
-                snapshots <- snapshots.Add (name, (name |> getSnapshots)@[newSnapshot])
+                if snapshots_dic.ContainsKey version then
+                    if (snapshots_dic.[version]).ContainsKey name then
+                        snapshots_dic.[version].Remove(name) |> ignore
+                    snapshots_dic.[version].Add(name, existingSnapshots@[newSnapshot]) |> ignore
+                else
+                    let toAdd = new Generic.Dictionary<Name, List<StorageSnapshot>>()
+                    toAdd.Add(name, existingSnapshots@[newSnapshot])
+                    snapshots_dic.Add(version, toAdd) |> ignore
                 () |> Ok
