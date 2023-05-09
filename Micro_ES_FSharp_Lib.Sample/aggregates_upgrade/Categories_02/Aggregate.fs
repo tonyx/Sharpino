@@ -1,18 +1,19 @@
 
 namespace Tonyx.EventSourcing.Sample_02
 
-open Tonyx.EventSourcing.Sample_02.Tags.Models.TagsModel
+open Tonyx.EventSourcing.Sample_02.Categories.Models
+open Tonyx.EventSourcing.Sample_02.Categories.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample_02
 open System
 
 module CategoriesAggregate =
     type CategoriesAggregate =
         {
-            Tags: Tags
+            Categories: Categories
         }
         static member Zero =
             {
-                Tags = Tags.Zero
+                Categories = Categories.Zero
             }
         // storagename _MUST_ be unique for each aggregate and the relative lock object 
         // must be added in syncobjects map in Conf.fs
@@ -20,24 +21,24 @@ module CategoriesAggregate =
             "_categories"
         static member Version =
             "_02"
-        member this.AddTag(t: Tag) =
+        member this.AddCategory(c: Category) =
             ceResult {
-                let! result = this.Tags.AddTag(t)
+                let! result = this.Categories.AddCategory(c)
                 let result =
                     {
                         this with
-                            Tags = result
+                            Categories = result
                     }
                 return result
             }
-        member this.RemoveTag(id: Guid) =
+        member this.RemoveCategory(id: Guid) =
             ceResult {
-                let! result = this.Tags.RemoveTag(id)
+                let! result = this.Categories.RemoveCategory(id)
                 let result =
                     {
                         this with
-                            Tags = result
+                            Categories = result
                     }
                 return result
             }
-        member this.GetTags() = this.Tags.GetTags()
+        member this.GetCategories() = this.Categories.GetCategories()

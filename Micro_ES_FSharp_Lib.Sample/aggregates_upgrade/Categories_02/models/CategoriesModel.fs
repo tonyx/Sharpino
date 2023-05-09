@@ -1,10 +1,10 @@
-namespace Tonyx.EventSourcing.Sample_02.Todos.Models
+namespace Tonyx.EventSourcing.Sample_02.Categories.Models
 open System
 open FSharpPlus
 
 open Tonyx.EventSourcing.Utils
 
-module CategoriesModel02 =
+module CategoriesModel =
     let ceResult = CeResultBuilder()
     type Category =
         {

@@ -15,7 +15,6 @@ open System
 open FSharpPlus
 
 module App =
-    // let repo = Repository'()
     let getAllTodos() =
         ceResult {
             let! (_, state) = getState<TodosAggregate, TodoEvent>()
