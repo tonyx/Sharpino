@@ -86,6 +86,31 @@ module TodosAggregate =
                                     }
                         }
                 }   
+
+        member this.RemoveCategoryReference (id: Guid) =
+            let removeReferenceOfCategoryToTodos (id: Guid) =
+                this.todos.todos 
+                |>>
+                (fun x -> 
+                    { x with 
+                        CategoryIds = 
+                            x.CategoryIds 
+                            |> List.filter (fun y -> y <> id)}
+                )
+            
+            ceResult
+                {
+                    return
+                        {
+                            this with
+                                todos = 
+                                    {
+                                        this.todos 
+                                            with todos = removeReferenceOfCategoryToTodos id
+                                    }
+                        }
+                }
+
         member this.RemoveTagReference (id: Guid) =
             let removeReferenceOfTagToAllTodos (id: Guid) =
                 this.todos.todos 

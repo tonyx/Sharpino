@@ -1,4 +1,5 @@
 namespace Tonyx.EventSourcing.Sample
+open Tonyx.EventSourcing
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Repository
 
@@ -11,6 +12,12 @@ open Tonyx.EventSourcing.Sample.TagsAggregate
 open Tonyx.EventSourcing.Sample.Tags.TagsEvents
 open Tonyx.EventSourcing.Sample.Tags.TagCommands
 open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
+
+open Tonyx.EventSourcing.Sample_02
+open Tonyx.EventSourcing.Sample_02.Categories
+open Tonyx.EventSourcing.Sample_02.CategoriesAggregate
+open Tonyx.EventSourcing.Sample_02.Categories.CategoriesCommands
+open Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents
 open System
 open FSharpPlus
 
@@ -22,22 +29,28 @@ module App =
             return todos
         }
     let addTodo todo =
-        ceResult {
-            let! (_, tagState) = getState<TagsAggregate, TagEvent>()
-            let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+        let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+        if lockobj.IsNone then
+            Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
+        else
+            lock lockobj <| fun () ->
+                ceResult {              
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent>()
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-            let! tagIdIsValid =    
-                (todo.TagIds.IsEmpty ||
-                todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                    let! tagIdIsValid =    
+                        (todo.TagIds.IsEmpty ||
+                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-            let! _ =
-                todo
-                |> AddTodo
-                |> runCommand<TodosAggregate, TodoEvent> 
-            let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
-            return ()
-        }
+                    let! _ =
+                        todo
+                        |> TodoCommand.AddTodo
+                        |> runCommand<TodosAggregate, TodoEvent> 
+                    let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+                return ()
+            }
+
     let add2Todos (todo1, todo2) =
         ceResult {
             let! (_, tagState) = getState<TagsAggregate, TagEvent>()
@@ -55,7 +68,7 @@ module App =
 
             let! _ =
                 (todo1, todo2)
-                |> Add2Todos
+                |> TodoCommand.Add2Todos
                 |> runCommand<TodosAggregate, TodoEvent> 
             let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
             return ()
@@ -64,7 +77,7 @@ module App =
         ceResult {
             let! _ =
                 id
-                |> RemoveTodo
+                |> TodoCommand.RemoveTodo
                 |> runCommand<TodosAggregate, TodoEvent> 
             let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
             return ()
@@ -80,9 +93,20 @@ module App =
         ceResult {
             let! _ =
                 category
-                |> AddCategory
+                |> TodoCommand.AddCategory
                 |> runCommand<TodosAggregate, TodoEvent> 
             let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+            return ()
+        }
+
+    // version ready for upgrade as it uses the new aggregate
+    let addCategory' category =
+        ceResult {
+            let! _ =
+                category
+                |> CategoryCommand.AddCategory
+                |> runCommand<CategoriesAggregate, CategoryEvent>
+            let _ = mksnapshotIfInterval<CategoriesAggregate, CategoryEvent> ()
             return ()
         }
 
@@ -90,8 +114,28 @@ module App =
         ceResult {
             let! _ =
                 id
-                |> RemoveCategory
+                |> TodoCommand.RemoveCategory
                 |> runCommand<TodosAggregate, TodoEvent> 
+            let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+            return ()
+        }
+
+    let removeCategory' id =
+        ceResult {
+            let! _ =
+                id
+                |> CategoryCommand.RemoveCategory
+                |> runCommand<CategoriesAggregate, CategoryEvent>
+            let _ = mksnapshotIfInterval<CategoriesAggregate, CategoryEvent> ()
+            return ()
+        }
+
+    let removeCetegoryRef' id =
+        ceResult {
+            let! _ =
+                id
+                |> TodoCommand.RemoveCategoryRef
+                |> runCommand<TodosAggregate, TodoEvent>
             let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
             return ()
         }

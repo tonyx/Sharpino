@@ -16,6 +16,7 @@ module Conf =
             (("_01","_todo"), new obj())
             (("_02","_tags"), new obj()) 
             (("_02","_todo"), new obj())
+            (("_02","_categories"), new obj())
         ] 
         |> Map.ofList
 
@@ -24,6 +25,7 @@ module Conf =
         [
             ("_tags", 5)
             ("_todo", 5)
+            ("_categories", 5)
         ] 
         |> Map.ofList
 
