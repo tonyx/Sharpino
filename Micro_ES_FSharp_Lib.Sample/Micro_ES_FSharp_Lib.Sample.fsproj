@@ -21,17 +21,12 @@
     <Compile Include="aggregates_upgrade/Todos_02/Aggregate.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/Events.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/Commands.fs" />
-    <!-- <Compile Include="aggregates_upgrade/Tags_02/models/TagsModel.fs" />
-    <Compile Include="aggregates_upgrade/Tags_02/Aggregate.fs" />
-    <Compile Include="aggregates_upgrade/Tags_02/Events.fs" />
-    <Compile Include="aggregates_upgrade/Tags_02/Commands.fs" /> -->
-    <Compile Include="aggregates_upgrade/Categories_02/models/CategoriesModel.fs" />
     <Compile Include="aggregates_upgrade/Categories_02/Aggregate.fs" />
     <Compile Include="aggregates_upgrade/Categories_02/Events.fs" />
     <Compile Include="aggregates_upgrade/Categories_02/Commands.fs"/>
 
     <Compile Include="App.fs" />
-    <!-- <Compile Include="App_02.fs" /> -->
+    <Compile Include="AppCoordinator.fs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -18,7 +18,8 @@
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
     <!-- <Compile Include="aggregates_upgrade/Tags_02/TagsAggregateTests.fs" /> -->
     <Compile Include="AppTests.fs" />
-    <!-- <Compile Include="App_02_Tests.fs" /> -->
+    <Compile Include="AppWithCoordinatorTests.fs" />
+    <Compile Include="MigrationTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

@@ -29,7 +29,6 @@ let appTests =
     testList "App test" [
         testCase "add todo - Ok" <| fun _ ->
             let _ = setUp()
-            Expect.isTrue true "true"
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let result = App.addTodo todo
             Expect.isOk result "should be ok"

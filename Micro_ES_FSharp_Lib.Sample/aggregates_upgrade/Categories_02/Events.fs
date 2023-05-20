@@ -5,8 +5,8 @@ open System
 open Tonyx.EventSourcing.Core
 open Tonyx.EventSourcing.Cache
 
+open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample_02.CategoriesAggregate
-open Tonyx.EventSourcing.Sample_02.Categories.Models.CategoriesModel
 
 module CategoriesEvents =
     type CategoryEvent =

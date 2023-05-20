@@ -3,4 +3,9 @@ open Expecto
 
 [<EntryPoint>]
 let main argv =
-    Tests.runTestsInAssembly defaultConfig argv
+    let startingTime = System.DateTime.Now
+    let result = Tests.runTestsInAssembly defaultConfig argv
+    let endingTime = System.DateTime.Now
+    let executionTime = (endingTime - startingTime).TotalMilliseconds
+    printfn "\nexecution time: %A\n" executionTime
+    result

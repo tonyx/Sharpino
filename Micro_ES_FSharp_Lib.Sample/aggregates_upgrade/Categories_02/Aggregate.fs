@@ -1,9 +1,7 @@
 
 namespace Tonyx.EventSourcing.Sample_02
 
-open Tonyx.EventSourcing.Sample_02.Categories.Models
-open Tonyx.EventSourcing.Sample_02.Categories.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample_02
+open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open System
 
 module CategoriesAggregate =
