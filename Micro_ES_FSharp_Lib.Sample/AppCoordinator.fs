@@ -56,15 +56,15 @@ module AppCoordinator =
 
     let applicationVersion2 =
         {
-            getAllTodos =       App.getAllTodos
+            getAllTodos =       App.getAllTodos'
             addTodo =           App.addTodo'
             add2Todos =         App.add2Todos'
-            removeTodo =        App.removeTodo
+            removeTodo =        App.removeTodo'
             getAllCategories =  App.getAllCategories'
             addCategory =       App.addCategory'
             removeCategory =    App.removeCategory'
             addTag =            App.addTag 
-            removeTag =         App.removeTag
+            removeTag =         App.removeTag'
             getAllTags =        App.getAllTags
         }
 

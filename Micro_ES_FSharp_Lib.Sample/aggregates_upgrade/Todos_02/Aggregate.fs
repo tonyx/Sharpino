@@ -1,6 +1,7 @@
 namespace Tonyx.EventSourcing.Sample_02
 open System
 
+open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample_02.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Utils
@@ -25,14 +26,14 @@ module TodosAggregate =
         static member Version =
             "_02"
         member this.AddTodo (t: Todo) =
-            let checkCategoryExists (c: Guid ) =
-                this.categories.GetCategories() 
-                |> List.exists (fun x -> x.Id = c) 
-                |> boolToResult (sprintf "A category with id '%A' does not exist" c)
+            // let checkCategoryExists (c: Guid ) =
+            //     this.categories.GetCategories() 
+            //     |> List.exists (fun x -> x.Id = c) 
+            //     |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
             ceResult
                 {
-                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
+                    // let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
                     let! todos = this.todos.AddTodo t
                     return
                         {

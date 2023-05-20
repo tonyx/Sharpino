@@ -5,6 +5,7 @@ open Tonyx.EventSourcing.Core
 
 open Tonyx.EventSourcing.Sample_02.Todos.TodoEvents
 open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
+open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample_02.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample_02.TodosAggregate
 open Tonyx.EventSourcing.Cache
@@ -16,6 +17,7 @@ module TodoCommands =
         | AddCategory of Category
         | RemoveCategory of Guid
         | RemoveTagRef of Guid
+        | RemoveCategoryRef of Guid
         | Add2Todos of Todo * Todo
 
         interface Command<TodosAggregate, TodoEvent> with
@@ -54,6 +56,11 @@ module TodoCommands =
                     match
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoAdded t1; TodoAdded t2]) with
                         | Ok _ -> [TodoAdded t1; TodoAdded t2] |> Ok
+                        | Error x -> x |> Error
+                | RemoveCategoryRef g ->
+                    match
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [CategoryRefRemoved g]) with
+                        | Ok _ -> [CategoryRefRemoved g] |> Ok
                         | Error x -> x |> Error
 
 

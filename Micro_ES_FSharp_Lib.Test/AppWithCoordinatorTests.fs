@@ -36,25 +36,25 @@ let setUp() =
     Cache.EventCache<CategoriesAggregate>.Instance.Clear()
     Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
 
-let appWithCoordinator =
-    AppCoordinator.applicationVersion1
+let app =
+    AppCoordinator.applicationVersion2
 
 [<Tests>]
 let appWithCoordinatorTests =
-    ftestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         testCase "add todo - Ok" <| fun _ ->
             let _ = setUp()
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let result = appWithCoordinator.addTodo todo
+            let result = app.addTodo todo
             Expect.isOk result "should be ok"
 
         testCase "add two todos - Ok" <| fun _ -> 
             let _ = setUp()
             let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
-            let result = appWithCoordinator.add2Todos (todo1, todo2)
+            let result = app.add2Todos (todo1, todo2)
             Expect.isOk result "should be ok"
-            let todos = appWithCoordinator.getAllTodos()
+            let todos = app.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue |> Set.ofList) ([todo1; todo2] |> Set.ofList)  "should be equal"
 
@@ -62,18 +62,18 @@ let appWithCoordinatorTests =
             let _ = setUp()
             let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
             let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
-            let result = appWithCoordinator.add2Todos (todo1, todo2)
+            let result = app.add2Todos (todo1, todo2)
             Expect.isError result "should be error"
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [] "should be equal"
 
         testCase "add two todos, one has an unexisting tag - Ko" <| fun _ -> // this is for checking the case of a command returning two events
             let _ = setUp()
             let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [Guid.NewGuid()] }
-            let result = appWithCoordinator.add2Todos (todo1, todo2)
+            let result = app.add2Todos (todo1, todo2)
             Expect.isError result "should be error"
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [] "should be equal"
 
         testCase "add a todo with an unexisting tag - Ok" <| fun _ ->
@@ -81,7 +81,7 @@ let appWithCoordinatorTests =
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
-            let result = appWithCoordinator.addTodo todo
+            let result = app.addTodo todo
             Expect.isError result "should be error"
 
         testCase "when remove a tag then all the reference to that tag are also removed from any todos - Ok" <| fun _ ->
@@ -89,35 +89,35 @@ let appWithCoordinatorTests =
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
             let tag = { Id = id2; Name = "test"; Color = Color.Blue }
-            let result = appWithCoordinator.addTag tag
+            let result = app.addTag tag
             Expect.isOk result "should be ok"
 
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
-            let result = appWithCoordinator.addTodo todo
+            let result = app.addTodo todo
             Expect.isOk result "should be ok"
-            let todos = appWithCoordinator.getAllTodos().OkValue
+            let todos = app.getAllTodos().OkValue
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeTag id2
+            let result = app.removeTag id2
             Expect.isOk result "should be ok"
-            let todos = appWithCoordinator.getAllTodos().OkValue
+            let todos = app.getAllTodos().OkValue
             Expect.isTrue (todos.Head.TagIds |> List.isEmpty) "should be true"
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let _ = setUp()
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let result = appWithCoordinator.addTodo todo
+            let result = app.addTodo todo
             Expect.isOk result "should be ok"
-            let todos = appWithCoordinator.getAllTodos() |> Result.get
+            let todos = app.getAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeTodo todo.Id
+            let result = app.removeTodo todo.Id
             Expect.isOk result "should be ok"
-            let todos = appWithCoordinator.getAllTodos() |> Result.get
+            let todos = app.getAllTodos() |> Result.get
             Expect.equal todos [] "should be equal"
 
         testCase "remove an unexisting todo - Ko" <| fun _ ->
             let _ = setUp()
             let newGuid = Guid.NewGuid()
-            let result = appWithCoordinator.removeTodo newGuid
+            let result = app.removeTodo newGuid
             Expect.isError result "should be error"
             let errMsg = result |> getError
             Expect.equal errMsg (sprintf "A Todo with id '%A' does not exist" newGuid) "should be equal"
@@ -125,32 +125,32 @@ let appWithCoordinatorTests =
         testCase "add category" <| fun _ ->
             let _ = setUp()
             let category = { Id = Guid.NewGuid(); Name = "test"}
-            let result = appWithCoordinator.addCategory category
+            let result = app.addCategory category
             Expect.isOk result "should be ok"
-            let categories = appWithCoordinator.getAllCategories() |> Result.get
+            let categories = app.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
 
         testCase "add and remove a category" <| fun _ ->
             let _ = setUp()
             let category = { Id = Guid.NewGuid(); Name = "test"}
-            let result = appWithCoordinator.addCategory category
+            let result = app.addCategory category
             Expect.isOk result "should be ok"
-            let categories = appWithCoordinator.getAllCategories() |> Result.get
+            let categories = app.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
-            let result = appWithCoordinator.removeCategory category.Id
+            let result = app.removeCategory category.Id
             Expect.isOk result "should be ok"
-            let categories = appWithCoordinator.getAllCategories() |> Result.get
+            let categories = app.getAllCategories() |> Result.get
             Expect.equal categories [] "should be equal"
 
         testCase "add a todo with an unexisting category - KO" <| fun _ ->
             let _ = setUp()
             let category = { Id = Guid.NewGuid(); Name = "test"}
-            let result = appWithCoordinator.addCategory category
+            let result = app.addCategory category
             Expect.isOk result "should be ok"
-            let category' = appWithCoordinator.getAllCategories() |> Result.get
+            let category' = app.getAllCategories() |> Result.get
             Expect.equal category' [category] "should be equal"
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
-            let result = appWithCoordinator.addTodo todo
+            let result = app.addTodo todo
             Expect.isError result "should be error"
 
         testCase "when remove a category all references to it should be removed from todos - Ok" <| fun _ ->
@@ -161,18 +161,19 @@ let appWithCoordinatorTests =
 
             let added =
                 ceResult {
-                    let! _ = appWithCoordinator.addCategory category
-                    let! app' = appWithCoordinator.addTodo todo
+                    let! _ = app.addCategory category
+                    let! app' = app.addTodo todo
                     return app'
                 } 
+            printf "\nADDED: %A\n" added
             Expect.isOk added "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeCategory categoryId
+            let result = app.removeCategory categoryId
             Expect.isOk result "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal (todos |> List.head).CategoryIds [] "should be equal"
 
         testCase "when remove a category all references to it should be removed from todos 2 - Ok" <| fun _ ->
@@ -183,37 +184,37 @@ let appWithCoordinatorTests =
             let category2 = { Id = categoryId2; Name = "test2" }
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
 
-            let _ = appWithCoordinator.addCategory category
-            let _ = appWithCoordinator.addCategory category2
-            let app' = appWithCoordinator.addTodo todo
+            let _ = app.addCategory category
+            let _ = app.addCategory category2
+            let app' = app.addTodo todo
             Expect.isOk app' "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeCategory categoryId1
+            let result = app.removeCategory categoryId1
             Expect.isOk result "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal (todos |> List.head).CategoryIds [categoryId2] "should be equal"
 
         testCase "add tag" <| fun _ ->
             let _ = setUp()
             let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
-            let result = appWithCoordinator.addTag tag
+            let result = app.addTag tag
             Expect.isOk result "should be ok"
-            let tags = appWithCoordinator.getAllTags() |> Result.get
+            let tags = app.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"
 
         testCase "add and remove a tag" <| fun _ ->
             let _ = setUp()
             let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
-            let result = appWithCoordinator.addTag tag
+            let result = app.addTag tag
             Expect.isOk result "should be ok"
-            let tags = appWithCoordinator.getAllTags() |> Result.get
+            let tags = app.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"
-            let result = appWithCoordinator.removeTag tag.Id
+            let result = app.removeTag tag.Id
             Expect.isOk result "should be ok"
-            let tags = appWithCoordinator.getAllTags() |> Result.get
+            let tags = app.getAllTags() |> Result.get
             Expect.equal tags [] "should be equal"
 
         testCase "when remove a tag all references to it should be removed from existing todos - Ok" <| fun _ ->
@@ -224,19 +225,19 @@ let appWithCoordinatorTests =
 
             let added =
                 ceResult {
-                    let! _ = appWithCoordinator.addTag tag
-                    let! app' = appWithCoordinator.addTodo todo
+                    let! _ = app.addTag tag
+                    let! app' = app.addTodo todo
                     return app'
 
                 } 
             Expect.isOk added "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeTag tagId
+            let result = app.removeTag tagId
             Expect.isOk result "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal (todos |> List.head).TagIds [] "should be equal"
 
         testCase "when remove a tag all references to it should be removed from existing todos 2 - Ok" <| fun _ ->
@@ -247,16 +248,16 @@ let appWithCoordinatorTests =
             let tag2 = { Id = tagId2; Name = "test2"; Color = Color.Red }
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId; tagId2] }
 
-            let _ = appWithCoordinator.addTag tag1
-            let _ = appWithCoordinator.addTag tag2
-            let _ = appWithCoordinator.addTodo todo
+            let _ = app.addTag tag1
+            let _ = app.addTag tag2
+            let _ = app.addTodo todo
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
-            let result = appWithCoordinator.removeTag tagId
+            let result = app.removeTag tagId
             Expect.isOk result "should be ok"
 
-            let todos = appWithCoordinator.getAllTodos().OkValue 
+            let todos = app.getAllTodos().OkValue 
             Expect.equal (todos |> List.head).TagIds [tagId2] "should be equal"
 
     ] 

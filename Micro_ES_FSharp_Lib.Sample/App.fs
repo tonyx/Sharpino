@@ -29,12 +29,19 @@ module App =
             let todos = state.GetTodos()
             return todos
         }
+    let getAllTodos'() =
+        ceResult {
+            let! (_, state) = getState<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent>()
+            let todos = state.GetTodos()
+            return todos
+        }
     let addTodo todo =
-        let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-        if lockobj.IsNone then
-            Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
-        else
-            lock (lockobj.Value) <| fun () ->
+        let lockobj1 = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+        let lockobj2 = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+
+        match lockobj1, lockobj2 with
+        | Some lock1, Some lock2 ->
+            lock (lock1, lock2) <| fun () ->
                 ceResult {              
                     let! (_, tagState) = getState<TagsAggregate, TagEvent>()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -51,10 +58,12 @@ module App =
                     let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
                 return ()
             }
+        | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
 
     let addTodo' todo =
-        let lock1 = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+        let lock1 = Conf.syncobjects |> Map.tryFind (Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate.Version,Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate.StorageName)
         let lock2 = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
+        let lockobj2 = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
         match (lock1, lock2) with
             Some lock1Val, Some lock2Val ->
@@ -63,7 +72,7 @@ module App =
                         let! (_, tagState) = getState<TagsAggregate, TagEvent>()
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                        let! (_, categoriesState) = getState<CategoriesAggregate, CategoryEvent>()
+                        let! (_, categoriesState) = getState<Tonyx.EventSourcing.Sample_02.CategoriesAggregate.CategoriesAggregate, Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents.CategoryEvent>()
                         let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                         let! tagIdIsValid =    
@@ -78,9 +87,9 @@ module App =
 
                         let! _ =
                             todo
-                            |> TodoCommand.AddTodo
-                            |> runCommand<TodosAggregate, TodoEvent> 
-                        let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+                            |> Tonyx.EventSourcing.Sample_02.Todos.TodoCommands.TodoCommand.AddTodo
+                            |> runCommand<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> 
+                        let _ =  mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> ()
                     return ()
                 }
             | _ -> Error "No lock object found for TodosAggregate or CategoriesAggregate"
@@ -113,7 +122,7 @@ module App =
                     return ()
                 }
     let add2Todos' (todo1, todo2) =
-        let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+        let lockobj = Conf.syncobjects |> Map.tryFind (Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate.Version, Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate.StorageName)
         if lockobj.IsNone then
             Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
         else
@@ -147,9 +156,9 @@ module App =
 
                     let! _ =
                         (todo1, todo2)
-                        |> TodoCommand.Add2Todos
-                        |> runCommand<TodosAggregate, TodoEvent> 
-                    let _ =  mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+                        |> Tonyx.EventSourcing.Sample_02.Todos.TodoCommands.TodoCommand.Add2Todos
+                        |> runCommand<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> 
+                    let _ =  mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> ()
                     return ()
                 }
 
@@ -159,6 +168,15 @@ module App =
                 id
                 |> TodoCommand.RemoveTodo
                 |> runCommand<TodosAggregate, TodoEvent> 
+            let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+            return ()
+        }
+    let removeTodo' id =
+        ceResult {
+            let! _ =
+                id
+                |> Tonyx.EventSourcing.Sample_02.Todos.TodoCommands.RemoveTodo
+                |> runCommand<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> 
             let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
             return ()
         }
@@ -192,9 +210,9 @@ module App =
         ceResult {
             let! _ =
                 category
-                |> CategoryCommand.AddCategory
-                |> runCommand<CategoriesAggregate, CategoryEvent>
-            let _ = mksnapshotIfInterval<CategoriesAggregate, CategoryEvent> ()
+                |> Tonyx.EventSourcing.Sample_02.Categories.CategoriesCommands.CategoryCommand.AddCategory
+                |> runCommand<Tonyx.EventSourcing.Sample_02.CategoriesAggregate.CategoriesAggregate, Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents.CategoryEvent>
+            let _ = mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.CategoriesAggregate.CategoriesAggregate, Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents.CategoryEvent> ()
             return ()
         }
 
@@ -210,11 +228,16 @@ module App =
 
     let removeCategory' id =
         ceResult {
+            printf "removeCategory'\n"
             let removeCategory = CategoryCommand.RemoveCategory id
-            let removeCategoryRef = TodoCommand.RemoveCategoryRef id
-            let! _ = runTwoCommands<CategoriesAggregate, TodosAggregate, CategoryEvent, TodoEvent> removeCategory removeCategoryRef 
-            let _ = mksnapshotIfInterval<CategoriesAggregate, CategoryEvent> ()
-            let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()   
+            let removeCategoryRef = Tonyx.EventSourcing.Sample_02.Todos.TodoCommands.TodoCommand.RemoveCategoryRef id
+            printf "abc:\n"
+            let uuu = runTwoCommands<Tonyx.EventSourcing.Sample_02.CategoriesAggregate.CategoriesAggregate, Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents.CategoryEvent, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> removeCategory removeCategoryRef 
+            printf "uuu: %A\n" uuu
+            let! _ = uuu
+            let _ = mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.CategoriesAggregate.CategoriesAggregate, Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents.CategoryEvent> ()
+            let _ = mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> ()   
+            printf "returning\n"
             return ()
         }
 
@@ -235,6 +258,15 @@ module App =
             let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> removeTag removeTagRef
             let _ = mksnapshotIfInterval<TagsAggregate, TagEvent> ()
             let _ = mksnapshotIfInterval<TodosAggregate, TodoEvent> ()
+            return ()
+        }
+    let removeTag' id =
+        ceResult {
+            let removeTag = TagCommand.RemoveTag id
+            let removeTagRef = Tonyx.EventSourcing.Sample_02.Todos.TodoCommands.RemoveTagRef id
+            let! _ = runTwoCommands<TagsAggregate, Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, TagEvent, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> removeTag removeTagRef
+            let _ = mksnapshotIfInterval<TagsAggregate, TagEvent> ()
+            let _ = mksnapshotIfInterval<Tonyx.EventSourcing.Sample_02.TodosAggregate.TodosAggregate, Tonyx.EventSourcing.Sample_02.Todos.TodoEvents.TodoEvent> ()
             return ()
         }
 

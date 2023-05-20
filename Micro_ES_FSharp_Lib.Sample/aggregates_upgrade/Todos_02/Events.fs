@@ -2,6 +2,7 @@ namespace Tonyx.EventSourcing.Sample_02.Todos
 
 open System
 open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
+open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample_02.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample_02.TodosAggregate
 open Tonyx.EventSourcing.Core
@@ -14,6 +15,7 @@ module TodoEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
+        | CategoryRefRemoved of Guid
             interface Event<TodosAggregate> with
                 member this.Process (x: TodosAggregate ) =
                     match this with
@@ -27,5 +29,7 @@ module TodoEvents =
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g])
                     | TagRefRemoved (g: Guid) ->            
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
+                    | CategoryRefRemoved (g: Guid) ->
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [CategoryRefRemoved g])
 
 

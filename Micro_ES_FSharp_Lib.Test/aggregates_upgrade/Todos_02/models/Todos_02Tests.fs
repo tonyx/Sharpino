@@ -5,6 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
+open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Utils
 

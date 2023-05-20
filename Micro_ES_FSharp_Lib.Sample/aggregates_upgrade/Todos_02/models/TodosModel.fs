@@ -1,17 +1,19 @@
 namespace Tonyx.EventSourcing.Sample_02.Todos.Models
+open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open FSharpPlus
 open System
 open Tonyx.EventSourcing.Utils
 
+
 module TodosModel =
     let ceResult = CeResultBuilder()
-    type Todo =
-        {
-            Id: Guid
-            CategoryIds : List<Guid>
-            TagIds: List<Guid>
-            Description: string
-        }
+    // type Todo =
+    //     {
+    //         Id: Guid
+    //         CategoryIds : List<Guid>
+    //         TagIds: List<Guid>
+    //         Description: string
+    //     }
     type Todos =
         {
             todos: List<Todo>
