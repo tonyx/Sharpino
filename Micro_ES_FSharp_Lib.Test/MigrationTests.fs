@@ -11,7 +11,7 @@ open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample.TagsAggregate
 open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
 open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing.Sample_02.CategoriesAggregate
+open Tonyx.EventSourcing.Sample.CategoriesAggregate
 open Tonyx.EventSourcing.Sample
 open Tonyx.EventSourcing
 
