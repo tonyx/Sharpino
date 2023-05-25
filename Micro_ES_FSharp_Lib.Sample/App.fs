@@ -67,13 +67,13 @@ module App =
             | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
 
         member this.addTodo' todo =
-            let lock1 = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate'.StorageName)
-            let lock2 = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
-            let lock3 = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            let todosAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate'.StorageName)
+            let categoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
-            match (lock1, lock2, lock3) with
-                Some lock1Val, Some lock2Val , Some lock3Val->
-                    lock (lock1Val, lock2Val, lock3Val) <| fun () ->
+            match (todosAggregateLock, categoriesAggregateLock, tagsAggregateLock) with
+                Some todosLock, Some categoriesLock , Some tagsLock->
+                    lock (todosLock, categoriesLock, tagsLock) <| fun () ->
                         ResultCE.result {
                             let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                             let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -102,11 +102,12 @@ module App =
                 | _ -> Error "No lock object found for TodosAggregate or CategoriesAggregate"
 
         member this.add2Todos (todo1, todo2) =
-            let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-            if lockobj.IsNone then
-                Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
-            else
-                lock (lockobj.Value) <| fun () ->
+            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+
+            match todoAggregateLock, tagsAggregateLock with
+            | Some todoLock, Some tagsLock ->
+                lock (todoLock, tagsLock) <| fun () ->
                     ResultCE.result {
                         let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -128,12 +129,16 @@ module App =
                         let _ =  Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
                         return ()
                     }
+            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
         member this.add2Todos' (todo1, todo2) =
+            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version, TagsAggregate.StorageName)
+            let CategoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version, CategoriesAggregate.StorageName)
             let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.TodosAggregate'.Version, TodosAggregate'.StorageName)
-            if lockobj.IsNone then
-                Error (sprintf "No lock object found for %A %A" TodosAggregate'.Version TodosAggregate'.StorageName)
-            else
-                lock (lockobj.Value) <| fun () ->
+
+            match todoAggregateLock, tagsAggregateLock, CategoriesAggregateLock with
+            | Some todoLock, Some tagsLock, Some categoriesLock ->
+                lock (todoLock, tagsLock, categoriesLock) <| fun () ->
                     ResultCE.result {
                         let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -168,6 +173,7 @@ module App =
                         let _ =  Repository'.mksnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
                         return ()
                     }
+            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate or CategoriesAggregate"
 
         member this.removeTodo id =
             ResultCE.result {
