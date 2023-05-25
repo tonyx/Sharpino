@@ -42,6 +42,8 @@ module App =
             }
 
         member this.addTodo todo =
+            // be carefull in concurrent scenarios. you must lock the aggregates in the right way and 
+            // test will be unable to detect wrong lock object lookup configuration here
             let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
             let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
@@ -134,7 +136,6 @@ module App =
             let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate.StorageName)
             let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version, TagsAggregate.StorageName)
             let CategoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version, CategoriesAggregate.StorageName)
-            let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.TodosAggregate'.Version, TodosAggregate'.StorageName)
 
             match todoAggregateLock, tagsAggregateLock, CategoriesAggregateLock with
             | Some todoLock, Some tagsLock, Some categoriesLock ->

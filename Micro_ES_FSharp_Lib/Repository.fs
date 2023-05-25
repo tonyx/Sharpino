@@ -75,11 +75,10 @@ module Repository' =
         lock aggregateLock <| fun () -> 
             ResultCE.result {
                 let! (_, state) = getState<'A, 'E> storage
-                let events' =
+                let! events =
                     state
                     |> mycommand.Execute
-                let! events = events'
-                let eventsAdded' =
+                let! eventsAdded' =
                     storage.AddEvents 'A.Version (events |>> JsonConvert.SerializeObject) 'A.StorageName
                 return ()
             } 

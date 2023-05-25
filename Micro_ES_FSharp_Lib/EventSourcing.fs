@@ -16,6 +16,6 @@ module Core =
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
                 match acc with
-                    | Error err -> Error err // this should never happen for events that are already persisted
+                    | Error err -> Error err 
                     | Ok h -> h |> e.Process
             ) (h |> Ok)
