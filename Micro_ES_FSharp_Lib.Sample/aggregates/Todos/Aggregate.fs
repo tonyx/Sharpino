@@ -6,6 +6,7 @@ open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Utils
 
 open FSharpPlus
+open FsToolkit.ErrorHandling
 
 module TodosAggregate =
     type TodosAggregate =
@@ -22,24 +23,27 @@ module TodosAggregate =
         // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_todo"
+        static member Version =
+            "_01"
+
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
                 |> List.exists (fun x -> x.Id = c) 
                 |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
-            ceResult
+            ResultCE.result
                 {
-                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
-                    let! todos = this.todos.AddTodo t
-                    return
+                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists // FOCUS HERE
+                    let! todosX = this.todos.AddTodo t
+                    return 
                         {
                             this with
-                                todos = todos
+                                todos = todosX
                         }
                 }
         member this.RemoveTodo (id: Guid) =
-            ceResult
+            ResultCE.result
                 {
                     let! todos = this.todos.RemoveTodo id
                     return
@@ -50,7 +54,7 @@ module TodosAggregate =
                 }
         member this.GetTodos() = this.todos.GetTodos()
         member this.AddCategory (c: Category) =
-            ceResult
+            ResultCE.result
                 {
                     let! categories = this.categories.AddCategory c
                     return
@@ -70,7 +74,7 @@ module TodosAggregate =
                             |> List.filter (fun y -> y <> id)}
                 )
             
-            ceResult
+            ResultCE.result
                 {
                     let! categories = this.categories.RemoveCategory id
                     return
@@ -94,7 +98,7 @@ module TodosAggregate =
                             x.TagIds 
                             |> List.filter (fun y -> y <> id)}
                 )
-            ceResult    
+            ResultCE.result
                 {
                     return
                         {
@@ -107,3 +111,99 @@ module TodosAggregate =
                         }
                 }
         member this.GetCategories() = this.categories.GetCategories()
+
+
+    type TodosAggregate' =
+        {
+            todos: Todos
+        }
+        static member Zero =
+            {
+                todos = Todos.Zero
+            }
+        // storagename _MUST_ be unique for each aggregate and the relative lock object 
+        // must be added in syncobjects map in Conf.fs
+        static member StorageName =
+            "_todo"
+        static member Version =
+            "_02"
+        member this.AddTodo (t: Todo) =
+            ResultCE.result
+                {
+                    let! todos = this.todos.AddTodo t
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+        member this.RemoveTodo (id: Guid) =
+            ResultCE.result
+                {
+                    let! todos = this.todos.RemoveTodo id
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+
+        member this.AddTodos (ts: List<Todo>) =
+            ResultCE.result
+                {
+                    let! todos = this.todos.AddTodos ts
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+
+        member this.GetTodos() = this.todos.GetTodos()
+
+        member this.RemoveCategoryReference (id: Guid) =
+            let removeReferenceOfCategoryToTodos (id: Guid) =
+                this.todos.todos 
+                |>>
+                (fun x -> 
+                    { x with 
+                        CategoryIds = 
+                            x.CategoryIds 
+                            |> List.filter (fun y -> y <> id)}
+                )
+            
+            ResultCE.result
+                {
+                    return
+                        {
+                            this with
+                                todos = 
+                                    {
+                                        this.todos 
+                                            with todos = removeReferenceOfCategoryToTodos id
+                                    }
+                        }
+                }
+
+        member this.RemoveTagReference (id: Guid) =
+            let removeReferenceOfTagToAllTodos (id: Guid) =
+                this.todos.todos 
+                |>> 
+                (fun x -> 
+                    { x with 
+                        TagIds = 
+                            x.TagIds 
+                            |> List.filter (fun y -> y <> id)}
+                )
+            ResultCE.result
+                {
+                    return
+                        {
+                            this with
+                                todos = 
+                                    {
+                                        this.todos 
+                                            with todos = removeReferenceOfTagToAllTodos id
+                                    }
+                        }
+                }

@@ -12,22 +12,21 @@ open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Core
 open Tonyx.EventSourcing.Cache
 open Tonyx.EventSourcing.Conf
+open FsToolkit.ErrorHandling
 
 module Repository =
-    let storage: IStorage =
-        match Conf.storageType with
-            | StorageType.Memory -> MemoryStorage.MemoryStorage.Instance
-            | StorageType.Postgres -> DbStorage.PgDb()
-
-    let ceResult = CeResultBuilder()
+    ()
+module Repository' =
     let inline getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
-        and 'A: (static member StorageName: string)>() = 
-        ceResult {
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >(storage: IStorage) = 
+        ResultCE.result {
             let! result =
-                match storage.TryGetLastSnapshot 'A.StorageName  with
+                match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                 | Some (id, eventId, json) ->
-                    let state = SnapCache<'A>.Instance.Memoize(fun () -> json |> deserialize<'A>) id
+                    let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) id
                     match state with
                     | Error e -> Error e
                     | _ -> (eventId, state |> Result.get) |> Ok
@@ -38,64 +37,79 @@ module Repository =
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
-        and 'E :> Event<'A>>() = 
-        ceResult {
-            let! (id, state) = getLastSnapshot<'A>() 
-            let events = storage.GetEventsAfterId id 'A.StorageName
-            let lastId =
-                match events.Length with
-                | x when x > 0 -> events |> List.last |> fst
-                | _ -> id
-            let! events' =
-                events |>> snd |> catchErrors deserialize<'E>
-            let! result =
-                events' |> evolve<'A, 'E> state
-            return (lastId, result)
-        }
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>>(storage: IStorage) = 
+        let aggregateLock = 
+            if Conf.syncobjects.ContainsKey ('A.Version, 'A.StorageName) then
+                (Conf.syncobjects.[('A.Version, 'A.StorageName)])
+            else
+                failwith (sprintf "no lock object found %s %s" 'A.Version 'A.StorageName)
+
+        lock aggregateLock (fun _ ->
+            ResultCE.result {
+                let! (id, state) = getLastSnapshot<'A> storage
+                let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
+                let lastId =
+                    match events.Length with
+                    | x when x > 0 -> events |> List.last |> fst
+                    | _ -> id
+                let! events' =
+                    events |>> snd |> catchErrors deserialize<'E>
+                let! result =
+                    events' |> evolve<'A, 'E> state
+                return (lastId, result)
+            }
+        )
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
-        and 'E :> Event<'A>> (command: Command<'A, 'E>)  =
-        let lockobj = 
-            if Conf.syncobjects.ContainsKey ('A.StorageName) then
-                (Conf.syncobjects.['A.StorageName])
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
+        let aggregateLock = 
+            if Conf.syncobjects.ContainsKey ('A.Version, 'A.StorageName) then
+                (Conf.syncobjects.[('A.Version, 'A.StorageName)])
             else
-                failwith (sprintf "no lock object found %s" 'A.StorageName)
-        lock lockobj <| fun () -> 
-            ceResult {
-                let! (_, state) = getState<'A, 'E>()
-                let! events =
+                failwith (sprintf "no lock object found %s %s" 'A.Version 'A.StorageName)
+
+        lock aggregateLock <| fun () -> 
+            ResultCE.result {
+                let! (_, state) = getState<'A, 'E> storage
+                let events' =
                     state
-                    |> command.Execute
-                let! eventsAdded =
-                    storage.AddEvents (events |>> JsonConvert.SerializeObject) 'A.StorageName
+                    |> mycommand.Execute
+                let! events = events'
+                let eventsAdded' =
+                    storage.AddEvents 'A.Version (events |>> JsonConvert.SerializeObject) 'A.StorageName
                 return ()
-            }
+            } 
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
+            (storage: IStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
-            let lockobj1 = 
-                if Conf.syncobjects.ContainsKey ('A1.StorageName) then
-                    (Conf.syncobjects.['A1.StorageName])
+            let a1Lock = 
+                if Conf.syncobjects.ContainsKey ('A1.Version, 'A1.StorageName) then
+                    (Conf.syncobjects.['A1.Version,'A1.StorageName])
                 else
-                    failwith (sprintf "no lock object found %s. Please configure it in Conf.fs" 'A1.StorageName)
-            let lockobj2 =
-                if (Conf.syncobjects.ContainsKey ('A2.StorageName)) then
-                    (Conf.syncobjects.['A2.StorageName])
+                    failwith (sprintf "no lock object found %s %s. Please configure it in Conf.fs" 'A1.Version 'A1.StorageName)
+            let a2Lock =
+                if (Conf.syncobjects.ContainsKey ('A2.Version, 'A2.StorageName)) then
+                    (Conf.syncobjects.['A2.Version, 'A2.StorageName])
                 else
-                    failwith (sprintf "no lock object found %s. Please configure it in Conf.fs" 'A2.StorageName)
-            lock (lockobj1, lockobj2) <| fun () -> 
-                ceResult {
-                    let! (_, state1) = getState<'A1, 'E1>()
-                    let! (_, state2) = getState<'A2, 'E2>()
+                    failwith (sprintf "no lock object found %s %s. Please configure it in Conf.fs" 'A2.Version 'A2.StorageName)
+            lock (a1Lock, a2Lock) <| fun () -> 
+                ResultCE.result {
+                    let! (_, state1) = getState<'A1, 'E1> storage
+                    let! (_, state2) = getState<'A2, 'E2> storage
                     let! events1 =
                         state1
                         |> command1.Execute
@@ -106,10 +120,10 @@ module Repository =
                     let! eventsAdded =
                         let serEv1 = events1 |>> Utils.serialize 
                         let serEv2 = events2 |>> Utils.serialize
-                        storage.MultiAddEvents
+                        storage.MultiAddEvents 
                             [
-                                (serEv1, 'A1.StorageName)
-                                (serEv2, 'A2.StorageName)
+                                (serEv1, 'A1.Version, 'A1.StorageName)
+                                (serEv2, 'A2.Version, 'A2.StorageName)
                             ]
                     return ()
                 }
@@ -117,27 +131,29 @@ module Repository =
     let inline mksnapshot<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
-        and 'E :> Event<'A>>() =
-        ceResult
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>> (storage: IStorage) =
+        ResultCE.result
             {
-                let! (id, state) = getState<'A, 'E>()
+                let! (id, state) = getState<'A, 'E> storage
                 let snapshot = Utils.serialize<'A> state
-                let! result = storage.SetSnapshot (id, snapshot) 'A.StorageName
+                let! result = storage.SetSnapshot 'A.Version (id, snapshot) 'A.StorageName
                 return result
             }
 
     let inline mksnapshotIfInterval<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
-        and 'E :> Event<'A>>() =
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>>(storage: IStorage) =
         if (Conf.intervalBetweenSnapshots.ContainsKey 'A.StorageName) then
-            ceResult
+            ResultCE.result
                 {
-                    let! lastEventId = storage.TryGetLastEventId 'A.StorageName |> optionToResult
-                    let snapEventId = storage.TryGetLastSnapshotEventId 'A.StorageName |> optionToDefault 0
+                    let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> optionToResult
+                    let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> optionToDefault 0
                     let! result =
                         if ((lastEventId - snapEventId) > Conf.intervalBetweenSnapshots.['A.StorageName] || snapEventId = 0) then
-                            mksnapshot<'A, 'E>()
+                            mksnapshot<'A, 'E>(storage)
                         else
                             () |> Ok
                     return result

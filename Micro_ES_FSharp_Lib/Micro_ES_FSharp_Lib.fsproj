@@ -16,6 +16,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Expecto" Version="9.*" />
+    <PackageReference Include="Expecto.FsCheck" Version="9.0.4" />
+    <PackageReference Include="FsCheck" Version="2.16.5" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+
     <PackageReference Include="Farmer" Version="1.7.20" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.2.0" />

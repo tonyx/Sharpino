@@ -2,6 +2,7 @@ namespace Tonyx.EventSourcing.Sample.Tags.Models
 open Tonyx.EventSourcing.Utils
 open FSharpPlus
 open System
+open FsToolkit.ErrorHandling
 
 module TagsModel =
     type Color =
@@ -9,7 +10,6 @@ module TagsModel =
         | Green
         | Blue
 
-    let ceResult = CeResultBuilder()
     type Tag =
         {
             Id: Guid
@@ -26,7 +26,7 @@ module TagsModel =
                     tags = []
                 }
             member this.AddTag (t: Tag) =
-                ceResult {
+                ResultCE.result {
                     let! mustNotExist =
                         this.tags
                         |> List.exists (fun x -> x.Name = t.Name)
@@ -40,7 +40,7 @@ module TagsModel =
                     return result
                 }
             member this.RemoveTag (id: Guid) =
-                ceResult {
+                ResultCE.result {
                     let! mustExist =
                         this.tags
                         |> List.exists (fun x -> x.Id = id)

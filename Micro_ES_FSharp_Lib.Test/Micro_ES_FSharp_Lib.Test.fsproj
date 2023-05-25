@@ -12,12 +12,18 @@
     <Compile Include="aggregates/Todos/TodosAggregateTests.fs" />
     <Compile Include="aggregates/Todos/models/TodosTests.fs" />
     <Compile Include="aggregates/Todos/models/CategoriesTests.fs" />
-    <Compile Include="AppTests.fs" />
+    <Compile Include="aggregates_upgrade/Todos_02/models/Todos_02Tests.fs" />
+    <Compile Include="aggregates_upgrade/Categories_02/models/Categories_02Tests.fs" />
+    <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
+    <Compile Include="MultiVersionsTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Expecto" Version="9.*" />
+    <PackageReference Include="Expecto.FsCheck" Version="9.0.4" />
+    <PackageReference Include="FsCheck" Version="2.16.5" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="7.*" />

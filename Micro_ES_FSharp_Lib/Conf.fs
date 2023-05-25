@@ -1,9 +1,6 @@
 namespace Tonyx.EventSourcing
 
 module Conf =
-    type StorageType = Postgres | Memory
-
-    let storageType = Memory
 
     type Serialization = JsonSer | BinarySer // for future use
 
@@ -12,16 +9,20 @@ module Conf =
     // the key of each element is the name of the storage - storageName in the root type of each aggregate
     let syncobjects = 
         [
-            ("_tags", new obj()) 
-            ("_todo", new obj())
+            (("_01","_tags"), new obj()) 
+            (("_01","_todo"), new obj())
+            (("_02","_tags"), new obj()) 
+            (("_02","_todo"), new obj())
+            (("_02","_categories"), new obj())
         ] 
         |> Map.ofList
 
     // Update those two entries with the name of the root type of each aggregate.
     let intervalBetweenSnapshots = 
         [
-            ("_tags", 5)
-            ("_todo", 5)
+            ("_tags", 15)
+            ("_todo", 15)
+            ("_categories", 15)
         ] 
         |> Map.ofList
 
@@ -30,7 +31,7 @@ module Conf =
     let connectionString =
         if isTestEnv then
             "Server=127.0.0.1;"+
-            "Database=safe2;" +
+            "Database=es_01;" +
             "User Id=safe;"+
             "Password=safe;"
         else
@@ -39,4 +40,4 @@ module Conf =
             "User Id=*****;"+
             "Password=*****;"
 
-    let cacheSize = 13
+    let cacheSize = 100 

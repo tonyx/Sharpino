@@ -2,9 +2,9 @@ namespace Tonyx.EventSourcing.Sample.Todos.Models
 open FSharpPlus
 open System
 open Tonyx.EventSourcing.Utils
+open FsToolkit.ErrorHandling
 
 module TodosModel =
-    let ceResult = CeResultBuilder()
     type Todo =
         {
             Id: Guid
@@ -21,8 +21,9 @@ module TodosModel =
                 {
                     todos = []
                 }
+
             member this.AddTodo (t: Todo) =
-                ceResult {
+                ResultCE.result {
                     let! description_must_not_exist_already =
                         this.todos
                         |> List.exists (fun x -> x.Description = t.Description)
@@ -35,8 +36,25 @@ module TodosModel =
                         }
                     return result
                 }
+            member this.AddTodos (ts: List<Todo>) =
+                let checkNotExists t =
+                    this.todos
+                    |> List.exists (fun x -> x.Description = t.Description || x.Id = t.Id)
+                    |> not
+                    |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
+
+                ResultCE.result {
+                    let! mustNotExist =
+                        ts |> catchErrors checkNotExists
+                    let result =
+                        {
+                            this with
+                                todos = ts @ this.todos
+                        }
+                    return result
+                }
             member this.RemoveTodo (id: Guid) =
-                ceResult {
+                ResultCE.result {
                     let! id_must_exist =
                         this.todos
                         |> List.exists (fun x -> x.Id = id)

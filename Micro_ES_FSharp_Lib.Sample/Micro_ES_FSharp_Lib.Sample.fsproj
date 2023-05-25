@@ -6,20 +6,30 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="aggregates/Todos/models/CategoriesModel.fs" />
-    <Compile Include="aggregates/Todos/models/TodosModel.fs" />
+    <Compile Include="models/TagsModel.fs" />
+    <Compile Include="models/CategoriesModel.fs" />
+    <Compile Include="models/TodosModel.fs" />
     <Compile Include="aggregates/Todos/Aggregate.fs" />
     <Compile Include="aggregates/Todos/Events.fs" />
     <Compile Include="aggregates/Todos/Commands.fs" />
-    <Compile Include="aggregates/Tags/models/TagsModel.fs" />
     <Compile Include="aggregates/Tags/Aggregate.fs" />
     <Compile Include="aggregates/Tags/Events.fs" />
     <Compile Include="aggregates/Tags/Commands.fs" />
+
+    <Compile Include="aggregates/Categories/Aggregate.fs" />
+    <Compile Include="aggregates/Categories/Events.fs" />
+    <Compile Include="aggregates/Categories/Commands.fs" />
+
     <Compile Include="App.fs" />
+    <Compile Include="AppCoordinator.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Micro_ES_FSharp_Lib\Micro_ES_FSharp_Lib.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
   </ItemGroup>
 
 </Project>

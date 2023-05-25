@@ -3,6 +3,9 @@ open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
+open Expecto
+open FsCheck
+open Expecto.ExpectoFsCheck
 
 module Utils =
     let serSettings = JsonSerializerSettings()
@@ -17,22 +20,6 @@ module Utils =
             Error (ex.ToString())
     let serialize<'A> (x: 'A): string =
         JsonConvert.SerializeObject(x, serSettings)
-
-    type CeResultBuilder()  =
-        member this.Bind(x, f) =
-            match x with
-            | Error x1 -> Error x1
-            | Ok x1 -> f x1
-        member this.MergeSources (x, y) =
-            match x, y with
-                | Error x1, _ -> Error x1
-                | _, Error y1 -> Error y1
-                | Ok x1, Ok y2 -> (x1, y2) |> Ok
-        member this.Return(x) =
-            x |> Ok
-        member this.ReturnFrom(x) =
-            x
-        member this.Zero() = () |> Error
 
     let catchErrors f l =
         let (okList, errors) =
@@ -63,3 +50,48 @@ module Utils =
         match x with
         | Error e -> e
         | _ -> failwith (sprintf "can't extract error from an Ok: %A" x.OkValue)
+
+module TestUtils =
+    let multipleTestCase name par myTest =
+        testList name (
+            par
+            |> List.map 
+                (fun (app,  upgd, shdTstUpgrd) ->
+                testParam (app,  upgd, shdTstUpgrd) [
+                        (app.ToString()) + (upgd.ToString()), 
+                            fun (app, upgd, shdTstUpgrd) () ->
+                                myTest(app, upgd, shdTstUpgrd)
+                ]
+                |> List.ofSeq
+            )
+            |> List.concat
+        ) 
+
+    let fmultipleTestCase name cnf myTest =
+        ftestList name (
+            cnf
+            |> List.map 
+                (fun (ap,  upgd, upgrader) ->
+                testParam (ap,  upgd, upgrader ) [
+                        (ap.ToString()) + (upgd.ToString()), 
+                            fun (ap,  upgd, upgrader) () ->
+                                myTest(ap, upgd, upgrader)
+                ]
+                |> List.ofSeq
+            )
+            |> List.concat
+        )
+    let pmultipleTestCase name cnf test =
+        ptestList name (
+            cnf
+            |> List.map 
+                (fun (ap, upgd, upgrader) ->
+                testParam (ap, upgd, upgrader) [
+                        (ap.ToString()) + (upgd.ToString()),
+                            fun (ap, upgd, upgrader) () ->
+                                test(ap, upgd, upgrader)
+                ]
+                |> List.ofSeq
+            )
+            |> List.concat
+        )
