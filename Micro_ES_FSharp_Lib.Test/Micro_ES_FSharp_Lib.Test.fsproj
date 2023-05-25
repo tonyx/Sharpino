@@ -12,14 +12,10 @@
     <Compile Include="aggregates/Todos/TodosAggregateTests.fs" />
     <Compile Include="aggregates/Todos/models/TodosTests.fs" />
     <Compile Include="aggregates/Todos/models/CategoriesTests.fs" />
-    <!-- <Compile Include="aggregates_upgrade/Tags_02/models/Tags_02Tests.fs" /> -->
     <Compile Include="aggregates_upgrade/Todos_02/models/Todos_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Categories_02/models/Categories_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
-    <!-- <Compile Include="aggregates_upgrade/Tags_02/TagsAggregateTests.fs" /> -->
-    <Compile Include="AppTests.fs" />
-    <Compile Include="AppWithCoordinatorTests.fs" />
-    <Compile Include="MigrationTests.fs" />
+    <Compile Include="MultiVersionsTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

@@ -1,5 +1,5 @@
 
-namespace Tonyx.EventSourcing.Sample_02
+namespace Tonyx.EventSourcing.Sample
 
 open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open System
@@ -32,6 +32,16 @@ module CategoriesAggregate =
         member this.RemoveCategory(id: Guid) =
             ceResult {
                 let! result = this.Categories.RemoveCategory(id)
+                let result =
+                    {
+                        this with
+                            Categories = result
+                    }
+                return result
+            }
+        member this.AddCategories(cs: List<Category>) =
+            ceResult {
+                let! result = this.Categories.AddCategories(cs)
                 let result =
                     {
                         this with

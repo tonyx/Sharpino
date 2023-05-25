@@ -53,6 +53,7 @@ module MemoryStorage =
                     dic.[name] <- snapshot_id_seq + 1
             snapshot_id_seq
 
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
             if (events_dic.ContainsKey version |> not) then
                 let dic = new Generic.Dictionary<string, List<StorageEvent>>()
@@ -65,6 +66,7 @@ module MemoryStorage =
                 else
                     dic.[name] <- events
 
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
             if (snapshots_dic.ContainsKey version |> not) then
                 let dic = new Generic.Dictionary<string, List<StorageSnapshot>>()
@@ -135,6 +137,8 @@ module MemoryStorage =
                 else
                     events_dic.[version].[name]
                     |> List.tryFind (fun x -> x.Id = id)
+
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddEvents version xs name =
                 let newEvents =
                     [for e in xs do
@@ -148,6 +152,7 @@ module MemoryStorage =
                 storeEvents version name events
                 () |> Ok
 
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit, string> = 
                 arg 
                 |> List.iter 

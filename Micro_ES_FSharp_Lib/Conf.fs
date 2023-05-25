@@ -3,8 +3,6 @@ namespace Tonyx.EventSourcing
 module Conf =
     type StorageType = Postgres | Memory
 
-    let storageType = Memory
-
     type Serialization = JsonSer | BinarySer // for future use
 
     let isTestEnv = true

@@ -1,10 +1,12 @@
 namespace Tonyx.EventSourcing
 
+open System.Runtime.CompilerServices
 open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing
+
 
 type Json = string
 type Name = string
@@ -42,12 +44,12 @@ module DbStorage =
                 if (Conf.isTestEnv) then
                     // additional precautions to avoid deleting data in non dev/test env 
                     // is configuring the db user rights in prod accordingly (only read and write/append)
-                    let _ =
+                    let res1 =
                         TPConnectionString
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQuery
-                    let _ =
+                    let res2 =
                         TPConnectionString
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
@@ -125,6 +127,7 @@ module DbStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
 
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
                 ceResult
@@ -149,7 +152,9 @@ module DbStorage =
                         return ()
                     }
 
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddEvents version (events: List<Json>) name =
+                printf "entered in add events\n"
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
                     let _ =
@@ -170,10 +175,12 @@ module DbStorage =
                             ]
                             |> Async.AwaitTask
                             |> Async.RunSynchronously
+                    printf "exited from add events\n"  
                     () |> Ok
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
                 let cmdList = 
                     arg 

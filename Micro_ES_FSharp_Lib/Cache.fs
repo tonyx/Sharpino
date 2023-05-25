@@ -14,6 +14,7 @@ module Cache =
         static let instance = EventCache<'A>()
         static member Instance = instance
 
+        // dangerous as it may corrupt the state of the cache
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         member private this.TryAddToDictionary (arg, res) =
             try
@@ -23,16 +24,23 @@ module Cache =
                     let removed = queue.Dequeue()
                     dic.Remove removed |> ignore
                 ()
-            with :? _ as e -> printf "warning: cache is doing something wrong %A\n" e
+            with :? _ as e -> 
+                printf "warning: cache is doing something wrong %A\n" e
+                printf "resetting cache of events"
+                dic.Clear()
+                queue.Clear()
+                ()
 
         member this.Memoize (f: unit -> Result<'A, string>) (arg: 'A * List<Event<'A>>) =
-            if (dic.ContainsKey arg) then
-                let result = dic.[arg]
-                result
-            else
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
+            let fromCacheOrCalculated =
+                let (b, res) = dic.TryGetValue arg
+                if b then
+                    res
+                else
+                    let res = f()
+                    this.TryAddToDictionary(arg, res)
+                    res
+            fromCacheOrCalculated
 
         member this.Clear() =
             dic.Clear()
@@ -52,14 +60,22 @@ module Cache =
                     let removed = queue.Dequeue()
                     dic.Remove removed |> ignore
                 ()
-            with :? _ as e -> printf "warning: cache is doing something wrong %A\n" e
+            with :? _ as e -> 
+                printf "warning: cache is doing something wrong %A\n" e
+                printf "resetting cache of snapthots"
+                dic.Clear()
+                queue.Clear()
+                ()
         member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
-            if (dic.ContainsKey arg) then
-                dic.[arg]
-            else
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
+            let fromCacheOrCalculated =
+                let (b, res) = dic.TryGetValue arg
+                if b then
+                    res
+                else
+                    let res = f()
+                    this.TryAddToDictionary(arg, res)
+                    res
+            fromCacheOrCalculated
         member this.Clear() =
             dic.Clear()
             queue.Clear()

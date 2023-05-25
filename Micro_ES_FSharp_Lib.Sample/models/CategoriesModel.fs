@@ -1,4 +1,4 @@
-namespace Tonyx.EventSourcing.Sample_02.Todos.Models
+namespace Tonyx.EventSourcing.Sample.Todos.Models
 open System
 open FSharpPlus
 
@@ -24,7 +24,7 @@ module CategoriesModel =
                 ceResult {
                     let! mustNotExist =
                         this.categories
-                        |> List.exists (fun x -> x.Name = c.Name)
+                        |> List.exists (fun x -> x.Name = c.Name) // || x.Id = c.Id
                         |> not
                         |> boolToResult (sprintf "There is already another Category named %s " c.Name)
                     let result =
@@ -34,6 +34,25 @@ module CategoriesModel =
                         }
                     return result
                 }
+
+            member this.AddCategories (cs: List<Category>) =
+                let checkNotExists c =
+                    this.categories
+                    |> List.exists (fun x -> x.Name = c.Name)
+                    |> not
+                    |> boolToResult (sprintf "There is already another Category named %s " c.Name)
+
+                ceResult {
+                    let! mustNotExist =
+                        cs |> catchErrors checkNotExists
+                    let result =
+                        {
+                            this with
+                                categories = cs @ this.categories
+                        }
+                    return result
+                }
+
             member this.RemoveCategory (id: Guid) =
                 ceResult {
                     let! mustExist =

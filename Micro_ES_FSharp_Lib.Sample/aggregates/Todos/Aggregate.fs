@@ -1,9 +1,8 @@
-namespace Tonyx.EventSourcing.Sample_02
+namespace Tonyx.EventSourcing.Sample
 open System
 
+open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample_02.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample_02.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Utils
 
 open FSharpPlus
@@ -24,16 +23,16 @@ module TodosAggregate =
         static member StorageName =
             "_todo"
         static member Version =
-            "_02"
+            "_01"
         member this.AddTodo (t: Todo) =
-            // let checkCategoryExists (c: Guid ) =
-            //     this.categories.GetCategories() 
-            //     |> List.exists (fun x -> x.Id = c) 
-            //     |> boolToResult (sprintf "A category with id '%A' does not exist" c)
+            let checkCategoryExists (c: Guid ) =
+                this.categories.GetCategories() 
+                |> List.exists (fun x -> x.Id = c) 
+                |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
             ceResult
                 {
-                    // let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
+                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
                     let! todos = this.todos.AddTodo t
                     return
                         {
@@ -87,6 +86,79 @@ module TodosAggregate =
                                     }
                         }
                 }   
+        member this.RemoveTagReference (id: Guid) =
+            let removeReferenceOfTagToAllTodos (id: Guid) =
+                this.todos.todos 
+                |>> 
+                (fun x -> 
+                    { x with 
+                        TagIds = 
+                            x.TagIds 
+                            |> List.filter (fun y -> y <> id)}
+                )
+            ceResult    
+                {
+                    return
+                        {
+                            this with
+                                todos = 
+                                    {
+                                        this.todos 
+                                            with todos = removeReferenceOfTagToAllTodos id
+                                    }
+                        }
+                }
+        member this.GetCategories() = this.categories.GetCategories()
+
+
+    type TodosAggregate' =
+        {
+            todos: Todos
+        }
+        static member Zero =
+            {
+                todos = Todos.Zero
+            }
+        // storagename _MUST_ be unique for each aggregate and the relative lock object 
+        // must be added in syncobjects map in Conf.fs
+        static member StorageName =
+            "_todo"
+        static member Version =
+            "_02"
+        member this.AddTodo (t: Todo) =
+
+            ceResult
+                {
+                    let! todos = this.todos.AddTodo t
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+        member this.RemoveTodo (id: Guid) =
+            ceResult
+                {
+                    let! todos = this.todos.RemoveTodo id
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+
+        member this.AddTodos (ts: List<Todo>) =
+            ceResult
+                {
+                    let! todos = this.todos.AddTodos ts
+                    return
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+
+        member this.GetTodos() = this.todos.GetTodos()
 
         member this.RemoveCategoryReference (id: Guid) =
             let removeReferenceOfCategoryToTodos (id: Guid) =
@@ -134,4 +206,3 @@ module TodosAggregate =
                                     }
                         }
                 }
-        member this.GetCategories() = this.categories.GetCategories()

@@ -15,18 +15,19 @@ open Tonyx.EventSourcing.Sample.Tags.TagsEvents
 open Tonyx.EventSourcing.Sample.Tags.TagCommands
 open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
 
-open Tonyx.EventSourcing.Sample_02
-open Tonyx.EventSourcing.Sample_02.Categories
-open Tonyx.EventSourcing.Sample_02.CategoriesAggregate
-open Tonyx.EventSourcing.Sample_02.Categories.CategoriesCommands
-open Tonyx.EventSourcing.Sample_02.Categories.CategoriesEvents
+open Tonyx.EventSourcing.Sample
+open Tonyx.EventSourcing.Sample.Categories
+open Tonyx.EventSourcing.Sample.CategoriesAggregate
+open Tonyx.EventSourcing.Sample.Categories.CategoriesCommands
+open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
 open System
 open FSharpPlus
 
-module AppCoordinator =
+module AppVersions =
 
-    type Application =
+    type IApplication =
         {
+            _storage:           IStorage
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -38,34 +39,75 @@ module AppCoordinator =
             addTag:             Tag -> Result<unit, string>
             removeTag:          Guid -> Result<unit, string>
             getAllTags:         unit -> Result<List<Tag>, string>
+            migrator:           Option<unit -> Result<unit, string>>
         }
 
-    let applicationVersion1 =
+    let pgStorage: IStorage = DbStorage.PgDb()
+    let pgApp = App.App(pgStorage)
+
+    let applicationPostgresStorage =
         {
-            getAllTodos =       App.getAllTodos
-            addTodo =           App.addTodo
-            add2Todos =         App.add2Todos
-            removeTodo =        App.removeTodo
-            getAllCategories =  App.getAllCategories
-            addCategory =       App.addCategory
-            removeCategory =    App.removeCategory 
-            addTag =            App.addTag 
-            removeTag =         App.removeTag
-            getAllTags =        App.getAllTags  
+            _storage =          pgStorage
+            getAllTodos =       pgApp.getAllTodos
+            addTodo =           pgApp.addTodo
+            add2Todos =         pgApp.add2Todos
+            removeTodo =        pgApp.removeTodo
+            getAllCategories =  pgApp.getAllCategories
+            addCategory =       pgApp.addCategory
+            removeCategory =    pgApp.removeCategory
+            addTag =            pgApp.addTag 
+            removeTag =         pgApp.removeTag
+            getAllTags =        pgApp.getAllTags
+            migrator  =         pgApp.migrate |> Some
         }
-
-    let applicationVersion2 =
+    let applicationShadowPostgresStorage =
         {
-            getAllTodos =       App.getAllTodos'
-            addTodo =           App.addTodo'
-            add2Todos =         App.add2Todos'
-            removeTodo =        App.removeTodo'
-            getAllCategories =  App.getAllCategories'
-            addCategory =       App.addCategory'
-            removeCategory =    App.removeCategory'
-            addTag =            App.addTag 
-            removeTag =         App.removeTag'
-            getAllTags =        App.getAllTags
+            _storage =          pgStorage
+            getAllTodos =       pgApp.getAllTodos'
+            addTodo =           pgApp.addTodo'
+            add2Todos =         pgApp.add2Todos'
+            removeTodo =        pgApp.removeTodo'
+            getAllCategories =  pgApp.getAllCategories'
+            addCategory =       pgApp.addCategory'
+            removeCategory =    pgApp.removeCategory'
+            addTag =            pgApp.addTag 
+            removeTag =         pgApp.removeTag'
+            getAllTags =        pgApp.getAllTags
+            migrator  =         None
         }
 
+    // make sure that the memdb instance is unique between both the application
+    let memStorage: IStorage = MemoryStorage.MemoryStorage()
+    let applicationMemoryStorage =
+        let app = App.App(memStorage)
+        {
+            _storage =          memStorage 
+            getAllTodos =       app.getAllTodos
+            addTodo =           app.addTodo
+            add2Todos =         app.add2Todos
+            removeTodo =        app.removeTodo
+            getAllCategories =  app.getAllCategories
+            addCategory =       app.addCategory
+            removeCategory =    app.removeCategory
+            addTag =            app.addTag 
+            removeTag =         app.removeTag
+            getAllTags =        app.getAllTags
+            migrator  =         app.migrate |> Some
+        }
+    let applicationShadowMemoryStorage =
+        let app = App.App(memStorage)
+        {
+            _storage =          memStorage 
+            getAllTodos =       app.getAllTodos'
+            addTodo =           app.addTodo'
+            add2Todos =         app.add2Todos'
+            removeTodo =        app.removeTodo'
+            getAllCategories =  app.getAllCategories'
+            addCategory =       app.addCategory'
+            removeCategory =    app.removeCategory'
+            addTag =            app.addTag 
+            removeTag =         app.removeTag'
+            getAllTags =        app.getAllTags
+            migrator  =         None
+        }
     ()
