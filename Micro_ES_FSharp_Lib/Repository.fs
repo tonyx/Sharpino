@@ -14,8 +14,6 @@ open Tonyx.EventSourcing.Cache
 open Tonyx.EventSourcing.Conf
 open FsToolkit.ErrorHandling
 
-module Repository =
-    ()
 module Repository' =
     let inline getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 

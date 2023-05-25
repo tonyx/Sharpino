@@ -1,7 +1,7 @@
 namespace Tonyx.EventSourcing.Sample
 open Tonyx.EventSourcing
 open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing.Repository
+// open Tonyx.EventSourcing.Repository
 
 open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Sample.TodosAggregate
