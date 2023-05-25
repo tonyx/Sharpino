@@ -1,7 +1,6 @@
 namespace Tonyx.EventSourcing
 
 module Conf =
-    // type StorageType = Postgres | Memory
 
     type Serialization = JsonSer | BinarySer // for future use
 

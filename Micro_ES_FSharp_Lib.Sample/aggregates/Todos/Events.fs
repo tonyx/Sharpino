@@ -16,22 +16,16 @@ module TodoEvents =
         | TagRefRemoved of Guid
             interface Event<TodosAggregate> with
                 member this.Process (x: TodosAggregate ) =
-                    // printf "entered in process\n"
                     match this with
                     | TodoAdded (t: Todo) ->
-                        // x.AddTodo t 
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoAdded t])
                     | TodoRemoved (g: Guid) ->
-                        // x.RemoveTodo g
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoRemoved g])
                     | CategoryAdded (c: Category) ->
-                        // x.AddCategory c
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c])
                     | CategoryRemoved (g: Guid) ->  
-                        // x.RemoveCategory g
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g])
                     | TagRefRemoved (g: Guid) ->            
-                        // x.RemoveTagReference g
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
 
     type TodoEvent' =

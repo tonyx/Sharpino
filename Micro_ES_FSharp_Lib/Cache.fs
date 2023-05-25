@@ -45,8 +45,6 @@ module Cache =
             queue.Clear()
 
     type SnapCache<'A> private () =
-        let _ = 
-            printf "entering snapcache constructor\n"
         let dic = Generic.Dictionary<int, Result<'A, string>>()
         let queue = Generic.Queue<int>()
         static let instance = SnapCache<'A>()
@@ -54,7 +52,6 @@ module Cache =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         member private this.TryAddToDictionary(arg, res) =
-            // printf "entering TryAddToDictionary\n"
             try
                 dic.Add(arg, res)
                 queue.Enqueue arg
@@ -69,16 +66,13 @@ module Cache =
                 queue.Clear()
                 ()
         member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
-            // f()
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
-                    // printf "snapshots hit!\n"
                     res
                 else
                     let res = f()
                     this.TryAddToDictionary(arg, res)
-                    // printf "snapshot miss\n"
                     res
             fromCacheOrCalculated
         member this.Clear() =
