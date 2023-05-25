@@ -1,6 +1,8 @@
 
 namespace Tonyx.EventSourcing.Sample
 
+open FsToolkit.ErrorHandling
+
 open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open System
 
@@ -20,7 +22,7 @@ module CategoriesAggregate =
         static member Version =
             "_02"
         member this.AddCategory(c: Category) =
-            ceResult {
+            ResultCE.result {
                 let! result = this.Categories.AddCategory(c)
                 let result =
                     {
@@ -30,7 +32,7 @@ module CategoriesAggregate =
                 return result
             }
         member this.RemoveCategory(id: Guid) =
-            ceResult {
+            ResultCE.result {
                 let! result = this.Categories.RemoveCategory(id)
                 let result =
                     {
@@ -40,7 +42,7 @@ module CategoriesAggregate =
                 return result
             }
         member this.AddCategories(cs: List<Category>) =
-            ceResult {
+            ResultCE.result {
                 let! result = this.Categories.AddCategories(cs)
                 let result =
                     {

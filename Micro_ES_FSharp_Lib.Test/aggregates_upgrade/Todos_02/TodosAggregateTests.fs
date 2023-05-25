@@ -9,6 +9,7 @@ open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Utils
+open FsToolkit.ErrorHandling
 
 [<Tests>]
 let todosAggregateUpgrade02Tests =
@@ -59,7 +60,7 @@ let todosAggregateUpgrade02Tests =
             let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = [categoryId1; categoryId2; categoryId3]; TagIds = []} 
 
             let aggregate =
-                ceResult {
+                ResultCE.result {
                     let! aggregate = TodosAggregate'.Zero.AddTodo todo1
                     let! result = aggregate.AddTodo todo2
                     return result
@@ -73,5 +74,4 @@ let todosAggregateUpgrade02Tests =
 
             Expect.isFalse (todo1'.CategoryIds |> List.contains categoryId1) "should contain"
             Expect.isFalse (todo2'.CategoryIds |> List.contains categoryId1) "should contain"
-
     ]

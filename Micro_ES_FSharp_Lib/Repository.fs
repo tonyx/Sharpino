@@ -12,25 +12,21 @@ open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Core
 open Tonyx.EventSourcing.Cache
 open Tonyx.EventSourcing.Conf
+open FsToolkit.ErrorHandling
 
 module Repository =
-    // let myrand = System.Random()
-
-    let ceResult = CeResultBuilder()
-
+    ()
 module Repository' =
-    // let myrand = System.Random()
-    let ceResult = CeResultBuilder()
     let inline getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >(storage: IStorage) = 
-        ceResult {
+        ResultCE.result {
             let! result =
                 match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                 | Some (id, eventId, json) ->
-                    let state = SnapCache<'A>.Instance.Memoize(fun () -> json |> deserialize<'A>) id
+                    let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) id
                     match state with
                     | Error e -> Error e
                     | _ -> (eventId, state |> Result.get) |> Ok
@@ -43,13 +39,14 @@ module Repository' =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) = 
-        let lockobj = 
+        let aggregateLock = 
             if Conf.syncobjects.ContainsKey ('A.Version, 'A.StorageName) then
                 (Conf.syncobjects.[('A.Version, 'A.StorageName)])
             else
                 failwith (sprintf "no lock object found %s %s" 'A.Version 'A.StorageName)
-        lock lockobj (fun _ ->
-            ceResult {
+
+        lock aggregateLock (fun _ ->
+            ResultCE.result {
                 let! (id, state) = getLastSnapshot<'A> storage
                 let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
                 let lastId =
@@ -64,32 +61,26 @@ module Repository' =
             }
         )
 
-    // [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
-        let lockobj = 
+        let aggregateLock = 
             if Conf.syncobjects.ContainsKey ('A.Version, 'A.StorageName) then
                 (Conf.syncobjects.[('A.Version, 'A.StorageName)])
             else
                 failwith (sprintf "no lock object found %s %s" 'A.Version 'A.StorageName)
 
-        lock lockobj <| fun () -> 
-            ceResult {
-                printf "enter runCommand\n\n"
+        lock aggregateLock <| fun () -> 
+            ResultCE.result {
                 let! (_, state) = getState<'A, 'E> storage
-                printf "before sleep\n"
-                // System.Threading.Thread.Sleep (myrand.Next(10, 100))
-                printf "after sleep\n"
-                let! events =
+                let events' =
                     state
                     |> mycommand.Execute
-                let! eventsAdded =
+                let! events = events'
+                let eventsAdded' =
                     storage.AddEvents 'A.Version (events |>> JsonConvert.SerializeObject) 'A.StorageName
-
-                printf "exit runCommand\n\n"
                 return ()
             } 
 
@@ -105,18 +96,18 @@ module Repository' =
             (storage: IStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
-            let lockobj1 = 
+            let a1Lock = 
                 if Conf.syncobjects.ContainsKey ('A1.Version, 'A1.StorageName) then
                     (Conf.syncobjects.['A1.Version,'A1.StorageName])
                 else
                     failwith (sprintf "no lock object found %s %s. Please configure it in Conf.fs" 'A1.Version 'A1.StorageName)
-            let lockobj2 =
+            let a2Lock =
                 if (Conf.syncobjects.ContainsKey ('A2.Version, 'A2.StorageName)) then
                     (Conf.syncobjects.['A2.Version, 'A2.StorageName])
                 else
                     failwith (sprintf "no lock object found %s %s. Please configure it in Conf.fs" 'A2.Version 'A2.StorageName)
-            lock (lockobj1, lockobj2) <| fun () -> 
-                ceResult {
+            lock (a1Lock, a2Lock) <| fun () -> 
+                ResultCE.result {
                     let! (_, state1) = getState<'A1, 'E1> storage
                     let! (_, state2) = getState<'A2, 'E2> storage
                     let! events1 =
@@ -142,7 +133,7 @@ module Repository' =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: IStorage) =
-        ceResult
+        ResultCE.result
             {
                 let! (id, state) = getState<'A, 'E> storage
                 let snapshot = Utils.serialize<'A> state
@@ -156,7 +147,7 @@ module Repository' =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) =
         if (Conf.intervalBetweenSnapshots.ContainsKey 'A.StorageName) then
-            ceResult
+            ResultCE.result
                 {
                     let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> optionToResult
                     let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> optionToDefault 0

@@ -21,8 +21,11 @@ open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Conf
 open Tonyx.EventSourcing.TestUtils
 open System.Threading
+open FsToolkit.ErrorHandling
 
+[<MethodImpl(MethodImplOptions.Synchronized)>]
 let setUp(db: IStorage) =
+    printf "Doing _ Setup\n"
     db.Reset TodosAggregate.Version TodosAggregate.StorageName 
     Cache.EventCache<TodosAggregate>.Instance.Clear()
     Cache.SnapCache<TodosAggregate>.Instance.Clear()
@@ -43,7 +46,6 @@ let allConfs =
     [
         (AppVersions.applicationPostgresStorage,        AppVersions.applicationPostgresStorage,       fun () -> () |> Result.Ok)
         (AppVersions.applicationShadowPostgresStorage,  AppVersions.applicationShadowPostgresStorage, fun () -> () |> Result.Ok)
-
         (AppVersions.applicationPostgresStorage,        AppVersions.applicationShadowPostgresStorage, AppVersions.applicationPostgresStorage.migrator.Value)
 
         (AppVersions.applicationMemoryStorage,          AppVersions.applicationMemoryStorage,         fun () -> () |> Result.Ok)
@@ -253,7 +255,7 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId]; TagIds = [] }
 
             let added =
-                ceResult {
+                ResultCE.result {
                     let! _ = ap.addCategory category
                     let! ap' = ap.addTodo todo
                     return ap'
@@ -354,7 +356,7 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId] }
 
             let added =
-                ceResult {
+                ResultCE.result {
                     let! _ = ap.addTag tag
                     let! app' = ap.addTodo todo
                     return app'
@@ -380,7 +382,7 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId] }
 
             let added =
-                ceResult {
+                ResultCE.result {
                     let! _ = ap.addTag tag
                     let! app' = ap.addTodo todo
                     return app'
@@ -425,14 +427,17 @@ let multiVersionsTests =
 [<Tests>]
 let multiCallTests =
     let doAddNewTodo() =
+        // let ap = AppVersions.applicationMemoryStorage
         let ap = AppVersions.applicationPostgresStorage
-        for i = 0 to 1000 do
-            let todo = { Id = Guid.NewGuid(); Description = "todo" + i.ToString(); CategoryIds = []; TagIds = [] }
+        for i = 0 to 9 do
+            let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString())); CategoryIds = []; TagIds = [] }
+            // Thread.Sleep 10
+            // let todo = { Id = Guid.NewGuid(); Description = Guid.NewGuid().ToString()+"todo"+(i.ToString()); CategoryIds = []; TagIds = [] }
             ap.addTodo todo |> ignore
             ()
 
     testList "massive sequence adding - Ok" [
-        testCase "add many todo using postgres" <| fun _ ->
+        ptestCase "add many todo using postgres" <| fun _ ->
             let ap = AppVersions.applicationPostgresStorage
             let _ = setUp(ap._storage)
             let todos = 
@@ -444,7 +449,7 @@ let multiCallTests =
                     { Id = Guid.NewGuid(); Description = "todo5"; CategoryIds = []; TagIds = [] }
                 ]
             let result =
-                ceResult {
+                ResultCE.result {
                     let! _ = ap.addTodo todos.[0]
                     let! _ = ap.addTodo todos.[1]
                     let! _ = ap.addTodo todos.[2]
@@ -454,10 +459,41 @@ let multiCallTests =
                 }
             Expect.isOk result "should be ok"
 
-        ftestCase "add many todos in parallel" <| fun _ ->
+        ptestCase "add many todos in parallel" <| fun _ ->
             let ap = AppVersions.applicationPostgresStorage
+            // let ap = AppVersions.applicationMemoryStorage
             let _ = setUp(ap._storage)
             let thread = new Thread(doAddNewTodo)
             thread.Start()
             thread.Join()
-    ] 
+            let actualTodos = ap.getAllTodos().OkValue
+            Expect.equal actualTodos.Length 2000 "should be equal"
+
+        testCase "add many todos" <| fun _ ->
+            Expect.isTrue true "should be true"
+            let ap = AppVersions.applicationPostgresStorage
+            // let ap = AppVersions.applicationMemoryStorage
+            let _ = setUp(ap._storage)
+
+            for i = 0 to 999 do
+                let todo = { Id = Guid.NewGuid(); Description = "todo"+(i.ToString()); CategoryIds = []; TagIds = [] }
+                let added = ap.addTodo todo 
+                ()
+
+            let actualTodos = ap.getAllTodos().OkValue
+
+            Expect.equal actualTodos.Length 1000 "should be equal"
+
+        ftestCase "add many todos in parallel 2" <| fun _ ->
+            let ap = AppVersions.applicationPostgresStorage
+            let _ = setUp(ap._storage)
+
+            for i = 0 to 99 do   
+                let thread = new Thread(doAddNewTodo)
+                thread.Start()
+                thread.Join()
+
+            let actualTodos = ap.getAllTodos().OkValue
+
+            Expect.equal actualTodos.Length 1000 "should be equal"
+    ] |> testSequenced

@@ -1,11 +1,11 @@
 namespace Tonyx.EventSourcing.Sample.Todos.Models
 open System
 open FSharpPlus
+open FsToolkit.ErrorHandling
 
 open Tonyx.EventSourcing.Utils
 
 module CategoriesModel =
-    let ceResult = CeResultBuilder()
     type Category =
         {
             Id: Guid
@@ -21,12 +21,12 @@ module CategoriesModel =
                     categories = []
                 }
             member this.AddCategory (c: Category) =
-                ceResult {
+                ResultCE.result {
                     let! mustNotExist =
                         this.categories
-                        |> List.exists (fun x -> x.Name = c.Name) // || x.Id = c.Id
+                        |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
                         |> not
-                        |> boolToResult (sprintf "There is already another Category named %s " c.Name)
+                        |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
                     let result =
                         {
                             this with
@@ -42,7 +42,7 @@ module CategoriesModel =
                     |> not
                     |> boolToResult (sprintf "There is already another Category named %s " c.Name)
 
-                ceResult {
+                ResultCE.result {
                     let! mustNotExist =
                         cs |> catchErrors checkNotExists
                     let result =
@@ -54,7 +54,7 @@ module CategoriesModel =
                 }
 
             member this.RemoveCategory (id: Guid) =
-                ceResult {
+                ResultCE.result {
                     let! mustExist =
                         this.categories
                         |> List.exists (fun x -> x.Id = id)

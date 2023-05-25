@@ -3,6 +3,7 @@ namespace Tonyx.EventSourcing.Sample
 open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
 open Tonyx.EventSourcing.Sample
 open System
+open FsToolkit.ErrorHandling
 
 module TagsAggregate =
     type TagsAggregate =
@@ -20,7 +21,7 @@ module TagsAggregate =
         static member Version =
             "_01"
         member this.AddTag(t: Tag) =
-            ceResult {
+            ResultCE.result {
                 let! result = this.Tags.AddTag(t)
                 let result =
                     {
@@ -30,7 +31,7 @@ module TagsAggregate =
                 return result
             }
         member this.RemoveTag(id: Guid) =
-            ceResult {
+            ResultCE.result {
                 let! result = this.Tags.RemoveTag(id)
                 let result =
                     {

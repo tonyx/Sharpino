@@ -10,6 +10,7 @@ open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Sample
+open FsToolkit.ErrorHandling
 
 [<Tests>]
 let todosAggregateTests =
@@ -54,7 +55,7 @@ let todosAggregateTests =
 
             let aggregateWithCategories =
                 (
-                    ceResult {
+                    ResultCE.result {
                         let! aggregate = TodosAggregate.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result
@@ -72,7 +73,7 @@ let todosAggregateTests =
             let category2 = { Id = Guid.NewGuid(); Name = "test2"}
             let aggregateWithCategories =
                 (
-                    ceResult {
+                    ResultCE.result {
                         let! aggregate = TodosAggregate.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result
@@ -91,7 +92,7 @@ let todosAggregateTests =
             let category2 = { Id = Guid.NewGuid(); Name = "test2"}
             let aggregateWithCategories =
                 (
-                    ceResult {
+                    ResultCE.result {
                         let! aggregate = TodosAggregate.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result

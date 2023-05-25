@@ -3,6 +3,7 @@ namespace Tonyx.EventSourcing.Sample.Todos
 open System
 open Tonyx.EventSourcing.Core
 
+open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Sample.Todos.TodoEvents
 open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
 open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
@@ -21,9 +22,8 @@ module TodoCommands =
         interface Command<TodosAggregate, TodoEvent> with
             member this.Execute (x: TodosAggregate) =
                 match this with
-                | AddTodo t ->
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t]) with
+                | AddTodo t -> 
+                    match EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t]) with
                         | Ok _ -> [TodoEvent.TodoAdded t] |> Ok
                         | Error x -> x |> Error
                 | RemoveTodo g ->
@@ -51,8 +51,7 @@ module TodoCommands =
                         fun () ->
                         [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
                         |> evolve x
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]) with
+                    match EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]) with
                         | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
                         | Error x -> x |> Error
 

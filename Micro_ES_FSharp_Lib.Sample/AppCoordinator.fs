@@ -76,7 +76,6 @@ module AppVersions =
             migrator  =         None
         }
 
-    // make sure that the memdb instance is unique between both the application
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
     let applicationMemoryStorage =
         let app = App.App(memStorage)

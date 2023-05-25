@@ -1,12 +1,12 @@
 namespace Tonyx.EventSourcing
 
 open System.Runtime.CompilerServices
+open FsToolkit.ErrorHandling
 open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing
-
 
 type Json = string
 type Name = string
@@ -37,7 +37,6 @@ type IStorage =
 
 module DbStorage =
     let TPConnectionString = Conf.connectionString
-    let ceResult = CeResultBuilder()
     type PgDb() =
         interface IStorage with
             member this.Reset version name =
@@ -127,10 +126,9 @@ module DbStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
 
-            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
-                ceResult
+                ResultCE.result
                     {
                         let! event = ((this :> IStorage).TryGetEvent version id name) |> optionToResult
                         let _ =
@@ -152,9 +150,7 @@ module DbStorage =
                         return ()
                     }
 
-            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddEvents version (events: List<Json>) name =
-                printf "entered in add events\n"
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
                     let _ =
@@ -175,12 +171,10 @@ module DbStorage =
                             ]
                             |> Async.AwaitTask
                             |> Async.RunSynchronously
-                    printf "exited from add events\n"  
                     () |> Ok
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
                 let cmdList = 
                     arg 

@@ -3,6 +3,7 @@ open Tonyx.EventSourcing
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Repository
 
+open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Sample.TodosAggregate
 open Tonyx.EventSourcing.Sample.Todos.TodoEvents
 open Tonyx.EventSourcing.Sample.Todos.TodoCommands
@@ -22,31 +23,32 @@ open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
 open Tonyx.EventSourcing.Sample.Categories
 open System
 open FSharpPlus
+open FsToolkit.ErrorHandling
 
 module App =
     type App(storage: IStorage) =
 
         member this.getAllTodos() =
-            ceResult {
+            ResultCE.result  {
                 let! (_, state) = Repository'.getState<TodosAggregate, TodoEvent>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
         member this.getAllTodos'() =
-            ceResult {
+            ResultCE.result {
                 let! (_, state) = Repository'.getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
 
         member this.addTodo todo =
-            let lockobj1 = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-            let lockobj2 = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
-            match lockobj1, lockobj2 with
-            | Some lock1, Some lock2 ->
-                lock (lock1, lock2) <| fun () ->
-                    ceResult {              
+            match todoAggregateLock, tagsAggregateLock with
+            | Some todoLock, Some tagsLock ->
+                lock (todoLock, tagsLock) <| fun () ->
+                    ResultCE.result {
                         let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent>(storage)
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -72,7 +74,7 @@ module App =
             match (lock1, lock2, lock3) with
                 Some lock1Val, Some lock2Val , Some lock3Val->
                     lock (lock1Val, lock2Val, lock3Val) <| fun () ->
-                        ceResult {              
+                        ResultCE.result {
                             let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                             let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -105,7 +107,7 @@ module App =
                 Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
             else
                 lock (lockobj.Value) <| fun () ->
-                    ceResult {
+                    ResultCE.result {
                         let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -132,7 +134,7 @@ module App =
                 Error (sprintf "No lock object found for %A %A" TodosAggregate'.Version TodosAggregate'.StorageName)
             else
                 lock (lockobj.Value) <| fun () ->
-                    ceResult {
+                    ResultCE.result {
                         let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -168,7 +170,7 @@ module App =
                     }
 
         member this.removeTodo id =
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     id
                     |> TodoCommand.RemoveTodo
@@ -177,7 +179,7 @@ module App =
                 return ()
             }
         member this.removeTodo' id =
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     id
                     |> TodoCommand'.RemoveTodo
@@ -187,21 +189,21 @@ module App =
             }
 
         member this.getAllCategories() =
-            ceResult {
+            ResultCE.result {
                 let! (_, state) = Repository'.getState<TodosAggregate, TodoEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
 
         member this.getAllCategories'() =
-            ceResult {
+            ResultCE.result {
                 let! (_, state) = Repository'.getState<CategoriesAggregate, CategoryEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
 
         member this.addCategory category =
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     category
                     |> TodoCommand.AddCategory
@@ -211,7 +213,7 @@ module App =
             }
 
         member this.addCategory' category =
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     category
                     |> CategoriesCommands.CategoryCommand.AddCategory
@@ -221,7 +223,7 @@ module App =
             }
 
         member this.removeCategory id = 
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     id
                     |> TodoCommand.RemoveCategory
@@ -231,7 +233,7 @@ module App =
             }
 
         member this.removeCategory' id =
-            ceResult {
+            ResultCE.result {
                 let removeCategory = CategoryCommand.RemoveCategory id
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
                 let! _ = 
@@ -247,7 +249,7 @@ module App =
             }
 
         member this.addTag tag =
-            ceResult {
+            ResultCE.result {
                 let! _ =
                     tag
                     |> AddTag
@@ -257,7 +259,7 @@ module App =
             }
 
         member this.removeTag id =
-            ceResult {
+            ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
                 let! _ = Repository'.runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -266,7 +268,7 @@ module App =
                 return ()
             }
         member this.removeTag' id =
-            ceResult {
+            ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
                 let! _ = Repository'.runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
@@ -276,14 +278,14 @@ module App =
             }
 
         member this.getAllTags () =
-            ceResult {
+            ResultCE.result {
                 let! (_, state) = Repository'.getState<TagsAggregate, TagEvent> storage
                 let tags = state.GetTags()
                 return tags
             }
 
         member this.migrate() =
-            ceResult {
+            ResultCE.result {
                 let! categoriesFrom = this.getAllCategories()
                 let! todosFrom = this.getAllTodos()
                 let command = CategoryCommand.AddCategories categoriesFrom
