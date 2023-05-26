@@ -38,24 +38,33 @@ module Repository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) = 
 
-        let lockobj = Conf.syncobjects |> Map.tryFind ('A.Version, 'A.StorageName)
-        match lockobj with
-        | Some lockobjVal ->
-            lock lockobjVal (fun _ ->
+        let idStateAndEvents lockob =
+            lock lockob ( fun _ ->
                 ResultCE.result {
                     let! (id, state) = getLastSnapshot<'A> storage
                     let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                    let lastId =
-                        match events.Length with
-                        | x when x > 0 -> events |> List.last |> fst
-                        | _ -> id
-                    let! events' =
-                        events |>> snd |> catchErrors deserialize<'E>
-                    let! result =
-                        events' |> evolve<'A, 'E> state
-                    return (lastId, result)
+                    let result =
+                        (id, state, events)
+                    return result
                 }
             )
+
+        let lockobj = Conf.syncobjects |> Map.tryFind ('A.Version, 'A.StorageName)
+        match lockobj with
+        | Some lockobjVal ->
+            ResultCE.result {
+                let! (id, state, events) = idStateAndEvents lockobjVal
+
+                let lastId =
+                    match events.Length with
+                    | x when x > 0 -> events |> List.last |> fst
+                    | _ -> id
+                let! events' =
+                    events |>> snd |> catchErrors deserialize<'E>
+                let! result =
+                    events' |> evolve<'A, 'E> state
+                return (lastId, result)
+            }
         | _ -> Error (sprintf "no lock object found for aggregate: %s %s" 'A.Version 'A.StorageName)
 
     let inline runCommand<'A, 'E
