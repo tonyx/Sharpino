@@ -40,7 +40,7 @@ let setUp(db: IStorage) =
     Cache.EventCache<CategoriesAggregate>.Instance.Clear()
     Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
 
-let allConfs =
+let allVersions =
     [
         (AppVersions.applicationPostgresStorage,        AppVersions.applicationPostgresStorage,       fun () -> () |> Result.Ok)
         (AppVersions.applicationShadowPostgresStorage,  AppVersions.applicationShadowPostgresStorage, fun () -> () |> Result.Ok)
@@ -51,7 +51,7 @@ let allConfs =
         (AppVersions.applicationMemoryStorage,          AppVersions.applicationShadowMemoryStorage,   AppVersions.applicationMemoryStorage.migrator.Value)
     ]
 
-let currentTestConfs = allConfs
+let currentTestConfs = allVersions
 
 [<Tests>]
 let multiVersionsTests =
