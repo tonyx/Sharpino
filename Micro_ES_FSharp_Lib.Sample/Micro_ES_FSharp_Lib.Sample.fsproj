@@ -21,7 +21,7 @@
     <Compile Include="aggregates/Categories/Commands.fs" />
 
     <Compile Include="App.fs" />
-    <Compile Include="AppCoordinator.fs" />
+    <Compile Include="AppVersions.fs" />
   </ItemGroup>
 
   <ItemGroup>

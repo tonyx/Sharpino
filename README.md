@@ -12,22 +12,19 @@ __Micro_ES_FSharp_Lib__:
 - [DbStorage.fs](Micro_ES_FSharp_Lib/DbStorage.fs) and [MemoryStorage.fs](Micro_ES_FSharp_Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
 - [Utils.fs](Micro_ES_FSharp_Lib/Utils.fs): some common functions to manage serialization and results.
 - [Cache.fs](Micro_ES_FSharp_Lib/Cache.fs). Cache events and snapshots.
-- [Conf.fs](Micro_ES_FSharp_Lib/Conf.fs)  define storage type, lock object for aggregates, and the interval between snapshots for each aggregate
+- [Conf.fs](Micro_ES_FSharp_Lib/Conf.fs)  lock object for aggregates, and the interval between snapshots for each aggregate
 
 
 __Micro_ES_FSharp_Lib.Sample__:
 
 
-- an entry point of the applications available for external calls: [App.fs](Micro_ES_FSharp_Lib.Sample/App.fs)
-
-- __Two Aggregates__:
-- -  For each branch an aggregate and a definition of Commands and events as follows: [ Todos Commands.fs](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Commands.fs) and [Todos Events.fs](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Events.fs)
-- -  Models (entities, value objects... whatever is needed by the aggregate)
-- - minimal scripts to define snapshots and events table for Postgres, if wanted as storage: [sqlSetup.sql](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/sqlSetup.sql)
-
-__Micro_ES_FSharp_Lib.tests__:
-- the tests are grouped into tests of models, tests of aggregates and application layer tests. They use the actual configuration (Conf.fs) to decide the storage (memory/db).
-
-__To be continued__: managing versioning, managing tools and suggesting practicies for facilitating aggregate refactoring and migration.
+- The __models__ are plain data usually organized as records with members and a 'zero' (initial/empty) instance
+- An __aggregates__ is  a subset of models, exposes single or multi-model logic, has to declare  a 'Zero' (initial) instance, a name and a version by proper static members.
+- For each __aggregate__ we define __Events__ that are a Discriminated Unions cases that wrap calls to aggregate members by the _Process_ interface
+- For each __aggregate__ we define __Commands__ that are Discriminated Unions cases that return lists of events by implementing by the 'Executable' interface
+- The __storage__ stores and retrieve events and snapshots of the aggregates.
+- The __Repository__ builds and retrive snapshots, run and store the commands. 
+- The application functions build single or multiple commands related to single or multiple aggregates and send them to the repository. 
+- The applications versions define the application api in different version by different storage types. We can use them to organize aggregate refactoring and test different versions and aggregate refactoring by parametrized tests
 
 
