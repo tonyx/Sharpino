@@ -4,8 +4,6 @@ open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
 open Expecto
-open FsCheck
-open Expecto.ExpectoFsCheck
 
 module Utils =
     let serSettings = JsonSerializerSettings()

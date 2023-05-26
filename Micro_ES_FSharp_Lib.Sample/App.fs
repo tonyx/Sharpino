@@ -3,7 +3,6 @@ open Tonyx.EventSourcing
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Repository
 
-open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Sample.TodosAggregate
 open Tonyx.EventSourcing.Sample.Todos.TodoEvents
 open Tonyx.EventSourcing.Sample.Todos.TodoCommands
@@ -30,18 +29,20 @@ module App =
 
         member this.getAllTodos() =
             ResultCE.result  {
-                let! (_, state) = Repository'.getState<TodosAggregate, TodoEvent>(storage)
+                let! (_, state) = getState<TodosAggregate, TodoEvent>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
         member this.getAllTodos'() =
             ResultCE.result {
-                let! (_, state) = Repository'.getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
+                let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
 
         member this.addTodo todo =
+            // be carefull in concurrent scenarios. you must lock the aggregates in the right way and 
+            // test will be unable to detect wrong lock object lookup configuration here
             let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
             let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
@@ -49,7 +50,7 @@ module App =
             | Some todoLock, Some tagsLock ->
                 lock (todoLock, tagsLock) <| fun () ->
                     ResultCE.result {
-                        let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent>(storage)
+                        let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                         let! tagIdIsValid =    
@@ -60,25 +61,25 @@ module App =
                         let! _ =
                             todo
                             |> TodoCommand.AddTodo
-                            |> (Repository'.runCommand<TodosAggregate, TodoEvent> storage)
-                        let _ =  Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
+                            |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
                     return ()
                 }
             | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
 
         member this.addTodo' todo =
-            let lock1 = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate'.StorageName)
-            let lock2 = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
-            let lock3 = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            let todosAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate'.StorageName)
+            let categoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
 
-            match (lock1, lock2, lock3) with
-                Some lock1Val, Some lock2Val , Some lock3Val->
-                    lock (lock1Val, lock2Val, lock3Val) <| fun () ->
+            match (todosAggregateLock, categoriesAggregateLock, tagsAggregateLock) with
+                Some todosLock, Some categoriesLock , Some tagsLock->
+                    lock (todosLock, categoriesLock, tagsLock) <| fun () ->
                         ResultCE.result {
-                            let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
+                            let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                             let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                            let! (_, categoriesState) = Repository'.getState<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
+                            let! (_, categoriesState) = getState<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
                             let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                             let! tagIdIsValid =    
@@ -94,21 +95,22 @@ module App =
                             let! _ =
                                 todo
                                 |> TodoCommand'.AddTodo
-                                |> (Repository'.runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                                |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
 
-                            let _ =  Repository'.mksnapshotIfInterval<TodosAggregate.TodosAggregate', Todos.TodoEvents.TodoEvent'> storage
+                            let _ =  mkSnapshotIfInterval<TodosAggregate.TodosAggregate', Todos.TodoEvents.TodoEvent'> storage
                         return ()
                     }
                 | _ -> Error "No lock object found for TodosAggregate or CategoriesAggregate"
 
         member this.add2Todos (todo1, todo2) =
-            let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-            if lockobj.IsNone then
-                Error (sprintf "No lock object found for %A %A" TodosAggregate.Version TodosAggregate.StorageName)
-            else
-                lock (lockobj.Value) <| fun () ->
+            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+
+            match todoAggregateLock, tagsAggregateLock with
+            | Some todoLock, Some tagsLock ->
+                lock (todoLock, tagsLock) <| fun () ->
                     ResultCE.result {
-                        let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
+                        let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                         let! tagId1IsValid =    
@@ -124,21 +126,24 @@ module App =
                         let! _ =
                             (todo1, todo2)
                             |> TodoCommand.Add2Todos
-                            |> (Repository'.runCommand<TodosAggregate, TodoEvent> storage)
-                        let _ =  Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                            |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                         return ()
                     }
+            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
         member this.add2Todos' (todo1, todo2) =
-            let lockobj = Conf.syncobjects |> Map.tryFind (TodosAggregate.TodosAggregate'.Version, TodosAggregate'.StorageName)
-            if lockobj.IsNone then
-                Error (sprintf "No lock object found for %A %A" TodosAggregate'.Version TodosAggregate'.StorageName)
-            else
-                lock (lockobj.Value) <| fun () ->
+            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate.StorageName)
+            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version, TagsAggregate.StorageName)
+            let CategoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version, CategoriesAggregate.StorageName)
+
+            match todoAggregateLock, tagsAggregateLock, CategoriesAggregateLock with
+            | Some todoLock, Some tagsLock, Some categoriesLock ->
+                lock (todoLock, tagsLock, categoriesLock) <| fun () ->
                     ResultCE.result {
-                        let! (_, tagState) = Repository'.getState<TagsAggregate, TagEvent> storage
+                        let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                         let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                        let! (_, categoriesState) = Repository'.getState<CategoriesAggregate, CategoryEvent> storage
+                        let! (_, categoriesState) = getState<CategoriesAggregate, CategoryEvent> storage
                         let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                         let! categoryId1IsValid =    
@@ -164,18 +169,19 @@ module App =
                         let! _ =
                             (todo1, todo2)
                             |> TodoCommand'.Add2Todos
-                            |> (Repository'.runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
-                        let _ =  Repository'.mksnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                            |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                        let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
                         return ()
                     }
+            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate or CategoriesAggregate"
 
         member this.removeTodo id =
             ResultCE.result {
                 let! _ =
                     id
                     |> TodoCommand.RemoveTodo
-                    |> (Repository'.runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
         member this.removeTodo' id =
@@ -183,21 +189,21 @@ module App =
                 let! _ =
                     id
                     |> TodoCommand'.RemoveTodo
-                    |> (Repository'.runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate', TodoEvent'> storage
+                    |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
 
         member this.getAllCategories() =
             ResultCE.result {
-                let! (_, state) = Repository'.getState<TodosAggregate, TodoEvent> storage
+                let! (_, state) = getState<TodosAggregate, TodoEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
 
         member this.getAllCategories'() =
             ResultCE.result {
-                let! (_, state) = Repository'.getState<CategoriesAggregate, CategoryEvent> storage
+                let! (_, state) = getState<CategoriesAggregate, CategoryEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
@@ -207,8 +213,8 @@ module App =
                 let! _ =
                     category
                     |> TodoCommand.AddCategory
-                    |> (Repository'.runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
 
@@ -217,8 +223,8 @@ module App =
                 let! _ =
                     category
                     |> CategoriesCommands.CategoryCommand.AddCategory
-                    |> (Repository'.runCommand<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage)
-                let _ = Repository'.mksnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
+                    |> (runCommand<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage)
+                let _ = mkSnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
                 return ()
             }
 
@@ -227,8 +233,8 @@ module App =
                 let! _ =
                     id
                     |> TodoCommand.RemoveCategory
-                    |> (Repository'.runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
 
@@ -237,14 +243,14 @@ module App =
                 let removeCategory = CategoryCommand.RemoveCategory id
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
                 let! _ = 
-                    Repository'.runTwoCommands<
+                    runTwoCommands<
                         CategoriesAggregate.CategoriesAggregate, 
                         TodosAggregate.TodosAggregate', 
                         CategoriesEvents.CategoryEvent, 
                         TodoEvents.TodoEvent'> 
                         storage removeCategory removeCategoryRef
-                let _ = Repository'.mksnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent>  storage
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                let _ = mkSnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent>  storage
+                let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
                 return ()
             }
 
@@ -253,8 +259,8 @@ module App =
                 let! _ =
                     tag
                     |> AddTag
-                    |> (Repository'.runCommand<TagsAggregate, TagEvent> storage)
-                let _ = (Repository'.mksnapshotIfInterval<TagsAggregate, TagEvent> storage)
+                    |> (runCommand<TagsAggregate, TagEvent> storage)
+                let _ = (mkSnapshotIfInterval<TagsAggregate, TagEvent> storage)
                 return ()
             }
 
@@ -262,24 +268,24 @@ module App =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
-                let! _ = Repository'.runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
-                let _ = Repository'.mksnapshotIfInterval<TagsAggregate, TagEvent> storage
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
         member this.removeTag' id =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
-                let! _ = Repository'.runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
-                let _ = Repository'.mksnapshotIfInterval<TagsAggregate, TagEvent> storage
-                let _ = Repository'.mksnapshotIfInterval<TodosAggregate', TodoEvent'> storage
+                let! _ = runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
+                let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
+                let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
 
         member this.getAllTags () =
             ResultCE.result {
-                let! (_, state) = Repository'.getState<TagsAggregate, TagEvent> storage
+                let! (_, state) = getState<TagsAggregate, TagEvent> storage
                 let tags = state.GetTags()
                 return tags
             }
@@ -291,7 +297,7 @@ module App =
                 let command = CategoryCommand.AddCategories categoriesFrom
                 let command2 = TodoCommand'.AddTodos todosFrom
                 let! _ = 
-                    Repository'.runTwoCommands<
+                    runTwoCommands<
                         CategoriesAggregate.CategoriesAggregate, 
                         TodosAggregate.TodosAggregate', 
                         CategoriesEvents.CategoryEvent, 

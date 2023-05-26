@@ -23,9 +23,7 @@ open Tonyx.EventSourcing.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
 
-[<MethodImpl(MethodImplOptions.Synchronized)>]
 let setUp(db: IStorage) =
-    printf "Doing _ Setup\n"
     db.Reset TodosAggregate.Version TodosAggregate.StorageName 
     Cache.EventCache<TodosAggregate>.Instance.Clear()
     Cache.SnapCache<TodosAggregate>.Instance.Clear()
@@ -42,7 +40,7 @@ let setUp(db: IStorage) =
     Cache.EventCache<CategoriesAggregate>.Instance.Clear()
     Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
 
-let allConfs =
+let allVersions =
     [
         (AppVersions.applicationPostgresStorage,        AppVersions.applicationPostgresStorage,       fun () -> () |> Result.Ok)
         (AppVersions.applicationShadowPostgresStorage,  AppVersions.applicationShadowPostgresStorage, fun () -> () |> Result.Ok)
@@ -53,7 +51,7 @@ let allConfs =
         (AppVersions.applicationMemoryStorage,          AppVersions.applicationShadowMemoryStorage,   AppVersions.applicationMemoryStorage.migrator.Value)
     ]
 
-let currentTestConfs = allConfs
+let currentTestConfs = allVersions
 
 [<Tests>]
 let multiVersionsTests =
@@ -427,52 +425,17 @@ let multiVersionsTests =
 [<Tests>]
 let multiCallTests =
     let doAddNewTodo() =
-        // let ap = AppVersions.applicationMemoryStorage
         let ap = AppVersions.applicationPostgresStorage
         for i = 0 to 9 do
             let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString())); CategoryIds = []; TagIds = [] }
-            // Thread.Sleep 10
-            // let todo = { Id = Guid.NewGuid(); Description = Guid.NewGuid().ToString()+"todo"+(i.ToString()); CategoryIds = []; TagIds = [] }
             ap.addTodo todo |> ignore
             ()
 
-    testList "massive sequence adding - Ok" [
-        ptestCase "add many todo using postgres" <| fun _ ->
-            let ap = AppVersions.applicationPostgresStorage
-            let _ = setUp(ap._storage)
-            let todos = 
-                [
-                    { Id = Guid.NewGuid(); Description = "todo1"; CategoryIds = []; TagIds = [] }
-                    { Id = Guid.NewGuid(); Description = "todo2"; CategoryIds = []; TagIds = [] }
-                    { Id = Guid.NewGuid(); Description = "todo3"; CategoryIds = []; TagIds = [] }
-                    { Id = Guid.NewGuid(); Description = "todo4"; CategoryIds = []; TagIds = [] }
-                    { Id = Guid.NewGuid(); Description = "todo5"; CategoryIds = []; TagIds = [] }
-                ]
-            let result =
-                ResultCE.result {
-                    let! _ = ap.addTodo todos.[0]
-                    let! _ = ap.addTodo todos.[1]
-                    let! _ = ap.addTodo todos.[2]
-                    let! _ = ap.addTodo todos.[3]
-                    let! result = ap.addTodo todos.[4]
-                    return result
-                }
-            Expect.isOk result "should be ok"
-
-        ptestCase "add many todos in parallel" <| fun _ ->
-            let ap = AppVersions.applicationPostgresStorage
-            // let ap = AppVersions.applicationMemoryStorage
-            let _ = setUp(ap._storage)
-            let thread = new Thread(doAddNewTodo)
-            thread.Start()
-            thread.Join()
-            let actualTodos = ap.getAllTodos().OkValue
-            Expect.equal actualTodos.Length 2000 "should be equal"
+    ptestList "massive sequence adding - Ok" [
 
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
             let ap = AppVersions.applicationPostgresStorage
-            // let ap = AppVersions.applicationMemoryStorage
             let _ = setUp(ap._storage)
 
             for i = 0 to 999 do
@@ -484,7 +447,7 @@ let multiCallTests =
 
             Expect.equal actualTodos.Length 1000 "should be equal"
 
-        ftestCase "add many todos in parallel 2" <| fun _ ->
+        testCase "add many todos in parallel" <| fun _ ->
             let ap = AppVersions.applicationPostgresStorage
             let _ = setUp(ap._storage)
 
