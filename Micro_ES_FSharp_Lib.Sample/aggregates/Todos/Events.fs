@@ -15,7 +15,6 @@ module TodoEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
-        | ExperimentalTodoAdded of Expr<bool> * Todo
             interface Event<TodosAggregate> with
                 member this.Process (x: TodosAggregate ) =
                     match this with
@@ -29,8 +28,6 @@ module TodoEvents =
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g])
                     | TagRefRemoved (g: Guid) ->            
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
-                    | ExperimentalTodoAdded (c: Expr<bool>, t: Todo) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.ExperimentalAddTodo c t) (x, [ExperimentalTodoAdded (c, t)])
 
     type TodoEvent' =
         | TodoAdded of Todo

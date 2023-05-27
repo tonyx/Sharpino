@@ -47,7 +47,6 @@ module TodosAggregate =
                 |> unbox<bool>
                 |> boolToResult "Precondition failed"
 
-            // let checkPrecondition
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
                 |> List.exists (fun x -> x.Id = c) 
