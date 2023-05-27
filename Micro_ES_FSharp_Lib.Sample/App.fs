@@ -60,6 +60,7 @@ module App =
                 return ()
             }
 
+
         member this.addTodo' todo =
             lock (TodosAggregate'.LockObj, CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
                 ResultCE.result {
