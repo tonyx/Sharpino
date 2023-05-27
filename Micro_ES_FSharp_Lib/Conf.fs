@@ -6,18 +6,6 @@ module Conf =
 
     let isTestEnv = true
 
-    // the key of each element is the name of the storage - storageName in the root type of each aggregate
-    let syncobjects = 
-        [
-            (("_01","_tags"), new obj()) 
-            (("_01","_todo"), new obj())
-            (("_02","_tags"), new obj()) 
-            (("_02","_todo"), new obj())
-            (("_02","_categories"), new obj())
-        ] 
-        |> Map.ofList
-
-    // Update those two entries with the name of the root type of each aggregate.
     let intervalBetweenSnapshots = 
         [
             ("_tags", 15)
@@ -25,6 +13,8 @@ module Conf =
             ("_categories", 15)
         ] 
         |> Map.ofList
+
+
 
     // it is highly impertive that we are able to use properly dev and prod.
     // making sure that in prod the user has nor right to delete any row

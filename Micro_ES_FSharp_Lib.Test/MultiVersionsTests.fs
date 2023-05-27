@@ -56,6 +56,11 @@ let currentTestConfs = allVersions
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
+        // ftestCase "asfasfasd" <| fun _ ->
+        //     let ap = AppVersions.applicationPostgresStorage
+        //     // let _ = setUp(ap._storage)
+        //     Expect.isTrue true "true"
+
         multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = setUp(ap._storage)
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }

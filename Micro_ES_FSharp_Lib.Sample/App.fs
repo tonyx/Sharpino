@@ -41,139 +41,112 @@ module App =
             }
 
         member this.addTodo todo =
-            // be carefull in concurrent scenarios. you must lock the aggregates in the right way and 
-            // test will be unable to detect wrong lock object lookup configuration here
-            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
 
-            match todoAggregateLock, tagsAggregateLock with
-            | Some todoLock, Some tagsLock ->
-                lock (todoLock, tagsLock) <| fun () ->
-                    ResultCE.result {
-                        let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
-                        let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                        let! tagIdIsValid =    
-                            (todo.TagIds.IsEmpty ||
-                            todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                            |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                    let! tagIdIsValid =    
+                        (todo.TagIds.IsEmpty ||
+                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                        let! _ =
-                            todo
-                            |> TodoCommand.AddTodo
-                            |> (runCommand<TodosAggregate, TodoEvent> storage)
-                        let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
-                    return ()
-                }
-            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
+                    let! _ =
+                        todo
+                        |> TodoCommand.AddTodo
+                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
+                return ()
+            }
 
         member this.addTodo' todo =
-            let todosAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate'.StorageName)
-            let categoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version,CategoriesAggregate.StorageName)
-            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            lock (TodosAggregate'.LockObj, CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-            match (todosAggregateLock, categoriesAggregateLock, tagsAggregateLock) with
-                Some todosLock, Some categoriesLock , Some tagsLock->
-                    lock (todosLock, categoriesLock, tagsLock) <| fun () ->
-                        ResultCE.result {
-                            let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
-                            let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+                    let! (_, categoriesState) = getState<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
+                    let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
-                            let! (_, categoriesState) = getState<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
-                            let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
+                    let! tagIdIsValid =    
+                        (todo.TagIds.IsEmpty ||
+                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                            let! tagIdIsValid =    
-                                (todo.TagIds.IsEmpty ||
-                                todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                                |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                    let! categoryIdIsValid =    
+                        (todo.CategoryIds.IsEmpty ||
+                        todo.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
+                        |> boolToResult "A category reference contained is in the todo is related to a category that does not exist"
 
-                            let! categoryIdIsValid =    
-                                (todo.CategoryIds.IsEmpty ||
-                                todo.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                                |> boolToResult "A category reference contained is in the todo is related to a category that does not exist"
+                    let! _ =
+                        todo
+                        |> TodoCommand'.AddTodo
+                        |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
 
-                            let! _ =
-                                todo
-                                |> TodoCommand'.AddTodo
-                                |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
-
-                            let _ =  mkSnapshotIfInterval<TodosAggregate.TodosAggregate', Todos.TodoEvents.TodoEvent'> storage
-                        return ()
-                    }
-                | _ -> Error "No lock object found for TodosAggregate or CategoriesAggregate"
+                    let _ =  mkSnapshotIfInterval<TodosAggregate.TodosAggregate', Todos.TodoEvents.TodoEvent'> storage
+                return ()
+            }
 
         member this.add2Todos (todo1, todo2) =
-            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate.Version,TodosAggregate.StorageName)
-            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version,TagsAggregate.StorageName)
+            lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-            match todoAggregateLock, tagsAggregateLock with
-            | Some todoLock, Some tagsLock ->
-                lock (todoLock, tagsLock) <| fun () ->
-                    ResultCE.result {
-                        let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
-                        let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+                    let! tagId1IsValid =    
+                        (todo1.TagIds.IsEmpty ||
+                        todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                        let! tagId1IsValid =    
-                            (todo1.TagIds.IsEmpty ||
-                            todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                            |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                    let! tagId2IsValid =    
+                        (todo2.TagIds.IsEmpty ||
+                        todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                        let! tagId2IsValid =    
-                            (todo2.TagIds.IsEmpty ||
-                            todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                            |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
-
-                        let! _ =
-                            (todo1, todo2)
-                            |> TodoCommand.Add2Todos
-                            |> (runCommand<TodosAggregate, TodoEvent> storage)
-                        let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                        return ()
-                    }
-            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate"
+                    let! _ =
+                        (todo1, todo2)
+                        |> TodoCommand.Add2Todos
+                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
         member this.add2Todos' (todo1, todo2) =
-            let todoAggregateLock = Conf.syncobjects |> Map.tryFind (TodosAggregate'.Version, TodosAggregate.StorageName)
-            let tagsAggregateLock = Conf.syncobjects |> Map.tryFind (TagsAggregate.Version, TagsAggregate.StorageName)
-            let CategoriesAggregateLock = Conf.syncobjects |> Map.tryFind (CategoriesAggregate.Version, CategoriesAggregate.StorageName)
+            lock (TodosAggregate'.LockObj, TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-            match todoAggregateLock, tagsAggregateLock, CategoriesAggregateLock with
-            | Some todoLock, Some tagsLock, Some categoriesLock ->
-                lock (todoLock, tagsLock, categoriesLock) <| fun () ->
-                    ResultCE.result {
-                        let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
-                        let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+                    let! (_, categoriesState) = getState<CategoriesAggregate, CategoryEvent> storage
+                    let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
-                        let! (_, categoriesState) = getState<CategoriesAggregate, CategoryEvent> storage
-                        let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
+                    let! categoryId1IsValid =    
+                        (todo1.CategoryIds.IsEmpty ||
+                        todo1.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
+                        |> boolToResult "A category reference contained is in the todo is related to a category that does not exist"
 
-                        let! categoryId1IsValid =    
-                            (todo1.CategoryIds.IsEmpty ||
-                            todo1.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                            |> boolToResult "A category reference contained is in the todo is related to a category that does not exist"
+                    let! categoryId2IsValid =
+                        (todo2.CategoryIds.IsEmpty ||
+                        todo2.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
+                        |> boolToResult "A category reference contained is in the todo is related to a category that does not exist" 
 
-                        let! categoryId2IsValid =
-                            (todo2.CategoryIds.IsEmpty ||
-                            todo2.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                            |> boolToResult "A category reference contained is in the todo is related to a category that does not exist" 
+                    let! tagId1IsValid =    
+                        (todo1.TagIds.IsEmpty ||
+                        todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                        let! tagId1IsValid =    
-                            (todo1.TagIds.IsEmpty ||
-                            todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                            |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                    let! tagId2IsValid =    
+                        (todo2.TagIds.IsEmpty ||
+                        todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
 
-                        let! tagId2IsValid =    
-                            (todo2.TagIds.IsEmpty ||
-                            todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                            |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
-
-                        let! _ =
-                            (todo1, todo2)
-                            |> TodoCommand'.Add2Todos
-                            |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
-                        let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
-                        return ()
-                    }
-            | _ -> Error "No lock object found for TodosAggregate or TagsAggregate or CategoriesAggregate"
+                    let! _ =
+                        (todo1, todo2)
+                        |> TodoCommand'.Add2Todos
+                        |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                    let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                    return ()
+                }
 
         member this.removeTodo id =
             ResultCE.result {

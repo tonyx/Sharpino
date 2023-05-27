@@ -7,6 +7,12 @@ open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open System
 
 module CategoriesAggregate =
+    type LockObject private() =
+        let lockObject = new obj()
+        static let instance = LockObject()
+        static member Instance = instance
+        member this.LokObject =
+            lockObject
     type CategoriesAggregate =
         {
             Categories: Categories
@@ -21,6 +27,8 @@ module CategoriesAggregate =
             "_categories"
         static member Version =
             "_02"
+        static member LockObj =
+            LockObject.Instance.LokObject
         member this.AddCategory(c: Category) =
             ResultCE.result {
                 let! result = this.Categories.AddCategory(c)
