@@ -7,6 +7,8 @@ open Tonyx.EventSourcing.Utils
 
 open FSharpPlus
 open FsToolkit.ErrorHandling
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Linq.RuntimeHelpers
 
 module TodosAggregate =
     type LockObject private() =
@@ -33,6 +35,37 @@ module TodosAggregate =
             "_01"
         static member LockObj =
             LockObject.Instance.LokObject
+
+        // member this.Constraint (c: Expr<bool>) =   
+        //     true
+
+        member this.ExperimentalAddTodo (e: Expr<bool> ) (t: Todo) =
+            let eval q = LeafExpressionConverter.EvaluateQuotation q
+
+            let checkPrecondition() = 
+                eval e
+                |> unbox<bool>
+                |> boolToResult "Precondition failed"
+
+            // let checkPrecondition
+            let checkCategoryExists (c: Guid ) =
+                this.categories.GetCategories() 
+                |> List.exists (fun x -> x.Id = c) 
+                |> boolToResult (sprintf "A category with id '%A' does not exist" c)
+
+            ResultCE.result
+                {
+                    let! precondition = checkPrecondition()
+                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists // FOCUS HERE
+                    let! todos = this.todos.AddTodo t
+                    return 
+                        {
+                            this with
+                                todos = todos
+                        }
+                }
+
+
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
@@ -42,11 +75,11 @@ module TodosAggregate =
             ResultCE.result
                 {
                     let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists // FOCUS HERE
-                    let! todosX = this.todos.AddTodo t
+                    let! todos = this.todos.AddTodo t
                     return 
                         {
                             this with
-                                todos = todosX
+                                todos = todos
                         }
                 }
         member this.RemoveTodo (id: Guid) =

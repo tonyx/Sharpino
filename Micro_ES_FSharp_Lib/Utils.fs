@@ -8,6 +8,7 @@ open Expecto
 module Utils =
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
+    serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
     let deserialize<'A> (json: string): Result<'A, string> =
         try

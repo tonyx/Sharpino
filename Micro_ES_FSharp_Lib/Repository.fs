@@ -77,7 +77,8 @@ module Repository =
                     state
                     |> mycommand.Execute
                 let! eventsAdded' =
-                    storage.AddEvents 'A.Version (events |>> JsonConvert.SerializeObject) 'A.StorageName
+                    // storage.AddEvents 'A.Version (events |>> JsonConvert.SerializeObject) 'A.StorageName
+                    storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
                 return ()
             } 
 

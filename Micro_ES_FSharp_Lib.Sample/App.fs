@@ -23,6 +23,9 @@ open Tonyx.EventSourcing.Sample.Categories
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
+open Microsoft.FSharp.Quotations
+open Microsoft.FSharp.Quotations.Patterns
+open Microsoft.FSharp.Quotations.DerivedPatterns
 
 module App =
     type App(storage: IStorage) =
@@ -39,6 +42,35 @@ module App =
                 let todos = state.GetTodos()
                 return todos
             }
+
+        member this.experimentalAddTodo todo =
+            lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+
+                    // todo refefences no tags or todo references only valid tags
+                    let ``todo references no tags or todo refrences only valid tags`` = 
+                            <@ 
+                                todo.TagIds.IsEmpty || 
+                                todo.TagIds 
+                                |> List.forall (fun x -> (tagIds |> List.contains x))
+                            @>
+
+                    let! tagIdIsValid =    
+                        (todo.TagIds.IsEmpty ||
+                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+
+                    let! _ =
+                        (``todo references no tags or todo refrences only valid tags``
+                            , todo)
+                        |> TodoCommand.ExperimentalAddTodo 
+                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                    // let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
+                return ()
+            }
+
 
         member this.addTodo todo =
             lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
