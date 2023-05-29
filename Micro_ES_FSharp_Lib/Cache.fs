@@ -29,7 +29,9 @@ module Cache =
                 queue.Clear()
                 ()
 
+        // not helping so much (if you skip the cache, it's the same)
         member this.Memoize (f: unit -> Result<'A, string>) (arg: 'A * List<Event<'A>>) =
+            // f()
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
@@ -65,6 +67,8 @@ module Cache =
                 dic.Clear()
                 queue.Clear()
                 ()
+
+        // this one looks like it's helping
         member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg

@@ -54,19 +54,6 @@ let allVersions =
 
 let currentTestConfs = allVersions
 
-// [<Tests>] 
-// let plainVersioTests =
-//     testList "experimental" [
-//         // FOCUS HERE
-//         ptestCase "add a todo with experimental feature - Ok" <| fun _ ->
-//             let _ = setUp(AppVersions.applicationPostgresStorage._storage)
-//             let app = App.App(AppVersions.applicationPostgresStorage._storage)
-//             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
-//             let added = app.experimentalAddTodo todo 
-//             Expect.isOk added "shuld be ok"
-
-//     ]
-
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [

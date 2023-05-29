@@ -16,12 +16,6 @@ open Microsoft.FSharp.Quotations
 [<Tests>]
 let todosAggregateTests =
     testList "todos aggregate tests" [
-        // // FOCUS HERE
-        // testCase "check add todo with quoted expression - Ok" <| fun _ ->
-        //     let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
-        //     let qExpr:Expr<bool> = <@ true @>
-        //     let aggregate = TodosAggregate.Zero.ExperimentalAddTodo qExpr todo |> Result.get
-        //     Expect.isTrue true "true"
 
         testCase "add todo - Ok" <| fun _ ->
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}

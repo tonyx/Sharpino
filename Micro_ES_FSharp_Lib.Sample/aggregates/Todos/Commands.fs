@@ -19,7 +19,6 @@ module TodoCommands =
         | RemoveCategory of Guid
         | RemoveTagRef of Guid
         | Add2Todos of Todo * Todo
-        // | ExperimentalAddTodo of Expr<bool> * Todo
 
         interface Command<TodosAggregate, TodoEvent> with
             member this.Execute (x: TodosAggregate) =
