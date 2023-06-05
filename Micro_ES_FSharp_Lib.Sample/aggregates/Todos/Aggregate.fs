@@ -35,7 +35,8 @@ module TodosAggregate =
             "_01"
         static member LockObj =
             LockObject.Instance.LokObject
-
+        static member SnapshotsInterval =
+            15
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
@@ -145,7 +146,8 @@ module TodosAggregate =
             "_02"
         static member LockObj =
             LockObject'.Instance.LokObject
-
+        static member SnapshotsInterval =
+            15
         member this.AddTodo (t: Todo) =
             ResultCE.result
                 {

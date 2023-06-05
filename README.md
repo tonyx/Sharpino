@@ -9,11 +9,10 @@ This is not an official guide to the Event-Sourcing pattern.
 __Micro_ES_FSharp_Lib__:
 
 - [EventSourcing.fs](Micro_ES_FSharp_Lib/EventSourcing.fs): Abstract definition of Events and Commands. Definition of the "evolve" function
-- [Repository.fs](Micro_ES_FSharp_Lib/Repository.fs): get and store the snapshots, run the commands and put in the storage the vents they produce.
+- [Repository.fs](Micro_ES_FSharp_Lib/Repository.fs): get and store the snapshots, run the commands and put in the storage the events they produce.
 - [DbStorage.fs](Micro_ES_FSharp_Lib/DbStorage.fs) and [MemoryStorage.fs](Micro_ES_FSharp_Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
 - [Utils.fs](Micro_ES_FSharp_Lib/Utils.fs): some common functions.
 - [Cache.fs](Micro_ES_FSharp_Lib/Cache.fs). Cache events and snapshots.
-- [Conf.fs](Micro_ES_FSharp_Lib/Conf.fs) lock objects for aggregates, and the interval between snapshots for each aggregate
 
 
 __Micro_ES_FSharp_Lib.Sample__:

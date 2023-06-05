@@ -6,13 +6,13 @@ module Conf =
 
     let isTestEnv = true
 
-    let intervalBetweenSnapshots = 
-        [
-            ("_tags", 15)
-            ("_todo", 15)
-            ("_categories", 15)
-        ] 
-        |> Map.ofList
+    // let intervalBetweenSnapshots = 
+    //     [
+    //         ("_tags", 15)
+    //         ("_todo", 15)
+    //         ("_categories", 15)
+    //     ] 
+    //     |> Map.ofList
 
 
 

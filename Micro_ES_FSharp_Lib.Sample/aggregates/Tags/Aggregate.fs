@@ -29,6 +29,8 @@ module TagsAggregate =
             "_01"
         static member LockObj =
             LockObject.Instance.LokObject
+        static member SnapshotsInterval =
+            15
         member this.AddTag(t: Tag) =
             ResultCE.result {
                 let! result = this.Tags.AddTag(t)

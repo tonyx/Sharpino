@@ -27,6 +27,7 @@ module AppVersions =
     type IApplication =
         {
             _storage:           IStorage
+            _migrator:          Option<unit -> Result<unit, string>>
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -38,7 +39,6 @@ module AppVersions =
             addTag:             Tag -> Result<unit, string>
             removeTag:          Guid -> Result<unit, string>
             getAllTags:         unit -> Result<List<Tag>, string>
-            migrator:           Option<unit -> Result<unit, string>>
         }
 
     let pgStorage: IStorage = DbStorage.PgDb()
@@ -47,6 +47,7 @@ module AppVersions =
     let applicationPostgresStorage =
         {
             _storage =          pgStorage
+            _migrator  =        pgApp.migrate |> Some
             getAllTodos =       pgApp.getAllTodos
             addTodo =           pgApp.addTodo
             add2Todos =         pgApp.add2Todos
@@ -57,11 +58,11 @@ module AppVersions =
             addTag =            pgApp.addTag 
             removeTag =         pgApp.removeTag
             getAllTags =        pgApp.getAllTags
-            migrator  =         pgApp.migrate |> Some
         }
     let applicationShadowPostgresStorage =
         {
             _storage =          pgStorage
+            _migrator  =        None
             getAllTodos =       pgApp.getAllTodos'
             addTodo =           pgApp.addTodo'
             add2Todos =         pgApp.add2Todos'
@@ -72,13 +73,13 @@ module AppVersions =
             addTag =            pgApp.addTag 
             removeTag =         pgApp.removeTag'
             getAllTags =        pgApp.getAllTags
-            migrator  =         None
         }
 
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
     let applicationMemoryStorage =
         let app = App.App(memStorage)
         {
+            _migrator  =        app.migrate |> Some
             _storage =          memStorage 
             getAllTodos =       app.getAllTodos
             addTodo =           app.addTodo
@@ -90,11 +91,11 @@ module AppVersions =
             addTag =            app.addTag 
             removeTag =         app.removeTag
             getAllTags =        app.getAllTags
-            migrator  =         app.migrate |> Some
         }
     let applicationShadowMemoryStorage =
         let app = App.App(memStorage)
         {
+            _migrator =         None
             _storage =          memStorage 
             getAllTodos =       app.getAllTodos'
             addTodo =           app.addTodo'
@@ -106,6 +107,5 @@ module AppVersions =
             addTag =            app.addTag 
             removeTag =         app.removeTag'
             getAllTags =        app.getAllTags
-            migrator  =         None
         }
     ()
