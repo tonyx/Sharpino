@@ -21,6 +21,7 @@ open Tonyx.EventSourcing.Sample.Categories.CategoriesCommands
 open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
 open System
 open FSharpPlus
+open Tonyx.EventSourcing.Sample.VersionAnnotations 
 
 module AppVersions =
 
@@ -44,6 +45,7 @@ module AppVersions =
     let pgStorage: IStorage = DbStorage.PgDb()
     let pgApp = App.App(pgStorage)
 
+    [<CurrentVersionApp>]
     let applicationPostgresStorage =
         {
             _storage =          pgStorage
@@ -59,6 +61,8 @@ module AppVersions =
             removeTag =         pgApp.removeTag
             getAllTags =        pgApp.getAllTags
         }
+
+    [<ShadowVersionApp>]
     let applicationShadowPostgresStorage =
         {
             _storage =          pgStorage
@@ -76,6 +80,8 @@ module AppVersions =
         }
 
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
+
+    [<CurrentVersionApp>]
     let applicationMemoryStorage =
         let app = App.App(memStorage)
         {
@@ -92,6 +98,8 @@ module AppVersions =
             removeTag =         app.removeTag
             getAllTags =        app.getAllTags
         }
+
+    [<ShadowVersionApp>]
     let applicationShadowMemoryStorage =
         let app = App.App(memStorage)
         {

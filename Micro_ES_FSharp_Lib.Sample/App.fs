@@ -27,22 +27,46 @@ open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Quotations.DerivedPatterns
 
-module App =
-    type App(storage: IStorage) =
+module VersionAnnotations =
+    [<AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
+    type CurrentVersionService(serviceName: string) =
+        inherit Attribute()
+        member this.ServiceName    // =  /someData
+            with get() = serviceName
 
+    [<AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
+    type ShadowVersionService(serviceName: string) =
+        inherit Attribute()
+        member this.ServiceName    // =  /someData
+            with get() = serviceName
+
+    [<AttributeUsage(AttributeTargets.Field, AllowMultiple = true)>]
+    type CurrentVersionApp() =
+        inherit Attribute()
+
+    [<AttributeUsage(AttributeTargets.Field, AllowMultiple = true)>]
+    type ShadowVersionApp() =
+        inherit Attribute()
+    () 
+
+module App =
+    open VersionAnnotations
+    type App(storage: IStorage) =
+        [<CurrentVersionService("getAllTodos")>]
         member this.getAllTodos() =
             ResultCE.result  {
                 let! (_, state) = getState<TodosAggregate, TodoEvent>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
+        [<ShadowVersionService("getAllTodos")>]
         member this.getAllTodos'() =
             ResultCE.result {
                 let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
-
+        [<CurrentVersionService("addTodo")>]
         member this.addTodo todo =
             lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
@@ -62,6 +86,7 @@ module App =
                 return ()
             }
 
+        [<ShadowVersionService("addTodo")>]
         member this.addTodo' todo =
             lock (CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
                 ResultCE.result {
@@ -90,6 +115,7 @@ module App =
                 return ()
             }
 
+        [<CurrentVersionService("add2Todos")>]
         member this.add2Todos (todo1, todo2) =
             lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
@@ -113,6 +139,8 @@ module App =
                     let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                     return ()
                 }
+
+        [<ShadowVersionService("add2Todos")>]
         member this.add2Todos' (todo1, todo2) =
             lock (TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
                 ResultCE.result {
@@ -150,6 +178,7 @@ module App =
                     return ()
                 }
 
+        [<CurrentVersionService("removeTodo")>]
         member this.removeTodo id =
             ResultCE.result {
                 let! _ =
@@ -159,6 +188,8 @@ module App =
                 let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
+
+        [<ShadowVersionService("removeTodo")>] 
         member this.removeTodo' id =
             ResultCE.result {
                 let! _ =
@@ -168,21 +199,21 @@ module App =
                 let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
-
+        [<CurrentVersionService("getAllCategories")>]
         member this.getAllCategories() =
             ResultCE.result {
                 let! (_, state) = getState<TodosAggregate, TodoEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
-
+        [<ShadowVersionService("getAllCategories")>]
         member this.getAllCategories'() =
             ResultCE.result {
                 let! (_, state) = getState<CategoriesAggregate, CategoryEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
-
+        [<CurrentVersionService("addCategory")>]
         member this.addCategory category =
             ResultCE.result {
                 let! _ =
@@ -193,6 +224,7 @@ module App =
                 return ()
             }
 
+        [<ShadowVersionService("addCategory")>]
         member this.addCategory' category =
             ResultCE.result {
                 let! _ =
@@ -203,6 +235,7 @@ module App =
                 return ()
             }
 
+        [<CurrentVersionService("removeCategory")>]
         member this.removeCategory id = 
             ResultCE.result {
                 let! _ =
@@ -213,6 +246,7 @@ module App =
                 return ()
             }
 
+        [<ShadowVersionService("removeCategory")>]
         member this.removeCategory' id =
             ResultCE.result {
                 let removeCategory = CategoryCommand.RemoveCategory id
@@ -229,6 +263,8 @@ module App =
                 return ()
             }
 
+        [<CurrentVersionService("addTag")>]
+        [<ShadowVersionService("addTag")>]
         member this.addTag tag =
             ResultCE.result {
                 let! _ =
@@ -239,6 +275,7 @@ module App =
                 return ()
             }
 
+        [<CurrentVersionService("removeTag")>]
         member this.removeTag id =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
@@ -248,6 +285,8 @@ module App =
                 let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
+
+        [<ShadowVersionService("removeTag")>]
         member this.removeTag' id =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
@@ -258,6 +297,8 @@ module App =
                 return ()
             }
 
+        [<CurrentVersionService("getAllTags")>]
+        [<ShadowVersionService("getAllTags")>]
         member this.getAllTags () =
             ResultCE.result {
                 let! (_, state) = getState<TagsAggregate, TagEvent> storage
