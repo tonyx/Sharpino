@@ -44,8 +44,7 @@ module App =
             }
 
         member this.addTodo todo =
-            lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
-
+            lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -64,7 +63,7 @@ module App =
             }
 
         member this.addTodo' todo =
-            lock (TodosAggregate'.LockObj, CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
+            lock (CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -92,7 +91,7 @@ module App =
             }
 
         member this.add2Todos (todo1, todo2) =
-            lock (TodosAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
+            lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -115,7 +114,7 @@ module App =
                     return ()
                 }
         member this.add2Todos' (todo1, todo2) =
-            lock (TodosAggregate'.LockObj, TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
+            lock (TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -267,19 +266,20 @@ module App =
             }
 
         member this.migrate() =
-            ResultCE.result {
-                let! categoriesFrom = this.getAllCategories()
-                let! todosFrom = this.getAllTodos()
-                let command = CategoryCommand.AddCategories categoriesFrom
-                let command2 = TodoCommand'.AddTodos todosFrom
-                let! _ = 
-                    runTwoCommands<
-                        CategoriesAggregate.CategoriesAggregate, 
-                        TodosAggregate.TodosAggregate', 
-                        CategoriesEvents.CategoryEvent, 
-                        TodoEvents.TodoEvent'> 
-                            storage
-                            command 
-                            command2
-                return () 
-            }
+            lock TodosAggregate.LockObj <| fun () ->
+                ResultCE.result {
+                    let! categoriesFrom = this.getAllCategories()
+                    let! todosFrom = this.getAllTodos()
+                    let command = CategoryCommand.AddCategories categoriesFrom
+                    let command2 = TodoCommand'.AddTodos todosFrom
+                    let! _ = 
+                        runTwoCommands<
+                            CategoriesAggregate.CategoriesAggregate, 
+                            TodosAggregate.TodosAggregate', 
+                            CategoriesEvents.CategoryEvent, 
+                            TodoEvents.TodoEvent'> 
+                                storage
+                                command 
+                                command2
+                    return () 
+                }
