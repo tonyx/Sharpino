@@ -130,6 +130,8 @@ module TodosAggregate =
         static member Instance = instance
         member this.LokObject =
             lockObject
+    [<UpgradeToVersion>]
+
     type TodosAggregate' =
         {
             todos: Todos

@@ -22,51 +22,22 @@ open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
 open Tonyx.EventSourcing.Sample.Categories
 open System
 open FSharpPlus
+open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
 open Microsoft.FSharp.Quotations.Patterns
 open Microsoft.FSharp.Quotations.DerivedPatterns
 
-module VersionAnnotations =
-    [<AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
-    type CurrentVersionService(serviceName: string) =
-        inherit Attribute()
-        member this.ServiceName    // =  /someData
-            with get() = serviceName
-
-    [<AttributeUsage(AttributeTargets.Method, AllowMultiple = true)>]
-    type ShadowVersionService(serviceName: string) =
-        inherit Attribute()
-        member this.ServiceName    // =  /someData
-            with get() = serviceName
-
-    [<AttributeUsage(AttributeTargets.Field, AllowMultiple = true)>]
-    type CurrentVersionApp() =
-        inherit Attribute()
-
-    [<AttributeUsage(AttributeTargets.Field, AllowMultiple = true)>]
-    type ShadowVersionApp() =
-        inherit Attribute()
-    () 
-
 module App =
-    open VersionAnnotations
-    type App(storage: IStorage) =
-        [<CurrentVersionService("getAllTodos")>]
+
+    [<CurrentVersion>]
+    type CurrentVersionApp(storage: IStorage) =
         member this.getAllTodos() =
             ResultCE.result  {
                 let! (_, state) = getState<TodosAggregate, TodoEvent>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
-        [<ShadowVersionService("getAllTodos")>]
-        member this.getAllTodos'() =
-            ResultCE.result {
-                let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
-                let todos = state.GetTodos()
-                return todos
-            }
-        [<CurrentVersionService("addTodo")>]
         member this.addTodo todo =
             lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
@@ -86,8 +57,121 @@ module App =
                 return ()
             }
 
-        [<ShadowVersionService("addTodo")>]
-        member this.addTodo' todo =
+        member this.add2Todos (todo1, todo2) =
+            lock TagsAggregate.LockObj <| fun () ->
+                ResultCE.result {
+                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+
+                    let! tagId1IsValid =    
+                        (todo1.TagIds.IsEmpty ||
+                        todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+
+                    let! tagId2IsValid =    
+                        (todo2.TagIds.IsEmpty ||
+                        todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+
+                    let! _ =
+                        (todo1, todo2)
+                        |> TodoCommand.Add2Todos
+                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+
+        member this.removeTodo id =
+            ResultCE.result {
+                let! _ =
+                    id
+                    |> TodoCommand.RemoveTodo
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                return ()
+            }
+
+        member this.getAllCategories() =
+            ResultCE.result {
+                let! (_, state) = getState<TodosAggregate, TodoEvent> storage
+                let categories = state.GetCategories()
+                return categories
+            }
+
+        member this.addCategory category =
+            ResultCE.result {
+                let! _ =
+                    category
+                    |> TodoCommand.AddCategory
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                return ()
+            }
+
+        member this.removeCategory id = 
+            ResultCE.result {
+                let! _ =
+                    id
+                    |> TodoCommand.RemoveCategory
+                    |> (runCommand<TodosAggregate, TodoEvent> storage)
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                return ()
+            }
+
+        member this.addTag tag =
+            ResultCE.result {
+                let! _ =
+                    tag
+                    |> AddTag
+                    |> (runCommand<TagsAggregate, TagEvent> storage)
+                let _ = (mkSnapshotIfInterval<TagsAggregate, TagEvent> storage)
+                return ()
+            }
+
+        member this.removeTag id =
+            ResultCE.result {
+                let removeTag = TagCommand.RemoveTag id
+                let removeTagRef = TodoCommand.RemoveTagRef id
+                let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
+                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                return ()
+            }
+
+        member this.getAllTags () =
+            ResultCE.result {
+                let! (_, state) = getState<TagsAggregate, TagEvent> storage
+                let tags = state.GetTags()
+                return tags
+            }
+
+        member this.migrate() =
+            lock TodosAggregate.LockObj <| fun () ->
+                ResultCE.result {
+                    let! categoriesFrom = this.getAllCategories()
+                    let! todosFrom = this.getAllTodos()
+                    let command = CategoryCommand.AddCategories categoriesFrom
+                    let command2 = TodoCommand'.AddTodos todosFrom
+                    let! _ = 
+                        runTwoCommands<
+                            CategoriesAggregate.CategoriesAggregate, 
+                            TodosAggregate.TodosAggregate', 
+                            CategoriesEvents.CategoryEvent, 
+                            TodoEvents.TodoEvent'> 
+                                storage
+                                command 
+                                command2
+                    return () 
+                }
+
+    type UpgradedApp(storage: IStorage) =
+        member this.getAllTodos() =
+            ResultCE.result {
+                let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
+                let todos = state.GetTodos()
+                return todos
+            }
+        member this.addTodo todo =
             lock (CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
@@ -115,33 +199,7 @@ module App =
                 return ()
             }
 
-        [<CurrentVersionService("add2Todos")>]
         member this.add2Todos (todo1, todo2) =
-            lock TagsAggregate.LockObj <| fun () ->
-                ResultCE.result {
-                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
-                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
-
-                    let! tagId1IsValid =    
-                        (todo1.TagIds.IsEmpty ||
-                        todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
-
-                    let! tagId2IsValid =    
-                        (todo2.TagIds.IsEmpty ||
-                        todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
-
-                    let! _ =
-                        (todo1, todo2)
-                        |> TodoCommand.Add2Todos
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
-                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                    return ()
-                }
-
-        [<ShadowVersionService("add2Todos")>]
-        member this.add2Todos' (todo1, todo2) =
             lock (TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
@@ -178,19 +236,7 @@ module App =
                     return ()
                 }
 
-        [<CurrentVersionService("removeTodo")>]
         member this.removeTodo id =
-            ResultCE.result {
-                let! _ =
-                    id
-                    |> TodoCommand.RemoveTodo
-                    |> (runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                return ()
-            }
-
-        [<ShadowVersionService("removeTodo")>] 
-        member this.removeTodo' id =
             ResultCE.result {
                 let! _ =
                     id
@@ -199,33 +245,14 @@ module App =
                 let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
-        [<CurrentVersionService("getAllCategories")>]
         member this.getAllCategories() =
-            ResultCE.result {
-                let! (_, state) = getState<TodosAggregate, TodoEvent> storage
-                let categories = state.GetCategories()
-                return categories
-            }
-        [<ShadowVersionService("getAllCategories")>]
-        member this.getAllCategories'() =
             ResultCE.result {
                 let! (_, state) = getState<CategoriesAggregate, CategoryEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
-        [<CurrentVersionService("addCategory")>]
-        member this.addCategory category =
-            ResultCE.result {
-                let! _ =
-                    category
-                    |> TodoCommand.AddCategory
-                    |> (runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                return ()
-            }
 
-        [<ShadowVersionService("addCategory")>]
-        member this.addCategory' category =
+        member this.addCategory category =
             ResultCE.result {
                 let! _ =
                     category
@@ -235,19 +262,7 @@ module App =
                 return ()
             }
 
-        [<CurrentVersionService("removeCategory")>]
-        member this.removeCategory id = 
-            ResultCE.result {
-                let! _ =
-                    id
-                    |> TodoCommand.RemoveCategory
-                    |> (runCommand<TodosAggregate, TodoEvent> storage)
-                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                return ()
-            }
-
-        [<ShadowVersionService("removeCategory")>]
-        member this.removeCategory' id =
+        member this.removeCategory id =
             ResultCE.result {
                 let removeCategory = CategoryCommand.RemoveCategory id
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
@@ -263,8 +278,6 @@ module App =
                 return ()
             }
 
-        [<CurrentVersionService("addTag")>]
-        [<ShadowVersionService("addTag")>]
         member this.addTag tag =
             ResultCE.result {
                 let! _ =
@@ -275,19 +288,7 @@ module App =
                 return ()
             }
 
-        [<CurrentVersionService("removeTag")>]
         member this.removeTag id =
-            ResultCE.result {
-                let removeTag = TagCommand.RemoveTag id
-                let removeTagRef = TodoCommand.RemoveTagRef id
-                let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
-                let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
-                let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
-                return ()
-            }
-
-        [<ShadowVersionService("removeTag")>]
-        member this.removeTag' id =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
@@ -297,30 +298,9 @@ module App =
                 return ()
             }
 
-        [<CurrentVersionService("getAllTags")>]
-        [<ShadowVersionService("getAllTags")>]
         member this.getAllTags () =
             ResultCE.result {
                 let! (_, state) = getState<TagsAggregate, TagEvent> storage
                 let tags = state.GetTags()
                 return tags
             }
-
-        member this.migrate() =
-            lock TodosAggregate.LockObj <| fun () ->
-                ResultCE.result {
-                    let! categoriesFrom = this.getAllCategories()
-                    let! todosFrom = this.getAllTodos()
-                    let command = CategoryCommand.AddCategories categoriesFrom
-                    let command2 = TodoCommand'.AddTodos todosFrom
-                    let! _ = 
-                        runTwoCommands<
-                            CategoriesAggregate.CategoriesAggregate, 
-                            TodosAggregate.TodosAggregate', 
-                            CategoriesEvents.CategoryEvent, 
-                            TodoEvents.TodoEvent'> 
-                                storage
-                                command 
-                                command2
-                    return () 
-                }

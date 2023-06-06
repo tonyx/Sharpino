@@ -143,8 +143,8 @@ module Repository =
 
         ResultCE.result
             {
-                let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> optionToResult
-                let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> optionToDefault 0
+                let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Result.ofOption "lastEventId is None"
+                let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                 let! result =
                     if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
                         mksnapshot<'A, 'E>(storage)

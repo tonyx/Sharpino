@@ -21,7 +21,6 @@ open Tonyx.EventSourcing.Sample.Categories.CategoriesCommands
 open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
 open System
 open FSharpPlus
-open Tonyx.EventSourcing.Sample.VersionAnnotations 
 
 module AppVersions =
 
@@ -43,47 +42,48 @@ module AppVersions =
         }
 
     let pgStorage: IStorage = DbStorage.PgDb()
-    let pgApp = App.App(pgStorage)
 
-    [<CurrentVersionApp>]
+    let currentPgApp = App.CurrentVersionApp(pgStorage)
+    [<CurrentVersion>]
     let applicationPostgresStorage =
         {
             _storage =          pgStorage
-            _migrator  =        pgApp.migrate |> Some
-            getAllTodos =       pgApp.getAllTodos
-            addTodo =           pgApp.addTodo
-            add2Todos =         pgApp.add2Todos
-            removeTodo =        pgApp.removeTodo
-            getAllCategories =  pgApp.getAllCategories
-            addCategory =       pgApp.addCategory
-            removeCategory =    pgApp.removeCategory
-            addTag =            pgApp.addTag 
-            removeTag =         pgApp.removeTag
-            getAllTags =        pgApp.getAllTags
+            _migrator  =        currentPgApp.migrate |> Some
+            getAllTodos =       currentPgApp.getAllTodos
+            addTodo =           currentPgApp.addTodo
+            add2Todos =         currentPgApp.add2Todos
+            removeTodo =        currentPgApp.removeTodo
+            getAllCategories =  currentPgApp.getAllCategories
+            addCategory =       currentPgApp.addCategory
+            removeCategory =    currentPgApp.removeCategory
+            addTag =            currentPgApp.addTag 
+            removeTag =         currentPgApp.removeTag
+            getAllTags =        currentPgApp.getAllTags
         }
 
-    [<ShadowVersionApp>]
+    let shadowPgApp = App.UpgradedApp(pgStorage)
+    [<UpgradeToVersion>]
     let applicationShadowPostgresStorage =
         {
             _storage =          pgStorage
             _migrator  =        None
-            getAllTodos =       pgApp.getAllTodos'
-            addTodo =           pgApp.addTodo'
-            add2Todos =         pgApp.add2Todos'
-            removeTodo =        pgApp.removeTodo'
-            getAllCategories =  pgApp.getAllCategories'
-            addCategory =       pgApp.addCategory'
-            removeCategory =    pgApp.removeCategory'
-            addTag =            pgApp.addTag 
-            removeTag =         pgApp.removeTag'
-            getAllTags =        pgApp.getAllTags
+            getAllTodos =       shadowPgApp.getAllTodos
+            addTodo =           shadowPgApp.addTodo
+            add2Todos =         shadowPgApp.add2Todos
+            removeTodo =        shadowPgApp.removeTodo
+            getAllCategories =  shadowPgApp.getAllCategories
+            addCategory =       shadowPgApp.addCategory
+            removeCategory =    shadowPgApp.removeCategory
+            addTag =            shadowPgApp.addTag
+            removeTag =         shadowPgApp.removeTag
+            getAllTags =        shadowPgApp.getAllTags
         }
 
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
 
-    [<CurrentVersionApp>]
+    [<CurrentVersion>]
     let applicationMemoryStorage =
-        let app = App.App(memStorage)
+        let app = App.CurrentVersionApp(memStorage)
         {
             _migrator  =        app.migrate |> Some
             _storage =          memStorage 
@@ -99,21 +99,20 @@ module AppVersions =
             getAllTags =        app.getAllTags
         }
 
-    [<ShadowVersionApp>]
+    [<UpgradeToVersion>]
     let applicationShadowMemoryStorage =
-        let app = App.App(memStorage)
+        let app = App.UpgradedApp(memStorage)
         {
             _migrator =         None
             _storage =          memStorage 
-            getAllTodos =       app.getAllTodos'
-            addTodo =           app.addTodo'
-            add2Todos =         app.add2Todos'
-            removeTodo =        app.removeTodo'
-            getAllCategories =  app.getAllCategories'
-            addCategory =       app.addCategory'
-            removeCategory =    app.removeCategory'
-            addTag =            app.addTag 
-            removeTag =         app.removeTag'
+            getAllTodos =       app.getAllTodos
+            addTodo =           app.addTodo
+            add2Todos =         app.add2Todos
+            removeTodo =        app.removeTodo
+            getAllCategories =  app.getAllCategories
+            addCategory =       app.addCategory
+            removeCategory =    app.removeCategory
+            addTag =            app.addTag
+            removeTag =         app.removeTag
             getAllTags =        app.getAllTags
         }
-    ()

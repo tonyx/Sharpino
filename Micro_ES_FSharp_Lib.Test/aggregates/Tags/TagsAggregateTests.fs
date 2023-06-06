@@ -13,41 +13,7 @@ open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Sample
 
 open AppVersions
-open VersionAnnotations
 open System.Reflection
-
-[<Tests>]
-let reflectionTest =
-    testList "reflection tests" [
-        ptestCase "check metadata" <| fun _ ->
-            let myapp = AppVersions.applicationMemoryStorage
-
-            // let myType =  typeof<IApplication>.GetField("_storage", BindingFlags.NonPublic ||| BindingFlags.Instance)
-
-            let fieldInfo =  
-                typeof<Tonyx.EventSourcing.Sample.App.App>.GetMember("getAllTodos").[0]
-
-            let pgStorage: Tonyx.EventSourcing.IStorage = Tonyx.EventSourcing.DbStorage.PgDb()
-            let ap = Tonyx.EventSourcing.Sample.App.App(pgStorage)
-
-            let fieldInfo' =  
-                typeof<Tonyx.EventSourcing.Sample.App.App>.GetMember(nameof(ap.getAllTodos)).[0]
-
-            // printf "name %s\n" 
-            // let m = ap.getAllTodos.GetType().GetCustomAttributes(typeof<CurrentVersionService>, false).[0] :?> CurrentVersionService
-            // let attr = fieldInfo // .GetValue.GetCustomAttributes(typeof<CurrentVersionApp>, false)
-            // let attribute = fieldInfo.GetCustomAttributes(typeof<CurrentVersionApp>, false).[0] // :?> CurrentVersionApp
-
-            let attribute = fieldInfo'.GetCustomAttributes(typeof<CurrentVersionService>, false).[0] :?> CurrentVersionService
-
-            // attribute.ServiceName |> s
-            // printf "ATTRIBUTE: %A\n" (attribute.ServiceName)
-            printf "ATTRIBUTE: %A\n" (attribute.ServiceName)
-
-            Expect.isTrue true "true"
-
-    ]
-
 
 [<Tests>]
 let tagsAggregateTests =

@@ -2,6 +2,7 @@ namespace Tonyx.EventSourcing.Sample.Todos
 
 open System
 open Tonyx.EventSourcing.Core
+open Tonyx.EventSourcing.Utils
 
 open System.Runtime.CompilerServices
 open Tonyx.EventSourcing.Sample.Todos.TodoEvents
@@ -56,6 +57,7 @@ module TodoCommands =
                         | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
                         | Error x -> x |> Error
 
+    [<UpgradeToVersion>]
     type TodoCommand' =
         | AddTodo of Todo
         | RemoveTodo of Guid
