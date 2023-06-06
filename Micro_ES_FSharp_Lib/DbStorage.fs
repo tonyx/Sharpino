@@ -130,7 +130,7 @@ module DbStorage =
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
                 ResultCE.result
                     {
-                        let! event = ((this :> IStorage).TryGetEvent version id name) |> optionToResult
+                        let! event = ((this :> IStorage).TryGetEvent version id name) |> Result.ofOption "event not found"
                         let _ =
                             TPConnectionString
                             |> Sql.connect

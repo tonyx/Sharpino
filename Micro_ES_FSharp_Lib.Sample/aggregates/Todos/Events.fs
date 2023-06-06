@@ -6,7 +6,7 @@ open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
 open Tonyx.EventSourcing.Sample.TodosAggregate
 open Tonyx.EventSourcing.Core
 open Tonyx.EventSourcing.Cache
-open Microsoft.FSharp.Quotations
+open Tonyx.EventSourcing.Utils
 
 module TodoEvents =
     type TodoEvent =
@@ -29,6 +29,8 @@ module TodoEvents =
                     | TagRefRemoved (g: Guid) ->            
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
 
+
+    [<UpgradeToVersion>]
     type TodoEvent' =
         | TodoAdded of Todo
         | TodoRemoved of Guid

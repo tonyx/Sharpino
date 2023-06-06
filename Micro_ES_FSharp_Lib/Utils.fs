@@ -4,8 +4,10 @@ open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
 open Expecto
+open System
 
 module Utils =
+    open FsToolkit.ErrorHandling
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
@@ -30,25 +32,23 @@ module Utils =
         else
             okList |> Result.Ok
 
-    let optionToResult x =
-        match x with
-        | Some x -> x |> Ok
-        | _ -> Error "is None"
-
     let boolToResult message x =
         match x with
         | true -> x |> Ok
         | false -> Error message
 
-    let optionToDefault d x =
-        match x with
-        | Some y -> y
-        | None -> d
-
     let getError x =
         match x with
         | Error e -> e
         | _ -> failwith (sprintf "can't extract error from an Ok: %A" x.OkValue)
+
+    [<AttributeUsage(AttributeTargets.All, AllowMultiple = false)>]
+    type CurrentVersion() =
+        inherit Attribute()
+
+    [<AttributeUsage(AttributeTargets.All, AllowMultiple = false)>]
+    type UpgradeToVersion() =
+        inherit Attribute()
 
 module TestUtils =
     let multipleTestCase name par myTest =

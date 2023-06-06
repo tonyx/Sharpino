@@ -12,6 +12,9 @@ open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
 open Tonyx.EventSourcing.Utils
 open Tonyx.EventSourcing.Sample
 
+open AppVersions
+open System.Reflection
+
 [<Tests>]
 let tagsAggregateTests =
     testList "tags aggregate tests" [

@@ -20,6 +20,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
         (storage: IStorage) = 
+
         ResultCE.result {
             let! result =
                 match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
@@ -52,7 +53,6 @@ module Repository =
 
         ResultCE.result {
             let! (id, state, events) = idStateAndEvents()
-
             let lastId =
                 match events.Length with
                 | x when x > 0 -> events |> List.last |> fst
@@ -70,6 +70,7 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
+
         lock 'A.LockObj <| fun () -> 
             ResultCE.result {
                 let! (_, state) = getState<'A, 'E> storage
@@ -137,18 +138,17 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member LockObj: obj)
+        and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>>(storage: IStorage) =
-        if (Conf.intervalBetweenSnapshots.ContainsKey 'A.StorageName) then
-            ResultCE.result
-                {
-                    let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> optionToResult
-                    let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> optionToDefault 0
-                    let! result =
-                        if ((lastEventId - snapEventId) > Conf.intervalBetweenSnapshots.['A.StorageName] || snapEventId = 0) then
-                            mksnapshot<'A, 'E>(storage)
-                        else
-                            () |> Ok
-                    return result
-                }
-        else
-            failwith "please set intervalBetweenSnapshots of this aggregate in Conf.fs"
+
+        ResultCE.result
+            {
+                let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Result.ofOption "lastEventId is None"
+                let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                let! result =
+                    if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
+                        mksnapshot<'A, 'E>(storage)
+                    else
+                        () |> Ok
+                return result
+            }
