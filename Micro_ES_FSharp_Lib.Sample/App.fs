@@ -164,6 +164,7 @@ module App =
                     return () 
                 }
 
+    [<UpgradeToVersion>]
     type UpgradedApp(storage: IStorage) =
         member this.getAllTodos() =
             ResultCE.result {

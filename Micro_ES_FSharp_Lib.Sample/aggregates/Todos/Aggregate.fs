@@ -124,6 +124,7 @@ module TodosAggregate =
         member this.GetCategories() = this.categories.GetCategories()
 
 
+    [<UpgradeToVersion>]
     type LockObject' private() =
         let lockObject = new obj()
         static let instance = LockObject'()
