@@ -1,9 +1,12 @@
-namespace Sharpino.EventSourcing.Sample
+namespace Sharpino.Sample
 open System
 
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
-open Sharpino.EventSourcing.Utils
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Utils
+
+open Sharpino.Sample.Models
+open Sharpino.Sample.Models.CategoriesModel
 
 open FSharpPlus
 open FsToolkit.ErrorHandling

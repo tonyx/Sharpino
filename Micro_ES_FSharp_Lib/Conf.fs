@@ -1,4 +1,4 @@
-namespace Sharpino.EventSourcing
+namespace Sharpino
 
 module Conf =
 

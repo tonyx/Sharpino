@@ -1,4 +1,4 @@
-namespace Sharpino.EventSourcing
+namespace Sharpino
 
 open System.Runtime.CompilerServices
 open FSharp.Data.Sql
@@ -7,11 +7,11 @@ open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
 
-open Sharpino.EventSourcing
-open Sharpino.EventSourcing.Utils
-open Sharpino.EventSourcing.Core
-open Sharpino.EventSourcing.Cache
-open Sharpino.EventSourcing.Conf
+open Sharpino
+open Sharpino.Utils
+open Sharpino.Cache
+open Sharpino.Core
+open Sharpino.Conf
 open FsToolkit.ErrorHandling
 
 module Repository =

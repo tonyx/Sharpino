@@ -1,15 +1,16 @@
 
-namespace Sharpino.EventSourcing.Sample.Categories
+namespace Sharpino.Sample.Categories
 
 open System
-open Sharpino.EventSourcing.Core
-open Sharpino.EventSourcing.Cache
+open Sharpino.Core
+open Sharpino.Cache
 
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Sharpino.EventSourcing.Sample.Categories.CategoriesEvents
+open Sharpino.Sample
+open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Categories.CategoriesEvents
 
 module CategoriesCommands =
-    open Sharpino.EventSourcing.Sample.CategoriesAggregate
     type CategoryCommand =
         | AddCategory of Category
         | RemoveCategory of Guid

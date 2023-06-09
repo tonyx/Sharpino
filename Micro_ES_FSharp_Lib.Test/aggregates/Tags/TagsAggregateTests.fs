@@ -6,10 +6,10 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.EventSourcing.Sample.TagsAggregate
-open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.Models.TagsModel
 
-open Sharpino.EventSourcing.Utils
+open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 
 open AppVersions

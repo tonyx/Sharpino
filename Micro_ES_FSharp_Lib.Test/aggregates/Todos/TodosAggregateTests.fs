@@ -5,10 +5,10 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.EventSourcing.Sample.TodosAggregate
-open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Sharpino.EventSourcing.Utils
+open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations

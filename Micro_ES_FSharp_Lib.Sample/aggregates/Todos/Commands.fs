@@ -1,15 +1,15 @@
-namespace Sharpino.EventSourcing.Sample.Todos
+namespace Sharpino.Sample.Todos
 
 open System
-open Sharpino.EventSourcing.Core
-open Sharpino.EventSourcing.Utils
+open Sharpino.Core
+open Sharpino.Utils
 
 open System.Runtime.CompilerServices
-open Sharpino.EventSourcing.Sample.Todos.TodoEvents
-open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Sharpino.EventSourcing.Sample.TodosAggregate
-open Sharpino.EventSourcing.Cache
+open Sharpino.Sample.Todos.TodoEvents
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.TodosAggregate
+open Sharpino.Cache
 open Microsoft.FSharp.Quotations
 
 module TodoCommands =

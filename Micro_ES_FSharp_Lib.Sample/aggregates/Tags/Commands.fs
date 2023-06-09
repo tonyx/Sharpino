@@ -1,13 +1,13 @@
 
-namespace Sharpino.EventSourcing.Sample.Tags
+namespace Sharpino.Sample.Tags
 
 open System
-open Sharpino.EventSourcing.Core
-open Sharpino.EventSourcing.Cache
+open Sharpino.Core
+open Sharpino.Cache
 
-open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
-open Sharpino.EventSourcing.Sample.Tags.TagsEvents
-open Sharpino.EventSourcing.Sample.TagsAggregate
+open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Tags.TagsEvents
+open Sharpino.Sample.TagsAggregate
 
 module TagCommands =
     type TagCommand =

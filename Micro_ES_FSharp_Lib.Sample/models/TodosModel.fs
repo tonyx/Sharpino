@@ -1,7 +1,7 @@
-namespace Sharpino.EventSourcing.Sample.Todos.Models
+namespace Sharpino.Sample.Models
 open FSharpPlus
 open System
-open Sharpino.EventSourcing.Utils
+open Sharpino.Utils
 open FsToolkit.ErrorHandling
 
 module TodosModel =

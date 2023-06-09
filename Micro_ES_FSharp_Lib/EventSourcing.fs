@@ -1,4 +1,4 @@
-namespace Sharpino.EventSourcing
+namespace Sharpino
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data

@@ -1,12 +1,12 @@
 
-namespace Sharpino.EventSourcing.Sample.Categories
+namespace Sharpino.Sample.Categories
 
 open System
-open Sharpino.EventSourcing.Core
-open Sharpino.EventSourcing.Cache
+open Sharpino.Core
+open Sharpino.Cache
 
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Sharpino.EventSourcing.Sample.CategoriesAggregate
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.CategoriesAggregate
 
 module CategoriesEvents =
     type CategoryEvent =

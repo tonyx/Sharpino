@@ -1,9 +1,9 @@
 
-namespace Sharpino.EventSourcing.Sample
+namespace Sharpino.Sample
 
 open FsToolkit.ErrorHandling
 
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.Sample.Models.CategoriesModel
 open System
 
 module CategoriesAggregate =

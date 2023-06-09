@@ -1,7 +1,7 @@
-namespace Sharpino.EventSourcing
+namespace Sharpino
 
-open Sharpino.EventSourcing
-open Sharpino.EventSourcing.Core
+open Sharpino
+open Sharpino.Core
 open System.Runtime.CompilerServices
 open System.Collections
 open System

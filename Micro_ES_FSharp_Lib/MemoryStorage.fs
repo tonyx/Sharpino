@@ -1,4 +1,4 @@
-namespace Sharpino.EventSourcing
+namespace Sharpino
 
 open FSharp.Data.Sql
 open System.Runtime.CompilerServices

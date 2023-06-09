@@ -1,7 +1,7 @@
-namespace Sharpino.EventSourcing.Sample
+namespace Sharpino.Sample
 
-open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
-open Sharpino.EventSourcing.Sample
+open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample
 open System
 open FsToolkit.ErrorHandling
 

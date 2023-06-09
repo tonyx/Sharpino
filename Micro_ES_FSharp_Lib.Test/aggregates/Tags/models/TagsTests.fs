@@ -5,8 +5,8 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
-open Sharpino.EventSourcing.Utils
+open Sharpino.Sample.Models.TagsModel
+open Sharpino.Utils
 
 [<Tests>]
 let tagModelTests =

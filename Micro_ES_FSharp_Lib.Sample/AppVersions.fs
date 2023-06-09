@@ -1,24 +1,25 @@
 
 namespace Sharpino.EventSourcing.Sample
+open Sharpino
 open Sharpino.EventSourcing
-open Sharpino.EventSourcing.Utils
+open Sharpino.Utils
 
-open Sharpino.EventSourcing.Sample.TodosAggregate
-open Sharpino.EventSourcing.Sample.Todos.TodoEvents
-open Sharpino.EventSourcing.Sample.Todos.TodoCommands
-open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
-open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.Todos.TodoEvents
+open Sharpino.Sample.Todos.TodoCommands
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Models.CategoriesModel
 
-open Sharpino.EventSourcing.Sample.TagsAggregate
-open Sharpino.EventSourcing.Sample.Tags.TagsEvents
-open Sharpino.EventSourcing.Sample.Tags.TagCommands
-open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.Tags.TagsEvents
+open Sharpino.Sample.Tags.TagCommands
+open Sharpino.Sample.Models.TagsModel
 
 open Sharpino.EventSourcing.Sample
-open Sharpino.EventSourcing.Sample.Categories
-open Sharpino.EventSourcing.Sample.CategoriesAggregate
-open Sharpino.EventSourcing.Sample.Categories.CategoriesCommands
-open Sharpino.EventSourcing.Sample.Categories.CategoriesEvents
+open Sharpino.Sample.Categories
+open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.Categories.CategoriesCommands
+open Sharpino.Sample.Categories.CategoriesEvents
 open System
 open FSharpPlus
 

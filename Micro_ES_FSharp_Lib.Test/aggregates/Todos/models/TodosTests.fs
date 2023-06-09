@@ -5,8 +5,8 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
-open Sharpino.EventSourcing.Utils
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Utils
 
 [<Tests>]
 let todosModelTests =
