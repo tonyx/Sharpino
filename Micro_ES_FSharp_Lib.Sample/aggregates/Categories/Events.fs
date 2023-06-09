@@ -17,8 +17,8 @@ module CategoriesEvents =
                 member this.Process (x: CategoriesAggregate) =
                     match this with
                     | CategoryAdded (c: Category) ->
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c])
+                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
                     | CategoryRemoved (g: Guid) ->
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g])
+                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
                     | CategoriesAdded (cs: List<Category>) ->
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategories cs) (x, [CategoriesAdded cs])
+                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategories cs) (x, [this])

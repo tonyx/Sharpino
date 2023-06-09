@@ -19,15 +19,15 @@ module TodoEvents =
                 member this.Process (x: TodosAggregate ) =
                     match this with
                     | TodoAdded (t: Todo) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoAdded t])
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [this])
                     | TodoRemoved (g: Guid) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoRemoved g])
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [this])
                     | CategoryAdded (c: Category) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c])
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
                     | CategoryRemoved (g: Guid) ->  
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g])
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
                     | TagRefRemoved (g: Guid) ->            
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
+                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
 
 
     [<UpgradeToVersion>]
@@ -41,12 +41,12 @@ module TodoEvents =
                 member this.Process (x: TodosAggregate' ) =
                     match this with
                     | TodoAdded (t: Todo) ->
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoAdded t])
+                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodo t) (x, [this])
                     | TodoRemoved (g: Guid) ->
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoRemoved g])
+                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [this])
                     | TagRefRemoved (g: Guid) ->            
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TagRefRemoved g])
+                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
                     | CategoryRefRemoved (g: Guid) ->
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [CategoryRefRemoved g])
+                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [this])
                     | TodosAdded (ts: List<Todo>) ->
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodos ts) (x, [TodosAdded ts])
+                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodos ts) (x, [this])

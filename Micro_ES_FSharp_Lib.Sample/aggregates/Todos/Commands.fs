@@ -26,8 +26,8 @@ module TodoCommands =
                 match this with
                 | AddTodo t -> 
                     match EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t]) with
-                        | Ok _ -> [TodoEvent.TodoAdded t] |> Ok
-                        | Error x -> x |> Error
+                    | Ok _ -> [TodoEvent.TodoAdded t] |> Ok
+                    | Error x -> x |> Error
                 | RemoveTodo g ->
                     match
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g]) with

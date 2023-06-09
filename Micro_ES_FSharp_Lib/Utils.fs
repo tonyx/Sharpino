@@ -23,14 +23,15 @@ module Utils =
         JsonConvert.SerializeObject(x, serSettings)
 
     let catchErrors f l =
-        let (okList, errors) =
-            l
-            |> List.map f
-            |> Result.partition
-        if (errors.Length > 0) then
-            Result.Error (errors.Head)
-        else
-            okList |> Result.Ok
+        l
+        |> List.fold (fun acc x ->
+            match acc with
+            | Error e -> Error e
+            | Ok acc ->
+                match f x with
+                | Ok y -> Ok (acc @ [y])
+                | Error e -> Error e
+        ) (Ok [])
 
     let boolToResult message x =
         match x with

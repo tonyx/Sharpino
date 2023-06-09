@@ -29,18 +29,21 @@ module Cache =
                 queue.Clear()
                 ()
 
-        // not helping so much (if you skip the cache, it's the same)
+        // event cache is disabled because at the moment it's not helping
         member this.Memoize (f: unit -> Result<'A, string>) (arg: 'A * List<Event<'A>>) =
-            // f()
-            let fromCacheOrCalculated =
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
-            fromCacheOrCalculated
+            #if EVENTS_CACHE_IS_DISABLED
+                f()
+            #else
+                let fromCacheOrCalculated =
+                    let (b, res) = dic.TryGetValue arg
+                    if b then
+                        res
+                    else
+                        let res = f()
+                        this.TryAddToDictionary(arg, res)
+                        res
+                fromCacheOrCalculated
+            #endif
 
         member this.Clear() =
             dic.Clear()

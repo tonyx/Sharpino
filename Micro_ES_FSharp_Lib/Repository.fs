@@ -15,7 +15,7 @@ open Tonyx.EventSourcing.Conf
 open FsToolkit.ErrorHandling
 
 module Repository =
-    let inline getLastSnapshot<'A 
+    let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
@@ -40,7 +40,7 @@ module Repository =
         and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>>(storage: IStorage) = 
 
-        let idStateAndEvents()  =
+        let snapIdStateAndEvents()  =
             lock 'A.LockObj ( fun _ ->
                 ResultCE.result {
                     let! (id, state) = getLastSnapshot<'A> storage
@@ -52,16 +52,17 @@ module Repository =
             )
 
         ResultCE.result {
-            let! (id, state, events) = idStateAndEvents()
-            let lastId =
+            let! (lastSnapshotId, state, events) = snapIdStateAndEvents()
+            let lastEventId =
                 match events.Length with
                 | x when x > 0 -> events |> List.last |> fst
-                | _ -> id
+                | _ -> lastSnapshotId 
             let! events' =
                 events |>> snd |> catchErrors deserialize<'E>
             let! result =
                 events' |> evolve<'A, 'E> state
-            return (lastId, result)
+
+            return (lastEventId, result)
         }
 
     let inline runCommand<'A, 'E
@@ -119,7 +120,7 @@ module Repository =
                     return ()
                 }
 
-    let inline mksnapshot<'A, 'E
+    let inline private mksnapshot<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
