@@ -28,3 +28,4 @@ __Micro_ES_FSharp_Lib.Sample__:
 - An example of how to handle multiple versions of the application to help refactoring and migration between differnet versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
 
+[More docs (still in progress)](https://tonyx.github.io)
