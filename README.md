@@ -8,14 +8,14 @@
 Sharpino is a library that helps you to build event-sourced applications in F#.
 ## Projects:
 
-__Micro_ES_FSharp_Lib__:
+__Sharpino.Lib__:
 
-- [EventSourcing.fs](Sharpino.Lib/Core.fs): Abstract definition of Events and Commands. Definition of the "evolve" function.
+- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of Events and Commands. Definition of the "evolve" function.
 - [Repository.fs](Sharpino.Lib/Repository.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
 - [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events and snapshots.
 
-__Micro_ES_FSharp_Lib.Sample__:
+__Sharpino.Sample__:
 
 -  __models__ (e.g. [TodoModel](Sharpino.Sample/models/TodosModel.fs))  manage data.
 -  __aggregates__ (e.g. [TodoAggregate](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Aggregate.fs)) owns models and provide member to manage models in a consistent way.
@@ -27,5 +27,6 @@ __Micro_ES_FSharp_Lib.Sample__:
 - The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more aggregate by accessing to their state, and by building one or more command sending them to the __repository__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between differnet versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
+__Sharpino.Sample.tests__
 
 [More docs (still in progress)](https://tonyx.github.io)
