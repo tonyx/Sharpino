@@ -1,10 +1,17 @@
 # Micro_ES_FSharp_Lib
+
+
+![Alt text](https://www.bing.com/images/create/stylized-cartoon-scarf-logo-with-straight-traits-r/6483042c6161480a95f20feeacb4757d?id=zS%2b0qRqZrwz818B4jGv5ng%3d%3d&view=detailv2&idpp=genimg&FORM=GCRIDP&mode=overlay "Sharpino")
+    
+
+
 An event-sourcing micro library in FSharp based on Postgres or in memory storage. The solution consists of the library by itself, a sample project, and the sample tests.
 
 ## Disclaimer: 
 This is not an official guide to the Event-Sourcing pattern. 
 
 ## Projects:
+
 
 __Micro_ES_FSharp_Lib__:
 
