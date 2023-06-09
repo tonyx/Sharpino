@@ -24,8 +24,8 @@ module Repository =
         ResultCE.result {
             let! result =
                 match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                | Some (id, eventId, json) ->
-                    let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) id
+                | Some (snapId, eventId, json) ->
+                    let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) snapId
                     match state with
                     | Error e -> Error e
                     | _ -> (eventId, state |> Result.get) |> Ok

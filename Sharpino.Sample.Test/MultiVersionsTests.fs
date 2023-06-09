@@ -1,5 +1,5 @@
 
-module Tests.Tonyx.EventSourcing.Sample.MultiVersionsTests
+module Tests.Sharpino.Sample.MultiVersionsTests
 
 open Expecto
 open FsCheck

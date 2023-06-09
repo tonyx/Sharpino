@@ -1,5 +1,5 @@
 
-module Tests.Tonyx.EventSourcing.Sample.Todos.Models.TodoTests
+module Tests.Sharpino.Sample.Todos.Models.TodoTests
 
 open Expecto
 open System

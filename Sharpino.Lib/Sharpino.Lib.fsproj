@@ -11,7 +11,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="DbStorage.fs" />
     <Compile Include="MemoryStorage.fs" />
-    <Compile Include="EventSourcing.fs" />
+    <Compile Include="Core.fs" />
     <Compile Include="Cache.fs" />
     <Compile Include="Repository.fs" />
   </ItemGroup>
