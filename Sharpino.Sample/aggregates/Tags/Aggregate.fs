@@ -1,7 +1,7 @@
 namespace Sharpino.Sample
 
 open Sharpino.Sample.Models.TagsModel
-open Sharpino.Sample
+
 open System
 open FsToolkit.ErrorHandling
 

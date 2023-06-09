@@ -4,13 +4,11 @@ open System
 open Sharpino.Core
 open Sharpino.Utils
 
-open System.Runtime.CompilerServices
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Cache
-open Microsoft.FSharp.Quotations
 
 module TodoCommands =
     type TodoCommand =

@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Micro_ES_FSharp_Lib", "Micro_ES_FSharp_Lib\Micro_ES_FSharp_Lib.fsproj", "{DB988C52-A5BD-4966-B156-F0181739D0EF}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino", "Sharpino.Lib\Sharpino.Lib.fsproj", "{DB988C52-A5BD-4966-B156-F0181739D0EF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Micro_ES_FSharp_Lib.Test", "Micro_ES_FSharp_Lib.Test\Micro_ES_FSharp_Lib.Test.fsproj", "{01C9888A-DD57-4E94-8C38-8791F4886777}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.Test", "Sharpino.Sample.Test\Sharpino.Sample.Test.fsproj", "{01C9888A-DD57-4E94-8C38-8791F4886777}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Micro_ES_FSharp_Lib.Sample", "Micro_ES_FSharp_Lib.Sample\Micro_ES_FSharp_Lib.Sample.fsproj", "{4C8F829E-6634-495F-8036-06C2131B9617}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample", "Sharpino.Sample\Sharpino.Sample.fsproj", "{4C8F829E-6634-495F-8036-06C2131B9617}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

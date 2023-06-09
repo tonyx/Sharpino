@@ -4,11 +4,8 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Models.TodosModel
-open Sharpino.Sample.Models.CategoriesModel
-open Sharpino.Utils
 open FsToolkit.ErrorHandling
 
 [<Tests>]

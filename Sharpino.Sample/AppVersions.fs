@@ -1,27 +1,14 @@
 
 namespace Sharpino.EventSourcing.Sample
 open Sharpino
-open Sharpino.EventSourcing
 open Sharpino.Utils
 
-open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Todos.TodoCommands
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Sample.Models.CategoriesModel
-
-open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Tags.TagsEvents
-open Sharpino.Sample.Tags.TagCommands
 open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample
 
-open Sharpino.EventSourcing.Sample
-open Sharpino.Sample.Categories
-open Sharpino.Sample.CategoriesAggregate
-open Sharpino.Sample.Categories.CategoriesCommands
-open Sharpino.Sample.Categories.CategoriesEvents
 open System
-open FSharpPlus
 
 module AppVersions =
 

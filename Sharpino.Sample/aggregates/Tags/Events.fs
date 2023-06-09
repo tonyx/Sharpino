@@ -1,11 +1,11 @@
 namespace Sharpino.Sample.Tags
 
-open Sharpino.Sample
 open Sharpino.Cache
-open System
 open Sharpino.Core
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Models.TagsModel
+
+open System
 
 module TagsEvents =
     type TagEvent =

@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Micro_ES_FSharp_Lib\Micro_ES_FSharp_Lib.fsproj" />
-    <ProjectReference Include="..\Micro_ES_FSharp_Lib.Sample\Micro_ES_FSharp_Lib.Sample.fsproj" />
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>
 </Project>

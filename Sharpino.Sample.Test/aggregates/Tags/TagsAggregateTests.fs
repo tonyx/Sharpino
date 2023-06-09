@@ -12,9 +12,6 @@ open Sharpino.Sample.Models.TagsModel
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 
-open AppVersions
-open System.Reflection
-
 [<Tests>]
 let tagsAggregateTests =
     testList "tags aggregate tests" [

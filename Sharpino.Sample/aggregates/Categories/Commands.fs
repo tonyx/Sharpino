@@ -5,9 +5,8 @@ open System
 open Sharpino.Core
 open Sharpino.Cache
 
-open Sharpino.Sample
-open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Categories.CategoriesEvents
 
 module CategoriesCommands =

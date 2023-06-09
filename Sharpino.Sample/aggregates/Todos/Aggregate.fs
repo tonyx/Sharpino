@@ -5,13 +5,8 @@ open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Utils
 
-open Sharpino.Sample.Models
-open Sharpino.Sample.Models.CategoriesModel
-
 open FSharpPlus
 open FsToolkit.ErrorHandling
-open Microsoft.FSharp.Quotations
-open Microsoft.FSharp.Linq.RuntimeHelpers
 
 module TodosAggregate =
     type LockObject private() =

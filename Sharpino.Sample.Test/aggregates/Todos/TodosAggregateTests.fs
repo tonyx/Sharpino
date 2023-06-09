@@ -9,9 +9,7 @@ open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Utils
-open Sharpino.EventSourcing.Sample
 open FsToolkit.ErrorHandling
-open Microsoft.FSharp.Quotations
 
 [<Tests>]
 let todosAggregateTests =
