@@ -3,34 +3,28 @@
 
 <img src="ico/sharpino.png" alt="drawing" width="50"/>
 
-An F# event-sourcing library.
+## An event-sourcing library in F#
 
-## Disclaimer: 
-This is not an official guide to the Event-Sourcing pattern. 
-
+Sharpino is a library that helps you to build event-sourced applications in F#.
 ## Projects:
 
 __Micro_ES_FSharp_Lib__:
 
 - [EventSourcing.fs](Sharpino.Lib/Core.fs): Abstract definition of Events and Commands. Definition of the "evolve" function.
-- [Repository.fs](Sharpino.Lib/Repository.fs): get and store the snapshots, run the commands and put in the storage the events they produce.
+- [Repository.fs](Sharpino.Lib/Repository.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
 - [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events and snapshots.
 
 __Micro_ES_FSharp_Lib.Sample__:
 
-- By using __models__ (e.g. [TodoModel](Sharpino.Sample/models/TodosModel.fs)) you organize your basic data.
-- By using  __aggregates__ (e.g. [TodoAggregate](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Aggregate.fs)) and their members, you access and change models in a consistent way. Aggregates must define the following static members: a 'Zero' (initial) instance, a StorageName and a Version. 
+-  __models__ (e.g. [TodoModel](Sharpino.Sample/models/TodosModel.fs))  manage data.
+-  __aggregates__ (e.g. [TodoAggregate](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Aggregate.fs)) owns models and provide member to manage models in a consistent way.
 
-- For each __aggregate__ you will define __events__ ([e.g. TagsEvents](Sharpino.Sample/aggregates/Tags/Events.fs)) that are Discriminated Unions cases that wrap calls to aggregate members by implementing the [Process](Sharpino.Lib/Core.fs) interface. 
-- For each __aggregate__ you will define __Commands__ (e.g. [TagCommand](Sharpino.Sample/aggregates/Tags/Commands.fs)) that are Discriminated Unions cases that return lists of events by implementing by the [Executable](Sharpino.Lib/Core.fs) interface.
-- With [Storage](Sharpino.Lib/DbStorage.fs) you store and retrieve __aggregates__ events and snapshots.
-- By the [Repository](Sharpino.Lib/Repository.fs) you can build and retrieve snapshots, run the __commands__ and contextually store the __events__.
-- By the [__api layer__ functions](Sharpino.Sample/App.fs) you expose business logic by functions that can retrieve the current state of the __aggregates__, call some of their members and/or build single or multiple commands related to one or more  __aggregates__. This layer will send those commands to the __repository__. 
-- You may handle and test multiple versions of the application to handle refactoring and migrations between versions: [application versions](Sharpino.Sample/AppVersions.fs). 
-
-
-__Micro_ES_FSharp_Lib.Sample__:
-- You will test __models__, __aggregates__, __api layer__, and multiple versions (current, refactored and with different storages) of the application api. 
+- __aggregate__ members has corresonding __events__ ([e.g. TagsEvents](Sharpino.Sample/aggregates/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
+- __aggregates__ is related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/aggregates/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing by the [Executable](Sharpino.Lib/Core.fs) interface.
+- A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves __aggregates__ events and snapshots.
+- The [Repository](Sharpino.Lib/Repository.fs) can build and retrieve snapshots, run the __commands__ and contextually store the related __events__.
+- The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more aggregate by accessing to their state, and by building one or more command sending them to the __repository__.
+- An example of how to handle multiple versions of the application to help refactoring and migration between differnet versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
 
