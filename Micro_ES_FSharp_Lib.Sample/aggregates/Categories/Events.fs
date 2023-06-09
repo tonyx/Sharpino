@@ -1,12 +1,12 @@
 
-namespace Tonyx.EventSourcing.Sample.Categories
+namespace Sharpino.EventSourcing.Sample.Categories
 
 open System
-open Tonyx.EventSourcing.Core
-open Tonyx.EventSourcing.Cache
+open Sharpino.EventSourcing.Core
+open Sharpino.EventSourcing.Cache
 
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample.CategoriesAggregate
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Sample.CategoriesAggregate
 
 module CategoriesEvents =
     type CategoryEvent =

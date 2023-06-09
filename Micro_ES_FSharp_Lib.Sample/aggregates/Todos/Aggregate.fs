@@ -1,9 +1,9 @@
-namespace Tonyx.EventSourcing.Sample
+namespace Sharpino.EventSourcing.Sample
 open System
 
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
+open Sharpino.EventSourcing.Utils
 
 open FSharpPlus
 open FsToolkit.ErrorHandling

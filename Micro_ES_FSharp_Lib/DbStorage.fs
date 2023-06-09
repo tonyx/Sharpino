@@ -1,12 +1,12 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 
 open System.Runtime.CompilerServices
 open FsToolkit.ErrorHandling
 open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
-open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing
+open Sharpino.EventSourcing.Utils
+open Sharpino.EventSourcing
 
 type Json = string
 type Name = string

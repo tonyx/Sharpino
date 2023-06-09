@@ -1,9 +1,9 @@
 
-namespace Tonyx.EventSourcing.Sample
+namespace Sharpino.EventSourcing.Sample
 
 open FsToolkit.ErrorHandling
 
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
 open System
 
 module CategoriesAggregate =

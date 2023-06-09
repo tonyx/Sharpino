@@ -1,4 +1,4 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 
 open FSharp.Data.Sql
 open System.Runtime.CompilerServices

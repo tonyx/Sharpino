@@ -1,7 +1,7 @@
-namespace Tonyx.EventSourcing.Sample.Todos.Models
+namespace Sharpino.EventSourcing.Sample.Todos.Models
 open FSharpPlus
 open System
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Utils
 open FsToolkit.ErrorHandling
 
 module TodosModel =

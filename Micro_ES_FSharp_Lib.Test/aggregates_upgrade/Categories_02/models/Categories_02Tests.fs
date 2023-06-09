@@ -6,8 +6,8 @@ open Expecto
 open System
 open FSharp.Core
 
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Utils
 
 
 [<Tests>]

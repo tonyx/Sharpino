@@ -6,11 +6,11 @@ open Expecto
 open System
 open FSharp.Core
 
-open Tonyx.EventSourcing.Sample.TagsAggregate
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.EventSourcing.Sample.TagsAggregate
+open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
 
-open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing.Sample
+open Sharpino.EventSourcing.Utils
+open Sharpino.EventSourcing.Sample
 
 open AppVersions
 open System.Reflection

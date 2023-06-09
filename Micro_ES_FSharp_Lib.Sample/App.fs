@@ -1,25 +1,25 @@
-namespace Tonyx.EventSourcing.Sample
-open Tonyx.EventSourcing
-open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing.Repository
+namespace Sharpino.EventSourcing.Sample
+open Sharpino.EventSourcing
+open Sharpino.EventSourcing.Utils
+open Sharpino.EventSourcing.Repository
 
-open Tonyx.EventSourcing.Sample.TodosAggregate
-open Tonyx.EventSourcing.Sample.Todos.TodoEvents
-open Tonyx.EventSourcing.Sample.Todos.TodoCommands
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample.Todos
+open Sharpino.EventSourcing.Sample.TodosAggregate
+open Sharpino.EventSourcing.Sample.Todos.TodoEvents
+open Sharpino.EventSourcing.Sample.Todos.TodoCommands
+open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
+open Sharpino.EventSourcing.Sample.Todos
 
-open Tonyx.EventSourcing.Sample.TagsAggregate
-open Tonyx.EventSourcing.Sample.Tags.TagsEvents
-open Tonyx.EventSourcing.Sample.Tags.TagCommands
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.EventSourcing.Sample.TagsAggregate
+open Sharpino.EventSourcing.Sample.Tags.TagsEvents
+open Sharpino.EventSourcing.Sample.Tags.TagCommands
+open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
 
-open Tonyx.EventSourcing.Sample
-open Tonyx.EventSourcing.Sample.Categories
-open Tonyx.EventSourcing.Sample.CategoriesAggregate
-open Tonyx.EventSourcing.Sample.Categories.CategoriesCommands
-open Tonyx.EventSourcing.Sample.Categories.CategoriesEvents
-open Tonyx.EventSourcing.Sample.Categories
+open Sharpino.EventSourcing.Sample
+open Sharpino.EventSourcing.Sample.Categories
+open Sharpino.EventSourcing.Sample.CategoriesAggregate
+open Sharpino.EventSourcing.Sample.Categories.CategoriesCommands
+open Sharpino.EventSourcing.Sample.Categories.CategoriesEvents
+open Sharpino.EventSourcing.Sample.Categories
 open System
 open FSharpPlus
 open FSharpPlus.Operators

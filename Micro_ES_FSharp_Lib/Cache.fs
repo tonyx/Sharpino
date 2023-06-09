@@ -1,7 +1,7 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 
-open Tonyx.EventSourcing
-open Tonyx.EventSourcing.Core
+open Sharpino.EventSourcing
+open Sharpino.EventSourcing.Core
 open System.Runtime.CompilerServices
 open System.Collections
 open System

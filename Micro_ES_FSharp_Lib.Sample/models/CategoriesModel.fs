@@ -1,9 +1,9 @@
-namespace Tonyx.EventSourcing.Sample.Todos.Models
+namespace Sharpino.EventSourcing.Sample.Todos.Models
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Utils
 
 module CategoriesModel =
     type Category =

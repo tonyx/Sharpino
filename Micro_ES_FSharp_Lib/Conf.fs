@@ -1,4 +1,4 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 
 module Conf =
 

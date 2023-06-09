@@ -1,4 +1,4 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 
 open System.Runtime.CompilerServices
 open FSharp.Data.Sql
@@ -7,11 +7,11 @@ open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
 
-open Tonyx.EventSourcing
-open Tonyx.EventSourcing.Utils
-open Tonyx.EventSourcing.Core
-open Tonyx.EventSourcing.Cache
-open Tonyx.EventSourcing.Conf
+open Sharpino.EventSourcing
+open Sharpino.EventSourcing.Utils
+open Sharpino.EventSourcing.Core
+open Sharpino.EventSourcing.Cache
+open Sharpino.EventSourcing.Conf
 open FsToolkit.ErrorHandling
 
 module Repository =

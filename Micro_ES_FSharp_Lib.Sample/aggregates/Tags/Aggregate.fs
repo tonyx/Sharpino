@@ -1,7 +1,7 @@
-namespace Tonyx.EventSourcing.Sample
+namespace Sharpino.EventSourcing.Sample
 
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
-open Tonyx.EventSourcing.Sample
+open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.EventSourcing.Sample
 open System
 open FsToolkit.ErrorHandling
 

@@ -4,11 +4,11 @@ open Expecto
 open System
 open FSharp.Core
 
-open Tonyx.EventSourcing.Sample.TodosAggregate
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Sample.TodosAggregate
+open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
+open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Utils
 open FsToolkit.ErrorHandling
 
 [<Tests>]

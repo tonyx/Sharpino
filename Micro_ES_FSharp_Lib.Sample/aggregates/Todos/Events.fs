@@ -1,12 +1,12 @@
-namespace Tonyx.EventSourcing.Sample.Todos
+namespace Sharpino.EventSourcing.Sample.Todos
 
 open System
-open Tonyx.EventSourcing.Sample.Todos.Models.TodosModel
-open Tonyx.EventSourcing.Sample.Todos.Models.CategoriesModel
-open Tonyx.EventSourcing.Sample.TodosAggregate
-open Tonyx.EventSourcing.Core
-open Tonyx.EventSourcing.Cache
-open Tonyx.EventSourcing.Utils
+open Sharpino.EventSourcing.Sample.Todos.Models.TodosModel
+open Sharpino.EventSourcing.Sample.Todos.Models.CategoriesModel
+open Sharpino.EventSourcing.Sample.TodosAggregate
+open Sharpino.EventSourcing.Core
+open Sharpino.EventSourcing.Cache
+open Sharpino.EventSourcing.Utils
 
 module TodoEvents =
     type TodoEvent =

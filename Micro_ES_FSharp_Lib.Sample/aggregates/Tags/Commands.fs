@@ -1,13 +1,13 @@
 
-namespace Tonyx.EventSourcing.Sample.Tags
+namespace Sharpino.EventSourcing.Sample.Tags
 
 open System
-open Tonyx.EventSourcing.Core
-open Tonyx.EventSourcing.Cache
+open Sharpino.EventSourcing.Core
+open Sharpino.EventSourcing.Cache
 
-open Tonyx.EventSourcing.Sample.Tags.Models.TagsModel
-open Tonyx.EventSourcing.Sample.Tags.TagsEvents
-open Tonyx.EventSourcing.Sample.TagsAggregate
+open Sharpino.EventSourcing.Sample.Tags.Models.TagsModel
+open Sharpino.EventSourcing.Sample.Tags.TagsEvents
+open Sharpino.EventSourcing.Sample.TagsAggregate
 
 module TagCommands =
     type TagCommand =

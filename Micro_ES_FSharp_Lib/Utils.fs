@@ -1,4 +1,4 @@
-namespace Tonyx.EventSourcing
+namespace Sharpino.EventSourcing
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
