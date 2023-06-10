@@ -62,9 +62,7 @@ module Repository =
                     return (lastEventId, result)
                 }
         let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-        let result = 
-            StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) lastEventId
-        result
+        StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) lastEventId
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
