@@ -30,18 +30,22 @@ let setUp(db: IStorage) =
     db.Reset TodosAggregate.Version TodosAggregate.StorageName 
     Cache.EventCache<TodosAggregate>.Instance.Clear()
     Cache.SnapCache<TodosAggregate>.Instance.Clear()
+    Cache.StateCache<TodosAggregate>.Instance.Clear()
 
     db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
     Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
     Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+    Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
 
     db.Reset TagsAggregate.Version TagsAggregate.StorageName
     Cache.EventCache<TagsAggregate>.Instance.Clear()
     Cache.SnapCache<TagsAggregate>.Instance.Clear()
+    Cache.StateCache<TagsAggregate>.Instance.Clear()
 
     db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
     Cache.EventCache<CategoriesAggregate>.Instance.Clear()
     Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
+    Cache.StateCache<CategoriesAggregate>.Instance.Clear()
 
 let allVersions =
     [
@@ -462,7 +466,7 @@ let multiCallTests =
             ap.addTodo todo |> ignore
             ()
 
-    ptestList "massive sequence adding - Ok" [
+    ftestList "massive sequence adding - Ok" [
 
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
