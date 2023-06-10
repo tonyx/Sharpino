@@ -61,9 +61,9 @@ module Repository =
                         events' |> evolve<'A, 'E> state
                     return (lastEventId, result)
                 }
-        let elid = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+        let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
         let result = 
-            StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) elid
+            StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) lastEventId
         result
 
     let inline runCommand<'A, 'E
