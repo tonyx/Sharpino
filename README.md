@@ -5,7 +5,7 @@
 
 ## An event-sourcing library in F#
 
-Sharpino is a library that helps you to build event-sourced applications in F#.
+Sharpino is a library for event-sourcing in F#.
 ## Projects:
 
 __Sharpino.Lib__:
