@@ -121,15 +121,15 @@ module TodosAggregate =
                 }
         member this.GetCategories() = this.categories.GetCategories()
 
-
-    [<UpgradeToVersion>]
+// what follows is the same code as above, but with the new version of the aggregate
+    [<UpgradedVersion>]
     type LockObject' private() =
         let lockObject = new obj()
         static let instance = LockObject'()
         static member Instance = instance
         member this.LokObject =
             lockObject
-    [<UpgradeToVersion>]
+    [<UpgradedVersion>]
 
     type TodosAggregate' =
         {

@@ -33,23 +33,21 @@ module TagsAggregate =
             15
         member this.AddTag(t: Tag) =
             ResultCE.result {
-                let! result = this.Tags.AddTag(t)
-                let result =
+                let! tags = this.Tags.AddTag(t)
+                return
                     {
                         this with
-                            Tags = result
+                            Tags = tags
                     }
-                return result
             }
 
         member this.RemoveTag(id: Guid) =
             ResultCE.result {
-                let! result = this.Tags.RemoveTag(id)
-                let result =
+                let! tags = this.Tags.RemoveTag(id)
+                return
                     {
                         this with
-                            Tags = result
+                            Tags = tags
                     }
-                return result
             }
         member this.GetTags() = this.Tags.GetTags()

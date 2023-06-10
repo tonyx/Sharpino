@@ -34,32 +34,29 @@ module CategoriesAggregate =
             15
         member this.AddCategory(c: Category) =
             ResultCE.result {
-                let! result = this.Categories.AddCategory(c)
-                let result =
+                let! categories = this.Categories.AddCategory(c)
+                return
                     {
                         this with
-                            Categories = result
+                            Categories = categories
                     }
-                return result
             }
         member this.RemoveCategory(id: Guid) =
             ResultCE.result {
-                let! result = this.Categories.RemoveCategory(id)
-                let result =
+                let! categories = this.Categories.RemoveCategory(id)
+                return
                     {
                         this with
-                            Categories = result
+                            Categories = categories
                     }
-                return result
             }
         member this.AddCategories(cs: List<Category>) =
             ResultCE.result {
-                let! result = this.Categories.AddCategories(cs)
-                let result =
+                let! categories = this.Categories.AddCategories(cs)
+                return
                     {
                         this with
-                            Categories = result
+                            Categories = categories
                     }
-                return result
             }
         member this.GetCategories() = this.Categories.GetCategories()

@@ -30,7 +30,7 @@ module TodoEvents =
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
 
 
-    [<UpgradeToVersion>]
+    [<UpgradedVersion>]
     type TodoEvent' =
         | TodoAdded of Todo
         | TodoRemoved of Guid

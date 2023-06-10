@@ -48,7 +48,7 @@ module Utils =
         inherit Attribute()
 
     [<AttributeUsage(AttributeTargets.All, AllowMultiple = false)>]
-    type UpgradeToVersion() =
+    type UpgradedVersion() =
         inherit Attribute()
 
 module TestUtils =

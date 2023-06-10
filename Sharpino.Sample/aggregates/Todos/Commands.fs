@@ -55,7 +55,7 @@ module TodoCommands =
                         | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
                         | Error x -> x |> Error
 
-    [<UpgradeToVersion>]
+    [<UpgradedVersion>]
     type TodoCommand' =
         | AddTodo of Todo
         | RemoveTodo of Guid

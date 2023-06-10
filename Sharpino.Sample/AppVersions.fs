@@ -50,7 +50,7 @@ module AppVersions =
         }
 
     let shadowPgApp = App.UpgradedApp(pgStorage)
-    [<UpgradeToVersion>]
+    [<UpgradedVersion>]
     let applicationShadowPostgresStorage =
         {
             _storage =          pgStorage
@@ -87,7 +87,7 @@ module AppVersions =
             getAllTags =        app.getAllTags
         }
 
-    [<UpgradeToVersion>]
+    [<UpgradedVersion>]
     let applicationShadowMemoryStorage =
         let app = App.UpgradedApp(memStorage)
         {
