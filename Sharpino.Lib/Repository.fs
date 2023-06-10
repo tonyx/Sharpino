@@ -47,19 +47,24 @@ module Repository =
                 return result
             }
 
-        ResultCE.result {
-            let! (lastSnapshotId, state, events) = snapIdStateAndEvents()
-            let lastEventId =
-                match events.Length with
-                | x when x > 0 -> events |> List.last |> fst
-                | _ -> lastSnapshotId 
-            let! events' =
-                events |>> snd |> catchErrors deserialize<'E>
-            let! result =
-                events' |> evolve<'A, 'E> state
-
-            return (lastEventId, result)
-        }
+        let eventuallyFromCache = 
+            fun () ->
+                ResultCE.result {
+                    let! (lastSnapshotId, state, events) = snapIdStateAndEvents()
+                    let lastEventId =
+                        match events.Length with
+                        | x when x > 0 -> events |> List.last |> fst
+                        | _ -> lastSnapshotId 
+                    let! events' =
+                        events |>> snd |> catchErrors deserialize<'E>
+                    let! result =
+                        events' |> evolve<'A, 'E> state
+                    return (lastEventId, result)
+                }
+        let elid = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+        let result = 
+            StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) elid
+        result
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -67,6 +72,8 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
+
+        let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
 
         lock 'A.LockObj <| fun () -> 
             ResultCE.result {

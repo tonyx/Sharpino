@@ -49,6 +49,42 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
+    type StateCache<'A> private () =
+        let dic = Generic.Dictionary<int, Result<int*'A, string>>()
+        let queue = Generic.Queue<int>()
+        static let instance = StateCache<'A>()
+        static member Instance = instance
+
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
+        member private this.TryAddToDictionary (arg, res) =
+            try
+                dic.Add(arg, res)
+                queue.Enqueue arg
+                if (queue.Count > Conf.cacheSize) then
+                    let removed = queue.Dequeue()
+                    dic.Remove removed |> ignore
+                ()
+            with :? _ as e -> 
+                printf "error: cache is doing something wrong. Resetting. %A\n" e   
+                dic.Clear()
+                queue.Clear()
+                ()
+
+        member this.Memoize (f: unit -> Result<int*'A, string>) (arg: int) =
+            let fromCacheOrCalculated =
+                let (b, res) = dic.TryGetValue arg
+                if b then
+                    res
+                else
+                    let res = f()
+                    this.TryAddToDictionary(arg, res)
+                    res
+            fromCacheOrCalculated
+
+        member this.Clear() =
+            dic.Clear()
+            queue.Clear()
+
     type SnapCache<'A> private () =
         let dic = Generic.Dictionary<int, Result<'A, string>>()
         let queue = Generic.Queue<int>()

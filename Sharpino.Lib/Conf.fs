@@ -19,3 +19,4 @@ module Conf =
             "Password=*****;"
 
     let cacheSize = 100 
+    let stateCacheSize = 10 

@@ -466,7 +466,7 @@ let multiCallTests =
             ap.addTodo todo |> ignore
             ()
 
-    ftestList "massive sequence adding - Ok" [
+    ptestList "massive sequence adding - Ok" [
 
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
