@@ -21,8 +21,6 @@ module TagsAggregate =
             {
                 Tags = Tags.Zero
             }
-        // storagename _MUST_ be unique for each aggregate and the relative lock object 
-        // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_tags"
         static member Version =

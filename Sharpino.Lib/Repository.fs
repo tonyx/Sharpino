@@ -5,13 +5,11 @@ open FSharp.Data.Sql
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
-open Newtonsoft.Json
 
 open Sharpino
 open Sharpino.Utils
 open Sharpino.Cache
 open Sharpino.Core
-open Sharpino.Conf
 open FsToolkit.ErrorHandling
 
 module Repository =

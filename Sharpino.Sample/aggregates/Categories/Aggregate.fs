@@ -21,8 +21,6 @@ module CategoriesAggregate =
             {
                 Categories = Categories.Zero
             }
-        // storagename _MUST_ be unique for each aggregate and the relative lock object 
-        // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_categories"
         static member Version =
