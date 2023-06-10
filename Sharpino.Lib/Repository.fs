@@ -39,15 +39,13 @@ module Repository =
         and 'E :> Event<'A>>(storage: IStorage) = 
 
         let snapIdStateAndEvents()  =
-            lock 'A.LockObj ( fun _ ->
-                ResultCE.result {
-                    let! (id, state) = getLastSnapshot<'A> storage
-                    let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                    let result =
-                        (id, state, events)
-                    return result
-                }
-            )
+            ResultCE.result {
+                let! (id, state) = getLastSnapshot<'A> storage
+                let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
+                let result =
+                    (id, state, events)
+                return result
+            }
 
         ResultCE.result {
             let! (lastSnapshotId, state, events) = snapIdStateAndEvents()

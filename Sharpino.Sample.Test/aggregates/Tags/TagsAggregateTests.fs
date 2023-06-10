@@ -1,5 +1,3 @@
-
-
 module Tests.Sharpino.Sample.Tags.TagsTests
 
 open Expecto
