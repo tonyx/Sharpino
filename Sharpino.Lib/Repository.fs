@@ -71,8 +71,6 @@ module Repository =
         and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
 
-        let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-
         lock 'A.LockObj <| fun () -> 
             ResultCE.result {
                 let! (_, state) = getState<'A, 'E> storage
