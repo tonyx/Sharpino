@@ -49,7 +49,7 @@ let setUp(db: IStorage) =
 
 let allVersions =
     [
-        // ena
+        // enable the following lines to test with postgres
         // (AppVersions.applicationPostgresStorage,        AppVersions.applicationPostgresStorage,       fun () -> () |> Result.Ok)
         // (AppVersions.applicationShadowPostgresStorage,  AppVersions.applicationShadowPostgresStorage, fun () -> () |> Result.Ok)
         // (AppVersions.applicationPostgresStorage,        AppVersions.applicationShadowPostgresStorage, AppVersions.applicationPostgresStorage._migrator.Value)
