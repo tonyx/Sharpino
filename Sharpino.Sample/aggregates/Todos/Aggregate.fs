@@ -41,7 +41,7 @@ module TodosAggregate =
 
             ResultCE.result
                 {
-                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists // FOCUS HERE
+                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
                     let! todos = this.todos.AddTodo t
                     return 
                         {
