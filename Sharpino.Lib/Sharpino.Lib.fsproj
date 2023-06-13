@@ -11,12 +11,14 @@
     <Compile Include="Utils.fs" />
     <Compile Include="DbStorage.fs" />
     <Compile Include="MemoryStorage.fs" />
+    <Compile Include="KafkaStorage.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Cache.fs" />
     <Compile Include="Repository.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="confluent.kafka" Version="2.1.1" />
     <PackageReference Include="Expecto" Version="9.*" />
     <PackageReference Include="Expecto.FsCheck" Version="9.0.4" />
     <PackageReference Include="FsCheck" Version="2.16.5" />
