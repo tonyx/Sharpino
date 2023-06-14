@@ -28,5 +28,34 @@ __Sharpino.Sample__:
 - An example of how to handle multiple versions of the application to help refactoring and migration between differnet versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
 __Sharpino.Sample.tests__
+- tests for the sample application
+
+## How to use it
+- Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
+```bash
+dotnet test 
+```
+You can also run the tests by the following command from the Sharpino.Sample.Tests folder:
+```bash
+dotnet run
+```
+In the latter case you gets the output from expecto test runner (that I think is more readable than the output from dotnet test command, and particularly it prompts any printf command).
+
+
+__Faq__: 
+- Why "Sharpino"? 
+    - It's a mix of Sharp and fino (italian for thin).  "sciarpino" (same pronunciation) in italian means also "little scarf". 
+- Why another event-sourcing library?
+    - Why not?
+- Why F#?  
+    - I think that an ML familiy language is a good fit for the following reasons:
+        - events are immutable and building the state of the aggregates is a funcition.
+        - Discriminated Unions are a good fit for events and commands.
+        - It is a .net language, so you can use all the .net ecosystem.
+- Can it be used in production?
+    - I don'w how well it could scale at the moment because the IStorage interface has basically only the a in-memory (for development) and postgres implementation (for production) and I don't know how well can it scale using it. I'm planning to add Kafka as storage that would be more scalable, by changing the concept of IStorage to a more generic IEventBus.  
+- Can it be used with other languages?
+    - Many concept I used in the "sample" application are typical F#, so I would say it is not convenient rewriting them in C#. However I don't see any problem in writing a front end by using any language and technology.
+
 
 [More docs (still in progress)](https://tonyx.github.io)
