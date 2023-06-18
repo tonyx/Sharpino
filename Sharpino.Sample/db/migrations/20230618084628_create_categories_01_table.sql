@@ -1,9 +1,4 @@
--- postgres script of creation of tables for Tags aggregate
-
--- I assume there is a 'events' user created as follows:
--- create user events with password 'events';
--- remember to configure the connection string in the Conf.fs accordingly
--- or just use the in memory event store for development and testing (Conf.fs -> storageType)
+-- migrate:up
 
 CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
@@ -52,4 +47,5 @@ GRANT ALL ON SEQUENCE public.snapshots_02_categories_id_seq TO safe;
 GRANT ALL ON SEQUENCE public.events_02_categories_id_seq TO safe;
 
 
+-- migrate:down
 
