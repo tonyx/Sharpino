@@ -19,17 +19,24 @@ module Repository =
         and 'A: (static member Version: string)>
         (storage: IStorage) = 
 
-        ResultCE.result {
-            let! result =
-                match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                | Some (snapId, eventId, json) ->
-                    let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) snapId
-                    match state with
-                    | Error e -> Error e
-                    | _ -> (eventId, state |> Result.get) |> Ok
-                | None -> (0, 'A.Zero) |> Ok
-            return result
-        }
+        let res =
+            async {
+                let r =
+                    ResultCE.result {
+                        let! result =
+                            match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
+                            | Some (snapId, eventId, json) ->
+                                let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) snapId
+                                match state with
+                                | Error e -> Error e
+                                | _ -> (eventId, state |> Result.get) |> Ok
+                            | None -> (0, 'A.Zero) |> Ok
+                        return result
+                    }
+                return r
+            } |> Async.RunSynchronously
+        res
+
 
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
