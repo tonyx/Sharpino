@@ -18,8 +18,6 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
         (storage: IStorage) = 
-
-        let res =
             async {
                 return
                     ResultCE.result {
@@ -33,8 +31,8 @@ module Repository =
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
-            } |> Async.RunSynchronously
-        res
+            } 
+            |> Async.RunSynchronously
 
 
     let inline getState<'A, 'E
