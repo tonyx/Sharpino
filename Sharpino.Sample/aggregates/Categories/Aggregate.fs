@@ -30,16 +30,6 @@ module CategoriesAggregate =
 
         static member SnapshotsInterval =
             15
-
-        // static member Ag = MailboxProcessor<string>.Start (
-        //     fun inbox -> 
-        //         let rec messageLoop() = async {
-        //             let! msg = inbox.Receive()
-        //             printf "message is %s" msg
-        //             return! messageLoop()
-        //         }
-        //         messageLoop()
-        //     )
         member this.AddCategory(c: Category) =
             ResultCE.result {
                 let! categories = this.Categories.AddCategory(c)

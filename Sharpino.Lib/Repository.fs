@@ -21,7 +21,7 @@ module Repository =
 
         let res =
             async {
-                let r =
+                return
                     ResultCE.result {
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
@@ -33,7 +33,6 @@ module Repository =
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
-                return r
             } |> Async.RunSynchronously
         res
 
