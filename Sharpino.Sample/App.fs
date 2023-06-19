@@ -26,13 +26,13 @@ open FsToolkit.ErrorHandling
 module App =
     [<CurrentVersion>]
     type CurrentVersionApp(storage: IStorage) =
-        member this.getAllTodos() =
+        member this.GetAllTodos() =
             ResultCE.result  {
                 let! (_, state) = getState<TodosAggregate, TodoEvent>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
-        member this.addTodo todo =
+        member this.AddTodo todo =
             lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
@@ -51,7 +51,7 @@ module App =
                 return ()
             }
 
-        member this.add2Todos (todo1, todo2) =
+        member this.Add2Todos (todo1, todo2) =
             lock TagsAggregate.LockObj <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
@@ -75,7 +75,7 @@ module App =
                     return ()
                 }
 
-        member this.removeTodo id =
+        member this.RemoveTodo id =
             ResultCE.result {
                 let! _ =
                     id
@@ -85,14 +85,14 @@ module App =
                 return ()
             }
 
-        member this.getAllCategories() =
+        member this.GetAllCategories() =
             ResultCE.result {
                 let! (_, state) = getState<TodosAggregate, TodoEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
 
-        member this.addCategory category =
+        member this.AddCategory category =
             ResultCE.result {
                 let! _ =
                     category
@@ -102,7 +102,7 @@ module App =
                 return ()
             }
 
-        member this.removeCategory id = 
+        member this.RemoveCategory id = 
             ResultCE.result {
                 let! _ =
                     id
@@ -112,7 +112,7 @@ module App =
                 return ()
             }
 
-        member this.addTag tag =
+        member this.AddTag tag =
             ResultCE.result {
                 let! _ =
                     tag
@@ -122,7 +122,7 @@ module App =
                 return ()
             }
 
-        member this.removeTag id =
+        member this.RemoveTag id =
             ResultCE.result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
@@ -132,18 +132,18 @@ module App =
                 return ()
             }
 
-        member this.getAllTags () =
+        member this.GetAllTags () =
             ResultCE.result {
                 let! (_, state) = getState<TagsAggregate, TagEvent> storage
                 let tags = state.GetTags()
                 return tags
             }
 
-        member this.migrate() =
+        member this.Migrate() =
             lock TodosAggregate.LockObj <| fun () ->
                 ResultCE.result {
-                    let! categoriesFrom = this.getAllCategories()
-                    let! todosFrom = this.getAllTodos()
+                    let! categoriesFrom = this.GetAllCategories()
+                    let! todosFrom = this.GetAllTodos()
                     let command = CategoryCommand.AddCategories categoriesFrom
                     let command2 = TodoCommand'.AddTodos todosFrom
                     let! _ = 
@@ -160,13 +160,13 @@ module App =
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IStorage) =
-        member this.getAllTodos() =
+        member this.GetAllTodos() =
             ResultCE.result {
                 let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
                 let todos = state.GetTodos()
                 return todos
             }
-        member this.addTodo todo =
+        member this.AddTodo todo =
             lock (CategoriesAggregate.LockObj, TagsAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
@@ -194,7 +194,7 @@ module App =
                 return ()
             }
 
-        member this.add2Todos (todo1, todo2) =
+        member this.Add2Todos (todo1, todo2) =
             lock (TagsAggregate.LockObj, CategoriesAggregate.LockObj) <| fun () ->
                 ResultCE.result {
                     let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
@@ -231,7 +231,7 @@ module App =
                     return ()
                 }
 
-        member this.removeTodo id =
+        member this.RemoveTodo id =
             ResultCE.result {
                 let! _ =
                     id
@@ -240,14 +240,14 @@ module App =
                 let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
-        member this.getAllCategories() =
+        member this.GetAllCategories() =
             ResultCE.result {
                 let! (_, state) = getState<CategoriesAggregate, CategoryEvent> storage
                 let categories = state.GetCategories()
                 return categories
             }
 
-        member this.addCategory category =
+        member this.AddCategory category =
             ResultCE.result {
                 let! _ =
                     category
@@ -257,7 +257,7 @@ module App =
                 return ()
             }
 
-        member this.removeCategory id =
+        member this.RemoveCategory id =
             ResultCE.result {
                 let removeCategory = CategoryCommand.RemoveCategory id
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
@@ -273,7 +273,7 @@ module App =
                 return ()
             }
 
-        member this.addTag tag =
+        member this.AddTag tag =
             ResultCE.result {
                 let! _ =
                     tag
@@ -293,7 +293,7 @@ module App =
                 return ()
             }
 
-        member this.getAllTags () =
+        member this.GetAllTags () =
             ResultCE.result {
                 let! (_, state) = getState<TagsAggregate, TagEvent> storage
                 let tags = state.GetTags()
