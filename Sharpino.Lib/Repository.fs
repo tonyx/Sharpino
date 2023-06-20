@@ -39,7 +39,6 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>>(storage: IStorage) = 
 
         let snapIdStateAndEvents()  =
@@ -80,21 +79,19 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
 
         async {
             return
-                lock 'A.LockObj <| fun () -> 
-                    ResultCE.result {
-                        let! (_, state) = getState<'A, 'E> storage
-                        let! events =
-                            state
-                            |> mycommand.Execute
-                        let! eventsAdded' =
-                            storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
-                        return ()
-                    } 
+                ResultCE.result {
+                    let! (_, state) = getState<'A, 'E> storage
+                    let! events =
+                        state
+                        |> mycommand.Execute
+                    let! eventsAdded' =
+                        storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
+                    return ()
+                } 
         }
         |> Async.RunSynchronously
 
@@ -102,11 +99,9 @@ module Repository =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A2: (static member Zero: 'A2)
-        and 'A1: (static member LockObj: obj)
         and 'A2: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
-        and 'A2: (static member LockObj: obj)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
             (storage: IStorage)
@@ -115,27 +110,26 @@ module Repository =
 
             async {
                 return
-                    lock ('A1.LockObj, 'A2.LockObj) <| fun () -> 
-                        ResultCE.result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
+                    ResultCE.result {
+                        let! (_, state1) = getState<'A1, 'E1> storage
+                        let! (_, state2) = getState<'A2, 'E2> storage
+                        let! events1 =
+                            state1
+                            |> command1.Execute
+                        let! events2 =
+                            state2
+                            |> command2.Execute
 
-                            let! eventsAdded =
-                                let serEv1 = events1 |>> Utils.serialize 
-                                let serEv2 = events2 |>> Utils.serialize
-                                storage.MultiAddEvents 
-                                    [
-                                        (serEv1, 'A1.Version, 'A1.StorageName)
-                                        (serEv2, 'A2.Version, 'A2.StorageName)
-                                    ]
-                            return ()
-                        }
+                        let! eventsAdded =
+                            let serEv1 = events1 |>> Utils.serialize 
+                            let serEv2 = events2 |>> Utils.serialize
+                            storage.MultiAddEvents 
+                                [
+                                    (serEv1, 'A1.Version, 'A1.StorageName)
+                                    (serEv2, 'A2.Version, 'A2.StorageName)
+                                ]
+                        return ()
+                    }
             }
             |> Async.RunSynchronously
 
@@ -143,7 +137,6 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member LockObj: obj)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
                 return
@@ -161,7 +154,6 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member LockObj: obj)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>>(storage: IStorage) =
             async {
@@ -179,3 +171,16 @@ module Repository =
                         }
             }    
             |> Async.RunSynchronously   
+
+    type UnitResult =  ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
+
+    let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
+        let rec loop() =
+            async {
+                let! (statement, replyChannel) = inbox.Receive()
+                let result = statement()
+                replyChannel.Reply result
+                do! loop()
+            }
+        loop()
+    )

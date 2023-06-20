@@ -9,12 +9,6 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 
 module TodosAggregate =
-    type LockObject private() =
-        let lockObject = new obj()
-        static let instance = LockObject()
-        static member Instance = instance
-        member this.LokObject =
-            lockObject
     type TodosAggregate =
         {
             todos: Todos
@@ -29,8 +23,6 @@ module TodosAggregate =
             "_todo"
         static member Version =
             "_01"
-        static member LockObj =
-            LockObject.Instance.LokObject
         static member SnapshotsInterval =
             15
         member this.AddTodo (t: Todo) =
@@ -121,13 +113,6 @@ module TodosAggregate =
 
 // what follows is the same code as above, but with the new version of the aggregate
     [<UpgradedVersion>]
-    type LockObject' private() =
-        let lockObject = new obj()
-        static let instance = LockObject'()
-        static member Instance = instance
-        member this.LokObject =
-            lockObject
-    [<UpgradedVersion>]
 
     type TodosAggregate' =
         {
@@ -143,8 +128,6 @@ module TodosAggregate =
             "_todo"
         static member Version =
             "_02"
-        static member LockObj =
-            LockObject'.Instance.LokObject
         static member SnapshotsInterval =
             15
         member this.AddTodo (t: Todo) =
