@@ -30,7 +30,7 @@ module App =
             async {
                 return
                     ResultCE.result  {
-                        let! (_, state) = getState<TodosAggregate, TodoEvent>(storage)
+                        let! (_, state) = storage |> getState<TodosAggregate, TodoEvent>
                         let todos = state.GetTodos()
                         return todos
                     }
@@ -39,7 +39,7 @@ module App =
         member this.AddTodo todo =
             let f = fun () ->
                 ResultCE.result {
-                    let! (_, tagState) = getState<TagsAggregate, TagEvent>(storage)
+                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagIdIsValid =    
@@ -50,22 +50,22 @@ module App =
                     let! _ =
                         todo
                         |> TodoCommand.AddTodo
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
-                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> (storage)
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                 return ()
             }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
         member this.Add2Todos (todo1, todo2) =
             let f = fun () ->
                 ResultCE.result {
-                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                    let! tagId1IsValid =    
+                    let! tagId1IsValid =  
                         (todo1.TagIds.IsEmpty ||
                         todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                         |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
@@ -78,7 +78,7 @@ module App =
                     let! _ =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                     return ()
                 }
@@ -93,7 +93,7 @@ module App =
                     let! _ =
                         id
                         |> TodoCommand.RemoveTodo
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                     return ()
                 }
@@ -101,24 +101,24 @@ module App =
                 return processor.PostAndReply (fun rc -> f , rc)
             } |> Async.RunSynchronously
 
-
         member this.GetAllCategories() =
             async {
                 return
                     ResultCE.result {
-                        let! (_, state) = getState<TodosAggregate, TodoEvent> storage
+                        let! (_, state) = storage |> getState<TodosAggregate, TodoEvent>
                         let categories = state.GetCategories()
                         return categories
                     }
             }
             |> Async.RunSynchronously
+
         member this.AddCategory category =
             let f = fun () ->
                 ResultCE.result {
                     let! _ =
                         category
                         |> TodoCommand.AddCategory
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                     return ()
                 }
@@ -133,7 +133,7 @@ module App =
                     let! _ =
                         id
                         |> TodoCommand.RemoveCategory
-                        |> (runCommand<TodosAggregate, TodoEvent> storage)
+                        |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
                     return ()
                 }
@@ -148,8 +148,8 @@ module App =
                     let! _ =
                         tag
                         |> AddTag
-                        |> (runCommand<TagsAggregate, TagEvent> storage)
-                    let _ = (mkSnapshotIfInterval<TagsAggregate, TagEvent> storage)
+                        |> runCommand<TagsAggregate, TagEvent> storage
+                    let _ =  mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
                     return ()
                 }
             async {
@@ -177,7 +177,7 @@ module App =
             async {
                 return
                     ResultCE.result {
-                        let! (_, state) = getState<TagsAggregate, TagEvent> storage
+                        let! (_, state) = storage |> getState<TagsAggregate, TagEvent>
                         let tags = state.GetTags()
                         return tags
                     }
@@ -193,10 +193,10 @@ module App =
                     let command2 = TodoCommand'.AddTodos todosFrom
                     let! _ = 
                         runTwoCommands<
-                            CategoriesAggregate.CategoriesAggregate, 
-                            TodosAggregate.TodosAggregate', 
-                            CategoriesEvents.CategoryEvent, 
-                            TodoEvents.TodoEvent'> 
+                            CategoriesAggregate, 
+                            TodosAggregate', 
+                            CategoryEvent, 
+                            TodoEvent'> 
                                 storage
                                 command 
                                 command2
@@ -213,7 +213,7 @@ module App =
             async {
                 return
                     ResultCE.result {
-                        let! (_, state) = getState<TodosAggregate',TodoEvents.TodoEvent'>(storage)
+                        let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>
                         let todos = state.GetTodos()
                         return todos
                     }
@@ -223,10 +223,10 @@ module App =
         member this.AddTodo todo =
             let f = fun () ->
                 ResultCE.result {
-                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                    let! (_, categoriesState) = getState<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
+                    let! (_, categoriesState) = storage |>  getState<CategoriesAggregate, CategoryEvent>
                     let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                     let! tagIdIsValid =    
@@ -242,9 +242,9 @@ module App =
                     let! _ =
                         todo
                         |> TodoCommand'.AddTodo
-                        |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                        |> runCommand<TodosAggregate', TodoEvent'> storage
 
-                    let _ =  mkSnapshotIfInterval<TodosAggregate.TodosAggregate', Todos.TodoEvents.TodoEvent'> storage
+                    let _ =  mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                 return ()
             }
             async {
@@ -255,10 +255,10 @@ module App =
         member this.Add2Todos (todo1, todo2) =
             let f = fun () ->
                 ResultCE.result {
-                    let! (_, tagState) = getState<TagsAggregate, TagEvent> storage
+                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                    let! (_, categoriesState) = getState<CategoriesAggregate, CategoryEvent> storage
+                    let! (_, categoriesState) = storage |> getState<CategoriesAggregate, CategoryEvent>
                     let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                     let! categoryId1IsValid =    
@@ -284,11 +284,10 @@ module App =
                     let! _ =
                         (todo1, todo2)
                         |> TodoCommand'.Add2Todos
-                        |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
+                        |> runCommand<TodosAggregate', TodoEvent'> storage
                     let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
                     return ()
                 }
-
             async {
                 return processor.PostAndReply (fun rc -> f , rc)
             }
@@ -300,12 +299,12 @@ module App =
                     let! _ =
                         id
                         |> TodoCommand'.RemoveTodo
-                        |> (runCommand<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage)
-                    let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                        |> runCommand<TodosAggregate', TodoEvents.TodoEvent'> storage
+                    let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvents.TodoEvent'> storage
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -313,7 +312,7 @@ module App =
             async { 
                 return
                     ResultCE.result {
-                        let! (_, state) = getState<CategoriesAggregate, CategoryEvent> storage
+                        let! (_, state) = storage |> getState<CategoriesAggregate, CategoryEvent>
                         let categories = state.GetCategories()
                         return categories
                     }
@@ -325,13 +324,13 @@ module App =
                 ResultCE.result {
                     let! _ =
                         category
-                        |> CategoriesCommands.CategoryCommand.AddCategory
-                        |> (runCommand<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage)
-                    let _ = mkSnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent> storage
+                        |> CategoryCommand.AddCategory
+                        |> runCommand<CategoriesAggregate, CategoryEvent> storage
+                    let _ = mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent> storage
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -342,13 +341,13 @@ module App =
                     let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
                     let! _ = 
                         runTwoCommands<
-                            CategoriesAggregate.CategoriesAggregate, 
-                            TodosAggregate.TodosAggregate', 
-                            CategoriesEvents.CategoryEvent, 
-                            TodoEvents.TodoEvent'> 
+                            CategoriesAggregate, 
+                            TodosAggregate', 
+                            CategoryEvent, 
+                            TodoEvent'> 
                             storage removeCategory removeCategoryRef
-                    let _ = mkSnapshotIfInterval<CategoriesAggregate.CategoriesAggregate, CategoriesEvents.CategoryEvent>  storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                    let _ = mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>  storage
+                    let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
                     return ()
                 }
             async {
@@ -362,8 +361,8 @@ module App =
                     let! _ =
                         tag
                         |> AddTag
-                        |> (runCommand<TagsAggregate, TagEvent> storage)
-                    let _ = (mkSnapshotIfInterval<TagsAggregate, TagEvent> storage)
+                        |> runCommand<TagsAggregate, TagEvent> storage
+                    let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
                     return ()
                 }
             async {
@@ -390,7 +389,7 @@ module App =
             async {
                 return
                     ResultCE.result {
-                        let! (_, state) = getState<TagsAggregate, TagEvent> storage
+                        let! (_, state) = storage |> getState<TagsAggregate, TagEvent>
                         let tags = state.GetTags()
                         return tags
                     }

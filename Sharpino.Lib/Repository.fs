@@ -31,9 +31,8 @@ module Repository =
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
-            } 
+            }
             |> Async.RunSynchronously
-
 
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -79,7 +78,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: IStorage) (mycommand: Command<'A, 'E>)  =
+        and 'E :> Event<'A>> (storage: IStorage) (command: Command<'A, 'E>)  =
 
         async {
             return
@@ -87,7 +86,7 @@ module Repository =
                     let! (_, state) = getState<'A, 'E> storage
                     let! events =
                         state
-                        |> mycommand.Execute
+                        |> command.Execute
                     let! eventsAdded' =
                         storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
                     return ()
