@@ -288,12 +288,9 @@ let multiVersionsTests =
             let category = { Id = categoryId; Name = "test" }
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId]; TagIds = [] }
 
-            let added =
-                ResultCE.result {
-                    let! _ = ap.addCategory category
-                    let! ap' = ap.addTodo todo
-                    return ap'
-                } 
+            let _ = ap.addCategory category
+            let added = ap.addTodo todo    
+
             Expect.isOk added "should be ok"
 
             let hasMigrated = migrator()
@@ -455,6 +452,7 @@ let multiVersionsTests =
 
             let todos = ap.getAllTodos().OkValue 
             Expect.equal (todos |> List.head).TagIds [tagId2] "should be equal"
+
     ] 
     |> testSequenced
 
