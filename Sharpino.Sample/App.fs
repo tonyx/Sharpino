@@ -47,7 +47,7 @@ module App =
                             let! tagIdIsValid =    
                                 (todo.TagIds.IsEmpty ||
                                 todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                                |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                                |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
                             let! _ =
                                 todo
@@ -69,12 +69,12 @@ module App =
                             let! tagId1IsValid =    
                                 (todo1.TagIds.IsEmpty ||
                                 todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                                |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                                |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
                             let! tagId2IsValid =    
                                 (todo2.TagIds.IsEmpty ||
                                 todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                                |> boolToResult "A tag reference contained is in the todo is related to a tag that does not exist"
+                                |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
                             let! _ =
                                 (todo1, todo2)
