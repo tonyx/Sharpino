@@ -163,7 +163,7 @@ module Repository =
                             let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                             let! result =
                                 if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
-                                    mksnapshot<'A, 'E>(storage)
+                                    mksnapshot<'A, 'E> storage
                                 else
                                     () |> Ok
                             return result
@@ -171,7 +171,7 @@ module Repository =
             }    
             |> Async.RunSynchronously   
 
-    type UnitResult =  ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
+    type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
