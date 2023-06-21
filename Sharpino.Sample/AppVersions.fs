@@ -11,6 +11,12 @@ open Sharpino.Sample
 open System
 
 module AppVersions =
+    let pgStorage: IStorage = DbStorage.PgDb()
+    let memStorage: IStorage = MemoryStorage.MemoryStorage()
+    let currentPgApp = App.CurrentVersionApp(pgStorage)
+    let upgradedPgApp = App.UpgradedApp(pgStorage)
+    let currentMemApp = App.CurrentVersionApp(memStorage)
+    let upgradedMemApp = App.UpgradedApp(memStorage)
 
     type IApplication =
         {
@@ -29,11 +35,8 @@ module AppVersions =
             getAllTags:         unit -> Result<List<Tag>, string>
         }
 
-    let pgStorage: IStorage = DbStorage.PgDb()
-
-    let currentPgApp = App.CurrentVersionApp(pgStorage)
     [<CurrentVersion>]
-    let applicationPostgresStorage =
+    let currentPostgresApp =
         {
             _storage =          pgStorage
             _migrator  =        currentPgApp.Migrate |> Some
@@ -49,58 +52,54 @@ module AppVersions =
             getAllTags =        currentPgApp.GetAllTags
         }
 
-    let shadowPgApp = App.UpgradedApp(pgStorage)
     [<UpgradedVersion>]
-    let applicationShadowPostgresStorage =
+    let upgradedPostgresApp =
         {
             _storage =          pgStorage
             _migrator  =        None
-            getAllTodos =       shadowPgApp.GetAllTodos
-            addTodo =           shadowPgApp.AddTodo
-            add2Todos =         shadowPgApp.Add2Todos
-            removeTodo =        shadowPgApp.RemoveTodo
-            getAllCategories =  shadowPgApp.GetAllCategories
-            addCategory =       shadowPgApp.AddCategory
-            removeCategory =    shadowPgApp.RemoveCategory
-            addTag =            shadowPgApp.AddTag
-            removeTag =         shadowPgApp.removeTag
-            getAllTags =        shadowPgApp.GetAllTags
+            getAllTodos =       upgradedPgApp.GetAllTodos
+            addTodo =           upgradedPgApp.AddTodo
+            add2Todos =         upgradedPgApp.Add2Todos
+            removeTodo =        upgradedPgApp.RemoveTodo
+            getAllCategories =  upgradedPgApp.GetAllCategories
+            addCategory =       upgradedPgApp.AddCategory
+            removeCategory =    upgradedPgApp.RemoveCategory
+            addTag =            upgradedPgApp.AddTag
+            removeTag =         upgradedPgApp.removeTag
+            getAllTags =        upgradedPgApp.GetAllTags
         }
 
-    let memStorage: IStorage = MemoryStorage.MemoryStorage()
 
     [<CurrentVersion>]
-    let applicationMemoryStorage =
-        let app = App.CurrentVersionApp(memStorage)
+    let currentMemoryApp =
         {
-            _migrator  =        app.Migrate |> Some
+            _migrator  =        currentMemApp.Migrate |> Some
             _storage =          memStorage 
-            getAllTodos =       app.GetAllTodos
-            addTodo =           app.AddTodo
-            add2Todos =         app.Add2Todos
-            removeTodo =        app.RemoveTodo
-            getAllCategories =  app.GetAllCategories
-            addCategory =       app.AddCategory
-            removeCategory =    app.RemoveCategory
-            addTag =            app.AddTag 
-            removeTag =         app.RemoveTag
-            getAllTags =        app.GetAllTags
+            getAllTodos =       currentMemApp.GetAllTodos
+            addTodo =           currentMemApp.AddTodo
+            add2Todos =         currentMemApp.Add2Todos
+            removeTodo =        currentMemApp.RemoveTodo
+            getAllCategories =  currentMemApp.GetAllCategories
+            addCategory =       currentMemApp.AddCategory
+            removeCategory =    currentMemApp.RemoveCategory
+            addTag =            currentMemApp.AddTag 
+            removeTag =         currentMemApp.RemoveTag
+            getAllTags =        currentMemApp.GetAllTags
         }
 
     [<UpgradedVersion>]
-    let applicationShadowMemoryStorage =
-        let app = App.UpgradedApp(memStorage)
+    let upgradedMemoryApp =
         {
             _migrator =         None
             _storage =          memStorage 
-            getAllTodos =       app.GetAllTodos
-            addTodo =           app.AddTodo
-            add2Todos =         app.Add2Todos
-            removeTodo =        app.RemoveTodo
-            getAllCategories =  app.GetAllCategories
-            addCategory =       app.AddCategory
-            removeCategory =    app.RemoveCategory
-            addTag =            app.AddTag
-            removeTag =         app.removeTag
-            getAllTags =        app.GetAllTags
+            getAllTodos =       upgradedMemApp.GetAllTodos
+            addTodo =           upgradedMemApp.AddTodo
+            add2Todos =         upgradedMemApp.Add2Todos
+            removeTodo =        upgradedMemApp.RemoveTodo
+            getAllCategories =  upgradedMemApp.GetAllCategories
+            addCategory =       upgradedMemApp.AddCategory
+            removeCategory =    upgradedMemApp.RemoveCategory
+            addTag =            upgradedMemApp.AddTag
+            removeTag =         upgradedMemApp.removeTag
+            getAllTags =        upgradedMemApp.GetAllTags
         }

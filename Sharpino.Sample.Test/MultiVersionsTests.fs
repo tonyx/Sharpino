@@ -50,13 +50,13 @@ let setUp(db: IStorage) =
 let allVersions =
     [
         // enable the following lines to test with postgres
-        (AppVersions.applicationPostgresStorage,        AppVersions.applicationPostgresStorage,       fun () -> () |> Result.Ok)
-        (AppVersions.applicationShadowPostgresStorage,  AppVersions.applicationShadowPostgresStorage, fun () -> () |> Result.Ok)
-        (AppVersions.applicationPostgresStorage,        AppVersions.applicationShadowPostgresStorage, AppVersions.applicationPostgresStorage._migrator.Value)
+        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,       fun () -> () |> Result.Ok)
+        (AppVersions.upgradedPostgresApp,  AppVersions.upgradedPostgresApp, fun () -> () |> Result.Ok)
+        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp, AppVersions.currentPostgresApp._migrator.Value)
 
-        (AppVersions.applicationMemoryStorage,          AppVersions.applicationMemoryStorage,         fun () -> () |> Result.Ok)
-        (AppVersions.applicationShadowMemoryStorage,    AppVersions.applicationShadowMemoryStorage,   fun () -> () |> Result.Ok)
-        (AppVersions.applicationMemoryStorage,          AppVersions.applicationShadowMemoryStorage,   AppVersions.applicationMemoryStorage._migrator.Value)
+        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,         fun () -> () |> Result.Ok)
+        (AppVersions.upgradedMemoryApp,    AppVersions.upgradedMemoryApp,   fun () -> () |> Result.Ok)
+        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,   AppVersions.currentMemoryApp._migrator.Value)
     ]
 
 let currentTestConfs = allVersions
@@ -459,7 +459,7 @@ let multiVersionsTests =
 [<Tests>]
 let multiCallTests =
     let doAddNewTodo() =
-        let ap = AppVersions.applicationPostgresStorage
+        let ap = AppVersions.currentPostgresApp
         for i = 0 to 9 do
             let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString())); CategoryIds = []; TagIds = [] }
             ap.addTodo todo |> ignore
@@ -469,7 +469,7 @@ let multiCallTests =
 
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
-            let ap = AppVersions.applicationPostgresStorage
+            let ap = AppVersions.currentPostgresApp
             let _ = setUp(ap._storage)
 
             for i = 0 to 999 do
@@ -482,7 +482,7 @@ let multiCallTests =
             Expect.equal actualTodos.Length 1000 "should be equal"
 
         testCase "add many todos in parallel" <| fun _ ->
-            let ap = AppVersions.applicationPostgresStorage
+            let ap = AppVersions.currentPostgresApp
             let _ = setUp(ap._storage)
 
             for i = 0 to 99 do   

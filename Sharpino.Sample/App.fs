@@ -51,7 +51,9 @@ module App =
                         todo
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                 return ()
             }
             async {
@@ -79,11 +81,13 @@ module App =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ =  mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ =  
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             } 
             |> Async.RunSynchronously
 
@@ -94,11 +98,13 @@ module App =
                         id
                         |> TodoCommand.RemoveTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             } |> Async.RunSynchronously
 
         member this.GetAllCategories() =
@@ -119,11 +125,13 @@ module App =
                         category
                         |> TodoCommand.AddCategory
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -134,11 +142,13 @@ module App =
                         id
                         |> TodoCommand.RemoveCategory
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ = 
+                        storage 
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent> 
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             } 
             |> Async.RunSynchronously
 
@@ -149,14 +159,15 @@ module App =
                         tag
                         |> AddTag
                         |> runCommand<TagsAggregate, TagEvent> storage
-                    let _ =  mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
+                    let _ =  
+                        storage 
+                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent> 
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             } 
             |> Async.RunSynchronously
-            
 
         member this.RemoveTag id =
             let f = fun () ->
@@ -164,12 +175,16 @@ module App =
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
-                    let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate, TodoEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -203,7 +218,7 @@ module App =
                     return () 
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -244,11 +259,13 @@ module App =
                         |> TodoCommand'.AddTodo
                         |> runCommand<TodosAggregate', TodoEvent'> storage
 
-                    let _ =  mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
+                    let _ =  
+                        storage 
+                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
                 return ()
             }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -285,11 +302,13 @@ module App =
                         (todo1, todo2)
                         |> TodoCommand'.Add2Todos
                         |> runCommand<TodosAggregate', TodoEvent'> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate.TodosAggregate', TodoEvents.TodoEvent'> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -299,8 +318,10 @@ module App =
                     let! _ =
                         id
                         |> TodoCommand'.RemoveTodo
-                        |> runCommand<TodosAggregate', TodoEvents.TodoEvent'> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvents.TodoEvent'> storage
+                        |> runCommand<TodosAggregate', TodoEvent'> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -326,7 +347,9 @@ module App =
                         category
                         |> CategoryCommand.AddCategory
                         |> runCommand<CategoriesAggregate, CategoryEvent> storage
-                    let _ = mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
                     return ()
                 }
             async {
@@ -346,12 +369,16 @@ module App =
                             CategoryEvent, 
                             TodoEvent'> 
                             storage removeCategory removeCategoryRef
-                    let _ = mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>  storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -362,11 +389,13 @@ module App =
                         tag
                         |> AddTag
                         |> runCommand<TagsAggregate, TagEvent> storage
-                    let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -376,12 +405,16 @@ module App =
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand'.RemoveTagRef id
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
-                    let _ = mkSnapshotIfInterval<TagsAggregate, TagEvent> storage
-                    let _ = mkSnapshotIfInterval<TodosAggregate', TodoEvent'> storage
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                    let _ = 
+                        storage
+                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
-                return processor.PostAndReply (fun rc -> f , rc)
+                return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
@@ -389,7 +422,8 @@ module App =
             async {
                 return
                     ResultCE.result {
-                        let! (_, state) = storage |> getState<TagsAggregate, TagEvent>
+                        let! (_, state) = 
+                            storage |> getState<TagsAggregate, TagEvent>
                         let tags = state.GetTags()
                         return tags
                     }
