@@ -24,7 +24,7 @@ module Repository =
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (snapId, eventId, json) ->
-                                let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) snapId
+                                let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) (snapId, 'A.StorageName)
                                 match state with
                                 | Error e -> Error e
                                 | _ -> (eventId, state |> Result.get) |> Ok
@@ -72,7 +72,7 @@ module Repository =
                 return storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
             } 
             |> Async.RunSynchronously
-        StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) lastEventId
+        StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) (lastEventId, 'A.StorageName)
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
