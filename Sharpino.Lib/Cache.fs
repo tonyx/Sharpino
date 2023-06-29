@@ -57,8 +57,10 @@ module Cache =
         member this.Lookup(key: string, zero: 'A): 'A =
             let (b, res) = dic.TryGetValue key
             if b then
+                printf "returning from cache\n"
                 res
             else
+                printf "returning zero\n"
                 zero
 
         member this.Update(key: string, value: 'A) =

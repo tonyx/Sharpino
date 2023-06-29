@@ -29,7 +29,7 @@ module EventStoreApp =
     open Sharpino.Lib.EvStore
     type EventStoreApp(storage: EventStoreBridge) =
         member this.AddTag tag =
-            let cmd =
+            let f = fun() ->
                 ResultCE.result {
                     let! command = 
                         tag
@@ -37,7 +37,10 @@ module EventStoreApp =
                         |> runCommand<TagsAggregate, TagEvent> storage
                     return ()
                 }
-            ()
+            async {
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }
+            |> Async.RunSynchronously
                 
         member this.GetAllTags() =
             ResultCE.result {
@@ -54,17 +57,71 @@ module EventStoreApp =
             }
 
         member this.AddTodo todo =
-            ResultCE.result {
-                let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
-                let tagIds = tagState.GetTags() |>> fun x -> x.Id
-                let! tagIdIsValid = 
-                    (todo.TagIds.IsEmpty || 
-                    (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
-                    |> boolToResult "Tag id is not valid"
+            let f = fun() ->
+                ResultCE.result {
+                    let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
+                    let tagIds = tagState.GetTags() |>> fun x -> x.Id
+                    let! tagIdIsValid = 
+                        (todo.TagIds.IsEmpty || 
+                        (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
+                        |> boolToResult "Tag id is not valid"
 
-                let! command = 
-                    todo
-                    |> TodoCommand.AddTodo
-                    |> runCommand<TodosAggregate, TodoEvent> storage
-                return ()
+                    let! command = 
+                        todo
+                        |> TodoCommand.AddTodo
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+            async {
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
             }
+            |> Async.RunSynchronously
+
+        member this.RemoveTodo id =
+            let f = fun() ->
+                ResultCE.result {
+                    let! command = 
+                        id
+                        |> TodoCommand.RemoveTodo
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+            async { 
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }   
+            |> Async.RunSynchronously
+
+        member this.AddCategory category =
+            let f = fun() ->
+                ResultCE.result {
+                    let! command = 
+                        category
+                        |> TodoCommand.AddCategory
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+            async {
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }
+            |> Async.RunSynchronously
+
+        member this.GetAllCategories() =
+            ResultCE.result {
+                let state = Cache.CurrentState<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, TodosAggregate.Zero) :?> TodosAggregate 
+                let categories = state.GetCategories()
+                return categories
+            }
+
+        member this.RemoveCategory id =
+            let f = fun() ->
+                ResultCE.result {
+                    let! command = 
+                        id
+                        |> TodoCommand.RemoveCategory
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+            async { 
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }   
+            |> Async.RunSynchronously

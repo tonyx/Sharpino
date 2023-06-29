@@ -12,6 +12,10 @@ using EventStore.Client;
 public class EventStoreBridge
 {
     EventStoreClient _client;
+    StreamPosition lastEventId = 0;
+
+    Dictionary<string, StreamPosition> lastEventIds = new Dictionary<string, StreamPosition>();
+
     public EventStoreBridge() 
         {
             _client = new EventStoreClient(
@@ -23,12 +27,14 @@ public class EventStoreBridge
         {
             try {
                 await _client.DeleteAsync("events" + version + name, StreamState.Any); 
+                await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
             }
             catch (Exception e) {
                 Console.WriteLine(e.Message);
             }
             try {
                 await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
+                await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
             }
             catch (Exception e) {
                 Console.WriteLine(e.Message);
@@ -60,14 +66,20 @@ public class EventStoreBridge
     public async Task<List<ResolvedEvent>> ConsumeEvents(string version, string name)
         {
             try {
-                await Task.Delay(50);
-                Console.WriteLine("ConsumeEvents 1");
+                await Task.Delay(2000);
+                // Console.WriteLine("ConsumeEvents 1");
                 var streamName = "events" + version + name;
-                var events =   _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start);
+                var position = lastEventIds.ContainsKey(streamName) ? lastEventIds[streamName] : StreamPosition.Start;
+                var events =  _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
                 Console.WriteLine("ConsumeEvents 2");
-                var eventsRetuned = await  events.ToListAsync();
-                Console.WriteLine("ConsumeEvents 3");
+                var eventsRetuned = await events.ToListAsync();
+                // Console.WriteLine("ConsumeEvents 3");
                 Console.WriteLine("ConsumeEvents exit");
+                foreach (var e in eventsRetuned) {
+                    Console.WriteLine("event number: " + e.OriginalEventNumber);
+                    lastEventId = e.OriginalEventNumber;
+                    lastEventIds[streamName] = e.OriginalEventNumber;
+                }
                 return eventsRetuned;
             }
             catch (Exception e) {

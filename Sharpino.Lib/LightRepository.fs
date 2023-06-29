@@ -41,15 +41,6 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: EventStoreBridge)  =
 
-        printf "updateState XXX\n"
-
-        // let cons = 
-        //     async {
-        //         let! con = storage.ConsumeEvents ('A.Version, 'A.StorageName) |> Async.AwaitTask
-        //         return con
-        //     }
-        //     |> Async.StartImmediateAsTask
-
         let consumed =
             async {
                 let! consumed = storage.ConsumeEvents('A.Version, 'A.StorageName) |> Async.AwaitTask
@@ -62,7 +53,6 @@ module LightRepository =
 
         let events =
             async {
-                // let! consumed = storage.ConsumeEvents('A.Version, 'A.StorageName) |> Async.AwaitTask
                 printf "after consumption\n"
                 let events = 
                     consumed 
@@ -76,17 +66,20 @@ module LightRepository =
                     events
             }
             |> Async.RunSynchronously
+        
         let newState =
             async {
                 return
                     ResultCE.result {
                         let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+                        printf "current state is: %A\n" state
                         let! newState = events |> evolve state
                         return newState
                     }
             }
             |> Async.RunSynchronously
         let newStateVal: 'A = (newState |> Result.get)
+        printf "this is the new state: %A\n" newStateVal
         CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
         ()
     let inline runCommand<'A, 'E
@@ -95,6 +88,7 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: EventStoreBridge) (command: Command<'A, 'E>)  =
 
+        printf "run command 1\n"
         let addingEvents =
             async {
                 return
