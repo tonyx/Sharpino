@@ -13,12 +13,19 @@ open Sharpino.Lib.EvStore
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Models.TagsModel
 open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.CategoriesAggregate
 
 [<Tests>]
 let utilsTests =
     let SetUp() =
         Cache.CurrentState<_>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
+        Cache.CurrentState<TagsAggregate>.Instance.Clear()
+        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
 
         let eventStore = EventStoreBridge()
         async {
@@ -30,80 +37,59 @@ let utilsTests =
         }
         |> Async.RunSynchronously
 
-    testList "dbstorage spike" [
-        testCase "send events to event store - ok" <| fun _ ->
-            let eventStore = EventStoreBridge()
-            let events = ["{}"; "{}"; "{}"] |> Collections.Generic.List
-
-            eventStore.AddEvents ("_01", events, "_todo")
-            // let x = eventStore.SendEvent()
-            // printf "x: %A\n" x
-            Expect.isTrue true "true"
-
-        testCase "add a tag - ok" <| fun _ ->
-            let _ = SetUp()
-            let eventStore = EventStoreBridge()
-            let eventStoreApp = EventStoreApp(eventStore)
-            let tag = {Id = System.Guid.NewGuid(); Name = "tag1"; Color = Color.Green}     
-            let result = eventStoreApp.AddTag tag
-            Expect.isTrue true "true"
-
-            async {
-                let! sl = Async.Sleep 10
-                return sl
-            }
-            |> Async.RunSynchronously
-
-            let listened  = 
-                async {
-                    let! result = eventStore.ConsumeEvents("_01", "_tags")  |> Async.AwaitTask
-                    return result
-                }
-                |> Async.RunSynchronously
-                |> Seq.toList
-
-            listened 
-            |> List.iter (fun x -> printf "listenedX: %A\n" (System.Text.Encoding.UTF8.GetString(x.Event.Data.ToArray())))
-
-        ftestCase "add a tag and then verify it is present - ok" <| fun _ ->
+    ftestList "dbstorage spike" [
+        testCase "add a tag and then verify it is present - ok" <| fun _ ->
             let _ = SetUp()
             let eventStore = EventStoreBridge()
             let eventStoreApp = EventStoreApp(eventStore)
             let tag = {Id = System.Guid.NewGuid(); Name = "tag1"; Color = Color.Green}     
             let result = eventStoreApp.AddTag tag
 
+            Expect.isTrue true "true"
             let tags = eventStoreApp.GetAllTags()  |> Result.get 
             Expect.equal tags [tag] "should be equal"
 
-        ftestCase "add a todo - ok" <| fun _ ->
+        testCase "add a todo - ok" <| fun _ ->
             let _ = SetUp()
             let eventStore = EventStoreBridge()
             let eventStoreApp = EventStoreApp(eventStore)
-            let todo: Todo = {Id = System.Guid.NewGuid(); Description = "descq"; TagIds = []; CategoryIds = []}
+            let todo: Todo = {Id = System.Guid.NewGuid(); Description = "descZ"; TagIds = []; CategoryIds = []}
 
             let result = eventStoreApp.AddTodo todo 
 
             Expect.isOk result "should be ok"
 
-            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            let todos = eventStoreApp.GetAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
 
         testCase "add a todo with an invalid tag - Ko" <| fun _ ->
             let _ = SetUp()
-            async {
-                let! sl = Async.Sleep 1000
-                return sl
-            }
-            |> Async.RunSynchronously
+
             let eventStore = EventStoreBridge()
             let eventStoreApp = EventStoreApp(eventStore)
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [] "should be equal" 
-            Expect.isTrue (Cache.CurrentState<TagsAggregate>.Instance.Dic().Count = 0) "should be true"
 
             let todo: Todo = {Id = System.Guid.NewGuid(); Description = "desc1"; TagIds = [Guid.NewGuid()]; CategoryIds = []}
             let result = eventStoreApp.AddTodo todo
             Expect.isError result "should be error"
+            printf "result: %A\n" result
+
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [] "should be equal"
+
+        testCase "add and remove a todo - Ok" <| fun _ ->
+            let _ = SetUp()
+            let eventStore = EventStoreBridge()
+            let eventStoreApp = EventStoreApp(eventStore)
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [] "should be equal" 
+            let id = Guid.NewGuid()
+            let todo: Todo = {Id = System.Guid.NewGuid(); Description = "descQQ"; TagIds = []; CategoryIds = []}
+            let result = eventStoreApp.AddTodo todo
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [todo] "should be equal"
+            let result = eventStoreApp.RemoveTodo todo.Id
 
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [] "should be equal"
@@ -118,5 +104,33 @@ let utilsTests =
             let result = eventStoreApp.GetAllTags()    
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [tag] "should be equal"
+
+        testCase "add a category and retrieve it - ok" <| fun _ ->
+            let deleted = SetUp()
+            let eventStore = EventStoreBridge()
+            let eventStoreApp = EventStoreApp(eventStore)
+            let category: Category = {Id = System.Guid.NewGuid(); Name = "cat1"}
+            let result = eventStoreApp.AddCategory category
+            let result = eventStoreApp.GetAllCategories()    
+            Expect.isOk result "should be ok"
+            Expect.equal (result |> Result.get) [category] "should be equal"
+
+        testCase "add a category and remove it - ok" <| fun _ ->
+            let _ = SetUp()
+            let eventStore = EventStoreBridge()
+            let eventStoreApp = EventStoreApp(eventStore)
+            let id = Guid.NewGuid()
+            let category: Category = {Id = id; Name = "cat1"}
+            let _ = eventStoreApp.AddCategory category
+            let removed = eventStoreApp.RemoveCategory id
+            Expect.isOk removed "should be ok"
+            let result = eventStoreApp.GetAllCategories() |> Result.get
+            Expect.equal result [] "should be equal"
+
+
+
+            
+
+
     ] 
     |> testSequenced
