@@ -49,6 +49,15 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
+    // type CurrentState private () =
+    //     let dic = Generic.Dictionary<string, Result<'A, string>>() 
+    //     static let instance = CurrentState()
+    //     static member Instance = instance
+
+
+    //     member private this.TryGet(name) =
+
+
     type StateCache<'A> private () =
         let dic = Generic.Dictionary<int, Result<int*'A, string>>()
         let queue = Generic.Queue<int>()

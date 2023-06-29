@@ -22,11 +22,13 @@
     <Compile Include="aggregates/Categories/Commands.fs" />
 
     <Compile Include="App.fs" />
+    <Compile Include="EventStoreApp.fs" />
     <Compile Include="AppVersions.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\Sharpino.Lib.EventStore\Sharpino.Lib.EventStore.csproj" />    
   </ItemGroup>
 
   <ItemGroup>

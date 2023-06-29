@@ -34,6 +34,8 @@ type IStorage =
     abstract member AddEvents: version -> List<Json> -> Name -> Result<unit, string>
     abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<unit, string>
     abstract member GetEventsAfterId: version -> int -> Name -> List<int * string >
+type ILightStorage =
+    abstract member AddEvents: version -> List<Json> -> Name -> unit
 
 module DbStorage =
     let TPConnectionString = Conf.connectionString
