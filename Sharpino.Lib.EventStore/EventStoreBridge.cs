@@ -59,13 +59,20 @@ public class EventStoreBridge
         }
     public async Task<List<ResolvedEvent>> ConsumeEvents(string version, string name)
         {
-            var streamName = "events" + version + name;
-            var events = _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start);
-            var eventsRetuned = await events.ToListAsync();
-            foreach (var e in eventsRetuned) {
-                Console.WriteLine(Encoding.UTF8.GetString(e.Event.Data.ToArray()));
+            try {
+                await Task.Delay(50);
+                Console.WriteLine("ConsumeEvents 1");
+                var streamName = "events" + version + name;
+                var events =   _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start);
+                Console.WriteLine("ConsumeEvents 2");
+                var eventsRetuned = await  events.ToListAsync();
+                Console.WriteLine("ConsumeEvents 3");
+                Console.WriteLine("ConsumeEvents exit");
+                return eventsRetuned;
             }
-            return eventsRetuned;
+            catch (Exception e) {
+                return new List<ResolvedEvent>();
+            }
         }
     public async Task<Option<(Int64, string)>> ConsumeSnapshots(string version, string name)
         {

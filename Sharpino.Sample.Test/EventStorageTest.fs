@@ -12,10 +12,14 @@ open Sharpino
 open Sharpino.Lib.EvStore
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.TagsAggregate
 
 [<Tests>]
 let utilsTests =
     let SetUp() =
+        Cache.CurrentState<_>.Instance.Clear()
+
         let eventStore = EventStoreBridge()
         async {
             let result = eventStore.Reset("_01", "_tags")
@@ -67,16 +71,42 @@ let utilsTests =
             let eventStoreApp = EventStoreApp(eventStore)
             let tag = {Id = System.Guid.NewGuid(); Name = "tag1"; Color = Color.Green}     
             let result = eventStoreApp.AddTag tag
-            Expect.isTrue true "true"
 
+            let tags = eventStoreApp.GetAllTags()  |> Result.get 
+            Expect.equal tags [tag] "should be equal"
+
+        ftestCase "add a todo - ok" <| fun _ ->
+            let _ = SetUp()
+            let eventStore = EventStoreBridge()
+            let eventStoreApp = EventStoreApp(eventStore)
+            let todo: Todo = {Id = System.Guid.NewGuid(); Description = "descq"; TagIds = []; CategoryIds = []}
+
+            let result = eventStoreApp.AddTodo todo 
+
+            Expect.isOk result "should be ok"
+
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [todo] "should be equal"
+
+        testCase "add a todo with an invalid tag - Ko" <| fun _ ->
+            let _ = SetUp()
             async {
-                let! sl = Async.Sleep 10
+                let! sl = Async.Sleep 1000
                 return sl
             }
             |> Async.RunSynchronously
+            let eventStore = EventStoreBridge()
+            let eventStoreApp = EventStoreApp(eventStore)
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [] "should be equal" 
+            Expect.isTrue (Cache.CurrentState<TagsAggregate>.Instance.Dic().Count = 0) "should be true"
 
-            let tags = eventStoreApp.GetAllTags() |> Result.get
-            Expect.equal tags [tag] "should be equal"
+            let todo: Todo = {Id = System.Guid.NewGuid(); Description = "desc1"; TagIds = [Guid.NewGuid()]; CategoryIds = []}
+            let result = eventStoreApp.AddTodo todo
+            Expect.isError result "should be error"
+
+            let todos = eventStoreApp.GetAllTodos()  |> Result.get
+            Expect.equal todos [] "should be equal"
 
         testCase "add a tag and retrieve it - ok" <| fun _ ->
             let deleted = SetUp()
@@ -89,3 +119,4 @@ let utilsTests =
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [tag] "should be equal"
     ] 
+    |> testSequenced

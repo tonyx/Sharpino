@@ -49,14 +49,26 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    // type CurrentState private () =
-    //     let dic = Generic.Dictionary<string, Result<'A, string>>() 
-    //     static let instance = CurrentState()
-    //     static member Instance = instance
+    type CurrentState<'A> private () =
+        let dic = Generic.Dictionary<string, 'A>() 
+        static let instance = CurrentState()
+        static member Instance = instance
 
+        member this.Lookup(key: string, zero: 'A): 'A =
+            let (b, res) = dic.TryGetValue key
+            if b then
+                res
+            else
+                zero
 
-    //     member private this.TryGet(name) =
+        member this.Update(key: string, value: 'A) =
+            dic.[key] <- value
 
+        member this.Clear() =
+            printf "clearing\n"
+            dic.Clear()
+        member this.Dic() =
+            dic
 
     type StateCache<'A> private () =
         let dic = Generic.Dictionary<int, Result<int*'A, string>>()
