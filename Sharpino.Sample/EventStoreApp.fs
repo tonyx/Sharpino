@@ -27,6 +27,7 @@ open FsToolkit.ErrorHandling
 
 module EventStoreApp =
     open Sharpino.Lib.EvStore
+    open Sharpino.Sample.Tags.TagCommands
     type EventStoreApp(storage: EventStoreBridge) =
         member this.AddTag tag =
             let f = fun() ->
@@ -124,4 +125,45 @@ module EventStoreApp =
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
             }   
+            |> Async.RunSynchronously
+
+        member this.RemoveTag id =
+            let f = fun() ->
+                ResultCE.result {
+                    let removeTag = TagCommand.RemoveTag id
+                    let removeTagRef = TodoCommand.RemoveTagRef id
+                    let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                    return ()
+                }
+            async { 
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }   
+            |> Async.RunSynchronously
+
+
+        member this.Add2Todos (todo1, todo2) =
+            let f = fun() ->
+                ResultCE.result {
+                    let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate
+                    let tagIds = 
+                        tagState.GetTags() 
+                        |> List.map (fun x -> x.Id)
+                    let! tagId1IsValid =
+                        (todo1.TagIds.IsEmpty || 
+                        (todo1.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
+                        |> boolToResult "Tag id is not valid"
+                    let! tagId2IsValid =
+                        (todo2.TagIds.IsEmpty || 
+                        (todo2.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
+                        |> boolToResult "Tag id is not valid"
+
+                    let! _ =
+                        (todo1, todo2)
+                        |> TodoCommand.Add2Todos
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                    return ()
+                }
+            async {
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }
             |> Async.RunSynchronously

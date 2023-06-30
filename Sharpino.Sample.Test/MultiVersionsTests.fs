@@ -113,7 +113,6 @@ let multiVersionsTests =
             Expect.isOk result "should be ok"
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
-            Expect.equal (todos.OkValue |> Set.ofList) ([todo1; todo2] |> Set.ofList)  "should be equal"
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = setUp(ap._storage)

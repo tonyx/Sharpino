@@ -43,8 +43,10 @@ module LightRepository =
 
         let consumed =
             async {
-                let! consumed = storage.ConsumeEvents('A.Version, 'A.StorageName) |> Async.AwaitTask
-                printf "consumedQ: %A X\n" consumed
+                let! consumed = 
+                    storage.ConsumeEvents('A.Version, 'A.StorageName) 
+                    |> Async.AwaitTask
+                // printf "consumedQ: %A X\n" consumed
                 return consumed
             }
             |> Async.StartImmediateAsTask
@@ -53,7 +55,7 @@ module LightRepository =
 
         let events =
             async {
-                printf "after consumption\n"
+                // printf "after consumption\n"
                 let events = 
                     consumed 
                     |> Seq.toList 
@@ -72,14 +74,14 @@ module LightRepository =
                 return
                     ResultCE.result {
                         let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
-                        printf "current state is: %A\n" state
+                        // printf "current state is: %A\n" state
                         let! newState = events |> evolve state
                         return newState
                     }
             }
             |> Async.RunSynchronously
         let newStateVal: 'A = (newState |> Result.get)
-        printf "this is the new state: %A\n" newStateVal
+        // printf "this is the new state: %A\n" newStateVal
         CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
         ()
     let inline runCommand<'A, 'E
@@ -88,7 +90,13 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: EventStoreBridge) (command: Command<'A, 'E>)  =
 
-        printf "run command 1\n"
+        let addEvents (events: System.Collections.Generic.List<string>) =
+            async {
+                let! added = storage.AddEvents ('A.Version, events, 'A.StorageName) |> Async.AwaitTask
+                return added
+            }
+            |> Async.RunSynchronously
+
         let addingEvents =
             async {
                 return
@@ -100,7 +108,8 @@ module LightRepository =
                         let serEvents = events |> List.map (fun x -> Utils.serialize x) |> System.Collections.Generic.List
                         let! eventsAdded' =
                             try 
-                                storage.AddEvents ('A.Version, serEvents, 'A.StorageName)  |> Ok
+                                // storage.AddEvents ('A.Version, serEvents, 'A.StorageName) |> Ok
+                                addEvents serEvents |> Ok
                             with
                             _ as e -> Error (sprintf "%s %A" "Error adding events to storage" e)
                         return ()
@@ -119,6 +128,26 @@ module LightRepository =
             |> Async.RunSynchronously
 
         addingEvents
+
+    let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2>> 
+            (storage: EventStoreBridge)
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) =
+            ResultCE.result {
+                let result1 = runCommand<'A1, 'E1> storage command1
+                printf "result1: %A\n" result1
+                let! result2 = runCommand<'A2, 'E2> storage command2
+                printf "result2: %A\n" result1
+                return ()
+            }
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 

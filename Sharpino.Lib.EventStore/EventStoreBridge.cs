@@ -23,25 +23,25 @@ public class EventStoreBridge
             );
         }
 
-    public async void Reset (string version, string name) 
+    public async Task Reset (string version, string name) 
         {
             try {
                 await _client.DeleteAsync("events" + version + name, StreamState.Any); 
                 await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
             }
             catch (Exception e) {
-                Console.WriteLine(e.Message);
+                // Console.WriteLine(e.Message);
             }
             try {
                 await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
                 await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
             }
             catch (Exception e) {
-                Console.WriteLine(e.Message);
+                // Console.WriteLine(e.Message);
             }
         }
 
-    public async void AddEvents (string version, List<string> events, string name) 
+    public async Task AddEvents (string version, List<string> events, string name) 
         {
             var streamName = "events" + version + name;
             var eventData = events.Select(e => new EventData(
@@ -49,7 +49,9 @@ public class EventStoreBridge
                 "events" + version + name,
                 Encoding.UTF8.GetBytes(e)
             ));
+            // System.Console.WriteLine("Before adding events 1");
             await _client.AppendToStreamAsync(streamName, StreamState.Any, eventData);
+            // System.Console.WriteLine("After adding events 1");
         }
 
     public async void SetSnapshot(int eventId, string version, string snapshot, string name) 
@@ -66,18 +68,14 @@ public class EventStoreBridge
     public async Task<List<ResolvedEvent>> ConsumeEvents(string version, string name)
         {
             try {
-                await Task.Delay(2000);
-                // Console.WriteLine("ConsumeEvents 1");
+                await Task.Delay(01);
                 var streamName = "events" + version + name;
                 var position = lastEventIds.ContainsKey(streamName) ? lastEventIds[streamName] : StreamPosition.Start;
-                var events =  _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
-                Console.WriteLine("ConsumeEvents 2");
+                var events = _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
+                Console.WriteLine("before read");
                 var eventsRetuned = await events.ToListAsync();
-                // Console.WriteLine("ConsumeEvents 3");
-                Console.WriteLine("ConsumeEvents exit");
+                Console.WriteLine("after read");
                 foreach (var e in eventsRetuned) {
-                    Console.WriteLine("event number: " + e.OriginalEventNumber);
-                    lastEventId = e.OriginalEventNumber;
                     lastEventIds[streamName] = e.OriginalEventNumber;
                 }
                 return eventsRetuned;
@@ -94,9 +92,6 @@ public class EventStoreBridge
                 var eventsRetuned = await snapshots.ToListAsync();
                 var lastEvent = Encoding.UTF8.GetString(eventsRetuned.Last().Event.Data.ToArray());
                 var lastEventId =  eventsRetuned.Last().Event.EventNumber;
-                foreach (var e in eventsRetuned) {
-                    Console.WriteLine(Encoding.UTF8.GetString(e.Event.Data.ToArray()));
-                }
                 return Option<(Int64, string)>.Some((lastEventId.ToInt64(), lastEvent));
             }
             catch (Exception e) {
