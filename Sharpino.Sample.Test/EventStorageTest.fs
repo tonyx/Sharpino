@@ -171,7 +171,7 @@ let utilsTests =
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal (todos.Head.TagIds) [] "should be equal"
 
-        ftestCase "will not remove the tag if its ref can't be removed in todos that contains them - OK" <| fun _ ->
+        ftestCase "will not remoive the tag if its ref can't be removed in todos that contains them - OK" <| fun _ ->
             let _ = SetUp()
             let eventStore = EventStoreBridge()
             let eventStoreApp = EventStoreApp(eventStore)
@@ -180,6 +180,8 @@ let utilsTests =
 
             let tag = { Id = id2; Name = "test"; Color = Color.Blue }
             let result = eventStoreApp.AddTag tag
+            let tags = eventStoreApp.GetAllTags().OkValue
+            Expect.equal tags [tag] "should be equal"
 
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
             let result = eventStoreApp.AddTodo todo
@@ -188,10 +190,11 @@ let utilsTests =
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal todos [todo] "should be equal"
 
-            let result = eventStoreApp.RemoveTag id2
-            Expect.isOk result "should be ok"
+            // fake impl of runtwocommands where the second command fails so no tag is removed either
+            let result = eventStoreApp.RemoveTagFakingErrorOnSecondCommand id2
+            // Expect.isOk result "should be ok"
             let tags = eventStoreApp.GetAllTags().OkValue
-            Expect.equal tags [] "should be equal"
+            Expect.equal tags [tag] "should be equal"
             // let todos = eventStoreApp.GetAllTodos().OkValue
             // Expect.equal (todos.Head.TagIds) [] "should be equal"
 

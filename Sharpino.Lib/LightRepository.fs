@@ -142,10 +142,28 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-                let result1 = runCommand<'A1, 'E1> storage command1
-                printf "result1: %A\n" result1
+                let! result1 = runCommand<'A1, 'E1> storage command1
                 let! result2 = runCommand<'A2, 'E2> storage command2
-                printf "result2: %A\n" result1
+
+                return ()
+            }
+
+    let inline runTwoCommandsWithFailure<'A1, 'A2, 'E1, 'E2 
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2>> 
+            (storage: EventStoreBridge)
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) =
+            ResultCE.result {
+                let! result1 = runCommand<'A1, 'E1> storage command1
+                let result2: Result<unit, string> = Error "error"
+                let! result2' = result2
                 return ()
             }
 

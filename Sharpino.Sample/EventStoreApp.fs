@@ -139,6 +139,18 @@ module EventStoreApp =
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
             }   
             |> Async.RunSynchronously
+        member this.RemoveTagFakingErrorOnSecondCommand id =
+            let f = fun() ->
+                ResultCE.result {
+                    let removeTag = TagCommand.RemoveTag id
+                    let removeTagRef = TodoCommand.RemoveTagRef id
+                    let! _ = runTwoCommandsWithFailure<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                    return ()
+                }
+            async { 
+                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            }   
+            |> Async.RunSynchronously
 
 
         member this.Add2Todos (todo1, todo2) =
