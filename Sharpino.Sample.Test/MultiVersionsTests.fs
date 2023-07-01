@@ -50,13 +50,13 @@ let setUp(db: IStorage) =
 let allVersions =
     [
         // enable the following lines to test with postgres
-        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,       fun () -> () |> Result.Ok)
-        (AppVersions.upgradedPostgresApp,  AppVersions.upgradedPostgresApp, fun () -> () |> Result.Ok)
-        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp, AppVersions.currentPostgresApp._migrator.Value)
+        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
+        (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
-        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,         fun () -> () |> Result.Ok)
-        (AppVersions.upgradedMemoryApp,    AppVersions.upgradedMemoryApp,   fun () -> () |> Result.Ok)
-        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,   AppVersions.currentMemoryApp._migrator.Value)
+        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
+        (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
     ]
 
 let currentTestConfs = allVersions
