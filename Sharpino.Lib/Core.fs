@@ -11,7 +11,7 @@ module Core =
     type Command<'A, 'E when 'E :> Event<'A>> =
         abstract member Execute: 'A -> Result<List<'E>, string>
 
-    let inline evolveUnForgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+    let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
         events
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
