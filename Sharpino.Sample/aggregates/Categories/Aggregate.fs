@@ -7,6 +7,7 @@ open Sharpino.Sample.Models.CategoriesModel
 open System
 
 module CategoriesAggregate =
+
     type CategoriesAggregate =
         {
             Categories: Categories
