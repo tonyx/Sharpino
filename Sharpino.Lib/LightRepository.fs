@@ -46,7 +46,6 @@ module LightRepository =
                 let! consumed = 
                     storage.ConsumeEvents('A.Version, 'A.StorageName) 
                     |> Async.AwaitTask
-                // printf "consumedQ: %A X\n" consumed
                 return consumed
             }
             |> Async.StartImmediateAsTask
@@ -55,7 +54,6 @@ module LightRepository =
 
         let events =
             async {
-                // printf "after consumption\n"
                 let events = 
                     consumed 
                     |> Seq.toList 
@@ -81,9 +79,53 @@ module LightRepository =
             }
             |> Async.RunSynchronously
         let newStateVal: 'A = (newState |> Result.get)
-        // printf "this is the new state: %A\n" newStateVal
         CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
         ()
+
+    let inline runUndoCommand<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>> (storage: EventStoreBridge) (undoer: Undoer<'A, 'E>)  =
+
+        let addEvents (events: System.Collections.Generic.List<string>) =
+            async {
+                let! added = storage.AddEvents ('A.Version, events, 'A.StorageName) |> Async.AwaitTask
+                return added
+            }
+            |> Async.RunSynchronously
+
+        let addingEvents =
+            async {
+                return
+                    ResultCE.result {
+                        let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+                        let! events =
+                            state
+                            |> undoer 
+                        let serEvents = events |> List.map (fun x -> Utils.serialize x) |> System.Collections.Generic.List
+                        let! eventsAdded' =
+                            try 
+                                addEvents serEvents |> Ok
+                            with
+                            _ as e -> Error (sprintf "%s %A" "Error adding events to storage" e)
+                        return ()
+                    } 
+            }
+            |> Async.RunSynchronously
+
+        let updatingState =
+            async {
+                return
+                    ResultCE.result {
+                        let _ = updateState<'A, 'E> storage
+                        return ()
+                    }
+            }
+            |> Async.RunSynchronously
+
+        addingEvents
+
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -108,7 +150,6 @@ module LightRepository =
                         let serEvents = events |> List.map (fun x -> Utils.serialize x) |> System.Collections.Generic.List
                         let! eventsAdded' =
                             try 
-                                // storage.AddEvents ('A.Version, serEvents, 'A.StorageName) |> Ok
                                 addEvents serEvents |> Ok
                             with
                             _ as e -> Error (sprintf "%s %A" "Error adding events to storage" e)
@@ -142,10 +183,33 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-                let! result1 = runCommand<'A1, 'E1> storage command1
-                let! result2 = runCommand<'A2, 'E2> storage command2
+                let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
+                let command1Undoer = 
+                    match command1.Undo with
+                    | Some f -> a1State |> f |> Some 
+                    | _ -> None
 
-                return ()
+                let command1Undoer2 = 
+                    match command1Undoer with
+                    | Some x -> 
+                        match x with
+                        | Ok x -> Some x
+                        | _ -> None
+                    | _ -> None
+
+                let! result1 = runCommand<'A1, 'E1> storage command1
+                let result2 = runCommand<'A2, 'E2> storage command2
+
+                match result2, command1Undoer2 with
+                | Error _, Some undoer ->
+                    runUndoCommand storage undoer
+                    ()
+                | _ -> ()
+
+                let! result2' = result2
+                return result2'
+
+                // return ()
             }
 
     let inline runTwoCommandsWithFailure<'A1, 'A2, 'E1, 'E2 
@@ -161,8 +225,30 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
+
+                let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
+                let command1Undoer = 
+                    match command1.Undo with
+                    | Some f -> a1State |> f |> Some 
+                    | _ -> None
+
+                let command1Undoer2 = 
+                    match command1Undoer with
+                    | Some x -> 
+                        match x with
+                        | Ok x -> Some x
+                        | _ -> None
+                    | _ -> None
+                
                 let! result1 = runCommand<'A1, 'E1> storage command1
                 let result2: Result<unit, string> = Error "error"
+                
+                match result2, command1Undoer2 with
+                | Error _, Some undoer ->
+                    runUndoCommand storage undoer
+                    ()
+                | _ -> ()
+
                 let! result2' = result2
                 return ()
             }
@@ -179,9 +265,4 @@ module LightRepository =
             }
         loop()
     )
-
-
-            
-
-            
 

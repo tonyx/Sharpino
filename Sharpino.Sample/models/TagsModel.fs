@@ -52,4 +52,13 @@ module TagsModel =
                         }
                     return result
                 }
+            member this.GetTag(id: Guid) =
+                ResultCE.result {
+                    let! result =
+                        this.tags
+                        |> List.tryFind (fun x -> x.Id = id)
+                        |> Result.ofOption (sprintf "A tag with id '%A' does not exist" id)
+                    return result
+                }
+
             member this.GetTags() = this.tags

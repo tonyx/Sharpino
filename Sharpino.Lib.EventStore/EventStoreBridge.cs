@@ -12,8 +12,6 @@ using EventStore.Client;
 public class EventStoreBridge
 {
     EventStoreClient _client;
-    StreamPosition lastEventId = 0;
-
     Dictionary<string, StreamPosition> lastEventIds = new Dictionary<string, StreamPosition>();
 
     public EventStoreBridge() 
@@ -72,9 +70,7 @@ public class EventStoreBridge
                 var streamName = "events" + version + name;
                 var position = lastEventIds.ContainsKey(streamName) ? lastEventIds[streamName] : StreamPosition.Start;
                 var events = _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
-                Console.WriteLine("before read");
                 var eventsRetuned = await events.ToListAsync();
-                Console.WriteLine("after read");
                 foreach (var e in eventsRetuned) {
                     lastEventIds[streamName] = e.OriginalEventNumber;
                 }

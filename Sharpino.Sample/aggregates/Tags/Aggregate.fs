@@ -30,6 +30,9 @@ module TagsAggregate =
                     }
             }
 
+        member this.GetTag(id: Guid) =
+            this.Tags.GetTag(id)
+
         member this.RemoveTag(id: Guid) =
             ResultCE.result {
                 let! tags = this.Tags.RemoveTag(id)

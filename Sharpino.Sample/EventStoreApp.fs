@@ -92,6 +92,7 @@ module EventStoreApp =
             }   
             |> Async.RunSynchronously
 
+
         member this.AddCategory category =
             let f = fun() ->
                 ResultCE.result {

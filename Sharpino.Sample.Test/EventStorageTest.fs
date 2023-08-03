@@ -73,7 +73,6 @@ let utilsTests =
             let todo: Todo = {Id = System.Guid.NewGuid(); Description = "desc1"; TagIds = [Guid.NewGuid()]; CategoryIds = []}
             let result = eventStoreApp.AddTodo todo
             Expect.isError result "should be error"
-            printf "result: %A\n" result
 
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [] "should be equal"
@@ -171,7 +170,7 @@ let utilsTests =
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal (todos.Head.TagIds) [] "should be equal"
 
-        ftestCase "will not remoive the tag if its ref can't be removed in todos that contains them - OK" <| fun _ ->
+        testCase "will not remove the tag if its ref can't be removed in todos that contains them - OK" <| fun _ ->
             let _ = SetUp()
             let eventStore = EventStoreBridge()
             let eventStoreApp = EventStoreApp(eventStore)
@@ -192,11 +191,8 @@ let utilsTests =
 
             // fake impl of runtwocommands where the second command fails so no tag is removed either
             let result = eventStoreApp.RemoveTagFakingErrorOnSecondCommand id2
-            // Expect.isOk result "should be ok"
             let tags = eventStoreApp.GetAllTags().OkValue
             Expect.equal tags [tag] "should be equal"
-            // let todos = eventStoreApp.GetAllTodos().OkValue
-            // Expect.equal (todos.Head.TagIds) [] "should be equal"
 
         testCase "remove an unexisting todo - KO" <| fun _ ->
             let _ = SetUp()

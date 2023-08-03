@@ -6,6 +6,13 @@ open Sharpino.Utils
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample
 
 open System
@@ -18,10 +25,50 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memStorage)
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
+    let evStoreApp = EventStoreApp(Sharpino.Lib.EvStore.EventStoreBridge())
+
+    let resetDb(db: IStorage) =
+        db.Reset TodosAggregate.Version TodosAggregate.StorageName 
+        Cache.EventCache<TodosAggregate>.Instance.Clear()
+        Cache.SnapCache<TodosAggregate>.Instance.Clear()
+        Cache.StateCache<TodosAggregate>.Instance.Clear()
+
+        db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
+        Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+
+        db.Reset TagsAggregate.Version TagsAggregate.StorageName
+        Cache.EventCache<TagsAggregate>.Instance.Clear()
+        Cache.SnapCache<TagsAggregate>.Instance.Clear()
+        Cache.StateCache<TagsAggregate>.Instance.Clear()
+
+        db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
+        Cache.EventCache<CategoriesAggregate>.Instance.Clear()
+        Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
+        Cache.StateCache<CategoriesAggregate>.Instance.Clear()
+
+    let resetEventStore() =
+        Cache.CurrentState<_>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
+        Cache.CurrentState<TagsAggregate>.Instance.Clear()
+        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
+
+        let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
+        async {
+            let! result = eventStore.Reset("_01", "_tags") |> Async.AwaitTask
+            let! result = eventStore.Reset("_01", "_todo") |> Async.AwaitTask
+            let! result = eventStore.Reset("_02", "_todo") |> Async.AwaitTask
+            let! result = eventStore.Reset("_01", "_categories") |> Async.AwaitTask
+            return result
+        }
+        |> Async.RunSynchronously
+
     type IApplication =
         {
-            _storage:           IStorage
             _migrator:          Option<unit -> Result<unit, string>>
+            _reset:             unit -> unit
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -38,8 +85,8 @@ module AppVersions =
     [<CurrentVersion>]
     let currentPostgresApp =
         {
-            _storage =          pgStorage
             _migrator  =        currentPgApp.Migrate |> Some
+            _reset  =           fun () -> resetDb pgStorage
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -55,8 +102,8 @@ module AppVersions =
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
-            _storage =          pgStorage
             _migrator  =        None
+            _reset =            fun () -> resetDb pgStorage
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -74,7 +121,7 @@ module AppVersions =
     let currentMemoryApp =
         {
             _migrator  =        currentMemApp.Migrate |> Some
-            _storage =          memStorage 
+            _reset =            fun () -> resetDb memStorage
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -91,7 +138,7 @@ module AppVersions =
     let upgradedMemoryApp =
         {
             _migrator =         None
-            _storage =          memStorage 
+            _reset =            fun () -> resetDb memStorage
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos
@@ -102,4 +149,21 @@ module AppVersions =
             addTag =            upgradedMemApp.AddTag
             removeTag =         upgradedMemApp.removeTag
             getAllTags =        upgradedMemApp.GetAllTags
+        }
+
+    [<CurrentVersion>]
+    let evSApp =
+        {
+            _migrator =         None
+            _reset =            fun () -> resetEventStore()
+            getAllTodos =       evStoreApp.GetAllTodos
+            addTodo =           evStoreApp.AddTodo
+            add2Todos =         evStoreApp.Add2Todos
+            removeTodo =        evStoreApp.RemoveTodo
+            getAllCategories =  evStoreApp.GetAllCategories
+            addCategory =       evStoreApp.AddCategory
+            removeCategory =    evStoreApp.RemoveCategory
+            addTag =            evStoreApp.AddTag
+            removeTag =         evStoreApp.RemoveTag
+            getAllTags =        evStoreApp.GetAllTags
         }
