@@ -18,7 +18,14 @@ open Sharpino.Sample
 open System
 
 module AppVersions =
-    let pgStorage: IStorage = DbStorage.PgDb()
+    // beware that this is the test db and so we can reset it for testing
+    // this should never be done in production
+    let connection = 
+        "Server=127.0.0.1;"+
+        "Database=es_01;" +
+        "User Id=safe;"+
+        "Password=safe;"
+    let pgStorage: IStorage = DbStorage.PgDb(connection)
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(pgStorage)
     let upgradedPgApp = App.UpgradedApp(pgStorage)

@@ -43,7 +43,6 @@ let allVersions =
 
 let currentTestConfs = allVersions
 
-
 [<Tests>]
 let utilsTests =
     testList "catch errors test" [
@@ -71,9 +70,70 @@ let utilsTests =
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
 
+
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
+
+        // multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        //     let _ = ap._reset() //setUp(ap._storage)
+        //     let id = Guid.NewGuid()
+        //     let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+        //     let result = ap._storage.AddEvents TodosAggregate.Version [ event |> Utils.serialize] TodosAggregate.StorageName 
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event |> Utils.serialize] TodosAggregate'.StorageName 
+        //     let todos = ap.getAllTodos()
+        //     Expect.isOk todos "should be ok"
+        //     Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+
+        // multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
+        //     let _ = ap._reset() //setUp(ap._storage)
+        //     let id = Guid.NewGuid()
+        //     let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+        //     let result = ap._storage.AddEvents TodosAggregate.Version [ event |> Utils.serialize] TodosAggregate.StorageName 
+        //     let result = ap._storage.AddEvents TodosAggregate.Version [ event |> Utils.serialize] TodosAggregate.StorageName 
+
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event |> Utils.serialize] TodosAggregate'.StorageName 
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event |> Utils.serialize] TodosAggregate'.StorageName 
+
+        //     let todos = ap.getAllTodos()
+        //     Expect.isOk todos "should be ok"
+        //     Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+
+        // multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
+        //     let _ = ap._reset() 
+        //     let id = Guid.NewGuid()
+        //     let id2 = Guid.NewGuid()
+        //     let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+
+        //     let event2 = Todos.TodoEvents.TodoAdded { Id = id2; Description = "test second part"; CategoryIds = []; TagIds = [] }
+
+        //     let result = ap._storage.AddEvents TodosAggregate.Version  [ event |> Utils.serialize ]  TodosAggregate.StorageName 
+        //     let result = ap._storage.AddEvents TodosAggregate.Version  [ event |> Utils.serialize ]  TodosAggregate.StorageName 
+
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event |> Utils.serialize ]  TodosAggregate'.StorageName 
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event |> Utils.serialize ]  TodosAggregate'.StorageName 
+
+        //     let result = ap._storage.AddEvents TodosAggregate.Version  [ event2 |> Utils.serialize ] TodosAggregate.StorageName
+        //     let result = ap._storage.AddEvents TodosAggregate'.Version [ event2 |> Utils.serialize ] TodosAggregate'.StorageName
+
+        //     let todos = ap.getAllTodos()
+
+        //     Expect.isOk todos "should be ok"
+        //     Expect.equal (todos.OkValue |> Set.ofList) 
+        //         (
+        //             [
+        //                 { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+        //                 { Id = id2; Description = "test second part"; CategoryIds = []; TagIds = [] }
+        //         ] |> Set.ofList) "should be equal"
+
+        multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+            let _ = ap._reset() 
+            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let result = ap.addTodo todo
+            Expect.isOk result "should be ok"
+            let result = ap.addTodo todo
+            Expect.isError result "should be error"
+
         multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
@@ -343,6 +403,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let todos = apUpgd.getAllTodos().OkValue 
+
             Expect.equal (todos |> List.head).CategoryIds [categoryId2] "should be equal"
 
         multipleTestCase "add tag" currentTestConfs <| fun (ap, apUpgd, migrator) ->

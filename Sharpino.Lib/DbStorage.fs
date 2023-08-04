@@ -38,20 +38,19 @@ type ILightStorage =
     abstract member AddEvents: version -> List<Json> -> Name -> unit
 
 module DbStorage =
-    let TPConnectionString = Conf.connectionString
-    type PgDb() =
+    type PgDb(connection) =
         interface IStorage with
             member this.Reset version name =
                 if (Conf.isTestEnv) then
                     // additional precautions to avoid deleting data in non dev/test env 
                     // is configuring the db user rights in prod accordingly (only read and write/append)
                     let res1 =
-                        TPConnectionString
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQuery
                     let res2 =
-                        TPConnectionString
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
                         |> Sql.executeNonQuery
@@ -61,7 +60,7 @@ module DbStorage =
 
             member this.TryGetLastSnapshot version name =
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.executeAsync (fun read ->
@@ -77,7 +76,7 @@ module DbStorage =
 
             member this.TryGetLastSnapshotId version name =
                 let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.executeAsync (fun read ->
@@ -91,7 +90,7 @@ module DbStorage =
 
             member this.TryGetLastEventId version name =
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query 
                 |> Sql.executeAsync  (fun read -> read.int "id")
@@ -101,7 +100,7 @@ module DbStorage =
 
             member this.TryGetLastSnapshotEventId version name =
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.executeAsync  (fun read -> read.int "event_id")
@@ -111,7 +110,7 @@ module DbStorage =
 
             member this.TryGetEvent version id name =
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query 
                 |> Sql.parameters ["id", Sql.int id]
@@ -134,7 +133,7 @@ module DbStorage =
                     {
                         let! event = ((this :> IStorage).TryGetEvent version id name) |> Result.ofOption "event not found"
                         let _ =
-                            TPConnectionString
+                            connection
                             |> Sql.connect
                             |> Sql.executeTransactionAsync
                                 [
@@ -156,7 +155,7 @@ module DbStorage =
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
                     let _ =
-                        TPConnectionString
+                        connection
                         |> Sql.connect
                         |> Sql.executeTransactionAsync
                             [
@@ -196,7 +195,7 @@ module DbStorage =
                         )
                 try 
                     let _ =
-                        TPConnectionString
+                        connection
                         |> Sql.connect
                         |> Sql.executeTransactionAsync cmdList
                         |> Async.AwaitTask
@@ -207,7 +206,7 @@ module DbStorage =
 
             member this.GetEventsAfterId version id name =    
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id" version name
-                TPConnectionString
+                connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.parameters ["id", Sql.int id]

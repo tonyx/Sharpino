@@ -70,8 +70,8 @@ module Cache =
             dic
 
     type StateCache<'A> private () =
-        let dic = Generic.Dictionary<int, Result<int*'A, string>>()
-        let queue = Generic.Queue<int>()
+        let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
+        let queue = Generic.Queue<(int * string)>()
         static let instance = StateCache<'A>()
         static member Instance = instance
 
@@ -90,7 +90,7 @@ module Cache =
                 queue.Clear()
                 ()
 
-        member this.Memoize (f: unit -> Result<int*'A, string>) (arg: int) =
+        member this.Memoize (f: unit -> Result<int*'A, string>) (arg: int * string) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
@@ -106,8 +106,8 @@ module Cache =
             queue.Clear()
 
     type SnapCache<'A> private () =
-        let dic = Generic.Dictionary<int, Result<'A, string>>()
-        let queue = Generic.Queue<int>()
+        let dic = Generic.Dictionary<int * string, Result<'A, string>>()
+        let queue = Generic.Queue<int * string>()
         static let instance = SnapCache<'A>()
         static member Instance = instance
 
@@ -128,7 +128,7 @@ module Cache =
                 ()
 
         // this one looks like it's helping
-        member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
+        member this.Memoize (f: unit -> Result<'A, string>) (arg: int * string) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
