@@ -57,10 +57,21 @@ module AppVersions =
 
         let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
         async {
-            let! result = eventStore.Reset("_01", "_tags") |> Async.AwaitTask
-            let! result = eventStore.Reset("_01", "_todo") |> Async.AwaitTask
-            let! result = eventStore.Reset("_02", "_todo") |> Async.AwaitTask
-            let! result = eventStore.Reset("_01", "_categories") |> Async.AwaitTask
+            let! result = eventStore.ResetSnapshots("_01", "_tags") |> Async.AwaitTask
+            let! result = eventStore.ResetEvents("_01", "_tags") |> Async.AwaitTask
+            let! result = eventStore.ResetSnapshots("_01", "_todo") |> Async.AwaitTask
+            let! result = eventStore.ResetEvents("_01", "_todo") |> Async.AwaitTask
+            let! result = eventStore.ResetSnapshots("_02", "_todo") |> Async.AwaitTask
+            let! result = eventStore.ResetEvents("_02", "_todo") |> Async.AwaitTask
+            let! result = eventStore.ResetSnapshots("_01", "_categories") |> Async.AwaitTask
+            let! result = eventStore.ResetEvents("_01", "_categories") |> Async.AwaitTask
+
+
+            // let! result = eventStore.Reset("_01", "_tags") |> Async.AwaitTask
+            // let! result = eventStore.Reset("_01", "_todo") |> Async.AwaitTask
+            // let! result = eventStore.Reset("_02", "_todo") |> Async.AwaitTask
+            // let! result = eventStore.Reset("_01", "_categories") |> Async.AwaitTask
+
             return result
         }
         |> Async.RunSynchronously

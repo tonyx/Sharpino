@@ -13,7 +13,7 @@ module Core =
         abstract member Execute: 'A -> Result<List<'E>, string>
         abstract member Undo: Option<'A -> Result<Undoer<'A, 'E>, string>>
 
-    let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+    let inline evolveUnforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
         events
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
@@ -21,3 +21,22 @@ module Core =
                     | Error err -> Error err 
                     | Ok h -> h |> e.Process
             ) (h |> Ok)
+
+    let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
+        let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
+            match acc, events with
+            | Error err, _::es -> 
+                evolveSkippingErrors (guard |> Ok) es guard
+            | Error err, [] -> 
+                guard |> Ok
+            | Ok state, e::es ->
+                let newGuard = state |> e.Process
+                match newGuard with
+                | Error err -> 
+                    evolveSkippingErrors (guard |> Ok) es guard
+                | Ok h' ->
+                    evolveSkippingErrors (h' |> Ok) es h'
+            | Ok h, [] -> h |> Ok
+
+        evolveSkippingErrors (h |> Ok) events h
+

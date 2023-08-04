@@ -50,7 +50,7 @@ module TodoCommands =
                     let evolved =
                         fun () ->
                         [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
-                        |> evolve x
+                        |> evolveUnforgivingErrors x
                     match EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]) with
                         | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
                         | Error x -> x |> Error
@@ -87,7 +87,7 @@ module TodoCommands =
                     let evolved =
                         fun () ->
                         [TodoAdded t1; TodoAdded t2]
-                        |> evolve x
+                        |> evolveUnforgivingErrors x
                     match
                         EventCache<TodosAggregate'>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent'.TodoAdded t1; TodoEvent'.TodoAdded t2]) with
                         | Ok _ -> [TodoAdded t1; TodoAdded t2] |> Ok

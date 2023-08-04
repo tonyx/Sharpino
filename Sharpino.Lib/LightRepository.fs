@@ -35,6 +35,12 @@ module LightRepository =
             }
             |> Async.RunSynchronously
 
+    let inline getState<'A
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)>() =
+            CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+
     let inline updateState<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -71,8 +77,8 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
-                        // printf "current state is: %A\n" state
+                        let state = getState<'A>()
+                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
                         let! newState = events |> evolve state
                         return newState
                     }
@@ -99,7 +105,8 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+                        let state = getState<'A>()
                         let! events =
                             state
                             |> undoer 
@@ -143,7 +150,8 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+                        let state = getState<'A>()
+                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
                         let! events =
                             state
                             |> command.Execute
@@ -183,7 +191,8 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-                let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
+                let a1State = getState<'A1>() 
+                // let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
                 let command1Undoer = 
                     match command1.Undo with
                     | Some f -> a1State |> f |> Some 
@@ -205,13 +214,12 @@ module LightRepository =
                     runUndoCommand storage undoer
                     ()
                 | _ -> ()
-
                 let! result2' = result2
                 return result2'
 
-                // return ()
             }
 
+    // this is the same as runTwoCommands but with a failure in the second command to test the undo
     let inline runTwoCommandsWithFailure<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
@@ -225,8 +233,7 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-
-                let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
+                let a1State = getState<'A1>()
                 let command1Undoer = 
                     match command1.Undo with
                     | Some f -> a1State |> f |> Some 

@@ -1,5 +1,4 @@
-﻿
-namespace Sharpino.Lib.EvStore;
+﻿namespace Sharpino.Lib.EvStore;
 using System;
 using System.Linq;
 using System.Net.Http;
@@ -21,22 +20,80 @@ public class EventStoreBridge
             );
         }
 
+
+    public async Task ResetEvents(string version, string name)
+        {
+            var result1 = _client.ReadStreamAsync(
+                Direction.Forwards,
+                "events" + version + name, 
+                StreamPosition.Start,
+                StreamState.Any);
+
+            if (await result1.ReadState == ReadState.StreamNotFound) {
+                return;
+            }
+            else
+                try {
+                    await _client.DeleteAsync("events" + version + name, StreamState.Any); 
+                }
+                catch (Exception e) {
+                    Console.WriteLine(e.Message);
+                }
+        }
+    public async Task ResetSnapshots(string version, string name)
+        {
+            var result1 = _client.ReadStreamAsync(
+                Direction.Forwards,
+                "snapshots" + version + name, 
+                StreamPosition.Start,
+                StreamState.Any);
+
+            if (await result1.ReadState == ReadState.StreamNotFound) {
+                return;
+            }
+            else
+                try {
+                    await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
+                }
+                catch (Exception e) {
+                    Console.WriteLine(e.Message);
+                }
+        }
+
+
     public async Task Reset (string version, string name) 
         {
-            try {
-                await _client.DeleteAsync("events" + version + name, StreamState.Any); 
-                await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
+            var result1 = _client.ReadStreamAsync(
+                Direction.Forwards,
+                "events" + version + name, 
+                StreamPosition.Start,
+                StreamState.Any);
+
+            var result2 = _client.ReadStreamAsync(
+                Direction.Forwards,
+                "snapshots" + version + name, 
+                StreamPosition.Start,
+                StreamState.Any);
+
+            if (await result1.ReadState == ReadState.StreamNotFound) {
+                Console.WriteLine("XXXX. Stream " + name + version + "not found");
+                return;
             }
-            catch (Exception e) {
-                // Console.WriteLine(e.Message);
-            }
-            try {
-                await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
-                await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
-            }
-            catch (Exception e) {
-                // Console.WriteLine(e.Message);
-            }
+            else
+                try {
+                    await _client.DeleteAsync("events" + version + name, StreamState.Any); 
+                    await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
+                }
+                catch (Exception e) {
+                    Console.WriteLine(e.Message);
+                }
+                try {
+                    await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
+                    await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
+                }
+                catch (Exception e) {
+                    Console.WriteLine(e.Message);
+                }
         }
 
     public async Task AddEvents (string version, List<string> events, string name) 
@@ -47,9 +104,7 @@ public class EventStoreBridge
                 "events" + version + name,
                 Encoding.UTF8.GetBytes(e)
             ));
-            // System.Console.WriteLine("Before adding events 1");
             await _client.AppendToStreamAsync(streamName, StreamState.Any, eventData);
-            // System.Console.WriteLine("After adding events 1");
         }
 
     public async void SetSnapshot(int eventId, string version, string snapshot, string name) 
