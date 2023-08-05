@@ -11,7 +11,6 @@ open FsToolkit.ErrorHandling
 
 module EventStore =     
     open EventStore.Client
-    open Newtonsoft.Json
 
     type TestEvent =
         {

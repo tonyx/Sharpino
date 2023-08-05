@@ -16,7 +16,7 @@
     <Compile Include="aggregates_upgrade/Categories_02/models/Categories_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
     <Compile Include="MultiVersionsTests.fs" />
-    <Compile Include="EventStorageTest.fs" />
+    <Compile Include="EventStoreTest.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

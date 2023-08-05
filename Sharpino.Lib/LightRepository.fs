@@ -8,6 +8,7 @@ open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
+open Sharpino.Lib
 open Sharpino.Lib.EvStore
 open Sharpino.Utils
 open Sharpino.Cache
@@ -23,7 +24,7 @@ module LightRepository =
         and 'A: (static member Version: string)>
         (storage: EventStoreBridge) = 
             async {
-                let! (st: Sharpino.Lib.EvStore.Option<struct (int64 * string)>) = 
+                let! (st: EvStore.Option<struct (int64 * string)>) = 
                     storage.ConsumeSnapshots ('A.Version, 'A.StorageName) |> Async.AwaitTask
                 match st.HasValue with
                     | true ->  
@@ -189,7 +190,7 @@ module LightRepository =
             (storage: EventStoreBridge)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
-            ResultCE.result {
+            result {
                 let a1State = getState<'A1>() 
 
                 let command1Undoer = 
