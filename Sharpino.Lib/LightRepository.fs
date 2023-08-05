@@ -55,8 +55,6 @@ module LightRepository =
                     |> Async.AwaitTask
                 return consumed
             }
-            |> Async.StartImmediateAsTask
-            |> Async.AwaitTask
             |> Async.RunSynchronously
 
         let events =
@@ -212,7 +210,11 @@ module LightRepository =
 
                 match result2, command1Undoer2 with
                 | Error _, Some undoer ->
-                    runUndoCommand storage undoer |> ignore
+                    let doUndo = runUndoCommand storage undoer
+                    match doUndo with
+                    | Ok _ -> ()
+                    | Error err -> 
+                        printf "warning can't do undo: %A\n" err
                 | _ -> ()
                 let! result2' = result2
                 return result2'
@@ -251,16 +253,21 @@ module LightRepository =
                 
                 match result2, command1Undoer2 with
                 | Error _, Some undoer ->
-                    runUndoCommand storage undoer
+                    let doUndo = runUndoCommand storage undoer
+                    match doUndo with
+                    | Ok _ -> ()
+                    | Error err -> 
+                        printf "warning can't do undo: %A\n" err
                     ()
                 | _ -> ()
 
                 let! result2' = result2
-                return ()
+                return result2'
             }
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
+    // by using this light processor we process the events in a single thread. It is not always needed but at the moment we stick to it
     let lightProcessor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {

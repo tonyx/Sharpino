@@ -11,10 +11,12 @@ open FSharp.Core
 open Sharpino
 open Sharpino.Sample
 open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.Todos
 open Sharpino.Sample.Models.CategoriesModel
 open Sharpino.Sample.Models.TodosModel
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Tags
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 open Sharpino.EventSourcing
@@ -76,16 +78,16 @@ let utilsTests =
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
 
-        let eventStoreBridge = Sharpino.Lib.EvStore.EventStoreBridge()
+        let eventStoreBridge = EventStoreBridge()
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
             // I am adding twice the same event and the "evolve" will ignore it
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize], TodosAggregate.StorageName )
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize], TodosAggregate.StorageName)
-            let result = ap._addEvents (TodosAggregate'.Version, [ event |> Utils.serialize], TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName )
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
             LightRepository.updateState<TodosAggregate, Sharpino.Sample.Todos.TodoEvents.TodoEvent> (eventStoreBridge)
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
@@ -95,11 +97,11 @@ let multiVersionsTests =
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize], TodosAggregate.StorageName)
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize], TodosAggregate.StorageName)
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
 
-            let result = ap._addEvents (TodosAggregate'.Version, [ event |> Utils.serialize], TodosAggregate'.StorageName)
-            let result = ap._addEvents (TodosAggregate'.Version, [ event |> Utils.serialize], TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
 
             LightRepository.updateState<TodosAggregate, Todos.TodoEvents.TodoEvent> (eventStoreBridge)
             let todos = ap.getAllTodos()
@@ -115,16 +117,17 @@ let multiVersionsTests =
 
             let event2 = Todos.TodoEvents.TodoAdded { Id = id2; Description = "test second part"; CategoryIds = []; TagIds = [] }
 
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize ],  TodosAggregate.StorageName) 
-            let result = ap._addEvents (TodosAggregate.Version, [ event |> Utils.serialize ],  TodosAggregate.StorageName) 
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
+            let result = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
 
-            let result = ap._addEvents (TodosAggregate'.Version, [ event |> Utils.serialize ],  TodosAggregate'.StorageName)
-            let result = ap._addEvents (TodosAggregate'.Version, [ event |> Utils.serialize ],  TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
 
-            let result = ap._addEvents (TodosAggregate.Version,  [ event2 |> Utils.serialize ], TodosAggregate.StorageName)
-            let result = ap._addEvents (TodosAggregate'.Version, [ event2 |> Utils.serialize ], TodosAggregate'.StorageName)
+            let result = ap._addEvents (TodosAggregate.Version,  [ event2 |> serialize ], TodosAggregate.StorageName)
+            let result = ap._addEvents (TodosAggregate'.Version, [ event2 |> serialize ], TodosAggregate'.StorageName)
 
-            LightRepository.updateState<TodosAggregate, Todos.TodoEvents.TodoEvent> (eventStoreBridge)
+            LightRepository.updateState<TodosAggregate, TodoEvents.TodoEvent> (eventStoreBridge)
+            LightRepository.updateState<TodosAggregate', TodoEvents.TodoEvent'> (eventStoreBridge)
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
@@ -142,6 +145,8 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
+            LightRepository.updateState<TodosAggregate, Todos.TodoEvents.TodoEvent> (eventStoreBridge)
+            LightRepository.updateState<TodosAggregate', Todos.TodoEvents.TodoEvent'> (eventStoreBridge)
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
@@ -285,6 +290,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = { Id = Guid.NewGuid(); Name = "test"}
             let result = ap.addCategory category
+            LightRepository.updateState<CategoriesAggregate, Categories.CategoriesEvents.CategoryEvent> (eventStoreBridge)
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -346,11 +352,12 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             async {
-                do! Async.Sleep 1
+                do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
             let category' = apUpgd.getAllCategories() |> Result.get
             Expect.equal category' [category] "should be equal"
+
             LightRepository.updateState<CategoriesAggregate, Categories.CategoriesEvents.CategoryEvent> (eventStoreBridge)
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
             let result = apUpgd.addTodo todo
