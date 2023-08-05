@@ -27,7 +27,7 @@ module TagCommands =
                         EventCache<TagsAggregate>.Instance.Memoize (fun () -> x.RemoveTag g) (x, [TagRemoved g]) with
                         | Ok _ -> [TagRemoved g] |> Ok
                         | Error x -> x |> Error
-            member this.Undo = 
+            member this.Undoer = 
                 match this with
                 | AddTag t ->
                     (fun (_: TagsAggregate) ->

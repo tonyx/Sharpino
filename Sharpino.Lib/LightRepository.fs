@@ -194,7 +194,7 @@ module LightRepository =
                 let a1State = getState<'A1>() 
 
                 let command1Undoer = 
-                    match command1.Undo with
+                    match command1.Undoer with
                     | Some f -> a1State |> f |> Some 
                     | _ -> None
 
@@ -237,7 +237,7 @@ module LightRepository =
             ResultCE.result {
                 let a1State = getState<'A1>()
                 let command1Undoer = 
-                    match command1.Undo with
+                    match command1.Undoer with
                     | Some f -> a1State |> f |> Some 
                     | _ -> None
 

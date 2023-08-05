@@ -33,4 +33,4 @@ module CategoriesCommands =
                         EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategories cs) (x, [CategoriesAdded cs]) with
                         | Ok _ -> [CategoriesAdded cs] |> Ok
                         | Error x -> x |> Error
-            member this.Undo = None
+            member this.Undoer = None

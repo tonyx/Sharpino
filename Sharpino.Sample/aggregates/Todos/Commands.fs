@@ -54,7 +54,7 @@ module TodoCommands =
                     match EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]) with
                         | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
                         | Error x -> x |> Error
-            member this.Undo = None
+            member this.Undoer = None
 
     [<UpgradedVersion>]
     type TodoCommand' =
@@ -102,5 +102,5 @@ module TodoCommands =
                         EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodos ts) (x, [TodoEvent'.TodosAdded ts]) with
                         | Ok _ -> [TodoEvent'.TodosAdded ts] |> Ok
                         | Error x -> x |> Error
-            member this.Undo = None
+            member this.Undoer = None
 
