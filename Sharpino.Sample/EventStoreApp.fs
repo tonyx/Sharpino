@@ -145,7 +145,7 @@ module EventStoreApp =
                 ResultCE.result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
-                    let! _ = runTwoCommandsWithFailure<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                    let! _ = runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
                     return ()
                 }
             async { 

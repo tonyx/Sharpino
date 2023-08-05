@@ -17,6 +17,11 @@ open Sharpino.Sample
 
 open System
 
+// todo: this is duplicated code 
+type Json = string
+type Name = string
+type version = string
+
 module AppVersions =
     // beware that this is the test db and so we can reset it for testing
     // this should never be done in production
@@ -33,6 +38,7 @@ module AppVersions =
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
     let evStoreApp = EventStoreApp(Sharpino.Lib.EvStore.EventStoreBridge())
+    let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
 
     let resetDb(db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName 
@@ -73,12 +79,6 @@ module AppVersions =
             let! result = eventStore.ResetSnapshots("_01", "_categories") |> Async.AwaitTask
             let! result = eventStore.ResetEvents("_01", "_categories") |> Async.AwaitTask
 
-
-            // let! result = eventStore.Reset("_01", "_tags") |> Async.AwaitTask
-            // let! result = eventStore.Reset("_01", "_todo") |> Async.AwaitTask
-            // let! result = eventStore.Reset("_02", "_todo") |> Async.AwaitTask
-            // let! result = eventStore.Reset("_01", "_categories") |> Async.AwaitTask
-
             return result
         }
         |> Async.RunSynchronously
@@ -87,6 +87,7 @@ module AppVersions =
         {
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
+            _addEvents:         version * List<Json> * Name -> unit
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -105,6 +106,7 @@ module AppVersions =
         {
             _migrator  =        currentPgApp.Migrate |> Some
             _reset  =           fun () -> resetDb pgStorage
+            _addEvents =        fun (version, e: List<string>, name) -> pgStorage.AddEvents version e name |> ignore // ignore?
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -122,6 +124,7 @@ module AppVersions =
         {
             _migrator  =        None
             _reset =            fun () -> resetDb pgStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> pgStorage.AddEvents version e name |> ignore
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -140,6 +143,7 @@ module AppVersions =
         {
             _migrator  =        currentMemApp.Migrate |> Some
             _reset =            fun () -> resetDb memStorage
+            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -157,6 +161,7 @@ module AppVersions =
         {
             _migrator =         None
             _reset =            fun () -> resetDb memStorage
+            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos
@@ -174,6 +179,14 @@ module AppVersions =
         {
             _migrator =         None
             _reset =            fun () -> resetEventStore()
+            _addEvents =        fun (version, e: List<string>, name) -> 
+                                    let e' = Collections.Generic.List(e) 
+                                    let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
+                                    async {
+                                        let! result = eventStore.AddEvents(version, e', name) |> Async.AwaitTask
+                                        return result
+                                    }
+                                    |> Async.RunSynchronously
             getAllTodos =       evStoreApp.GetAllTodos
             addTodo =           evStoreApp.AddTodo
             add2Todos =         evStoreApp.Add2Todos

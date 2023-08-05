@@ -9,6 +9,7 @@ module Core =
         abstract member Process: 'A -> Result<'A, string>
 
     type Undoer<'A, 'E> = 'A -> Result<List<'E>, string>
+
     type Command<'A, 'E when 'E :> Event<'A>> =
         abstract member Execute: 'A -> Result<List<'E>, string>
         abstract member Undo: Option<'A -> Result<Undoer<'A, 'E>, string>>

@@ -16,6 +16,7 @@ open FsToolkit.ErrorHandling
 
 module LightRepository =
 
+    // probably we are not going to use snapshot in the light version
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
@@ -78,7 +79,6 @@ module LightRepository =
                 return
                     ResultCE.result {
                         let state = getState<'A>()
-                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
                         let! newState = events |> evolve state
                         return newState
                     }
@@ -105,7 +105,6 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
                         let state = getState<'A>()
                         let! events =
                             state
@@ -151,11 +150,13 @@ module LightRepository =
                 return
                     ResultCE.result {
                         let state = getState<'A>()
-                        // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
                         let! events =
                             state
                             |> command.Execute
-                        let serEvents = events |> List.map (fun x -> Utils.serialize x) |> System.Collections.Generic.List
+                        let serEvents = 
+                            events 
+                            |> List.map (fun x -> Utils.serialize x) 
+                            |> System.Collections.Generic.List
                         let! eventsAdded' =
                             try 
                                 addEvents serEvents |> Ok
@@ -192,7 +193,7 @@ module LightRepository =
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
                 let a1State = getState<'A1>() 
-                // let a1State = CurrentState<'A1>.Instance.Lookup('A1.StorageName, 'A1.Zero) :?> 'A1
+
                 let command1Undoer = 
                     match command1.Undo with
                     | Some f -> a1State |> f |> Some 
@@ -211,16 +212,14 @@ module LightRepository =
 
                 match result2, command1Undoer2 with
                 | Error _, Some undoer ->
-                    runUndoCommand storage undoer
-                    ()
+                    runUndoCommand storage undoer |> ignore
                 | _ -> ()
                 let! result2' = result2
                 return result2'
-
             }
 
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
-    let inline runTwoCommandsWithFailure<'A1, 'A2, 'E1, 'E2 
+    let inline runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A2: (static member Zero: 'A2)

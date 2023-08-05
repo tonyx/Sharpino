@@ -19,6 +19,7 @@ module EventStore =
             ImportantData: string
         }
 
+    // going to delete this as I replaced it with the C# version
     type EventStore() =
         member this.SendEvent() =   
             let settings = EventStoreClientSettings.Create("undefined");

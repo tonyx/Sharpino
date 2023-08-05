@@ -20,7 +20,6 @@ public class EventStoreBridge
             );
         }
 
-
     public async Task ResetEvents(string version, string name)
         {
             var result1 = _client.ReadStreamAsync(
@@ -54,42 +53,6 @@ public class EventStoreBridge
             else
                 try {
                     await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
-                }
-                catch (Exception e) {
-                    Console.WriteLine(e.Message);
-                }
-        }
-
-
-    public async Task Reset (string version, string name) 
-        {
-            var result1 = _client.ReadStreamAsync(
-                Direction.Forwards,
-                "events" + version + name, 
-                StreamPosition.Start,
-                StreamState.Any);
-
-            var result2 = _client.ReadStreamAsync(
-                Direction.Forwards,
-                "snapshots" + version + name, 
-                StreamPosition.Start,
-                StreamState.Any);
-
-            if (await result1.ReadState == ReadState.StreamNotFound) {
-                Console.WriteLine("XXXX. Stream " + name + version + "not found");
-                return;
-            }
-            else
-                try {
-                    await _client.DeleteAsync("events" + version + name, StreamState.Any); 
-                    await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
-                }
-                catch (Exception e) {
-                    Console.WriteLine(e.Message);
-                }
-                try {
-                    await _client.DeleteAsync("snapshots" + version + name, StreamState.Any); 
-                    await _client.DeleteAsync("snapshots" + version + name, StreamRevision.None); 
                 }
                 catch (Exception e) {
                     Console.WriteLine(e.Message);
