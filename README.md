@@ -10,7 +10,9 @@
 
 __Sharpino.Lib__:
 
-- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Evolve_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks of transaction between streams).
+- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks of transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former rise an error if there are some events that cannot be applied to the current state of the aggregate. The latter just skip those events.
+Note: in some strict setup, for instance in using Postgres or in memory repository, and in making the command be processed by the Mailboxprocessor (which is how you will see in the examples ensuring single threaded execution of command->event->store), the EvolveUnForgivingErrors would not be necessary. However is theoretically possible having inconsistent events when the order of the events is not guaranteed (e.g. in a distributed system). To increase the throughput you may actually want to process command not in single thread anymore assuming the risk of storing conflicting/unconsisting events.
+
 - [Repository.fs](Sharpino.Lib/Repository.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
 - [LightRepository.fs](Sharpino.Lib/LightRepository.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
 - [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
