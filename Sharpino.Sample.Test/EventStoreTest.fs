@@ -135,6 +135,7 @@ let utilsTests =
             let id = Guid.NewGuid()
             let category: Category = {Id = id; Name = "cat1"}
             let _ = eventStoreApp.AddCategory category
+            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
             let removed = eventStoreApp.RemoveCategory id
             eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
             Expect.isOk removed "should be ok"

@@ -32,7 +32,8 @@ module TagCommands =
                 | AddTag t ->
                     (fun (_: TagsAggregate) ->
                         fun (x': TagsAggregate) ->
-                            x'.RemoveTag t.Id |> Result.map (fun _ -> [TagAdded t])
+                            x'.RemoveTag t.Id 
+                            |> Result.map (fun _ -> [TagAdded t])
                         |> Ok
                     )
                     |> Some
