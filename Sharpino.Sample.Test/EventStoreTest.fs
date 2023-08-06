@@ -100,13 +100,23 @@ let utilsTests =
             let todo: Todo = {Id = Guid.NewGuid(); Description = "descQQ"; TagIds = []; CategoryIds = []}
             let result = eventStoreApp.AddTodo todo
             eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'>
             Expect.isOk result "should be ok"
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
 
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [todo] "should be equal"
             let removed = eventStoreApp.RemoveTodo todo.Id
             Expect.isOk removed "should be ok"
             eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
 
             let result = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal result [] "should be equal"
@@ -116,6 +126,11 @@ let utilsTests =
             let tag = {Id = Guid.NewGuid(); Name = "tag1"; Color = Color.Blue}     
             let added = eventStoreApp.AddTag tag
             Expect.isOk added "should be ok"
+            async {
+                do! Async.Sleep 20
+                return ()
+            } 
+            |> Async.RunSynchronously
             eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
             let result = eventStoreApp.GetAllTags()    
             Expect.isOk result "should be ok"
@@ -126,6 +141,8 @@ let utilsTests =
             let category: Category = {Id = System.Guid.NewGuid(); Name = "cat1"}
             let added = eventStoreApp.AddCategory category
             Expect.isOk added "should be ok"
+            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let result = eventStoreApp.GetAllCategories()    
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [category] "should be equal"
@@ -136,8 +153,10 @@ let utilsTests =
             let category: Category = {Id = id; Name = "cat1"}
             let _ = eventStoreApp.AddCategory category
             eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let removed = eventStoreApp.RemoveCategory id
             eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             Expect.isOk removed "should be ok"
             let result = eventStoreApp.GetAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
@@ -174,14 +193,21 @@ let utilsTests =
 
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
             let result = eventStoreApp.AddTodo todo
-            Expect.isOk result "should be ok"
             eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            async {
+                do! Async.Sleep 20
+                return ()
+            } |> Async.RunSynchronously
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            Expect.isOk result "should be ok"
 
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal todos [todo] "should be equal"
 
             let result = eventStoreApp.RemoveTag id2
+            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
             Expect.isOk result "should be ok"
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal (todos.Head.TagIds) [] "should be equal"
@@ -195,6 +221,10 @@ let utilsTests =
             let tag = { Id = id2; Name = "test"; Color = Color.Blue }
             let result = eventStoreApp.AddTag tag
             Expect.isOk result "should be ok"
+            async {
+                do! Async.Sleep 20
+                return ()
+            } |> Async.RunSynchronously
             eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
 
             let tags = eventStoreApp.GetAllTags().OkValue
@@ -205,6 +235,10 @@ let utilsTests =
             Expect.isOk result "should be ok"
             eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            async {
+                do! Async.Sleep 30
+                return ()
+            } |> Async.RunSynchronously
 
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal todos [todo] "should be equal"
@@ -228,8 +262,10 @@ let utilsTests =
             let category: Category = {Id = id; Name = "cat1"}
             let _ = eventStoreApp.AddCategory category
             eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let removed = eventStoreApp.RemoveCategory id
             eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             Expect.isOk removed "should be ok"
             let result = eventStoreApp.GetAllCategories() |> Result.get
             Expect.equal result [] "should be equal"

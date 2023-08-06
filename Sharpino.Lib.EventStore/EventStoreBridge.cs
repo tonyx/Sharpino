@@ -70,6 +70,7 @@ public class EventStoreBridge
             await _client.AppendToStreamAsync(streamName, StreamState.Any, eventData);
         }
 
+    // public async void is suspicious: check the whole snapshots management in eventstore
     public async void SetSnapshot(int eventId, string version, string snapshot, string name) 
         {
             var streamName = "snapshots" + version + name;
@@ -84,7 +85,7 @@ public class EventStoreBridge
     public async Task<List<ResolvedEvent>> ConsumeEvents(string version, string name)
         {
             try {
-                await Task.Delay(01);
+                // await Task.Delay(01);
                 var streamName = "events" + version + name;
                 var position = lastEventIds.ContainsKey(streamName) ? lastEventIds[streamName] : StreamPosition.Start;
                 var events = _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
@@ -98,6 +99,8 @@ public class EventStoreBridge
                 return new List<ResolvedEvent>();
             }
         }
+
+    // see the management of snapshots
     public async Task<Option<(Int64, string)>> ConsumeSnapshots(string version, string name)
         {
             var streamName = "snapshots" + version + name;
