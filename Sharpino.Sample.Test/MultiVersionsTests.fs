@@ -83,7 +83,7 @@ let utilsTests =
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
 
-        let eventStoreBridge = EventStoreBridge()
+        let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
@@ -482,8 +482,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
             let added = ap.addTag tag
-            let eventStore = EventStoreBridge()
-            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
             Expect.isOk added "should be ok"
             let tags = ap.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"

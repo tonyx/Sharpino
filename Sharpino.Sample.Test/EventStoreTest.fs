@@ -26,6 +26,7 @@ open Sharpino.Sample.Tags.TagsEvents
 
 [<Tests>]
 let utilsTests =
+    let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
     let SetUp() =
         Cache.CurrentState<_>.Instance.Clear()
         Cache.CurrentState<TodosAggregate>.Instance.Clear()
@@ -33,24 +34,22 @@ let utilsTests =
         Cache.CurrentState<TagsAggregate>.Instance.Clear()
         Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
 
-        let eventStore = EventStoreBridge()
         async {
-            do! eventStore.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
-            do! eventStore.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
-            do! eventStore.ResetEvents("_01", "_tags")              |> Async.AwaitTask
-            do! eventStore.ResetSnapshots("_01", "_todo")           |> Async.AwaitTask
-            do! eventStore.ResetEvents("_01", "_todo")              |> Async.AwaitTask
-            do! eventStore.ResetSnapshots("_02", "_todo")           |> Async.AwaitTask
-            do! eventStore.ResetEvents("_02", "_todo")              |> Async.AwaitTask
-            do! eventStore.ResetSnapshots("_01", "_categories")     |> Async.AwaitTask
-            let! result = eventStore.ResetEvents("_01", "_categories") |> Async.AwaitTask
+            do! eventStoreBridge.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
+            do! eventStoreBridge.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
+            do! eventStoreBridge.ResetEvents("_01", "_tags")              |> Async.AwaitTask
+            do! eventStoreBridge.ResetSnapshots("_01", "_todo")           |> Async.AwaitTask
+            do! eventStoreBridge.ResetEvents("_01", "_todo")              |> Async.AwaitTask
+            do! eventStoreBridge.ResetSnapshots("_02", "_todo")           |> Async.AwaitTask
+            do! eventStoreBridge.ResetEvents("_02", "_todo")              |> Async.AwaitTask
+            do! eventStoreBridge.ResetSnapshots("_01", "_categories")     |> Async.AwaitTask
+            let! result = eventStoreBridge.ResetEvents("_01", "_categories") |> Async.AwaitTask
 
             return result
         }
         |> Async.RunSynchronously
 
-    let eventStore = EventStoreBridge()
-    let eventStoreApp = EventStoreApp(eventStore)
+    let eventStoreApp = EventStoreApp(eventStoreBridge)
 
 
     // warning: there is the possibility that some async issue may make some test fail
@@ -72,7 +71,7 @@ let utilsTests =
             let todo: Todo = {Id = Guid.NewGuid(); Description = "descZ"; TagIds = []; CategoryIds = []}
 
             let result = eventStoreApp.AddTodo todo 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
 
             Expect.isOk result "should be ok"
 
@@ -99,8 +98,8 @@ let utilsTests =
 
             let todo: Todo = {Id = Guid.NewGuid(); Description = "descQQ"; TagIds = []; CategoryIds = []}
             let result = eventStoreApp.AddTodo todo
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
             Expect.isOk result "should be ok"
             async {
                 do! Async.Sleep 10
@@ -111,8 +110,8 @@ let utilsTests =
             Expect.equal todos [todo] "should be equal"
             let removed = eventStoreApp.RemoveTodo todo.Id
             Expect.isOk removed "should be ok"
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
             async {
                 do! Async.Sleep 10
                 return ()
@@ -131,7 +130,7 @@ let utilsTests =
                 return ()
             } 
             |> Async.RunSynchronously
-            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
             let result = eventStoreApp.GetAllTags()    
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [tag] "should be equal"
@@ -141,8 +140,8 @@ let utilsTests =
             let category: Category = {Id = System.Guid.NewGuid(); Name = "cat1"}
             let added = eventStoreApp.AddCategory category
             Expect.isOk added "should be ok"
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let result = eventStoreApp.GetAllCategories()    
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [category] "should be equal"
@@ -152,11 +151,11 @@ let utilsTests =
             let id = Guid.NewGuid()
             let category: Category = {Id = id; Name = "cat1"}
             let _ = eventStoreApp.AddCategory category
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let removed = eventStoreApp.RemoveCategory id
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             Expect.isOk removed "should be ok"
             let result = eventStoreApp.GetAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
@@ -189,25 +188,29 @@ let utilsTests =
             let result = eventStoreApp.AddTag tag
             Expect.isOk result "should be ok"
 
-            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
-
-            let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
-            let result = eventStoreApp.AddTodo todo
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
             async {
                 do! Async.Sleep 20
                 return ()
             } |> Async.RunSynchronously
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
+
+            let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
+            let result = eventStoreApp.AddTodo todo
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            async {
+                do! Async.Sleep 20
+                return ()
+            } |> Async.RunSynchronously
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
             Expect.isOk result "should be ok"
 
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal todos [todo] "should be equal"
 
             let result = eventStoreApp.RemoveTag id2
-            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
             Expect.isOk result "should be ok"
             let todos = eventStoreApp.GetAllTodos().OkValue
             Expect.equal (todos.Head.TagIds) [] "should be equal"
@@ -225,7 +228,7 @@ let utilsTests =
                 do! Async.Sleep 20
                 return ()
             } |> Async.RunSynchronously
-            eventStore |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
 
             let tags = eventStoreApp.GetAllTags().OkValue
             Expect.equal tags [tag] "should be equal"
@@ -233,8 +236,8 @@ let utilsTests =
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
             let result = eventStoreApp.AddTodo todo
             Expect.isOk result "should be ok"
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
             async {
                 do! Async.Sleep 30
                 return ()
@@ -261,11 +264,11 @@ let utilsTests =
             let id = Guid.NewGuid()
             let category: Category = {Id = id; Name = "cat1"}
             let _ = eventStoreApp.AddCategory category
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let removed = eventStoreApp.RemoveCategory id
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             Expect.isOk removed "should be ok"
             let result = eventStoreApp.GetAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
@@ -279,8 +282,8 @@ let utilsTests =
             let added = eventStoreApp.AddCategory category
             Expect.isOk added "should be ok"
 
-            eventStore |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
             let todo = { Id = id1; Description = "test"; CategoryIds = [id2]; TagIds = [] }
             let result = eventStoreApp.AddTodo todo
             Expect.isOk result "should be ok"

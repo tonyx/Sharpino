@@ -37,8 +37,8 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memStorage)
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
-    let evStoreApp = EventStoreApp(Sharpino.Lib.EvStore.EventStoreBridge())
-    let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
+    let evStoreApp = EventStoreApp(Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection))
+    let eventStore = Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
 
     let resetDb(db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName 
@@ -68,15 +68,15 @@ module AppVersions =
         Cache.CurrentState<TagsAggregate>.Instance.Clear()
         Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
 
-        let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
+        let eventStore = Sharpino.Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
         async {
-            let! result = eventStore.ResetSnapshots("_01", "_tags") |> Async.AwaitTask
-            let! result = eventStore.ResetEvents("_01", "_tags") |> Async.AwaitTask
-            let! result = eventStore.ResetSnapshots("_01", "_todo") |> Async.AwaitTask
-            let! result = eventStore.ResetEvents("_01", "_todo") |> Async.AwaitTask
-            let! result = eventStore.ResetSnapshots("_02", "_todo") |> Async.AwaitTask
-            let! result = eventStore.ResetEvents("_02", "_todo") |> Async.AwaitTask
-            let! result = eventStore.ResetSnapshots("_01", "_categories") |> Async.AwaitTask
+            let! _      = eventStore.ResetSnapshots("_01", "_tags") |> Async.AwaitTask
+            let! _      = eventStore.ResetEvents("_01", "_tags") |> Async.AwaitTask
+            let! _      = eventStore.ResetSnapshots("_01", "_todo") |> Async.AwaitTask
+            let! _      = eventStore.ResetEvents("_01", "_todo") |> Async.AwaitTask
+            let! _      = eventStore.ResetSnapshots("_02", "_todo") |> Async.AwaitTask
+            let! _      = eventStore.ResetEvents("_02", "_todo") |> Async.AwaitTask
+            let! _      = eventStore.ResetSnapshots("_01", "_categories") |> Async.AwaitTask
             let! result = eventStore.ResetEvents("_01", "_categories") |> Async.AwaitTask
 
             return result
@@ -181,7 +181,7 @@ module AppVersions =
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let e' = Collections.Generic.List(e) 
-                                    let eventStore = Sharpino.Lib.EvStore.EventStoreBridge()
+                                    let eventStore = Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
                                     async {
                                         let! result = eventStore.AddEvents(version, e', name) |> Async.AwaitTask
                                         return result

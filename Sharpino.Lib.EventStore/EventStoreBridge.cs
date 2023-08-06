@@ -13,10 +13,10 @@ public class EventStoreBridge
     EventStoreClient _client;
     Dictionary<string, StreamPosition> lastEventIds = new Dictionary<string, StreamPosition>();
 
-    public EventStoreBridge() 
+    public EventStoreBridge(string connection) 
         {
             _client = new EventStoreClient(
-                EventStoreClientSettings.Create("esdb://localhost:2113?tls=false")
+                EventStoreClientSettings.Create(connection)
             );
         }
 
@@ -85,7 +85,6 @@ public class EventStoreBridge
     public async Task<List<ResolvedEvent>> ConsumeEvents(string version, string name)
         {
             try {
-                // await Task.Delay(01);
                 var streamName = "events" + version + name;
                 var position = lastEventIds.ContainsKey(streamName) ? lastEventIds[streamName] : StreamPosition.Start;
                 var events = _client.ReadStreamAsync(Direction.Forwards, streamName, new StreamPosition(position.ToUInt64() + (UInt64) 1));
