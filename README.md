@@ -10,7 +10,7 @@
 
 __Sharpino.Lib__:
 
-- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Evolve_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks of transaction between streams). Definition of the "evolve" function.
+- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Evolve_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks of transaction between streams).
 - [Repository.fs](Sharpino.Lib/Repository.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
 - [LightRepository.fs](Sharpino.Lib/LightRepository.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
 - [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
@@ -18,6 +18,9 @@ __Sharpino.Lib__:
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
 
 __Sharpino.Sample__:
+
+A sample of an api for managing todos with tags and categories. There are two versions in the sense of two different configurations respect to the distribution of the models (collection of entities) between the aggregates. There is a strategy to test the migration between versions (aggregate refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
+.
 
 -  __models__ (e.g. [TodoModel](Sharpino.Sample/models/TodosModel.fs)) manage entities.
 -  __aggregates__ (e.g. [TodoAggregate](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Aggregate.fs)) owns a partition of the models and provide memgers to handle them. 
