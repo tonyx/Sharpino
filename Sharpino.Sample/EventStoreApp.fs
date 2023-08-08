@@ -32,11 +32,10 @@ module EventStoreApp =
         member this.AddTag tag =
             let f = fun() ->
                 ResultCE.result {
-                    let! command = 
+                    return!
                         tag
                         |> TagCommand.AddTag
                         |> runCommand<TagsAggregate, TagEvent> storage
-                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -67,11 +66,10 @@ module EventStoreApp =
                         (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
                         |> boolToResult "Tag id is not valid"
 
-                    let! command = 
+                    return!
                         todo
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -81,11 +79,10 @@ module EventStoreApp =
         member this.RemoveTodo id =
             let f = fun() ->
                 ResultCE.result {
-                    let! command = 
+                    return!
                         id
                         |> TodoCommand.RemoveTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    return ()
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -96,11 +93,10 @@ module EventStoreApp =
         member this.AddCategory category =
             let f = fun() ->
                 ResultCE.result {
-                    let! command = 
+                    return!
                         category
                         |> TodoCommand.AddCategory
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -117,11 +113,10 @@ module EventStoreApp =
         member this.RemoveCategory id =
             let f = fun() ->
                 ResultCE.result {
-                    let! command = 
+                    return! 
                         id
                         |> TodoCommand.RemoveCategory
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    return ()
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -145,8 +140,7 @@ module EventStoreApp =
                 ResultCE.result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
-                    let! _ = runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
-                    return ()
+                    return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -170,11 +164,10 @@ module EventStoreApp =
                         (todo2.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
                         |> boolToResult "Tag id is not valid"
 
-                    let! _ =
+                    return! 
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
                         |> runCommand<TodosAggregate, TodoEvent> storage
-                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
