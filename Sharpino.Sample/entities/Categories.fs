@@ -27,12 +27,11 @@ module CategoriesModel =
                         |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
                         |> not
                         |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
-                    let result =
+                    return
                         {
                             this with
                                 categories = c::this.categories
                         }
-                    return result
                 }
 
             member this.AddCategories (cs: List<Category>) =
@@ -45,12 +44,11 @@ module CategoriesModel =
                 ResultCE.result {
                     let! mustNotExist =
                         cs |> catchErrors checkNotExists
-                    let result =
+                    return
                         {
                             this with
                                 categories = cs @ this.categories
                         }
-                    return result
                 }
 
             member this.RemoveCategory (id: Guid) =
@@ -59,11 +57,10 @@ module CategoriesModel =
                         this.categories
                         |> List.exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A category with id '%A' does not exist" id)
-                    let result =
+                    return
                         {
                             this with
                                 categories = this.categories |> List.filter (fun x -> x.Id <> id)
                         }
-                    return result
                 }
             member this.GetCategories() = this.categories

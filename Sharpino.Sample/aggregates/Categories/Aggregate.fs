@@ -23,7 +23,7 @@ module CategoriesAggregate =
         static member SnapshotsInterval =
             15
         member this.AddCategory(c: Category) =
-            ResultCE.result {
+            result {
                 let! categories = this.Categories.AddCategory(c)
                 return
                     {
@@ -32,7 +32,7 @@ module CategoriesAggregate =
                     }
             }
         member this.RemoveCategory(id: Guid) =
-            ResultCE.result {
+            result {
                 let! categories = this.Categories.RemoveCategory(id)
                 return
                     {
@@ -41,7 +41,7 @@ module CategoriesAggregate =
                     }
             }
         member this.AddCategories(cs: List<Category>) =
-            ResultCE.result {
+            result {
                 let! categories = this.Categories.AddCategories(cs)
                 return
                     {

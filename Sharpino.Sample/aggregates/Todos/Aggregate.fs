@@ -31,7 +31,7 @@ module TodosAggregate =
                 |> List.exists (fun x -> x.Id = c) 
                 |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
-            ResultCE.result
+            result
                 {
                     let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
                     let! todos = this.todos.AddTodo t
@@ -42,7 +42,7 @@ module TodosAggregate =
                         }
                 }
         member this.RemoveTodo (id: Guid) =
-            ResultCE.result
+            result
                 {
                     let! todos = this.todos.RemoveTodo id
                     return
@@ -53,7 +53,7 @@ module TodosAggregate =
                 }
         member this.GetTodos() = this.todos.GetTodos()
         member this.AddCategory (c: Category) =
-            ResultCE.result
+            result
                 {
                     let! categories = this.categories.AddCategory c
                     return
@@ -64,18 +64,16 @@ module TodosAggregate =
                 }
         member this.RemoveCategory (id: Guid) = 
             let removeReferenceOfCategoryToTodos (id: Guid) =
-                let result =
-                    this.todos.todos 
-                    |>>
-                    (fun x -> 
-                        { x with 
-                            CategoryIds = 
-                                x.CategoryIds 
-                                |> List.filter (fun y -> y <> id)}
-                    )
-                result
+                this.todos.todos 
+                |>>
+                (fun x -> 
+                    { x with 
+                        CategoryIds = 
+                            x.CategoryIds 
+                            |> List.filter (fun y -> y <> id)}
+                )
             
-            ResultCE.result
+            result
                 {
                     let! categories = this.categories.RemoveCategory id
                     return
@@ -99,7 +97,7 @@ module TodosAggregate =
                             x.TagIds 
                             |> List.filter (fun y -> y <> id)}
                 )
-            ResultCE.result
+            result
                 {
                     return
                         {
@@ -133,7 +131,7 @@ module TodosAggregate =
         static member SnapshotsInterval =
             15
         member this.AddTodo (t: Todo) =
-            ResultCE.result
+            result
                 {
                     let! todos = this.todos.AddTodo t
                     return
@@ -143,7 +141,7 @@ module TodosAggregate =
                         }
                 }
         member this.RemoveTodo (id: Guid) =
-            ResultCE.result
+            result
                 {
                     let! todos = this.todos.RemoveTodo id
                     return
@@ -154,7 +152,7 @@ module TodosAggregate =
                 }
 
         member this.AddTodos (ts: List<Todo>) =
-            ResultCE.result
+            result
                 {
                     let! todos = this.todos.AddTodos ts
                     return
@@ -177,7 +175,7 @@ module TodosAggregate =
                             |> List.filter (fun y -> y <> id)}
                 )
             
-            ResultCE.result
+            result
                 {
                     return
                         {
@@ -200,7 +198,7 @@ module TodosAggregate =
                             x.TagIds 
                             |> List.filter (fun y -> y <> id)}
                 )
-            ResultCE.result
+            result
                 {
                     return
                         {

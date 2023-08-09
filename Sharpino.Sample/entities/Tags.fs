@@ -32,12 +32,11 @@ module TagsModel =
                         |> List.exists (fun x -> x.Name = t.Name)
                         |> not
                         |> boolToResult (sprintf "A tag named %s already exists" t.Name)
-                    let result =
+                    return
                         {
                             this with
                                 tags = t::this.tags
                         }
-                    return result
                 }
             member this.RemoveTag (id: Guid) =
                 ResultCE.result {
@@ -45,20 +44,18 @@ module TagsModel =
                         this.tags
                         |> List.exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A tag with id '%A' does not exist" id)
-                    let result =
+                    return
                         {
                             this with
                                 tags = this.tags |> List.filter (fun x -> x.Id <> id)
                         }
-                    return result
                 }
             member this.GetTag(id: Guid) =
                 ResultCE.result {
-                    let! result =
+                    return! 
                         this.tags
                         |> List.tryFind (fun x -> x.Id = id)
                         |> Result.ofOption (sprintf "A tag with id '%A' does not exist" id)
-                    return result
                 }
 
             member this.GetTags() = this.tags

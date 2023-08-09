@@ -21,7 +21,7 @@ module TagsAggregate =
         static member SnapshotsInterval =
             15
         member this.AddTag(t: Tag) =
-            ResultCE.result {
+            result {
                 let! tags = this.Tags.AddTag(t)
                 return
                     {
@@ -34,7 +34,7 @@ module TagsAggregate =
             this.Tags.GetTag(id)
 
         member this.RemoveTag(id: Guid) =
-            ResultCE.result {
+            result {
                 let! tags = this.Tags.RemoveTag(id)
                 return
                     {

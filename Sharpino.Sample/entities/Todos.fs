@@ -29,12 +29,11 @@ module TodosModel =
                         |> List.exists (fun x -> x.Description = t.Description)
                         |> not
                         |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
-                    let result =
+                    return
                         {
                             this with
                                 todos = t::this.todos
                         }
-                    return result
                 }
             member this.AddTodos (ts: List<Todo>) =
                 let checkNotExists t =
@@ -46,12 +45,11 @@ module TodosModel =
                 ResultCE.result {
                     let! mustNotExist =
                         ts |> catchErrors checkNotExists
-                    let result =
+                    return
                         {
                             this with
                                 todos = ts @ this.todos
                         }
-                    return result
                 }
             member this.RemoveTodo (id: Guid) =
                 ResultCE.result {
@@ -59,11 +57,10 @@ module TodosModel =
                         this.todos
                         |> List.exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A Todo with id '%A' does not exist" id)
-                    let result =
+                    return
                         {
                             this with
                                 todos = this.todos |> List.filter (fun x -> x.Id <> id)
                         }
-                    return result
                 }
             member this.GetTodos() = this.todos
