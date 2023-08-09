@@ -128,8 +128,7 @@ module EventStoreApp =
                 ResultCE.result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
-                    let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
-                    return ()
+                    return!  runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)

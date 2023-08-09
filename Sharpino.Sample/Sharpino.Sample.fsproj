@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="models/TagsModel.fs" />
-    <Compile Include="models/CategoriesModel.fs" />
-    <Compile Include="models/TodosModel.fs" />
+    <Compile Include="entities/Tags.fs" />
+    <Compile Include="entities/Categories.fs" />
+    <Compile Include="entities/Todos.fs" />
     <Compile Include="aggregates/Todos/Aggregate.fs" />
     <Compile Include="aggregates/Todos/Events.fs" />
     <Compile Include="aggregates/Todos/Commands.fs" />
