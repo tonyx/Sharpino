@@ -23,37 +23,27 @@ module TodoCommands =
             member this.Execute (x: TodosAggregate) =
                 match this with
                 | AddTodo t -> 
-                    match EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t]) with
-                    | Ok _ -> [TodoEvent.TodoAdded t] |> Ok
-                    | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t])
+                    |> Result.map (fun _ -> [TodoEvent.TodoAdded t])
                 | RemoveTodo g ->
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g]) with
-                        | Ok _ -> [TodoEvent.TodoRemoved g] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g])
+                    |> Result.map (fun _ -> [TodoEvent.TodoRemoved g])
                 | AddCategory c ->
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [TodoEvent.CategoryAdded c]) with
-                        | Ok _ -> [TodoEvent.CategoryAdded c] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [TodoEvent.CategoryAdded c])
+                    |> Result.map (fun _ -> [TodoEvent.CategoryAdded c])
                 | RemoveCategory g ->
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [TodoEvent.CategoryRemoved g]) with
-                        | Ok _ -> [CategoryRemoved g] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [TodoEvent.CategoryRemoved g]) 
+                    |> Result.map (fun _ -> [TodoEvent.CategoryRemoved g])
                 | RemoveTagRef g ->
-                    match
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent.TagRefRemoved g]) with
-                        | Ok _ -> [TodoEvent.TagRefRemoved g] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent.TagRefRemoved g])
+                    |> Result.map (fun _ -> [TodoEvent.TagRefRemoved g])
                 | Add2Todos (t1, t2) -> 
                     let evolved =
                         fun () ->
                         [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
                         |> evolveUNforgivingErrors x
-                    match EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]) with
-                        | Ok _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
+                    |> Result.map (fun _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
             member this.Undoer = None
 
     [<UpgradedVersion>]

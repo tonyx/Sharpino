@@ -19,18 +19,12 @@ module CategoriesCommands =
             member this.Execute (x: CategoriesAggregate) =
                 match this with
                 | AddCategory c ->
-                    match
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c]) with
-                        | Ok _ -> [CategoryAdded c] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c]) 
+                    |> Result.map (fun _ -> [CategoryAdded c])
                 | RemoveCategory g ->
-                    match
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g]) with
-                        | Ok _ -> [CategoryRemoved g] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [CategoryRemoved g]) 
+                    |> Result.map (fun _ -> [CategoryRemoved g])
                 | AddCategories cs ->
-                    match
-                        EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategories cs) (x, [CategoriesAdded cs]) with
-                        | Ok _ -> [CategoriesAdded cs] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategories cs) (x, [CategoriesAdded cs])
+                    |> Result.map (fun _ -> [CategoriesAdded cs])
             member this.Undoer = None

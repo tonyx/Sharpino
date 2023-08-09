@@ -18,15 +18,11 @@ module TagCommands =
             member this.Execute (x: TagsAggregate) =
                 match this with
                 | AddTag t ->
-                    match
-                        EventCache<TagsAggregate>.Instance.Memoize (fun () -> x.AddTag t) (x, [TagAdded t]) with
-                        | Ok _ -> [TagAdded t] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TagsAggregate>.Instance.Memoize (fun () -> x.AddTag t) (x, [TagAdded t]) 
+                    |> Result.map (fun _ -> [TagAdded t]) 
                 | RemoveTag g ->
-                    match
-                        EventCache<TagsAggregate>.Instance.Memoize (fun () -> x.RemoveTag g) (x, [TagRemoved g]) with
-                        | Ok _ -> [TagRemoved g] |> Ok
-                        | Error x -> x |> Error
+                    EventCache<TagsAggregate>.Instance.Memoize (fun () -> x.RemoveTag g) (x, [TagRemoved g]) 
+                    |> Result.map (fun _ -> [TagRemoved g])
             member this.Undoer = 
                 match this with
                 | AddTag t ->
