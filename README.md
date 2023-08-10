@@ -24,7 +24,7 @@ __Sharpino.Sample__:
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the aggregates. There is a strategy to test the migration between versions (aggregate refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
 .
 
--  __models__ (e.g. [TodoModel](Sharpino.Sample/models/TodosModel.fs)) manage entities.
+-  __entities__ (e.g. [Entities](Sharpino.Sample/models/TodosModel.fs)) manage entities.
 -  __aggregates__ (e.g. [TodoAggregate](Micro_ES_FSharp_Lib.Sample/aggregates/Todos/Aggregate.fs)) own a partition of the models and provide members to handle them. 
 
 - __aggregate__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/aggregates/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
@@ -67,10 +67,10 @@ __Faq__:
     - Any functional language from the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the aggregates is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo, and returns another lambda that actually can "undo" the command).
-        - It is a .net language, so you can use all the .net ecosystem.
+        - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
+        - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - Can it be used in production?
-    - I don't how well it could scale at the moment because the IStorage interface has basically only an in-memory (for development) and Postgres implementation (for production) and I don't know how well can it scale using it. I have support for EventStoreDB, but it is still experimental.
+    - I don't how well it could scale at the moment because the IStorage interface has basically only an in-memory (for development) and Postgres implementation (for production) and I don't know how well can it scale using it. I started also supporting EventStoreDB, but it is still experimental.
 
 - What about porting (rewriting) to other languages?
     - Many concepts I used in the "sample" application are typical F#, so I would say it is not convenient rewriting them in C#. Another functional language supporting Discriminated Unions would be ok. I think that Rust, Ocaml, Erlang, and Haskell... can be good candidates for easy porting.
