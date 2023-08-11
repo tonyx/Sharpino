@@ -31,7 +31,7 @@ module EventStoreApp =
     type EventStoreApp(storage: EventStoreBridge) =
         member this.AddTag tag =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return!
                         tag
                         |> TagCommand.AddTag
@@ -44,24 +44,17 @@ module EventStoreApp =
                 
         member this.GetAllTags() =
             ResultCE.result {
-                // FOCUS
-                // let state = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
-                let (id, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                 let state' = stateX :?> TagsAggregate
 
-                // let tags = state.GetTags()
-
                 let tags = state'.GetTags()
-
-
                 return tags
             }
 
         member this.GetAllTodos() =
             ResultCE.result {
-                // let state = Cache.CurrentState<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, TodosAggregate.Zero) :?> TodosAggregate 
 
-                let (id, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                let (_, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                 let state' = stateX :?> TodosAggregate
 
                 // let todos = state.GetTodos()
@@ -73,13 +66,9 @@ module EventStoreApp =
         member this.AddTodo todo =
             let f = fun() ->
                 ResultCE.result {
-                    // FOCUS
-                    // let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
 
-                    let (id, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                     let tagState' = stateX :?> TagsAggregate
-
-                    // let tagIds = tagState.GetTags() |>> fun x -> x.Id
 
                     let tagIds = tagState'.GetTags() |>> fun x -> x.Id
 
@@ -111,7 +100,6 @@ module EventStoreApp =
             }   
             |> Async.RunSynchronously
 
-
         member this.AddCategory category =
             let f = fun() ->
                 ResultCE.result {
@@ -127,12 +115,9 @@ module EventStoreApp =
 
         member this.GetAllCategories() =
             ResultCE.result {
-                // FOCUS
-                // let state = Cache.CurrentState<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, TodosAggregate.Zero) :?> TodosAggregate 
-                let (id, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                let (_, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                 let state' = stateX :?> TodosAggregate
 
-                // let categories = state.GetCategories()
                 let categories = state'.GetCategories()
 
                 return categories
@@ -178,9 +163,7 @@ module EventStoreApp =
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
                 ResultCE.result {
-                    // FOCUS
-                    // let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate
-                    let (id, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                     let tagState' = stateX :?> TagsAggregate
                     let tagIds = 
                         // tagState.GetTags() 

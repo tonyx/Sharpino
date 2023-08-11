@@ -71,7 +71,7 @@ public class EventStoreBridge
         }
 
     // public async void is suspicious: check the whole snapshots management in eventstore
-    public async void SetSnapshot(int eventId, string version, string snapshot, string name) 
+    public async void AddSnapshot(int eventId, string version, string snapshot, string name) 
         {
             var streamName = "snapshots" + version + name;
             var eventData = new EventData(

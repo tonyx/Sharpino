@@ -41,12 +41,9 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>() =
-            // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
             let (_, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
             let state' = stateX :?> 'A
             state'
-
-            // CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
 
     let inline updateState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -98,7 +95,6 @@ module LightRepository =
             let lastEventId = idAndEvents |>> fst |> List.last 
 
             let newStateVal: 'A = (newState |> Result.get)
-            // CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
             CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newStateVal))
             ()
 
