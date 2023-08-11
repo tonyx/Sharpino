@@ -41,10 +41,10 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>() =
-            let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
-            // let (_, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
-            // let state = stateX :?> 'A
-            state
+            // let state = CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
+            let (_, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
+            let state' = stateX :?> 'A
+            state'
 
             // CurrentState<'A>.Instance.Lookup('A.StorageName, 'A.Zero) :?> 'A
 
@@ -63,35 +63,44 @@ module LightRepository =
             }
             |> Async.RunSynchronously
 
-        let events =
-            async {
-                let events = 
-                    consumed 
-                    |> Seq.toList 
-                    |> List.map 
-                        (fun x -> 
-                            (System.Text.Encoding.UTF8.GetString(x.Event.Data.ToArray())) 
-                            |> Utils.deserialize<'E> |> Result.get
-                        )
-                return
-                    events
-            }
-            |> Async.RunSynchronously
+        if (consumed |> Seq.length = 0) then
+            ()
+        else
+            let idAndEvents =
+                async {
+                    let events = 
+                        consumed 
+                        |> Seq.toList 
+                        |> List.map 
+                            (fun x ->
+                                (x.OriginalEventNumber.ToUInt64(), 
+                                    (System.Text.Encoding.UTF8.GetString(x.Event.Data.ToArray())) 
+                                    |> Utils.deserialize<'E> |> Result.get
+                                )
+                            )
+                    return
+                        events
+                }
+                |> Async.RunSynchronously
 
-        let newState =
-            async {
-                return
-                    ResultCE.result {
-                        let state = getState<'A>()
-                        let! newState = events |> evolve state
-                        return newState
-                    }
-            }
-            |> Async.RunSynchronously
-        let newStateVal: 'A = (newState |> Result.get)
-        CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
-            // CurrentStateRef<'A>.Instance.Update('A.StorageName, (pos, newStateVal))
-        ()
+            let newState =
+                async {
+                    return
+                        ResultCE.result {
+                            let state = getState<'A>()
+                            // let! newState = events |> evolve state
+                            let! newState = (idAndEvents |>> snd) |> evolve state
+                            return newState
+                        }
+                }
+                |> Async.RunSynchronously
+
+            let lastEventId = idAndEvents |>> fst |> List.last 
+
+            let newStateVal: 'A = (newState |> Result.get)
+            // CurrentState<'A>.Instance.Update('A.StorageName, newStateVal)
+            CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newStateVal))
+            ()
 
     let inline runUndoCommand<'A, 'E
         when 'A: (static member Zero: 'A)

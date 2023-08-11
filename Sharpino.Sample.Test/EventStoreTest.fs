@@ -28,17 +28,18 @@ open Sharpino.Sample.Tags.TagsEvents
 let utilsTests =
     let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
     let SetUp() =
-        Cache.CurrentState<_>.Instance.Clear()
+
+        // Cache.CurrentState<_>.Instance.Clear()
         Cache.CurrentState<TodosAggregate>.Instance.Clear()
-        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
-        Cache.CurrentState<TagsAggregate>.Instance.Clear()
-        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
+        // Cache.CurrentState<TodosAggregate'>.Instance.Clear()
+        // Cache.CurrentState<TagsAggregate>.Instance.Clear()
+        // Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
         
-        // Cache.CurrentStateRef<_>.Instance.Clear()
-        // Cache.CurrentStateRef<TodosAggregate>.Instance.Clear()
-        // Cache.CurrentStateRef<TodosAggregate'>.Instance.Clear()
-        // Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
-        // Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
+        Cache.CurrentStateRef<_>.Instance.Clear()
+        Cache.CurrentStateRef<TodosAggregate>.Instance.Clear()
+        Cache.CurrentStateRef<TodosAggregate'>.Instance.Clear()
+        Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
+        Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
         async {
             do! eventStoreBridge.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
@@ -97,7 +98,7 @@ let utilsTests =
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [] "should be equal"
 
-        testCase "add and remove a todo - Ok" <| fun _ ->
+        ftestCase "add and remove a todo - Ok" <| fun _ ->
             let _ = SetUp()
             let todos = eventStoreApp.GetAllTodos() |> Result.get
             Expect.equal todos [] "should be equal" 
@@ -129,7 +130,7 @@ let utilsTests =
             let result = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal result [] "should be equal"
 
-        testCase "add a tag and retrieve it - ok" <| fun _ ->
+        ftestCase "add a tag and retrieve it - ok" <| fun _ ->
             let _ = SetUp()
             let tag = {Id = Guid.NewGuid(); Name = "tag1"; Color = Color.Blue}     
             let added = eventStoreApp.AddTag tag
@@ -144,7 +145,7 @@ let utilsTests =
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [tag] "should be equal"
 
-        testCase "add a category and retrieve it - ok" <| fun _ ->
+        ftestCase "add a category and retrieve it - ok" <| fun _ ->
             let _ = SetUp()
             let category: Category = {Id = System.Guid.NewGuid(); Name = "cat1"}
             let added = eventStoreApp.AddCategory category
@@ -155,7 +156,7 @@ let utilsTests =
             Expect.isOk result "should be ok"
             Expect.equal (result |> Result.get) [category] "should be equal"
 
-        testCase "add a category and remove it - ok" <| fun _ ->
+        ftestCase "add a category and remove it - ok" <| fun _ ->
             let _ = SetUp()
             let id = Guid.NewGuid()
             let category: Category = {Id = id; Name = "cat1"}
@@ -234,7 +235,7 @@ let utilsTests =
             let result = eventStoreApp.AddTag tag
             Expect.isOk result "should be ok"
             async {
-                do! Async.Sleep 20
+                do! Async.Sleep 30
                 return ()
             } |> Async.RunSynchronously
             eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 

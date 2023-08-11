@@ -72,24 +72,26 @@ module Cache =
         member this.Dic() =
             dic
 
-    // type CurrentStateRef<'A> private() =
-    //     let dic = Generic.Dictionary<string, uint64 * 'A>()
-    //     static let instance = CurrentStateRef()
-    //     static member Instance = instance
+    // snapthots keeps the index of the related event so that after we get the
+    // latest snapshot we can also know when to start reading the events
+    type CurrentStateRef<'A> private() =
+        let dic = Generic.Dictionary<string, uint64 * 'A>()
+        static let instance = CurrentStateRef()
+        static member Instance = instance
 
-    //     member this.Lookup(key: string, zero: uint64 * 'A): uint64 * 'A =
-    //         let (b, res) = dic.TryGetValue key
-    //         if b then
-    //             res
-    //         else
-    //             zero
-    //     member this.Update(key: string, value: (uint64 * 'A)) =
-    //         dic.[key] <- value
+        member this.Lookup(key: string, zero: uint64 * 'A): uint64 * 'A =
+            let (b, res) = dic.TryGetValue key
+            if b then
+                res
+            else
+                zero
+        member this.Update(key: string, value: (uint64 * 'A)) =
+            dic.[key] <- value
 
-    //     member this.Clear() =
-    //         dic.Clear()
-    //     member this.Dic() =
-    //         dic
+        member this.Clear() =
+            dic.Clear()
+        member this.Dic() =
+            dic
 
     type StateCache<'A> private () =
         let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
