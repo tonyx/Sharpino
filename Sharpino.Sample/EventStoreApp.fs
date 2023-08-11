@@ -45,6 +45,8 @@ module EventStoreApp =
         member this.GetAllTags() =
             ResultCE.result {
                 let state = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
+                // let (x, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                // let state = stateX :?> TagsAggregate
                 let tags = state.GetTags()
                 return tags
             }
@@ -52,6 +54,11 @@ module EventStoreApp =
         member this.GetAllTodos() =
             ResultCE.result {
                 let state = Cache.CurrentState<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, TodosAggregate.Zero) :?> TodosAggregate 
+
+                // let (x, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                // let state = stateX :?> TodosAggregate
+
+
                 let todos = state.GetTodos()
                 return todos
             }
@@ -60,6 +67,11 @@ module EventStoreApp =
             let f = fun() ->
                 ResultCE.result {
                     let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate 
+
+                    // let (x, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    // let tagState = stateX :?> TagsAggregate
+
+
                     let tagIds = tagState.GetTags() |>> fun x -> x.Id
                     let! tagIdIsValid = 
                         (todo.TagIds.IsEmpty || 
@@ -106,6 +118,8 @@ module EventStoreApp =
         member this.GetAllCategories() =
             ResultCE.result {
                 let state = Cache.CurrentState<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, TodosAggregate.Zero) :?> TodosAggregate 
+                // let (x, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                // let state = stateX :?> TodosAggregate
                 let categories = state.GetCategories()
                 return categories
             }
@@ -151,6 +165,8 @@ module EventStoreApp =
             let f = fun() ->
                 ResultCE.result {
                     let tagState = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, TagsAggregate.Zero) :?> TagsAggregate
+                    // let (x, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    // let tagState = stateX :?> TagsAggregate
                     let tagIds = 
                         tagState.GetTags() 
                         |> List.map (fun x -> x.Id)

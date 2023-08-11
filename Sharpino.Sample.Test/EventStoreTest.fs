@@ -33,6 +33,12 @@ let utilsTests =
         Cache.CurrentState<TodosAggregate'>.Instance.Clear()
         Cache.CurrentState<TagsAggregate>.Instance.Clear()
         Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
+        
+        // Cache.CurrentStateRef<_>.Instance.Clear()
+        // Cache.CurrentStateRef<TodosAggregate>.Instance.Clear()
+        // Cache.CurrentStateRef<TodosAggregate'>.Instance.Clear()
+        // Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
+        // Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
         async {
             do! eventStoreBridge.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
@@ -102,9 +108,12 @@ let utilsTests =
             eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
             Expect.isOk result "should be ok"
             async {
-                do! Async.Sleep 10
+                do! Async.Sleep 20
                 return ()
             } |> Async.RunSynchronously
+
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
 
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [todo] "should be equal"

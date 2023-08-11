@@ -4,6 +4,9 @@ open Sharpino
 open Sharpino.Core
 open System.Runtime.CompilerServices
 open System.Collections
+open Sharpino.Lib
+open Sharpino.Lib.EvStore
+open EventStore.Client
 open System
 open FSharp.Core
 
@@ -68,6 +71,25 @@ module Cache =
             dic.Clear()
         member this.Dic() =
             dic
+
+    // type CurrentStateRef<'A> private() =
+    //     let dic = Generic.Dictionary<string, uint64 * 'A>()
+    //     static let instance = CurrentStateRef()
+    //     static member Instance = instance
+
+    //     member this.Lookup(key: string, zero: uint64 * 'A): uint64 * 'A =
+    //         let (b, res) = dic.TryGetValue key
+    //         if b then
+    //             res
+    //         else
+    //             zero
+    //     member this.Update(key: string, value: (uint64 * 'A)) =
+    //         dic.[key] <- value
+
+    //     member this.Clear() =
+    //         dic.Clear()
+    //     member this.Dic() =
+    //         dic
 
     type StateCache<'A> private () =
         let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
