@@ -81,7 +81,8 @@ let utilsTests =
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
 
-        let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
+        // let eventStoreBridge = EventStoreBridgeFS(Conf.eventStoreConnection)
+        let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(Conf.eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()

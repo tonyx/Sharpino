@@ -37,7 +37,8 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memStorage)
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
-    let evStoreApp = EventStoreApp(Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection))
+    // let evStoreApp = EventStoreApp(Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection))
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(Conf.eventStoreConnection))
     let eventStore = Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
 
     let resetDb(db: IStorage) =

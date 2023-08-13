@@ -96,24 +96,50 @@ module EventStore =
             |> Async.RunSynchronously
 
         member this.ConsumeEvents version name =    
-            let streamName = "events" + version + name
-            let position = 
-                match lastEventIds.TryGetValue(streamName) with
-                | true, pos -> pos
-                | false, _ -> StreamPosition.Start
+            try
+                // printf "XXXX. consuming 100\n"
+                let streamName = "events" + version + name
+                let position = 
+                    match lastEventIds.TryGetValue(streamName) with
+                    | true, pos -> pos
+                    | false, _ -> StreamPosition.Start
 
-            let events = _client.ReadStreamAsync(Direction.Forwards, streamName, position.Next())
+                // printf "XXXX. consuming 200\n"
 
-            let eventsReturned =
-                async {
-                    let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
-                    return ev
-                }
-                |> Async.RunSynchronously
 
-            let last = eventsReturned.LastOrDefault()
-            lastEventIds.[streamName] <- last.Event.EventNumber
-            eventsReturned
+                let events = _client.ReadStreamAsync(Direction.Forwards, streamName, position.Next())
+
+
+                // printf "XXXX. consuming 300\n"
+
+
+                let eventsReturned =
+                    async {
+                        let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
+                        return ev
+                    }
+                    |> Async.RunSynchronously
+
+                // printf "XXXX. consuming 400\n"
+
+                let last = eventsReturned.LastOrDefault()
+
+                // printf "XXXX. consuming 500\n"
+                // lastEventIds.[streamName] <- last.Event.EventNumber
+                // printf "\n\nXXX. lasteventids %A\n\n\n" lastEventIds
+
+                // printf "XXXX. consuming 600\n"
+
+                if (eventsReturned |> Seq.length > 0) then
+                    // printf "last %A\n\n" last.Event.EventNumber
+                    lastEventIds.TryAdd(streamName, last.Event.EventNumber) |> ignore
+                    // lastEventIds.Add(streamName, last.Event.EventNumber)
+
+                // printf "XXXX. consuming 700\n"
+                eventsReturned
+            with 
+            | _ ->  let ret:List<ResolvedEvent> = []
+                    ret |> Collections.Generic.List<ResolvedEvent>
 
         member this.GetLastSnapshot version name =            
             let streamName = "snapshots" + version + name
