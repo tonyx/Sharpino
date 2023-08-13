@@ -27,6 +27,7 @@ open Sharpino.Sample.Tags.TagsEvents
 [<Tests>]
 let utilsTests =
     let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
+    let eventStoreBridgeFs = EventStore.EventStoreBridgeFS(Conf.eventStoreConnection)
     let SetUp() =
         
         Cache.CurrentStateRef<_>.Instance.Clear()

@@ -41,9 +41,9 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>() =
-            let (_, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
+            let (eventId, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
             let state' = stateX :?> 'A
-            state'
+            (eventId, state')
 
     let inline updateState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -84,7 +84,7 @@ module LightRepository =
                 async {
                     return
                         ResultCE.result {
-                            let state = getState<'A>()
+                            let (_, state) = getState<'A>()
                             // let! newState = events |> evolve state
                             let! newState = (idAndEvents |>> snd) |> evolve state
                             return newState
@@ -115,7 +115,7 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let state = getState<'A>()
+                        let (_, state) = getState<'A>()
                         let! events =
                             state
                             |> undoer 
@@ -159,7 +159,7 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let state = getState<'A>()
+                        let (_, state) = getState<'A>()
                         let! events =
                             state
                             |> command.Execute
@@ -202,7 +202,7 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             result {
-                let a1State = getState<'A1>() 
+                let (_, a1State) = getState<'A1>() 
 
                 let command1Undoer = 
                     match command1.Undoer with
@@ -232,6 +232,8 @@ module LightRepository =
                 return result2'
             }
 
+
+
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
     let inline runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -246,7 +248,7 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-                let a1State = getState<'A1>()
+                let (_, a1State) = getState<'A1>()
                 let command1Undoer = 
                     match command1.Undoer with
                     | Some f -> a1State |> f |> Some 
@@ -276,6 +278,66 @@ module LightRepository =
                 let! result2' = result2
                 return result2'
             }
+
+    let inline mkSnapshot<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>> (storage: EventStoreBridge) =
+            async {
+                let (eventId, state) = getState<'A>()
+                let snapshot = state |> Utils.serialize<'A>
+                let! added = storage.AddSnapshot (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
+                return ()
+            }
+            |> Async.RunSynchronously
+
+
+    let inline mkSnapshotIfIntervalPassed<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'E :> Event<'A>> (storage: EventStoreBridge) =
+
+            let addNewShapshot eventId state = 
+                let newSnapshot = state |> Utils.serialize<'A>
+                storage.AddSnapshot (eventId, 'A.Version, newSnapshot, 'A.StorageName)
+
+            async {
+                let! lastSnapshot = storage.GetLastSnapshot ('A.Version, 'A.StorageName) |> Async.AwaitTask
+                let snapId = 
+                    if lastSnapshot.HasValue then
+                        let struct(id, value) = lastSnapshot.Value
+                        id
+                    else    
+                        0 |> uint64
+
+                let (eventId, state) = getState<'A>()
+                let difference = eventId - snapId
+
+                if (difference > (100 |> uint64)) then
+                    let! _ = addNewShapshot eventId state |> Async.AwaitTask
+                    ()
+
+                return ()
+            }
+            |> Async.RunSynchronously
+
+
+    // let inline mkSnapshotIfInterval<'A, 'E
+    //     when 'A: (static member Zero: 'A)
+    //     and 'A: (static member StorageName: string)
+    //     and 'A: (static member Version: string)
+    //     and 'E :> Event<'A>> (storage: EventStoreBridge) =
+    //         async {
+    //             let (eventId, state) = getState<'A>()
+    //             let snapshot = state |> Utils.serialize<'A>
+    //             let! added = storage.AddSnapshotIfInterval (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
+    //             return ()
+    //         }
+    //         |> Async.RunSynchronously
+
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 

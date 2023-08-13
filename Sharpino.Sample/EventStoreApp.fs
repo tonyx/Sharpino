@@ -28,6 +28,7 @@ open FsToolkit.ErrorHandling
 module EventStoreApp =
     open Sharpino.Lib.EvStore
     open Sharpino.Sample.Tags.TagCommands
+    // type EventStoreApp(storage: EventStoreBridge) =
     type EventStoreApp(storage: EventStoreBridge) =
         member this.AddTag tag =
             let f = fun() ->
@@ -77,10 +78,14 @@ module EventStoreApp =
                         (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
                         |> boolToResult "Tag id is not valid"
 
-                    return!
+                    let! _ =
                         todo
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
+
+                    let _ = storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
+
+                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)

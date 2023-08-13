@@ -59,6 +59,7 @@ public class EventStoreBridge
                 }
         }
 
+
     public async Task AddEvents (string version, List<string> events, string name) 
         {
             var streamName = "events" + version + name;
@@ -71,13 +72,14 @@ public class EventStoreBridge
         }
 
     // public async void is suspicious: check the whole snapshots management in eventstore
-    public async void AddSnapshot(int eventId, string version, string snapshot, string name) 
+    public async Task AddSnapshot(UInt64 eventId, string version, string snapshot, string name) 
         {
             var streamName = "snapshots" + version + name;
             var eventData = new EventData(
                 Uuid.NewUuid(),
-                "snapshots" + version + name + " _event_id:" + eventId,
-                Encoding.UTF8.GetBytes(snapshot)
+                "snapshots" + version + name,
+                Encoding.UTF8.GetBytes(snapshot),
+                Encoding.UTF8.GetBytes(eventId.ToString())
             );
             var eventDatas = new List<EventData>() { eventData };
             await _client.AppendToStreamAsync(streamName, StreamState.Any, eventDatas);
@@ -118,4 +120,27 @@ public class EventStoreBridge
                 return Option<(Int64, string)>.None();
             }
         }
+
+    public async Task<Option<(UInt64, string)>> GetLastSnapshot(string version, string name)
+        {
+            var streamName = "snapshots" + version + name;
+            try {
+                var snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End);
+                var snapshot = await snapshots.ElementAtAsync(0);
+
+                // var relatedEventId = Encoding.UTF8.GetString(snapshot.Event.Metadata.ToArray());
+                // var eventId = UInt64.Parse(relatedEventId);
+
+                var eventId = UInt64.Parse(Encoding.UTF8.GetString(snapshot.Event.Metadata.ToArray()));
+
+                var snapshotData = Encoding.UTF8.GetString(snapshot.Event.Data.ToArray());
+                var lastEventId =  snapshot.Event.EventNumber;
+
+                return Option<(UInt64, string)>.Some((eventId, snapshotData));
+            }
+            catch (Exception e) {
+                return Option<(UInt64, string)>.None();
+            }
+        }
+
     }
