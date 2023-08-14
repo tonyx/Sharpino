@@ -1,11 +1,9 @@
 namespace Sharpino
 
-open System.Runtime.CompilerServices
 open FsToolkit.ErrorHandling
 open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
-open Sharpino.Utils
 open Sharpino
 
 type Json = string

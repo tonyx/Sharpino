@@ -1,6 +1,5 @@
 namespace Sharpino
 
-open System.Runtime.CompilerServices
 open FSharp.Data.Sql
 open FSharp.Core
 open FSharpPlus

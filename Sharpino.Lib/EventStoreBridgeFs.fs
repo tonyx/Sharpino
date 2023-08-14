@@ -1,20 +1,12 @@
 namespace Sharpino
 
-open System.Runtime.CompilerServices
 open FsToolkit.ErrorHandling
 open FSharp.Data.Sql
-open Npgsql.FSharp
 open FSharpPlus
-open Sharpino.Utils
-open Sharpino
 
 open System
 open System.Linq
-open System.Net.Http
-open System.Reflection
 open System.Text
-open System.Threading
-open System.Threading.Tasks
 open EventStore.Client
 
 module EventStore =
@@ -38,7 +30,6 @@ module EventStore =
                     return ()
                 else
                     let! _ =  _client.DeleteAsync("events" + version + name, StreamState.Any) |> Async.AwaitTask
-                    // let! _ = _client.DeleteAsync("events" + version + name, StreamState.Any) |> Async.AwaitTask
                     return ()
             }
             |> Async.RunSynchronously
@@ -57,7 +48,6 @@ module EventStore =
                     return ()
                 else
                     let! _ =  _client.DeleteAsync("snapshots" + version + name, StreamState.Any) |> Async.AwaitTask
-                    // let! _ = _client.DeleteAsync("snapshots" + version + name, StreamState.Any) |> Async.AwaitTask
                     return ()
             }
             |> Async.RunSynchronously
@@ -97,7 +87,6 @@ module EventStore =
 
         member this.ConsumeEvents version name =    
             try
-                // printf "XXXX. consuming 100\n"
                 let streamName = "events" + version + name
                 let position = 
                     match lastEventIds.TryGetValue(streamName) with

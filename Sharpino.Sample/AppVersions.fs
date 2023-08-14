@@ -70,8 +70,6 @@ module AppVersions =
         Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
         Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
-        // let eventStore = Sharpino.Lib.EvStore.EventStoreBridge(eventStoreConnection)
-        // async {
         eventStoreBridge.ResetSnapshots "_01" "_tags"
         eventStoreBridge.ResetEvents "_01"  "_tags"
         eventStoreBridge.ResetSnapshots "_01" "_todo"
@@ -81,9 +79,6 @@ module AppVersions =
         eventStoreBridge.ResetSnapshots "_01" "_categories"
         eventStoreBridge.ResetEvents "_01" "_categories"
 
-        //     return result
-        // }
-        // |> Async.RunSynchronously
 
     type IApplication =
         {

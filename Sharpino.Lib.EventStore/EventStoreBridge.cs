@@ -1,13 +1,12 @@
 ﻿namespace Sharpino.Lib.EvStore;
 using System;
 using System.Linq;
-using System.Net.Http;
-using System.Reflection;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using EventStore.Client;
 
+// this code is going to be removed because there is a fs version of evenetstore bridge.
+// it stays here for get inspiration for the fs version
 public class EventStoreBridge
 {
     EventStoreClient _client;
@@ -58,7 +57,6 @@ public class EventStoreBridge
                     Console.WriteLine(e.Message);
                 }
         }
-
 
     public async Task AddEvents (string version, List<string> events, string name) 
         {

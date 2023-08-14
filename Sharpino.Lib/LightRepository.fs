@@ -1,16 +1,12 @@
 
 namespace Sharpino
 
-open System.Runtime.CompilerServices
 open FSharp.Data.Sql
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
-// open Sharpino.Lib
-// open Sharpino.Lib.EvStore
-open Sharpino.Utils
 open Sharpino.Cache
 open Sharpino.Core
 open FsToolkit.ErrorHandling
@@ -135,7 +131,6 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) (command: Command<'A, 'E>)  =
 
-        // printf "XXXX. runcommand. 1\n"
         let addEvents (events: List<string>) =
             let added = storage.AddEvents 'A.Version events 'A.StorageName
             added
@@ -160,7 +155,6 @@ module LightRepository =
                     } 
             }
             |> Async.RunSynchronously
-        // printf "XXXX. runcommand. 3\n"
 
         let updatingState =
             async {
@@ -227,7 +221,7 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            (storage: Sharpino.EventStore.EventStoreBridgeFS)
+            (storage: EventStore.EventStoreBridgeFS)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
@@ -299,7 +293,7 @@ module LightRepository =
                 let (eventId, state) = getState<'A>()
                 let difference = eventId - snapId
 
-                if (difference > (100 |> uint64)) then
+                if (difference > ('A.SnapshotsInterval |> uint64)) then
                     let _ = addNewShapshot eventId state 
                     ()
 
