@@ -33,6 +33,7 @@ open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
 open Sharpino.Lib.EvStore
 
+let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
@@ -81,7 +82,7 @@ let utilsTests =
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
 
-        let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(Conf.eventStoreConnection)
+        let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()

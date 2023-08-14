@@ -30,6 +30,7 @@ module AppVersions =
         "Database=es_01;" +
         "User Id=safe;"+
         "Password=safe;"
+    let eventStoreConnection = "esdb://localhost:2113?tls=false"
     let pgStorage: IStorage = DbStorage.PgDb(connection)
     let memStorage: IStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(pgStorage)
@@ -37,9 +38,7 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memStorage)
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
-    // let evStoreApp = EventStoreApp(Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection))
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(Conf.eventStoreConnection))
-    let eventStore = Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
 
     let resetDb(db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName 
@@ -70,7 +69,7 @@ module AppVersions =
         Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
         Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
-        let eventStore = Sharpino.Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
+        let eventStore = Sharpino.Lib.EvStore.EventStoreBridge(eventStoreConnection)
         async {
             let! _      = eventStore.ResetSnapshots("_01", "_tags") |> Async.AwaitTask
             let! _      = eventStore.ResetEvents("_01", "_tags") |> Async.AwaitTask
@@ -183,7 +182,7 @@ module AppVersions =
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let e' = Collections.Generic.List(e) 
-                                    let eventStore = Lib.EvStore.EventStoreBridge(Conf.eventStoreConnection)
+                                    let eventStore = Lib.EvStore.EventStoreBridge(eventStoreConnection)
                                     async {
                                         let! result = eventStore.AddEvents(version, e', name) |> Async.AwaitTask
                                         return result

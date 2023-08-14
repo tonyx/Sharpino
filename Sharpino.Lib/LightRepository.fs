@@ -301,27 +301,11 @@ module LightRepository =
 
                 if (difference > (100 |> uint64)) then
                     let _ = addNewShapshot eventId state 
-                    // ()
-                    // let! _ = addNewShapshot eventId state |> Async.AwaitTask
                     ()
 
                 return ()
             }
             |> Async.RunSynchronously
-
-
-    // let inline mkSnapshotIfInterval<'A, 'E
-    //     when 'A: (static member Zero: 'A)
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)
-    //     and 'E :> Event<'A>> (storage: EventStoreBridge) =
-    //         async {
-    //             let (eventId, state) = getState<'A>()
-    //             let snapshot = state |> Utils.serialize<'A>
-    //             let! added = storage.AddSnapshotIfInterval (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
-    //             return ()
-    //         }
-    //         |> Async.RunSynchronously
 
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)

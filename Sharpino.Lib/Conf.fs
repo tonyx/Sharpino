@@ -8,4 +8,3 @@ module Conf =
 
     let cacheSize = 100 
     let stateCacheSize = 10 
-    let eventStoreConnection = "esdb://localhost:2113?tls=false"
