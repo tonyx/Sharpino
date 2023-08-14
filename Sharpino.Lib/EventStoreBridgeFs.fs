@@ -9,6 +9,7 @@ open System.Linq
 open System.Text
 open EventStore.Client
 
+// experimental support for EventStore. Need to refactor and optimize
 module EventStore =
     type EventStoreBridgeFS(connection) =
 
