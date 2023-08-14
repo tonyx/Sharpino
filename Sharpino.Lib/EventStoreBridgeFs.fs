@@ -13,7 +13,7 @@ open EventStore.Client
 module EventStore =
     type EventStoreBridgeFS(connection) =
 
-        let lastEventIds = new Collections.Generic.Dictionary<string, StreamPosition>()
+        let lastEventIds = Collections.Generic.Dictionary<string, StreamPosition>()
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 
         member this.ResetEvents version name =
@@ -87,6 +87,7 @@ module EventStore =
             |> Async.RunSynchronously
 
         member this.ConsumeEvents version name =    
+            // todo: get rid of try ... with
             try
                 let streamName = "events" + version + name
                 let position = 
@@ -109,29 +110,30 @@ module EventStore =
                     if (lastEventIds.ContainsKey(streamName)) then
                         lastEventIds.Remove(streamName) |> ignore
                     lastEventIds.Add(streamName, last.Event.EventNumber)
-
                 eventsReturned
             with 
             | _ ->  let ret:List<ResolvedEvent> = []
                     ret |> Collections.Generic.List<ResolvedEvent>
 
         member this.GetLastSnapshot version name =            
-            let streamName = "snapshots" + version + name
-            let snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End)
-            let snapshotVals =
-                async {
-                    let! ev = snapshots.ToListAsync().AsTask() |> Async.AwaitTask
-                    return ev
-                }
-                |> Async.RunSynchronously
+            try
+                let streamName = "snapshots" + version + name
+                let snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End)
+                let snapshotVals =
+                    async {
+                        let! ev = snapshots.ToListAsync().AsTask() |> Async.AwaitTask
+                        return ev
+                    }
+                    |> Async.RunSynchronously
 
-            if ((snapshotVals |> Seq.length) = 0) then
-                None
-            else
-                let last = snapshotVals.FirstOrDefault()
-                let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
-                let snapshotData = Encoding.UTF8.GetString(last.Event.Data.ToArray())
-                let lastEventId = last.Event.EventNumber
-                (eventId, snapshotData) |> Some
+                if ((snapshotVals |> Seq.length) = 0) then
+                    None
+                else
+                    let last = snapshotVals.FirstOrDefault()
+                    let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
+                    let snapshotData = Encoding.UTF8.GetString(last.Event.Data.ToArray())
+                    let lastEventId = last.Event.EventNumber
+                    (eventId, snapshotData) |> Some
+            with _ -> None
 
             

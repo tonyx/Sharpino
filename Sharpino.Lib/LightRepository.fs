@@ -89,7 +89,7 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) (undoer: Undoer<'A, 'E>)  =
+        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) (undoer: Undoer<'A, 'E>)  =
 
         let addEvents (events: List<string>) =
             storage.AddEvents 'A.Version events 'A.StorageName
@@ -129,7 +129,7 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) (command: Command<'A, 'E>)  =
+        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) (command: Command<'A, 'E>)  =
 
         let addEvents (events: List<string>) =
             let added = storage.AddEvents 'A.Version events 'A.StorageName
@@ -177,7 +177,7 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            (storage: Sharpino.EventStore.EventStoreBridgeFS)
+            (storage: EventStore.EventStoreBridgeFS)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             result {
