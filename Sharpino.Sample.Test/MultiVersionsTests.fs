@@ -31,7 +31,6 @@ open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
-open Sharpino.Lib.EvStore
 
 let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =

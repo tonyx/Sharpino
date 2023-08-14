@@ -28,7 +28,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-    <ProjectReference Include="..\Sharpino.Lib.EventStore\Sharpino.Lib.EventStore.csproj" />    
   </ItemGroup>
 
   <ItemGroup>

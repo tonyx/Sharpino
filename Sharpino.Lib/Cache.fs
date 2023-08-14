@@ -4,8 +4,7 @@ open Sharpino
 open Sharpino.Core
 open System.Runtime.CompilerServices
 open System.Collections
-open Sharpino.Lib
-open Sharpino.Lib.EvStore
+// open Sharpino.Lib
 open EventStore.Client
 open System
 open FSharp.Core

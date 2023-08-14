@@ -7,7 +7,6 @@ open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
-open Sharpino.Lib.EvStore
 open Sharpino.Utils
 open Sharpino.Cache
 open Sharpino.Core

@@ -2,15 +2,11 @@
 module Tests.Sharpino.Sample.DbStorageTest
 
 open Expecto
-open FsCheck
-open FsCheck.Prop
-open Expecto.Tests
 open System
 open FSharp.Core
 
 open Sharpino
 open Sharpino.Utils
-open Sharpino.Lib.EvStore
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Models.TagsModel
 open Sharpino.Sample.Models.TodosModel
@@ -46,9 +42,7 @@ let utilsTests =
         eventStoreBridge.ResetSnapshots "_01" "_categories"
         eventStoreBridge.ResetEvents "_01" "_categories"
 
-
     let eventStoreApp = EventStoreApp(eventStoreBridge)
-
 
     // warning: there is the possibility that some async issue may make some test fail
     // if that happens, you may try adding an explicit update state
@@ -67,13 +61,9 @@ let utilsTests =
         testCase "add a todo - ok" <| fun _ ->
             let _ = SetUp()
             let todo: Todo = {Id = Guid.NewGuid(); Description = "descZ"; TagIds = []; CategoryIds = []}
-
             let result = eventStoreApp.AddTodo todo 
 
-
             eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-
-
             Expect.isOk result "should be ok"
 
             let result = eventStoreApp.GetAllTodos() |> Result.get
@@ -102,7 +92,6 @@ let utilsTests =
 
             eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
             eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
-
 
             Expect.isOk result "should be ok"
             async {

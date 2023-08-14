@@ -26,7 +26,6 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 
 module EventStoreApp =
-    open Sharpino.Lib.EvStore
     open Sharpino.Sample.Tags.TagCommands
     type EventStoreApp(storage: Sharpino.EventStore.EventStoreBridgeFS) =
         member this.AddTag tag =

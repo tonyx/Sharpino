@@ -8,8 +8,8 @@ open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
-open Sharpino.Lib
-open Sharpino.Lib.EvStore
+// open Sharpino.Lib
+// open Sharpino.Lib.EvStore
 open Sharpino.Utils
 open Sharpino.Cache
 open Sharpino.Core
@@ -262,18 +262,18 @@ module LightRepository =
                 return result2'
             }
 
-    let inline mkSnapshot<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: EventStoreBridge) =
-            async {
-                let (eventId, state) = getState<'A>()
-                let snapshot = state |> Utils.serialize<'A>
-                let! added = storage.AddSnapshot (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
-                return ()
-            }
-            |> Async.RunSynchronously
+    // let inline mkSnapshot<'A, 'E
+    //     when 'A: (static member Zero: 'A)
+    //     and 'A: (static member StorageName: string)
+    //     and 'A: (static member Version: string)
+    //     and 'E :> Event<'A>> (storage: EventStoreBridge) =
+    //         async {
+    //             let (eventId, state) = getState<'A>()
+    //             let snapshot = state |> Utils.serialize<'A>
+    //             let! added = storage.AddSnapshot (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
+    //             return ()
+    //         }
+    //         |> Async.RunSynchronously
 
     let inline mkSnapshotIfIntervalPassed<'A, 'E
         when 'A: (static member Zero: 'A)

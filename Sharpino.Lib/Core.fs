@@ -24,10 +24,7 @@ module Core =
             ) (h |> Ok)
 
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
-        // printf "XXXX. Entering evolve\n"
-        // events |> List.iter (printfn "XXXX. event: %A\n")
         let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
-            // printf "XXXX. Entering evolveSkippingErrors %A\n" acc
             match acc, events with
             | Error err, _::es -> 
                 // you may want to print or log this
