@@ -51,10 +51,7 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS)  =
 
-
-        // printf "XXX. update state 100\n"
         let consumed = storage.ConsumeEvents 'A.Version  'A.StorageName 
-        // printf "XXX. update state 200\n"
 
         if (consumed |> Seq.length = 0) then
             ()
@@ -81,7 +78,6 @@ module LightRepository =
                     return
                         ResultCE.result {
                             let (_, state) = getState<'A>()
-                            // let! newState = events |> evolve state
                             let! newState = (idAndEvents |>> snd) |> evolve state
                             return newState
                         }
@@ -89,7 +85,6 @@ module LightRepository =
                 |> Async.RunSynchronously
 
             let lastEventId = idAndEvents |>> fst |> List.last 
-
             let newStateVal: 'A = (newState |> Result.get)
             CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newStateVal))
             ()
@@ -100,15 +95,8 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) (undoer: Undoer<'A, 'E>)  =
 
-        // let addEvents (events: System.Collections.Generic.List<string>) =
         let addEvents (events: List<string>) =
             storage.AddEvents 'A.Version events 'A.StorageName
-
-            // async {
-            //     let! added = storage.AddEvents ('A.Version, events, 'A.StorageName) |> Async.AwaitTask
-            //     return added
-            // }
-            // |> Async.RunSynchronously
 
         let addingEvents =
             async {
@@ -145,15 +133,12 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        // and 'E :> Event<'A>> (storage: EventStoreBridge) (command: Command<'A, 'E>)  =
         and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) (command: Command<'A, 'E>)  =
 
         // printf "XXXX. runcommand. 1\n"
         let addEvents (events: List<string>) =
             let added = storage.AddEvents 'A.Version events 'A.StorageName
             added
-
-        // printf "XXXX. runcommand. 2\n"
 
         let addingEvents =
             async {
@@ -166,7 +151,6 @@ module LightRepository =
                         let serEvents = 
                             events 
                             |> List.map (fun x -> Utils.serialize x) 
-                            // |> System.Collections.Generic.List
                         let! eventsAdded' =
                             try 
                                 addEvents serEvents |> Ok
@@ -188,8 +172,6 @@ module LightRepository =
             }
             |> Async.RunSynchronously
 
-        // printf "XXXX. runcommand. 4\n"
-
         addingEvents
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
@@ -201,7 +183,6 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            // (storage: EventStoreBridge)
             (storage: Sharpino.EventStore.EventStoreBridgeFS)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
@@ -236,8 +217,6 @@ module LightRepository =
                 return result2'
             }
 
-
-
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
     let inline runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -248,7 +227,6 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            // (storage: EventStoreBridge)
             (storage: Sharpino.EventStore.EventStoreBridgeFS)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
@@ -297,7 +275,6 @@ module LightRepository =
             }
             |> Async.RunSynchronously
 
-
     let inline mkSnapshotIfIntervalPassed<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -308,15 +285,12 @@ module LightRepository =
 
             let addNewShapshot eventId state = 
                 let newSnapshot = state |> Utils.serialize<'A>
-                // storage.AddSnapshot (eventId, 'A.Version, newSnapshot, 'A.StorageName)
                 storage.AddSnapshot eventId 'A.Version newSnapshot 'A.StorageName
 
             async {
-                // let! lastSnapshot = storage.GetLastSnapshot ('A.Version, 'A.StorageName) |> Async.AwaitTask
                 let lastSnapshot = storage.GetLastSnapshot 'A.Version 'A.StorageName
                 let snapId = 
                     if lastSnapshot.IsSome then
-                        // let struct(id, value) = lastSnapshot.Value
                         let (id, value) = lastSnapshot.Value
                         id
                     else    

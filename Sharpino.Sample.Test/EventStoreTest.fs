@@ -26,9 +26,7 @@ open Sharpino.Sample.Tags.TagsEvents
 
 [<Tests>]
 let utilsTests =
-    // let eventStoreBridge = EventStoreBridge(Conf.eventStoreConnection)
     let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(Conf.eventStoreConnection)
-    let eventStoreBridgeFs = EventStore.EventStoreBridgeFS(Conf.eventStoreConnection)
     let SetUp() =
         
         Cache.CurrentStateRef<_>.Instance.Clear()
@@ -37,8 +35,6 @@ let utilsTests =
         Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
         Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
-        // async {
-            // do! eventStoreBridge.ResetSnapshots("_01", "_tags")           |> Async.AwaitTask
         eventStoreBridge.ResetSnapshots "_01" "_tags"         //    |> Async.AwaitTask      
         eventStoreBridge.ResetSnapshots "_01" "_tags"
         eventStoreBridge.ResetEvents "_01" "_tags"
@@ -49,9 +45,6 @@ let utilsTests =
         eventStoreBridge.ResetSnapshots "_01" "_categories"
         eventStoreBridge.ResetEvents "_01" "_categories"
 
-        //     return result
-        // }
-        // |> Async.RunSynchronously
 
     let eventStoreApp = EventStoreApp(eventStoreBridge)
 
@@ -98,15 +91,18 @@ let utilsTests =
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
             Expect.equal todos [] "should be equal"
 
-        ftestCase "add and remove a todo - Ok" <| fun _ ->
+        testCase "add and remove a todo - Ok" <| fun _ ->
             let _ = SetUp()
             let todos = eventStoreApp.GetAllTodos() |> Result.get
             Expect.equal todos [] "should be equal" 
 
             let todo: Todo = {Id = Guid.NewGuid(); Description = "descQQ"; TagIds = []; CategoryIds = []}
             let result = eventStoreApp.AddTodo todo
+
             eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            // eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+
+
             Expect.isOk result "should be ok"
             async {
                 do! Async.Sleep 20
@@ -114,17 +110,15 @@ let utilsTests =
             } |> Async.RunSynchronously
 
             eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            // eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
 
             let todos = eventStoreApp.GetAllTodos()  |> Result.get
 
             Expect.equal todos [todo] "should be equal"
-
             let removed = eventStoreApp.RemoveTodo todo.Id
-
             Expect.isOk removed "should be ok"
             eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+
             async {
                 do! Async.Sleep 10
                 return ()

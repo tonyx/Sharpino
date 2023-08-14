@@ -28,8 +28,6 @@ open FsToolkit.ErrorHandling
 module EventStoreApp =
     open Sharpino.Lib.EvStore
     open Sharpino.Sample.Tags.TagCommands
-    // type EventStoreApp(storage: EventStoreBridge) =
-    // type EventStoreApp(storage: EventStoreBridge) =
     type EventStoreApp(storage: Sharpino.EventStore.EventStoreBridgeFS) =
         member this.AddTag tag =
             let f = fun() ->
@@ -68,34 +66,19 @@ module EventStoreApp =
         member this.AddTodo todo =
             let f = fun() ->
                 ResultCE.result {
-                    // printf "addTodo 1\n"
-
                     let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                    // printf "addTodo 2\n"
                     let tagState' = stateX :?> TagsAggregate
-                    // printf "addTodo 3\n"
-
                     let tagIds = tagState'.GetTags() |>> fun x -> x.Id
-
-                    // printf "addTodo 4\n"
                     
                     let! tagIdIsValid = 
                         (todo.TagIds.IsEmpty || 
                         (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
                         |> boolToResult "Tag id is not valid"
 
-                    // printf "addTodo 5\n"
-
                     let! _ =
                         todo
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-
-                    // printf "addTodo 6\n"
-
-                    // let _ = storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
-
-                    // printf "addTodo 7\n"
 
                     return ()
                 }
