@@ -12,7 +12,6 @@ open EventStore.Client
 // experimental support for EventStore. Need to refactor and optimize
 module EventStore =
     type EventStoreBridgeFS(connection) =
-
         let lastEventIds = Collections.Generic.Dictionary<string, StreamPosition>()
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 
@@ -132,7 +131,6 @@ module EventStore =
                     let last = snapshotVals.FirstOrDefault()
                     let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
                     let snapshotData = Encoding.UTF8.GetString(last.Event.Data.ToArray())
-                    let lastEventId = last.Event.EventNumber
                     (eventId, snapshotData) |> Some
             with _ -> None
 
