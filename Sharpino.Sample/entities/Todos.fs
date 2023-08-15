@@ -23,7 +23,7 @@ module TodosModel =
                 }
 
             member this.AddTodo (t: Todo) =
-                ResultCE.result {
+                result {
                     let! description_must_not_exist_already =
                         this.todos
                         |> List.exists (fun x -> x.Description = t.Description)
@@ -42,7 +42,7 @@ module TodosModel =
                     |> not
                     |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
 
-                ResultCE.result {
+                result {
                     let! mustNotExist =
                         ts |> catchErrors checkNotExists
                     return
@@ -52,7 +52,7 @@ module TodosModel =
                         }
                 }
             member this.RemoveTodo (id: Guid) =
-                ResultCE.result {
+                result {
                     let! id_must_exist =
                         this.todos
                         |> List.exists (fun x -> x.Id = id)
