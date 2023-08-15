@@ -77,7 +77,7 @@ module EventStore =
                     Uuid.NewUuid(), 
                     streamName,
                     Encoding.UTF8.GetBytes(snapshot),
-                    new Nullable<ReadOnlyMemory<byte>>(Encoding.UTF8.GetBytes("XXX"))
+                    new Nullable<ReadOnlyMemory<byte>>(Encoding.UTF8.GetBytes(eventId.ToString()))
                 )
             async {
                 let! _ = _client.AppendToStreamAsync(streamName, StreamState.Any, [eventData]) |> Async.AwaitTask

@@ -16,7 +16,7 @@ module CategoriesCommands =
         | AddCategories of List<Category>
 
         interface Command<CategoriesAggregate, CategoryEvent> with
-            member this.Execute (x: CategoriesAggregate) =
+            member this.Execute (x: CategoriesAggregate) = 
                 match this with
                 | AddCategory c ->
                     EventCache<CategoriesAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [CategoryAdded c]) 
