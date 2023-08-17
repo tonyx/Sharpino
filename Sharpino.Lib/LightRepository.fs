@@ -274,8 +274,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
-        // and 'E :> Event<'A>> (storage: EventStoreBridge) =
-        and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS) =
+        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) =
 
             let addNewShapshot eventId state = 
                 let newSnapshot = state |> Utils.serialize<'A>

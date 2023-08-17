@@ -79,6 +79,9 @@ module EventStoreApp =
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
 
+                    let _ =
+                        storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
+
                     return ()
                 }
             async {

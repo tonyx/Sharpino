@@ -21,7 +21,7 @@ module CategoriesModel =
                     categories = []
                 }
             member this.AddCategory (c: Category) =
-                ResultCE.result {
+                result {
                     let! mustNotExist =
                         this.categories
                         |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
@@ -41,7 +41,7 @@ module CategoriesModel =
                     |> not
                     |> boolToResult (sprintf "There is already another Category named %s " c.Name)
 
-                ResultCE.result {
+                result {
                     let! mustNotExist =
                         cs |> catchErrors checkNotExists
                     return
@@ -52,7 +52,7 @@ module CategoriesModel =
                 }
 
             member this.RemoveCategory (id: Guid) =
-                ResultCE.result {
+                result {
                     let! mustExist =
                         this.categories
                         |> List.exists (fun x -> x.Id = id)

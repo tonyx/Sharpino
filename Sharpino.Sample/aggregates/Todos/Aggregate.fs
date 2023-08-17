@@ -24,7 +24,7 @@ module TodosAggregate =
         static member Version =
             "_01"
         static member SnapshotsInterval =
-            15
+            3 
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 

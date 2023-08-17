@@ -26,7 +26,7 @@ module TagsModel =
                     tags = []
                 }
             member this.AddTag (t: Tag) =
-                ResultCE.result {
+                result {
                     let! mustNotExist =
                         this.tags
                         |> List.exists (fun x -> x.Name = t.Name)
@@ -39,7 +39,7 @@ module TagsModel =
                         }
                 }
             member this.RemoveTag (id: Guid) =
-                ResultCE.result {
+                result {
                     let! mustExist =
                         this.tags
                         |> List.exists (fun x -> x.Id = id)
@@ -51,7 +51,7 @@ module TagsModel =
                         }
                 }
             member this.GetTag(id: Guid) =
-                ResultCE.result {
+                result {
                     return! 
                         this.tags
                         |> List.tryFind (fun x -> x.Id = id)
