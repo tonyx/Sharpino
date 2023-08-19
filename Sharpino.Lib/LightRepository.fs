@@ -91,11 +91,12 @@ module LightRepository =
                         let! events =
                             state
                             |> undoer 
-                        let serEvents = events |> List.map (fun x -> Utils.serialize x) // |> System.Collections.Generic.List
+                        let serEvents = events |> List.map (fun x -> Utils.serialize x)
                         let! eventsAdded' =
                             try 
                                 addEvents serEvents |> Ok
                             with
+                            // todo: no possible error for now
                             _ as e -> Error (sprintf "%s %A" "Error adding events to storage" e)
                         return ()
                     } 
@@ -139,6 +140,7 @@ module LightRepository =
                             try 
                                 addEvents serEvents |> Ok
                             with
+                            // todo: no possible error for now
                             _ as e -> Error (sprintf "%s %A" "Error adding events to storage" e)
                         return ()
                     } 
