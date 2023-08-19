@@ -111,8 +111,7 @@ module EventStore =
                     lastEventIds.Add(streamName, last.Event.EventNumber)
                 eventsReturned
             with 
-            | _ ->  let ret:List<ResolvedEvent> = []
-                    ret |> Collections.Generic.List<ResolvedEvent>
+            | _ -> [] |> Collections.Generic.List<ResolvedEvent>
 
         member this.GetLastSnapshot version name =            
             try
