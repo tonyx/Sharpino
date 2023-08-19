@@ -65,8 +65,9 @@ module EventStore =
                         )
                     )
             async {
-                let! _ = _client.AppendToStreamAsync(streamName, StreamState.Any, eventData) |> Async.AwaitTask
-                return ()
+                let! result = _client.AppendToStreamAsync(streamName, StreamState.Any, eventData) |> Async.AwaitTask
+                return result
+                // return ()
             }
             |> Async.RunSynchronously
 
@@ -112,7 +113,7 @@ module EventStore =
                 eventsReturned 
                 |> Seq.map (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) |> List.ofSeq
             with 
-            | _ -> []  //|> Collections.Generic.List<ResolvedEvent>
+            | _ -> []  
 
         member this.GetLastSnapshot version name =            
             try
@@ -129,6 +130,7 @@ module EventStore =
                     None
                 else
                     let last = snapshotVals.FirstOrDefault()
+                    let eventId' = UInt64.TryParse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
                     let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
                     let snapshotData = Encoding.UTF8.GetString(last.Event.Data.ToArray())
                     (eventId, snapshotData) |> Some

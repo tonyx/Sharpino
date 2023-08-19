@@ -103,6 +103,7 @@ module AppVersions =
         {
             _migrator  =        currentPgApp.Migrate |> Some
             _reset  =           fun () -> resetDb pgStorage
+            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _addEvents =        fun (version, e: List<string>, name) -> pgStorage.AddEvents version e name |> ignore // ignore?
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
@@ -183,6 +184,7 @@ module AppVersions =
                                         return result
                                     }
                                     |> Async.RunSynchronously
+                                    |> ignore
             getAllTodos =       evStoreApp.GetAllTodos
             addTodo =           evStoreApp.AddTodo
             add2Todos =         evStoreApp.Add2Todos
