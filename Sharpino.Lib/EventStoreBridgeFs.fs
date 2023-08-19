@@ -109,9 +109,10 @@ module EventStore =
                     if (lastEventIds.ContainsKey(streamName)) then
                         lastEventIds.Remove(streamName) |> ignore
                     lastEventIds.Add(streamName, last.Event.EventNumber)
-                eventsReturned
+                eventsReturned 
+                |> Seq.map (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) |> List.ofSeq
             with 
-            | _ -> [] |> Collections.Generic.List<ResolvedEvent>
+            | _ -> []  //|> Collections.Generic.List<ResolvedEvent>
 
         member this.GetLastSnapshot version name =            
             try

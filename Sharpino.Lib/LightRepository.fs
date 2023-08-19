@@ -53,32 +53,15 @@ module LightRepository =
             ()
         else
             let idAndEvents =
-                async {
-                    let events = 
-                        consumed 
-                        |> Seq.toList 
-                        |> List.map 
-                            (fun x ->
-                                (x.OriginalEventNumber.ToUInt64(), 
-                                    (System.Text.Encoding.UTF8.GetString(x.Event.Data.ToArray())) 
-                                    |> Utils.deserialize<'E> |> Result.get
-                                )
-                            )
-                    return
-                        events
-                }
-                |> Async.RunSynchronously
+                consumed 
+                |>>  (fun (i, x) -> (i, x |> Utils.deserialize<'E> |> Result.get))
 
             let newState =
-                async {
-                    return
-                        ResultCE.result {
-                            let (_, state) = getState<'A>()
-                            let! newState = (idAndEvents |>> snd) |> evolve state
-                            return newState
-                        }
+                result {
+                    let (_, state) = getState<'A>()
+                    let! newState = (idAndEvents |>> snd) |> evolve state
+                    return newState
                 }
-                |> Async.RunSynchronously
 
             let lastEventId = idAndEvents |>> fst |> List.last 
             let newStateVal: 'A = (newState |> Result.get)

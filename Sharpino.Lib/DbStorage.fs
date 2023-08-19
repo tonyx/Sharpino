@@ -38,7 +38,6 @@ type ILightStorage =
     abstract member ResetEvents: version -> Name -> unit
     abstract member ResetSnapshots: version -> Name -> unit
     abstract member AddSnapshot: UInt64 -> version -> Json -> Name
-    // abstract member ConsumeEvents: version -> name
 
 module DbStorage =
     type PgDb(connection) =
