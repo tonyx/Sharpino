@@ -52,21 +52,27 @@ module LightRepository =
         if (consumed |> Seq.length = 0) then
             ()
         else
-            let idAndEvents =
-                consumed 
-                |>>  (fun (i, x) -> (i, x |> Utils.deserialize<'E> |> Result.get))
-
             let newState =
                 result {
+                    let! idAndEvents =
+                        consumed 
+                        |> Utils.catchErrors
+                            (fun (i, x) -> 
+                                match x |> Utils.deserialize<'E> with
+                                | Ok x -> (i, x) |> Ok
+                                | Error e -> Error e
+                            )
                     let (_, state) = getState<'A>()
                     let! newState = (idAndEvents |>> snd) |> evolve state
+                    let lastEventId = idAndEvents |>> fst |> List.last 
+                    let _ =
+                        CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
                     return newState
                 }
-
-            let lastEventId = idAndEvents |>> fst |> List.last 
-            let newStateVal: 'A = (newState |> Result.get)
-            CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newStateVal))
-            ()
+            match newState with
+            | Ok _ -> ()
+            | Error x -> 
+                failwith (sprintf "error updating state: %A\n" x)
 
     let inline runUndoCommand<'A, 'E
         when 'A: (static member Zero: 'A)
