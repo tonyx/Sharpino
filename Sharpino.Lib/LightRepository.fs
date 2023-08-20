@@ -7,31 +7,12 @@ open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
+open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 module LightRepository =
-
-    // probably we are not going to use snapshot in the light version
-    // let inline private getLastSnapshot<'A 
-    //     when 'A: (static member Zero: 'A) 
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)>
-    //     (storage: Sharpino.EventStore.EventStoreBridgeFS) = 
-    //         async {
-    //             let! (st: EvStore.Option<struct (int64 * string)>) = 
-    //                 storage.ConsumeSnapshots ('A.Version, 'A.StorageName) |> Async.AwaitTask
-    //             match st.HasValue with
-    //                 | true ->  
-    //                     let struct(id, snapshot) = st.Value
-    //                     let deser = snapshot |> Utils.deserialize<'A>
-    //                     match deser with
-    //                     | Error e -> return Error (e.ToString())
-    //                     | Ok deser -> return (id |> int, deser) |> Ok
-    //                 | false -> return (0, 'A.Zero ) |> Ok
-    //         }
-    //         |> Async.RunSynchronously
 
     let inline getState<'A
         when 'A: (static member Zero: 'A)
@@ -45,7 +26,7 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: Sharpino.EventStore.EventStoreBridgeFS)  =
+        and 'E :> Event<'A>> (storage: ILightStorage)  =
 
         let consumed = storage.ConsumeEvents 'A.Version  'A.StorageName 
 
@@ -78,7 +59,7 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) (undoer: Undoer<'A, 'E>)  =
+        and 'E :> Event<'A>> (storage: ILightStorage) (undoer: Undoer<'A, 'E>)  =
 
         let addEvents (events: List<string>) =
             storage.AddEvents 'A.Version events 'A.StorageName
@@ -119,7 +100,7 @@ module LightRepository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) (command: Command<'A, 'E>)  =
+        and 'E :> Event<'A>> (storage: ILightStorage) (command: Command<'A, 'E>)  =
 
         let addEvents (events: List<string>) =
             let added = storage.AddEvents 'A.Version events 'A.StorageName
@@ -168,7 +149,7 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            (storage: EventStore.EventStoreBridgeFS)
+            (storage: ILightStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             result {
@@ -212,7 +193,7 @@ module LightRepository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            (storage: EventStore.EventStoreBridgeFS)
+            (storage: ILightStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
@@ -247,25 +228,12 @@ module LightRepository =
                 return result2'
             }
 
-    // let inline mkSnapshot<'A, 'E
-    //     when 'A: (static member Zero: 'A)
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)
-    //     and 'E :> Event<'A>> (storage: EventStoreBridge) =
-    //         async {
-    //             let (eventId, state) = getState<'A>()
-    //             let snapshot = state |> Utils.serialize<'A>
-    //             let! added = storage.AddSnapshot (eventId, 'A.Version, snapshot, 'A.StorageName) |> Async.AwaitTask
-    //             return ()
-    //         }
-    //         |> Async.RunSynchronously
-
     let inline mkSnapshotIfIntervalPassed<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
-        and 'E :> Event<'A>> (storage: EventStore.EventStoreBridgeFS) =
+        and 'E :> Event<'A>> (storage: ILightStorage) =
 
             let addNewShapshot eventId state = 
                 let newSnapshot = state |> Utils.serialize<'A>

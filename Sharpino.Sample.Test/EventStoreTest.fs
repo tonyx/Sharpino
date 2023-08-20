@@ -6,6 +6,7 @@ open System
 open FSharp.Core
 
 open Sharpino
+open Sharpino.Storage
 open Sharpino.Utils
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Models.TagsModel
@@ -23,7 +24,7 @@ open Sharpino.Sample.Tags.TagsEvents
 [<Tests>]
 let utilsTests =
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
+    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
     let SetUp() =
         
         Cache.CurrentStateRef<_>.Instance.Clear()

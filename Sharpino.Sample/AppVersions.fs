@@ -1,6 +1,7 @@
 
 namespace Sharpino.EventSourcing.Sample
 open Sharpino
+open Sharpino.Storage
 open Sharpino.Utils
 
 open Sharpino.Sample.Models.TodosModel
@@ -38,7 +39,7 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memStorage)
     let upgradedMemApp = App.UpgradedApp(memStorage)
 
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) 
+    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
 
     let resetDb(db: IStorage) =
@@ -178,7 +179,7 @@ module AppVersions =
             _migrator =         None
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
+                                    let eventStore = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
                                     async {
                                         let result = eventStore.AddEvents version e name
                                         return result

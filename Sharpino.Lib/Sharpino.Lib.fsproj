@@ -9,6 +9,7 @@
   <ItemGroup>
     <Compile Include="Conf.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Storage.fs" />
     <Compile Include="DbStorage.fs" />
     <Compile Include="MemoryStorage.fs" />
     <Compile Include="EventStoreBridgeFs.fs" />

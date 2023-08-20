@@ -48,7 +48,6 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-
     // snapthots keeps the index of the related event so that after we get the
     // latest snapshot we can also know when to start reading the events
     type CurrentStateRef<'A> private() =

@@ -6,6 +6,7 @@ open Sharpino.Utils
 open Sharpino.LightRepository
 
 open Sharpino.Sample
+open Sharpino.Storage
 open Sharpino.Sample.Todos
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Todos.TodoEvents
@@ -27,7 +28,8 @@ open FsToolkit.ErrorHandling
 
 module EventStoreApp =
     open Sharpino.Sample.Tags.TagCommands
-    type EventStoreApp(storage: Sharpino.EventStore.EventStoreBridgeFS) =
+    // type EventStoreApp(storage: EventStore.EventStoreBridgeFS) =
+    type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
             let f = fun() ->
                 result {

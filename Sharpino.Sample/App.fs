@@ -5,6 +5,7 @@ open Sharpino.Utils
 open Sharpino.Repository
 
 open Sharpino.Sample
+open Sharpino.Storage
 open Sharpino.Sample.Todos
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Todos.TodoEvents
