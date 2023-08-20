@@ -4,7 +4,7 @@ open System
 open Sharpino.Core
 open Sharpino.Cache
 
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.TagsAggregate
 

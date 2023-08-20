@@ -3,7 +3,7 @@ namespace Sharpino.Sample.Tags
 open Sharpino.Cache
 open Sharpino.Core
 open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 
 open System
 

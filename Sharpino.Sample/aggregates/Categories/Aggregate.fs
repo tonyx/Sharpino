@@ -3,7 +3,7 @@ namespace Sharpino.Sample
 
 open FsToolkit.ErrorHandling
 
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Categories
 open System
 
 module CategoriesAggregate =

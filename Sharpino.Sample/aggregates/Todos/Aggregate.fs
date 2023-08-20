@@ -1,8 +1,8 @@
 namespace Sharpino.Sample
 open System
 
-open Sharpino.Sample.Models.CategoriesModel
-open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
 
 open FSharpPlus

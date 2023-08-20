@@ -1,11 +1,11 @@
-namespace Sharpino.Sample.Models
+namespace Sharpino.Sample.Entities
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
 open Sharpino.Utils
 
-module CategoriesModel =
+module Categories =
     type Category =
         {
             Id: Guid

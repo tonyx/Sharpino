@@ -5,7 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 open Sharpino.Utils
 
 [<Tests>]

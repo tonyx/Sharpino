@@ -10,12 +10,12 @@ open Sharpino.Sample.Todos
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Todos.TodoCommands
-open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Entities.Todos
 
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Tags.TagCommands
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 
 open Sharpino.Sample.Categories
 open Sharpino.Sample.CategoriesAggregate

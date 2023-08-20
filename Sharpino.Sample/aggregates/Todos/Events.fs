@@ -1,8 +1,8 @@
 namespace Sharpino.Sample.Todos
 
 open System
-open Sharpino.Sample.Models.TodosModel
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Todos
+open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Core
 open Sharpino.Cache

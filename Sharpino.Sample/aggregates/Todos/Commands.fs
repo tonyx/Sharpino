@@ -5,8 +5,8 @@ open Sharpino.Core
 open Sharpino.Utils
 
 open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Models.TodosModel
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Todos
+open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Cache
 

@@ -1,10 +1,10 @@
-namespace Sharpino.Sample.Models
+namespace Sharpino.Sample.Entities
 open Sharpino.Utils
 open FSharpPlus
 open System
 open FsToolkit.ErrorHandling
 
-module TagsModel =
+module Tags =
     type Color =
         | Red
         | Green

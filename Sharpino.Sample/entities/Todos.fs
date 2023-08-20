@@ -1,10 +1,10 @@
-namespace Sharpino.Sample.Models
+namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
 open FsToolkit.ErrorHandling
 
-module TodosModel =
+module Todos =
     type Todo =
         {
             Id: Guid

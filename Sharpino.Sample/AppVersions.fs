@@ -4,14 +4,14 @@ open Sharpino
 open Sharpino.Storage
 open Sharpino.Utils
 
-open Sharpino.Sample.Models.TodosModel
-open Sharpino.Sample.Models.CategoriesModel
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Todos
+open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Models.CategoriesModel
-open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample

@@ -5,7 +5,7 @@ open System
 open Sharpino.Core
 open Sharpino.Cache
 
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Categories.CategoriesEvents
 

@@ -6,8 +6,8 @@ open System
 open FSharp.Core
 
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Models.TodosModel
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Todos
+open Sharpino.Sample.Entities.Categories
 open Sharpino.Utils
 open FsToolkit.ErrorHandling
 

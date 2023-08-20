@@ -5,7 +5,7 @@ open System
 open FSharp.Core
 
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Models.TodosModel
+open Sharpino.Sample.Entities.Todos
 open FsToolkit.ErrorHandling
 
 [<Tests>]

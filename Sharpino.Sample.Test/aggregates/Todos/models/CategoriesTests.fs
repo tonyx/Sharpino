@@ -5,7 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample.Models.CategoriesModel
+open Sharpino.Sample.Entities.Categories
 open Sharpino.Utils
 
 [<Tests>]

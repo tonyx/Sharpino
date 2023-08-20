@@ -5,7 +5,7 @@ open System
 open FSharp.Core
 
 open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample

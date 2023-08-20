@@ -1,6 +1,6 @@
 namespace Sharpino.Sample
 
-open Sharpino.Sample.Models.TagsModel
+open Sharpino.Sample.Entities.Tags
 
 open System
 open FsToolkit.ErrorHandling
