@@ -6,8 +6,6 @@
 
 ## A minimalistic event-sourcing framework for F#
 
-## Update Aug 2023: the project (running tests) is considerably fast in M2 Apple Silicon chip (MacBook Air) with .net 7 (few seconds to run tests for in memory and postgres storage). I found it considerably __slow__ in Windows machines. (tested with an i7-based machine and took minutes to run all the tests). Will take a look at it.
-
 ## Projects:
 
 __Sharpino.Lib__:
