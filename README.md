@@ -6,7 +6,7 @@
 
 ## A minimalistic event-sourcing framework for F#
 
-## Update Aug 2023: the project (running tests) is considerable fast in M2 Apple Silicon chip (MacBook Air) with .net 7 (few seconds to run tests for in memory and postgres storage). I found it considerable __slow__ in Windows machines. (tested with a i7 based machine and toke minutes to run all the tests). Will take a look on it.
+## Update Aug 2023: the project (running tests) is considerably fast in M2 Apple Silicon chip (MacBook Air) with .net 7 (few seconds to run tests for in memory and postgres storage). I found it considerably __slow__ in Windows machines. (tested with an i7-based machine and took minutes to run all the tests). Will take a look at it.
 
 ## Projects:
 
@@ -21,7 +21,7 @@ Note: in some strict setups, for instance in using Postgres or in-memory storage
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
 
 __Sharpino.Sample__:
-You need a user called safe with password safe in your postgres (if you want to use postgres as event store).
+You need a user called 'safe' with password 'safe' in your postgres (if you want to use postgres as event store).
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the aggregates. There is a strategy to test the migration between versions (aggregate refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
 .
