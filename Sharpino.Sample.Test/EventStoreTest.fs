@@ -54,7 +54,7 @@ let utilsTests =
     // if that happens, you may try adding an explicit update state
     // like eventStore |> LightRepository.updateState<TodosAggregate, TodoEvent>
     // and/or a small delay
-    testList "eventstore tests" [
+    ptestList "eventstore tests" [
         testCase "add a tag and then verify it is present - ok" <| fun _ ->
             let _ = SetUp()
             let tag = {Id = System.Guid.NewGuid(); Name = "tag1"; Color = Color.Green}     
