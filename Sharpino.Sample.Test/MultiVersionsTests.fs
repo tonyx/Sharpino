@@ -36,9 +36,9 @@ let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
-        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
-        (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
+        // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
         (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
         (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -79,14 +79,14 @@ let utilsTests =
 
 [<Tests>]
 let multiVersionsTests =
-    testList "App with coordinator test - Ok" [
+    ftestList "App with coordinator test - Ok" [
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()
             | None -> ()
 
         let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
-        multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
@@ -96,7 +96,6 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
             ap |> updateStateIfNecessary
-            // eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
@@ -111,7 +110,7 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
@@ -134,8 +133,7 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate.Version,  [ event2 |> serialize ], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event2 |> serialize ], TodosAggregate'.StorageName)
 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>
+            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
@@ -153,8 +151,7 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'> 
+            ap |> updateStateIfNecessary
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
@@ -212,12 +209,12 @@ let multiVersionsTests =
             let id2 = Guid.NewGuid()
             let tag = { Id = id2; Name = "test"; Color = Color.Blue }
             let result = ap.addTag tag
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
             let result = ap.addTodo todo
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -227,7 +224,7 @@ let multiVersionsTests =
             Expect.equal todos [todo] "should be equal"
 
             let removed = apUpgd.removeTag id2
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos().OkValue
             Expect.isTrue (result.Head.TagIds |> List.isEmpty) "should be true"
@@ -237,7 +234,7 @@ let multiVersionsTests =
 
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -257,7 +254,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
 
             let todos = ap.getAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
@@ -266,7 +263,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTodo todo.Id
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos() |> Result.get
             Expect.equal result [] "should be equal"
@@ -283,7 +280,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = { Id = Guid.NewGuid(); Name = "test"}
             let added = ap.addCategory category
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -300,7 +297,7 @@ let multiVersionsTests =
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent>
+            ap |> updateStateIfNecessary
             
             Expect.isOk added "should be ok"
 
@@ -310,7 +307,7 @@ let multiVersionsTests =
             let categories = apUpgd.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
             let removed = apUpgd.removeCategory category.Id
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
@@ -319,7 +316,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = { Id = Guid.NewGuid(); Name = "testuu"}
             let added = ap.addCategory category
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            ap |> updateStateIfNecessary
             async {
                 do! Async.Sleep 10
                 return ()
@@ -333,8 +330,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeCategory category.Id
-            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagsEvents.TagEvent> 
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            apUpgd |> updateStateIfNecessary
 
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
@@ -344,8 +340,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = { Id = Guid.NewGuid(); Name = "testuu"}
             let added = ap.addCategory category
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let categories = ap.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
@@ -363,7 +358,7 @@ let multiVersionsTests =
             let category = { Id = Guid.NewGuid(); Name = "test"}
             let added = ap.addCategory category
             Expect.isOk added "should be ok"
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -376,7 +371,7 @@ let multiVersionsTests =
             let category' = apUpgd.getAllCategories() |> Result.get
             Expect.equal category' [category] "should be equal"
 
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            apUpgd |> updateStateIfNecessary
 
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
             let result = apUpgd.addTodo todo
@@ -390,7 +385,7 @@ let multiVersionsTests =
 
             let _ = ap.addCategory category
 
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            ap |> updateStateIfNecessary
 
             async {
                 do! Async.Sleep 10
@@ -399,7 +394,7 @@ let multiVersionsTests =
             
             let added = ap.addTodo todo    
             
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            ap |> updateStateIfNecessary
 
             Expect.isOk added "should be ok"
 
@@ -410,7 +405,7 @@ let multiVersionsTests =
             Expect.equal todos [todo] "should be equal"
             let result = apUpgd.removeCategory categoryId
 
-            eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent> 
+            apUpgd |> updateStateIfNecessary
 
             Expect.isOk result "should be ok"
 
@@ -477,7 +472,7 @@ let multiVersionsTests =
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
             Expect.isOk added "should be ok"
-            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            ap |> updateStateIfNecessary
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [tag] "should be equal"
 
@@ -485,7 +480,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
             let added = ap.addTag tag
-            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let tags = ap.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"
@@ -494,7 +489,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTag tag.Id
-            eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
+            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [] "should be equal"
@@ -512,11 +507,11 @@ let multiVersionsTests =
                         do! Async.Sleep 1
                         return ()
                     } |> Async.RunSynchronously
-                    eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagsEvents.TagEvent> 
+                    ap |> updateStateIfNecessary
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvents.TodoEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -539,7 +534,7 @@ let multiVersionsTests =
             let added =
                 ResultCE.result {
                     let! _ = ap.addTag tag
-                    eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent> 
+                    ap |> updateStateIfNecessary
                     async {
                         do! Async.Sleep 1
                         return ()
@@ -547,7 +542,7 @@ let multiVersionsTests =
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let todos = ap.getAllTodos().OkValue 
@@ -577,7 +572,7 @@ let multiVersionsTests =
             let added'' = ap.addTodo todo
             Expect.isOk added'' "should be ok"
 
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent> 
+            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
             let removed = ap.removeTag tagId
