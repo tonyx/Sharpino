@@ -35,6 +35,8 @@ open Microsoft.FSharp.Quotations
 let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
+        // welcome trying postgres versions by creating a safe/safe user on db and running dbmate -e DATABASE_URL up on Sharpino.sample dir
+        // then uncomment following lines
 
         // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
         // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
@@ -44,6 +46,7 @@ let allVersions =
         (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
         (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
 
+        // welcome trying the eventstore app if installed on local machine by uncommenting the following line
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
 
