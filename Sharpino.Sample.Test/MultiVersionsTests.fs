@@ -36,9 +36,9 @@ let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
-        // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
+        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
+        (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
         (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
         (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -80,6 +80,10 @@ let utilsTests =
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
+        let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
+            match ap._forceStateUpdate with
+            | Some f -> f()
+            | None -> ()
 
         let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
@@ -91,7 +95,8 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName )
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
-            eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
+            ap |> updateStateIfNecessary
+            // eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
