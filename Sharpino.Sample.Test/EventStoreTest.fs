@@ -33,7 +33,7 @@ let utilsTests =
         Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
         Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
 
-        eventStoreBridge.ResetSnapshots "_01" "_tags"         //    |> Async.AwaitTask      
+        eventStoreBridge.ResetSnapshots "_01" "_tags"   
         eventStoreBridge.ResetEvents "_01" "_tags"
         eventStoreBridge.ResetSnapshots "_01" "_todo"
         eventStoreBridge.ResetEvents "_01" "_todo"
