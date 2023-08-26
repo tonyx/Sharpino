@@ -22,6 +22,18 @@ module Utils =
     let serialize<'A> (x: 'A): string =
         JsonConvert.SerializeObject(x, serSettings)
 
+    type JsonSerializer(serSettings: JsonSerializerSettings) =
+        member this.Deserialize<'A> (json: string): Result<'A, string> =
+            try
+                JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
+            with
+            | ex  ->
+                printf "error deserialize: %A" ex
+                Error (ex.ToString())
+        
+        member this.Serialize<'A> (x: 'A): string =
+            JsonConvert.SerializeObject(x, serSettings)
+
     let catchErrors f l =
         l
         |> List.fold (fun acc x ->

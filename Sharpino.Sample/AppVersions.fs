@@ -15,6 +15,7 @@ open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample
+open FSharpPlus.Operators
 
 open System
 
@@ -27,6 +28,7 @@ module AppVersions =
     open Sharpino.Sample.Todos.TodoEvents
     open Sharpino.Sample.Categories.CategoriesEvents
     open Sharpino.Sample.Tags.TagsEvents
+    open Newtonsoft.Json
     // beware that this is the test db and so we can reset it for testing
     // this should never be done in production
     let connection = 
@@ -44,6 +46,14 @@ module AppVersions =
 
     let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
+
+    let jsonSerSettings = JsonSerializerSettings()
+    jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
+    jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
+
+    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
+    let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
+    let refactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
 
     let resetDb(db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName 
@@ -65,6 +75,28 @@ module AppVersions =
         Cache.EventCache<CategoriesAggregate>.Instance.Clear()
         Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
         Cache.StateCache<CategoriesAggregate>.Instance.Clear()
+
+    let resetRefactoredDb (db: IStorageRefactor) =
+        db.Reset TodosAggregate.Version TodosAggregate.StorageName
+        Cache.EventCache<TodosAggregate>.Instance.Clear()
+        Cache.SnapCache<TodosAggregate>.Instance.Clear()
+        Cache.StateCache<TodosAggregate>.Instance.Clear()
+
+        db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
+        Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+
+        db.Reset TagsAggregate.Version TagsAggregate.StorageName
+        Cache.EventCache<TagsAggregate>.Instance.Clear()
+        Cache.SnapCache<TagsAggregate>.Instance.Clear()
+        Cache.StateCache<TagsAggregate>.Instance.Clear()
+
+        db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
+        Cache.EventCache<CategoriesAggregate>.Instance.Clear()
+        Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
+        Cache.StateCache<CategoriesAggregate>.Instance.Clear()
+
 
     let resetEventStore() =
 
@@ -122,6 +154,29 @@ module AppVersions =
             removeTag =         currentPgApp.RemoveTag
             getAllTags =        currentPgApp.GetAllTags
         }
+
+    let refApp: IApplication = 
+        {
+            _migrator  =        None
+            _reset  =           fun () -> resetRefactoredDb refactoredStorage
+            _forceStateUpdate = None
+            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
+            _addEvents =        fun (version, e: List<string>, name) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredStorage :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
+            getAllTodos =       refactoredApp.GetAllTodos
+            addTodo =           refactoredApp.AddTodo
+            add2Todos =         refactoredApp.Add2Todos
+            removeTodo =        refactoredApp.RemoveTodo
+            getAllCategories =  refactoredApp.GetAllCategories
+            addCategory =       refactoredApp.AddCategory
+            removeCategory =    refactoredApp.RemoveCategory
+            addTag =            refactoredApp.AddTag 
+            removeTag =         refactoredApp.RemoveTag
+            getAllTags =        refactoredApp.GetAllTags
+        }
+
+        
 
     [<UpgradedVersion>]
     let upgradedPostgresApp =
