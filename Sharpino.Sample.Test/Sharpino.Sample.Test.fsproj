@@ -17,6 +17,7 @@
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
     <Compile Include="MultiVersionsTests.fs" />
     <Compile Include="EventStoreTest.fs" />
+    <Compile Include="CosmosDbTest.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
