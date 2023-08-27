@@ -200,8 +200,6 @@ module AppVersions =
         }
 
 
-        
-
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
