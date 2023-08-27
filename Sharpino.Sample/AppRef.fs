@@ -30,11 +30,15 @@ module AppRefStorage =
 
     type CurrentVersionAppRef(storage: IStorageRefactor) =
         member this.GetAllTodos() =
+            printf "get all todos 100\n"
             async {
                 return
                     ResultCE.result  {
+                        printf "get all todos 110\n"
                         let! (_, state) = storage |> getState<TodosAggregate, TodoEvent>
+                        printf "get all todos 120\n"
                         let todos = state.GetTodos()
+                        printf "get all todos 130\n"
                         return todos
                     }
             }

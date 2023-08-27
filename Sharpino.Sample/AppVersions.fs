@@ -53,7 +53,9 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
     let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
+    let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
     let refactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
+    let refactoredMemoryApp = AppRefStorage.CurrentVersionAppRef(refactoredMemoryStorage)
 
     let resetDb(db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName 
@@ -175,6 +177,28 @@ module AppVersions =
             removeTag =         refactoredApp.RemoveTag
             getAllTags =        refactoredApp.GetAllTags
         }
+
+    let refMemoryApp: IApplication  =   
+        {
+            _migrator  =        None
+            _reset  =           fun () -> resetRefactoredDb refactoredMemoryStorage
+            _forceStateUpdate = None
+            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
+            _addEvents =        fun (version, e: List<string>, name) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
+            getAllTodos =       refactoredMemoryApp.GetAllTodos
+            addTodo =           refactoredMemoryApp.AddTodo
+            add2Todos =         refactoredMemoryApp.Add2Todos
+            removeTodo =        refactoredMemoryApp.RemoveTodo
+            getAllCategories =  refactoredMemoryApp.GetAllCategories
+            addCategory =       refactoredMemoryApp.AddCategory
+            removeCategory =    refactoredMemoryApp.RemoveCategory
+            addTag =            refactoredMemoryApp.AddTag 
+            removeTag =         refactoredMemoryApp.RemoveTag
+            getAllTags =        refactoredMemoryApp.GetAllTags
+        }
+
 
         
 

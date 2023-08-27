@@ -9,12 +9,11 @@ open System
 open System.Collections
 
 module MemoryStorageRef =
-    type MemoryStorageRef() = 
-
+    type MemoryStorageRef(serializer: Utils.JsonSerializer) = 
         let event_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
         let snapshot_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
-        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEventRef<obj>>>>()
-        let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshotRef<obj>>>>()
+        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEvent>>>()
+        let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshot>>>()
 
         // member this.foo = "bar"
         [<MethodImpl(MethodImplOptions.Synchronized)>]
@@ -60,7 +59,7 @@ module MemoryStorageRef =
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
             if (events_dic.ContainsKey version |> not) then
-                let dic = new Generic.Dictionary<string, List<StorageEventRef<'E>>>()
+                let dic = new Generic.Dictionary<string, List<StorageEvent>>()
                 dic.Add(name, events)
                 events_dic.Add(version, dic)
             else
@@ -73,7 +72,7 @@ module MemoryStorageRef =
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
             if (snapshots_dic.ContainsKey version |> not) then
-                let dic = new Generic.Dictionary<string, List<StorageSnapshotRef<'A>>>()
+                let dic = new Generic.Dictionary<string, List<StorageSnapshot>>()
                 dic.Add(name, snapshots)
                 snapshots_dic.Add(version, dic)
             else
@@ -109,7 +108,7 @@ module MemoryStorageRef =
                     [for e in xs do
                         yield {
                             Id = next_event_id version name
-                            EventRef = (e :> obj)
+                            Event = e |> serializer.Serialize
                             Timestamp = DateTime.Now
                         }
                     ]
@@ -123,7 +122,7 @@ module MemoryStorageRef =
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Id > id)
-                    |>> (fun x -> x.Id, (x.EventRef :?> 'E))
+                    |>> (fun x -> x.Id, x.Event |> serializer.Deserialize<'E> |> Result.get)
             member this.MultiAddEvents(arg: List<List<obj> * version * Name>): Result<unit,string> = 
                 arg 
                 |> List.iter 
@@ -131,12 +130,11 @@ module MemoryStorageRef =
                         (this :> IStorageRefactor).AddEvents version xs name |> ignore
                     ) 
                 () |> Ok
-                // failwith "Not Implemented"
             member this.SetSnapshot  version (id, snapshot) name =
                 let newSnapshot =
                     {
                         Id = next_snapshot_id version name
-                        SnapshotRef = snapshot :> obj
+                        Snapshot = snapshot |> serializer.Serialize
                         TimeStamp = DateTime.Now
                         EventId = id
                     }
@@ -149,8 +147,16 @@ module MemoryStorageRef =
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     None
                 else
-                    events_dic.[version].[name]
-                    |> List.tryFind (fun x -> x.Id = id)
+                    let res =
+                        events_dic.[version].[name]
+                        |> List.tryFind (fun x -> x.Id = id)
+                    match res with
+                    | None -> None
+                    | Some x ->
+                        match (serializer.Deserialize x.Event) with
+                        | Ok event -> Some { EventRef = event; Id = x.Id; Timestamp = x.Timestamp }
+                        | Error e -> failwith e
+
             member this.TryGetLastEventId  version  name = 
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     None
@@ -159,17 +165,31 @@ module MemoryStorageRef =
                     |> List.tryLast
                     |>> (fun x -> x.Id)
             member this.TryGetLastSnapshot version name =
-                failwith "Not Implemented"
-                // if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
-                //     None
-                // else
-                //     snapshots_dic.[version].[name]
-                //     |> List.tryLast
-                //     |>> (fun x -> x.Id, x.EventId, x.SnapshotRef :> 'A)
+                if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
+                    None
+                else
+                    let res =
+                        snapshots_dic.[version].[name]
+                        |> List.tryLast
+                    match res with
+                    | None -> None
+                    | Some x ->
+                        match (serializer.Deserialize x.Snapshot) with
+                        | Ok snapshot -> Some (x.Id, x.EventId, snapshot)
+                        | Error e -> failwith e
 
-            member this.TryGetLastSnapshotEventId(arg1: version) (arg2: Name): Option<int> = 
-                failwith "Not Implemented"
-            member this.TryGetLastSnapshotId(arg1: version) (arg2: Name): Option<int> = 
-                failwith "Not Implemented"
+            member this.TryGetLastSnapshotEventId version name =
+                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                    None
+                else
+                    snapshots_dic.[version].[name]
+                    |> List.tryLast
+                    |>> (fun x -> x.EventId)
+            member this.TryGetLastSnapshotId version name =
+                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                    None
+                else
+                    snapshots_dic.[version].[name]
+                    |> List.tryLast
+                    |>> (fun x -> x.Id)
 
-    ()
