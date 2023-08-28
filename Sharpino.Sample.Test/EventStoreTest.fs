@@ -305,7 +305,8 @@ let utilsTests =
             Expect.isNone snapshot "should be none"
 
         // annoying offset index problems on the following tests make them unpredictable
-        ptestCase "add a todo and the snapshot will immediately be generated - Ok" <| fun _ ->
+        // ptestCase "add a todo and the snapshot will immediately be generated - Ok" <| fun _ ->
+        testCase "add a todo and the snapshot will immediately be generated - Ok" <| fun _ ->
             let _ = SetUp()
             let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
             Expect.isNone snapshot "should be none"
@@ -314,23 +315,29 @@ let utilsTests =
             let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
             Expect.isSome snapshot "should be none"
 
-        ptestCase "add a todo and the snapshot will correspond to the current state - Ok " <| fun _ ->
-            let _ = SetUp()
-            let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
-            Expect.isNone snapshot "should be none"
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] } 
-            let result = eventStoreApp.AddTodo todo 
-            Expect.isOk result "should be ok"
-            let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
-
-            Expect.isSome snapshot "should be none"
             let (_, snapshotValue) = snapshot.Value
-            let (_, state) = LightRepository.getState<TodosAggregate>()
+            let (_, state) = LightRepository.getState<TodosAggregate> eventStoreBridge
             let stateFromSnapshot = snapshotValue |> Utils.deserialize<TodosAggregate>
             Expect.isOk stateFromSnapshot "should be ok"
             Expect.equal state stateFromSnapshot.OkValue "should be equal"
 
-        ptestCase "add two events and the snapshot is the same as the one after the first add - Ok" <| fun _ ->
+        // ptestCase "add a todo and the snapshot will correspond to the current state - Ok " <| fun _ ->
+        //     let _ = SetUp()
+        //     let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
+        //     Expect.isNone snapshot "should be none"
+        //     let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] } 
+        //     let result = eventStoreApp.AddTodo todo 
+        //     Expect.isOk result "should be ok"
+        //     let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
+
+        //     Expect.isSome snapshot "should be none"
+        //     let (_, snapshotValue) = snapshot.Value
+        //     let (_, state) = LightRepository.getState<TodosAggregate>()
+        //     let stateFromSnapshot = snapshotValue |> Utils.deserialize<TodosAggregate>
+        //     Expect.isOk stateFromSnapshot "should be ok"
+        //     Expect.equal state stateFromSnapshot.OkValue "should be equal"
+
+        ftestCase "add two events and the snapshot is the same as the one after the first add - Ok" <| fun _ ->
             let _ = SetUp()
             let snapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
             Expect.isNone snapshot "should be none"
@@ -365,7 +372,7 @@ let utilsTests =
             let newSnapshot = eventStoreBridge.GetLastSnapshot TodosAggregate.Version TodosAggregate.StorageName
             let (_, newSnapshotValue) = newSnapshot.Value
 
-            let (_, state) = LightRepository.getState<TodosAggregate>()
+            let (_, state) = LightRepository.getState<TodosAggregate> eventStoreBridge
             let stateFromSnapshot = newSnapshotValue |> Utils.deserialize<TodosAggregate>
             Expect.notEqual state stateFromSnapshot.OkValue "should be equal"
 
@@ -386,7 +393,7 @@ let utilsTests =
             let (_, snapshotValue) = snapshot.Value
             Expect.isSome snapshot "should be none"
             Expect.isOk todoAdded "should be ok"
-            let (_, state) = LightRepository.getState<TodosAggregate>()
+            let (_, state) = LightRepository.getState<TodosAggregate> eventStoreBridge
             let stateFromSnapshot = snapshotValue |> Utils.deserialize<TodosAggregate>
             Expect.notEqual state stateFromSnapshot.OkValue "should be equal"
 
@@ -416,7 +423,7 @@ let utilsTests =
             Expect.isOk snapshotState "should be ok"
             let snapshotStateValue = snapshotState.OkValue
 
-            let (_, state) = LightRepository.getState<TodosAggregate>()
+            let (_, state) = LightRepository.getState<TodosAggregate> eventStoreBridge
             Expect.notEqual state snapshotStateValue "should be equal"
 
         ptestCase "add five events and the current state is equal to the last snapshot - Ok" <| fun _ ->
@@ -449,7 +456,7 @@ let utilsTests =
             Expect.isOk snapshotState "should be ok"
             let snapshotStateValue = snapshotState.OkValue
 
-            let (_, state) = LightRepository.getState<TodosAggregate>()
+            let (_, state) = LightRepository.getState<TodosAggregate> eventStoreBridge
             Expect.equal state snapshotStateValue "should be equal"
 
 

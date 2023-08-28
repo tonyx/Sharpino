@@ -9,11 +9,11 @@
   <ItemGroup>
     <Compile Include="Conf.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="Core.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="DbStorage.fs" />
     <Compile Include="MemoryStorage.fs" />
     <Compile Include="EventStoreBridgeFs.fs" />
-    <Compile Include="Core.fs" />
     <Compile Include="Cache.fs" />
     <Compile Include="Repository.fs" />
     <Compile Include="LightRepository.fs" />

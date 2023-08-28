@@ -55,12 +55,16 @@ module Cache =
         static let instance = CurrentStateRef()
         static member Instance = instance
 
-        member this.Lookup(key: string, zero: uint64 * 'A): uint64 * 'A =
+        member this.Lookup(key: string, zero: uint64 * 'A) eventualSnapshot: uint64 * 'A =
             let (b, res) = dic.TryGetValue key
             if b then
                 res
             else
-                zero
+                match eventualSnapshot() with
+                | Some (index, state) ->
+                    dic.Add(key, (index, state))
+                    (index |> uint64, state)
+                | None -> zero
         member this.Update(key: string, value: (uint64 * 'A)) =
             dic.[key] <- value
 
