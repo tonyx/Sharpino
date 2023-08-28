@@ -28,7 +28,6 @@ open FsToolkit.ErrorHandling
 
 module EventStoreApp =
     open Sharpino.Sample.Tags.TagCommands
-    // type EventStoreApp(storage: EventStore.EventStoreBridgeFS) =
     type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
             let f = fun() ->
@@ -45,30 +44,23 @@ module EventStoreApp =
                 
         member this.GetAllTags() =
             ResultCE.result {
-                let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                let state' = stateX :?> TagsAggregate
+                let (_, stateX ) = storage |> getState<TagsAggregate>
 
-                let tags = state'.GetTags()
+                let tags = stateX.GetTags()
                 return tags
             }
 
         member this.GetAllTodos() =
             ResultCE.result {
-
-                let (_, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                let state' = stateX :?> TodosAggregate
-
-                // let todos = state.GetTodos()
+                let (_, state') = storage |> getState<TodosAggregate>
                 let todos = state'.GetTodos()
-
                 return todos
             }
 
         member this.AddTodo todo =
             let f = fun() ->
                 ResultCE.result {
-                    let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                    let tagState' = stateX :?> TagsAggregate
+                    let (_, tagState' ) = storage |> getState<TagsAggregate>
                     let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
                     let! tagIdIsValid = 
@@ -83,7 +75,6 @@ module EventStoreApp =
 
                     let _ =
                         storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
-
                     return ()
                 }
             async {
@@ -120,11 +111,8 @@ module EventStoreApp =
 
         member this.GetAllCategories() =
             ResultCE.result {
-                let (_, stateX ) = Cache.CurrentStateRef<TodosAggregate>.Instance.Lookup(TodosAggregate.StorageName, (0 |> uint64, TodosAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                let state' = stateX :?> TodosAggregate
-
+                let (_, state' ) = storage |> getState<TodosAggregate>
                 let categories = state'.GetCategories()
-
                 return categories
             }
 
@@ -164,12 +152,13 @@ module EventStoreApp =
             }   
             |> Async.RunSynchronously
 
-
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
                 ResultCE.result {
-                    let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
-                    let tagState' = stateX :?> TagsAggregate
+                    // let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    let (_, tagState' ) = storage |> getState<TagsAggregate>
+                    // Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    // let tagState' = stateX :?> TagsAggregate
                     let tagIds = 
                         // tagState.GetTags() 
                         tagState'.GetTags() 

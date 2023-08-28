@@ -35,7 +35,6 @@ open Microsoft.FSharp.Quotations
 let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
-
         // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
         // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
@@ -81,7 +80,7 @@ let utilsTests =
 
 [<Tests>]
 let multiVersionsTests =
-    ftestList "App with coordinator test - Ok" [
+    ptestList "App with coordinator test - Ok" [
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()
@@ -371,7 +370,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             async {
-                do! Async.Sleep 10
+                do! Async.Sleep 20
                 return ()
             } |> Async.RunSynchronously
             let category' = apUpgd.getAllCategories() |> Result.get
@@ -542,7 +541,7 @@ let multiVersionsTests =
                     let! _ = ap.addTag tag
                     ap |> updateStateIfNecessary
                     async {
-                        do! Async.Sleep 1
+                        do! Async.Sleep 5
                         return ()
                     } |> Async.RunSynchronously
                     let! app' = ap.addTodo todo
