@@ -58,6 +58,16 @@ dbmate -e DATABASE_URL up
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
 If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).
 
+## Tests on eventstoredb
+If eventstore is running on docker you may want to run tests on it as follow:
+by making the eventstore tests not pending (search for "eventstore tests" and change ptestList to ftestList)
+or by uncommenting the following line on the file [MultiversionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs):
+```Fsharp
+        // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
+```
+__Warning__: on testing eventstoredb you may experience some random test falures: I added some force update and some little delays to avoid, even though they can arise sometimes anyway in a non reproducible way.
+The cure is adding more delay if needed.
+
 __Faq__: 
 - Why "Sharpino"? 
     - It's a mix of Sharp and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf". 
