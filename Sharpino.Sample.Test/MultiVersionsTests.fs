@@ -31,17 +31,19 @@ open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
+open Sharpino.EventSourcing.Sample.AppVersions
 
 let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
-        // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
-        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
-        (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
@@ -75,16 +77,14 @@ let utilsTests =
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
 
-
 [<Tests>]
 let multiVersionsTests =
-    ptestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()
             | None -> ()
 
-        let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
@@ -95,7 +95,9 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
             ap |> updateStateIfNecessary
+
             let todos = ap.getAllTodos()
+
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
@@ -364,7 +366,7 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             async {
-                do! Async.Sleep 20
+                do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
             let category' = apUpgd.getAllCategories() |> Result.get
@@ -535,7 +537,7 @@ let multiVersionsTests =
                     let! _ = ap.addTag tag
                     ap |> updateStateIfNecessary
                     async {
-                        do! Async.Sleep 5
+                        do! Async.Sleep 1
                         return ()
                     } |> Async.RunSynchronously
                     let! app' = ap.addTodo todo
@@ -593,7 +595,6 @@ let multiCallTests =
             ()
 
     ptestList "massive sequence adding - Ok" [
-
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
             let ap = AppVersions.currentPostgresApp

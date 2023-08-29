@@ -1,99 +1,102 @@
+
 namespace Sharpino
 
 open FSharp.Data.Sql
-open FSharp.Core
-open FSharpPlus
 open FSharpPlus.Data
 
-open Sharpino
-open Sharpino.Utils
-open Sharpino.Cache
+open FSharp.Core
+open FSharpPlus
+
 open Sharpino.Core
-open FsToolkit.ErrorHandling
 open Sharpino.Storage
+
+open FsToolkit.ErrorHandling
 
 module Repository =
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
-        (storage: IStorage) = 
+        (storage: IStorage) =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                            | Some (snapId, eventId, json) ->
-                                let state = SnapCache<'A>.Instance.Memoize (fun () -> json |> deserialize<'A>) (snapId, 'A.StorageName)
-                                match state with
-                                | Error e -> Error e
-                                | _ -> (eventId, state |> Result.get) |> Ok
+                            | Some (_, eventId, json) ->
+                                (eventId, json ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
             }
             |> Async.RunSynchronously
 
-    let inline getState<'A, 'E
+    let inline snapIdStateAndEvents<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) = 
-
-        let snapIdStateAndEvents()  =
-            async {
-                return
-                    ResultCE.result {
-                        let! (id, state) = getLastSnapshot<'A> storage
-                        let events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                        let result =
-                            (id, state, events)
-                        return result
-                    }
-            }
-            |> Async.RunSynchronously
-
-        let eventuallyFromCache = 
-            fun () ->
-                ResultCE.result {
-                    let! (lastSnapshotId, state, events) = snapIdStateAndEvents()
-                    let lastEventId =
-                        match events.Length with
-                        | x when x > 0 -> events |> List.last |> fst
-                        | _ -> lastSnapshotId 
-                    let! events' =
-                        events |>> snd |> catchErrors deserialize<'E>
-                    let! result =
-                        events' |> evolve<'A, 'E> state
-                    return (lastEventId, result)
+            
+        async {
+            return
+                result {
+                    let! (id, state) = getLastSnapshot<'A> storage
+                    let events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
+                    let result =
+                        (id, state, events)
+                    return result
                 }
-        let lastEventId = 
-            async {
-                return storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-            } 
-            |> Async.RunSynchronously
-        StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) (lastEventId, 'A.StorageName)
+        }
+        |> Async.RunSynchronously
+    let inline getState<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
+
+            let eventuallyFromCache =
+                fun () ->
+                    result {
+                        let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
+                        let lastEventId =
+                            match events.Length with
+                            | x when x > 0 -> events |> List.last |> fst
+                            | _ -> lastSnapshotId 
+                        let result =
+                            (events |>> snd) |> evolve<'A, 'E> state
+
+                        let result' =
+                            match result with
+                            | Ok x -> (lastEventId, x) |> Ok
+                            | Error e -> Error e
+                        return! result' 
+                    }
+            let lastEventId =
+                async  {
+                    return storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                }
+                |> Async.RunSynchronously
+            eventuallyFromCache()
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: IStorage) (command: Command<'A, 'E>)  =
-
-        async {
-            return
-                ResultCE.result {
-                    let! (_, state) = getState<'A, 'E> storage
-                    let! events =
-                        state
-                        |> command.Execute
-                    let! eventsAdded' =
-                        storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
-                    return ()
-                } 
-        }
-        |> Async.RunSynchronously
-
+        and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
+            async {
+                return
+                    result {
+                        let! (_, state) = getState<'A, 'E> storage
+                        let! events =
+                            state
+                            |> command.Execute
+                        let! eventsAdded' =
+                            storage.AddEvents 'A.Version events 'A.StorageName
+                        return ()
+                    } 
+            }
+            |> Async.RunSynchronously
+                        
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
@@ -109,7 +112,7 @@ module Repository =
 
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state1) = getState<'A1, 'E1> storage
                         let! (_, state2) = getState<'A2, 'E2> storage
                         let! events1 =
@@ -119,16 +122,16 @@ module Repository =
                             state2
                             |> command2.Execute
 
-                        let! eventsAdded =
-                            let serEv1 = events1 |>> Utils.serialize 
-                            let serEv2 = events2 |>> Utils.serialize
+                        let events1' = events1 |>> fun x -> x :> obj
+                        let events2' = events2 |>> fun x -> x :> obj
+                        let! eventAdded =
                             storage.MultiAddEvents 
                                 [
-                                    (serEv1, 'A1.Version, 'A1.StorageName)
-                                    (serEv2, 'A2.Version, 'A2.StorageName)
+                                    (events1', 'A1.Version, 'A1.StorageName)
+                                    (events2', 'A2.Version, 'A2.StorageName)
                                 ]
                         return ()
-                    }
+                    } 
             }
             |> Async.RunSynchronously
 
@@ -139,11 +142,10 @@ module Repository =
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
                 return
-                    ResultCE.result
+                    result
                         {
                             let! (id, state) = getState<'A, 'E> storage
-                            let snapshot = Utils.serialize<'A> state
-                            let! result = storage.SetSnapshot 'A.Version (id, snapshot) 'A.StorageName
+                            let! result = storage.SetSnapshot 'A.Version (id, state) 'A.StorageName
                             return result
                         }
             }
@@ -157,9 +159,11 @@ module Repository =
         and 'E :> Event<'A>>(storage: IStorage) =
             async {
                 return
-                    ResultCE.result
+                    result
                         {
-                            let! lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Result.ofOption "lastEventId is None"
+                            let! lastEventId = 
+                                storage.TryGetLastEventId 'A.Version 'A.StorageName 
+                                |> Result.ofOption "lastEventId is None"
                             let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                             let! result =
                                 if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
@@ -173,6 +177,9 @@ module Repository =
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
+    // todo: remember that using a processor ensure strict single thread processing of commands. 
+    // in my example I used it sistematically but to be honest it is rare that we need this strict single thread processing
+    // probably I'll with more example relatedo to aggregate level locking or no lock at all (optimistic concurrency)
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {

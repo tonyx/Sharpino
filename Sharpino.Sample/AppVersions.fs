@@ -15,6 +15,7 @@ open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample
+open FSharpPlus.Operators
 
 open System
 
@@ -27,6 +28,7 @@ module AppVersions =
     open Sharpino.Sample.Todos.TodoEvents
     open Sharpino.Sample.Categories.CategoriesEvents
     open Sharpino.Sample.Tags.TagsEvents
+    open Newtonsoft.Json
     // beware that this is the test db and so we can reset it for testing
     // this should never be done in production
     let connection = 
@@ -35,18 +37,24 @@ module AppVersions =
         "User Id=safe;"+
         "Password=safe;"
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
-    let pgStorage: IStorage = DbStorage.PgDb(connection)
-    let memStorage: IStorage = MemoryStorage.MemoryStorage()
-    let currentPgApp = App.CurrentVersionApp(pgStorage)
-    let upgradedPgApp = App.UpgradedApp(pgStorage)
-    let currentMemApp = App.CurrentVersionApp(memStorage)
-    let upgradedMemApp = App.UpgradedApp(memStorage)
+    let jsonSerSettings = JsonSerializerSettings()
+    jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
+    jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
+    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
 
-    let resetDb(db: IStorage) =
-        db.Reset TodosAggregate.Version TodosAggregate.StorageName 
+    let refactoredStorage = PgStorage.PgStorage(connection, jsonSerializer)
+    let refactoredMemoryStorage = MemoryStorage.MemoryStorage(jsonSerializer)
+    let currentPgApp = App.CurrentVersionApp(refactoredStorage)
+    let upgradedPgApp = App.UpgradedApp(refactoredStorage)
+    let currentMemApp = App.CurrentVersionApp(refactoredMemoryStorage)
+    let upgradedMemApp = App.UpgradedApp(refactoredMemoryStorage)
+
+    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection))
+
+    let resetRefactoredDb (db: IStorage) =
+        db.Reset TodosAggregate.Version TodosAggregate.StorageName
         Cache.EventCache<TodosAggregate>.Instance.Clear()
         Cache.SnapCache<TodosAggregate>.Instance.Clear()
         Cache.StateCache<TodosAggregate>.Instance.Clear()
@@ -68,11 +76,11 @@ module AppVersions =
 
     let resetEventStore() =
 
-        Cache.CurrentStateRef<_>.Instance.Clear()
-        Cache.CurrentStateRef<TodosAggregate>.Instance.Clear()
-        Cache.CurrentStateRef<TodosAggregate'>.Instance.Clear()
-        Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
-        Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
+        Cache.CurrentState<_>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
+        Cache.CurrentState<TagsAggregate>.Instance.Clear()
+        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
 
         eventStoreBridge.ResetSnapshots "_01" "_tags"
         eventStoreBridge.ResetEvents "_01"  "_tags"
@@ -82,7 +90,6 @@ module AppVersions =
         eventStoreBridge.ResetEvents "_02" "_todo"
         eventStoreBridge.ResetSnapshots "_01" "_categories"
         eventStoreBridge.ResetEvents "_01" "_categories"
-
 
     type IApplication =
         {
@@ -107,10 +114,12 @@ module AppVersions =
     let currentPostgresApp =
         {
             _migrator  =        currentPgApp.Migrate |> Some
-            _reset  =           fun () -> resetDb pgStorage
             _forceStateUpdate = None
             // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _addEvents =        fun (version, e: List<string>, name) -> pgStorage.AddEvents version e name |> ignore // ignore?
+            _reset =            fun () -> resetRefactoredDb refactoredStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredStorage :> IStorage).AddEvents version deser name |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -127,8 +136,10 @@ module AppVersions =
     let upgradedPostgresApp =
         {
             _migrator  =        None
-            _reset =            fun () -> resetDb pgStorage
-            _addEvents =        fun (version, e: List<string>, name ) -> pgStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
@@ -147,8 +158,10 @@ module AppVersions =
     let currentMemoryApp =
         {
             _migrator  =        currentMemApp.Migrate |> Some
-            _reset =            fun () -> resetDb memStorage
-            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredMemoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
@@ -166,8 +179,10 @@ module AppVersions =
     let upgradedMemoryApp =
         {
             _migrator =         None
-            _reset =            fun () -> resetDb memStorage
-            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredMemoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
@@ -183,12 +198,12 @@ module AppVersions =
 
     [<CurrentVersion>]
     let evSApp =
-        let eventStoreBridge: EventStore.EventStoreBridgeFS = EventStore.EventStoreBridgeFS(eventStoreConnection)
+        let eventStoreBridge: EventStore.EventStoreStorage = EventStore.EventStoreStorage(eventStoreConnection)
         {
             _migrator =         None
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
+                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
                                     async {
                                         let result = eventStore.AddEvents version e name
                                         return result

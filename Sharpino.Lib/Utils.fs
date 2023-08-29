@@ -5,9 +5,9 @@ open FSharpPlus.Data
 open Newtonsoft.Json
 open Expecto
 open System
+open FsToolkit.ErrorHandling
 
 module Utils =
-    open FsToolkit.ErrorHandling
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
@@ -21,6 +21,18 @@ module Utils =
             Error (ex.ToString())
     let serialize<'A> (x: 'A): string =
         JsonConvert.SerializeObject(x, serSettings)
+
+    type JsonSerializer(serSettings: JsonSerializerSettings) =
+        member this.Deserialize<'A> (json: string): Result<'A, string> =
+            try
+                JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
+            with
+            | ex  ->
+                printf "error deserialize: %A" ex
+                Error (ex.ToString())
+        
+        member this.Serialize<'A> (x: 'A): string =
+            JsonConvert.SerializeObject(x, serSettings)
 
     let catchErrors f l =
         l
