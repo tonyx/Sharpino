@@ -88,6 +88,31 @@ module EventStore =
                 }
                 |> Async.RunSynchronously
 
+            member this.ConsumeEventsFromPosition version name id =
+                let streamName = "events" + version + name
+                let position = new StreamPosition(id)
+                try
+                    let events = _client.ReadStreamAsync(Direction.Forwards, streamName, position.Next())
+
+                    let eventsReturned =
+                        async {
+                            let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
+                            return ev
+                        }
+                        |> Async.RunSynchronously
+
+                    let last = eventsReturned.LastOrDefault()
+
+                    if (eventsReturned |> Seq.length > 0) then
+                        if (lastEventIds.ContainsKey(streamName)) then
+                            lastEventIds.Remove(streamName) |> ignore
+                        lastEventIds.Add(streamName, last.Event.EventNumber)
+                    eventsReturned 
+                    |> Seq.map (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) |> List.ofSeq
+                with
+                | _ -> []
+
+
             member this.ConsumeEvents version name =    
                 // todo: get rid of try ... with
                 try

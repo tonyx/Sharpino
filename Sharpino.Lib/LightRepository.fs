@@ -17,8 +17,11 @@ module LightRepository =
     let inline getState<'A
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)>() =
-            let (eventId, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero))
+        and 'A: (static member Version: string)> (storage: ILightStorage) =
+
+            let eventualSnapshot = fun () -> storage.GetLastSnapshot 'A.Version 'A.StorageName |> Option.map (fun (id, value) -> (id |> string|> System.UInt64.Parse, value |> Utils.deserialize<'A> |> Result.get :> obj))
+
+            let (eventId, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero)) eventualSnapshot
             let state' = stateX :?> 'A
             (eventId, state')
 
@@ -43,7 +46,8 @@ module LightRepository =
                                 | Ok x -> (i, x) |> Ok
                                 | Error e -> Error e
                             )
-                    let (_, state) = getState<'A>()
+                    let (eventId, state) = getState<'A> storage
+
                     let! newState = (idAndEvents |>> snd) |> evolve state
                     let lastEventId = idAndEvents |>> fst |> List.last 
                     let _ =
@@ -68,7 +72,7 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let (_, state) = getState<'A>()
+                        let (_, state) = getState<'A> storage
                         let! events =
                             state
                             |> undoer 
@@ -110,7 +114,7 @@ module LightRepository =
             async {
                 return
                     ResultCE.result {
-                        let (_, state) = getState<'A>()
+                        let (_, state) = getState<'A> storage
                         let! events =
                             state
                             |> command.Execute
@@ -153,7 +157,7 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             result {
-                let (_, a1State) = getState<'A1>() 
+                let (_, a1State) = getState<'A1> storage 
 
                 let command1Undoer = 
                     match command1.Undoer with
@@ -197,7 +201,7 @@ module LightRepository =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             ResultCE.result {
-                let (_, a1State) = getState<'A1>()
+                let (_, a1State) = getState<'A1> storage
                 let command1Undoer = 
                     match command1.Undoer with
                     | Some f -> a1State |> f |> Some 
@@ -248,7 +252,7 @@ module LightRepository =
                     else    
                         0 |> uint64
 
-                let (eventId, state) = getState<'A>()
+                let (eventId, state) = getState<'A> storage
                 let difference = eventId - snapId
 
                 if (difference > ('A.SnapshotsInterval |> uint64)) then
