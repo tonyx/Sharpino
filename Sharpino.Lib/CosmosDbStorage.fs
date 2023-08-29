@@ -27,6 +27,8 @@ module CosmosDbStorage =
         }
 
     type ComsmosDbStorage (accountEndPoing: string, authKeyorResourceToken: string) =
+        // new(accountEndPoing: string, authKeyorResourceToken: string) = ComsmosDbStorage(accountEndPoing, authKeyorResourceToken
+        // new () = ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
         let client = new CosmosClient( accountEndPoing, authKeyorResourceToken )
         let database = client.CreateDatabaseIfNotExistsAsync("es_01") |> Async.AwaitTask |> Async.RunSynchronously
         let db = database.Database
@@ -108,7 +110,7 @@ module CosmosDbStorage =
                         // | x::xs -> Some x 
 
                 None
-
+        // new () = ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
                 // None
 
 

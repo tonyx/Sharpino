@@ -53,10 +53,27 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
     let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
-    let cosmosDbStorage = CosmosDbStorage.ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
+
+    // let cosmosDbStorage = CosmosDbStorage.ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
+
+    let eventualCosmosDbStorage =
+        try 
+            let cosmosDbStorage = CosmosDbStorage.ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
+            Some cosmosDbStorage
+        with 
+            | _ -> None
+
+
     let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
     let refactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
-    let refactoredCosmosApp = AppRefStorage.CurrentVersionAppRef(cosmosDbStorage)
+
+    // let refactoredCosmosApp = AppRefStorage.CurrentVersionAppRef(cosmosDbStorage)
+
+    let refactoredCosmosApp = 
+        match eventualCosmosDbStorage with
+        | Some x -> AppRefStorage.CurrentVersionAppRef(x) |> Some
+        | None -> None
+
     let refactoredMemoryApp = AppRefStorage.CurrentVersionAppRef(refactoredMemoryStorage)
 
     let resetDb(db: IStorage) =
@@ -183,25 +200,31 @@ module AppVersions =
             getAllTags =        refactoredApp.GetAllTags
         }
 
-    let refCosmosDbApp: IApplication =
-        {
-            _migrator =         None
-            _reset =            fun () -> resetCosmosDb()
-            _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (cosmosDbStorage :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
-            _forceStateUpdate = None
-            getAllTodos =       refactoredCosmosApp.GetAllTodos
-            addTodo =           refactoredCosmosApp.AddTodo
-            add2Todos =         refactoredCosmosApp.Add2Todos
-            removeTodo =        refactoredCosmosApp.RemoveTodo
-            getAllCategories =  refactoredCosmosApp.GetAllCategories
-            addCategory =       refactoredCosmosApp.AddCategory
-            removeCategory =    refactoredCosmosApp.RemoveCategory
-            addTag =            refactoredCosmosApp.AddTag
-            removeTag =         refactoredCosmosApp.RemoveTag
-            getAllTags =        refactoredCosmosApp.GetAllTags
-        }
+    let eventualRerCosmosDbApp: option<IApplication> =
+        match eventualCosmosDbStorage with
+        | Some x -> 
+            let refCosmosDbApp: IApplication =
+                {
+                    _migrator =         None
+                    _reset =            fun () -> resetCosmosDb()
+                    _addEvents =        fun (version, e: List<string>, name) -> 
+                                            let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                            (x :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
+                    _forceStateUpdate = None
+                    getAllTodos =       refactoredCosmosApp.Value.GetAllTodos
+                    addTodo =           refactoredCosmosApp.Value.AddTodo
+                    add2Todos =         refactoredCosmosApp.Value.Add2Todos
+                    removeTodo =        refactoredCosmosApp.Value.RemoveTodo
+                    getAllCategories =  refactoredCosmosApp.Value.GetAllCategories
+                    addCategory =       refactoredCosmosApp.Value.AddCategory
+                    removeCategory =    refactoredCosmosApp.Value.RemoveCategory
+                    addTag =            refactoredCosmosApp.Value.AddTag
+                    removeTag =         refactoredCosmosApp.Value.RemoveTag
+                    getAllTags =        refactoredCosmosApp.Value.GetAllTags
+                }
+            Some refCosmosDbApp
+        | None -> None
+
 
 
     let refMemoryApp: IApplication  =   
