@@ -117,11 +117,11 @@ module AppVersions =
 
     let resetEventStore() =
 
-        Cache.CurrentStateRef<_>.Instance.Clear()
-        Cache.CurrentStateRef<TodosAggregate>.Instance.Clear()
-        Cache.CurrentStateRef<TodosAggregate'>.Instance.Clear()
-        Cache.CurrentStateRef<TagsAggregate>.Instance.Clear()
-        Cache.CurrentStateRef<CategoriesAggregate>.Instance.Clear()
+        Cache.CurrentState<_>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate>.Instance.Clear()
+        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
+        Cache.CurrentState<TagsAggregate>.Instance.Clear()
+        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
 
         eventStoreBridge.ResetSnapshots "_01" "_tags"
         eventStoreBridge.ResetEvents "_01"  "_tags"

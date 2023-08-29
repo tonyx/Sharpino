@@ -21,7 +21,7 @@ module LightRepository =
 
             let eventualSnapshot = fun () -> storage.GetLastSnapshot 'A.Version 'A.StorageName |> Option.map (fun (id, value) -> (id |> string|> System.UInt64.Parse, value |> Utils.deserialize<'A> |> Result.get :> obj))
 
-            let (eventId, stateX) = CurrentStateRef<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero)) eventualSnapshot
+            let (eventId, stateX) = CurrentState<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero)) eventualSnapshot
             let state' = stateX :?> 'A
             (eventId, state')
 
@@ -51,7 +51,7 @@ module LightRepository =
                     let! newState = (idAndEvents |>> snd) |> evolve state
                     let lastEventId = idAndEvents |>> fst |> List.last 
                     let _ =
-                        CurrentStateRef<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
+                        CurrentState<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
                     return newState
                 }
             match newState with

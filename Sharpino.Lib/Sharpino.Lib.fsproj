@@ -19,7 +19,6 @@
     <Compile Include="CosmosDbStorage.fs" />
 
     <Compile Include="Cache.fs" />
-    <Compile Include="Repository.fs" />
     <Compile Include="RepositoryRef.fs" />
     <Compile Include="LightRepository.fs" />
   </ItemGroup>

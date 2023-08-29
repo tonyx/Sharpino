@@ -12,6 +12,7 @@ open Sharpino.Storage
 open Microsoft.Azure.Cosmos
 open System
 
+// experimental work in progress spike. should not stay in the main (remove soon)
 module CosmosDbStorage =
     // let accountEndpoint =  "https://localhost:8081",
     // let authKeyOrResourceToken = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="

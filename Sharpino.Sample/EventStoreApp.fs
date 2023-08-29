@@ -155,9 +155,9 @@ module EventStoreApp =
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
                 ResultCE.result {
-                    // let (_, stateX ) = Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    // let (_, stateX ) = Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                     let (_, tagState' ) = storage |> getState<TagsAggregate>
-                    // Cache.CurrentStateRef<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
+                    // Cache.CurrentState<TagsAggregate>.Instance.Lookup(TagsAggregate.StorageName, (0 |> uint64, TagsAggregate.Zero)) // :?> (uint64 * TagsAggregate)
                     // let tagState' = stateX :?> TagsAggregate
                     let tagIds = 
                         // tagState.GetTags() 

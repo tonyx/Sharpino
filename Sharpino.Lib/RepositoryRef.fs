@@ -13,7 +13,7 @@ open Sharpino.Core
 open FsToolkit.ErrorHandling
 open Sharpino.Storage
 
-module RepositoryRef =
+module Repository =
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
@@ -21,7 +21,7 @@ module RepositoryRef =
         (storage: IStorageRefactor) =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (snapId, eventId, json) ->
@@ -40,7 +40,7 @@ module RepositoryRef =
             
         async {
             return
-                ResultCE.result {
+                result {
                     let! (id, state) = getLastSnapshot<'A> storage
                     let events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
                     let result =
@@ -57,7 +57,7 @@ module RepositoryRef =
 
             let eventuallyFromCache =
                 fun () ->
-                    ResultCE.result {
+                    result {
                         let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
                         let lastEventId =
                             match events.Length with
@@ -86,7 +86,7 @@ module RepositoryRef =
         and 'E :> Event<'A>>(storage: IStorageRefactor) (command: Command<'A, 'E>) =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state) = getState<'A, 'E> storage
                         let! events =
                             state
@@ -114,7 +114,7 @@ module RepositoryRef =
 
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state1) = getState<'A1, 'E1> storage
                         let! (_, state2) = getState<'A2, 'E2> storage
                         let! events1 =
@@ -144,7 +144,7 @@ module RepositoryRef =
         and 'E :> Event<'A>> (storage: IStorageRefactor) =
             async {
                 return
-                    ResultCE.result
+                    result
                         {
                             let! (id, state) = getState<'A, 'E> storage
                             let! result = storage.SetSnapshot 'A.Version (id, state) 'A.StorageName
@@ -161,7 +161,7 @@ module RepositoryRef =
         and 'E :> Event<'A>>(storage: IStorageRefactor) =
             async {
                 return
-                    ResultCE.result
+                    result
                         {
                             let! lastEventId = 
                                 storage.TryGetLastEventId 'A.Version 'A.StorageName 

@@ -26,7 +26,7 @@ open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 module AppRefStorage =
-    open Sharpino.RepositoryRef
+    open Sharpino.Repository
 
     [<CurrentVersion>]
     type CurrentVersionAppRef(storage: IStorageRefactor) =
