@@ -37,24 +37,24 @@ module AppVersions =
         "User Id=safe;"+
         "Password=safe;"
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
-    let pgStorage: IStorage = DbStorage.PgDb(connection)
-    let memStorage: IStorage = MemoryStorage.MemoryStorage()
-    let currentPgApp = App.CurrentVersionApp(pgStorage)
-    let upgradedPgApp = App.UpgradedApp(pgStorage)
-    let currentMemApp = App.CurrentVersionApp(memStorage)
-    let upgradedMemApp = App.UpgradedApp(memStorage)
-
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
-
     let jsonSerSettings = JsonSerializerSettings()
     jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
     jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
-    let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
 
-    // let cosmosDbStorage = CosmosDbStorage.ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
+    let pgStorage: IStorage = DbStorage.PgDb(connection)
+    // let memStorage: IStorage = MemoryStorage.MemoryStorage()
+    // let currentPgApp = App.CurrentVersionApp(pgStorage)
+    let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
+    let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
+    let currentPgApp = App.CurrentVersionApp(refactoredStorage)
+    let upgradedPgApp = App.UpgradedApp(refactoredStorage)
+    let currentMemApp = App.CurrentVersionApp(refactoredMemoryStorage)
+    let upgradedMemApp = App.UpgradedApp(refactoredMemoryStorage)
+
+    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
 
     let eventualCosmosDbStorage =
         try 
@@ -62,13 +62,6 @@ module AppVersions =
             Some cosmosDbStorage
         with 
             | _ -> None
-
-
-    let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
-    let refactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
-    let upgradedRefactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
-
-    // let refactoredCosmosApp = AppRefStorage.CurrentVersionAppRef(cosmosDbStorage)
 
     let refactoredCosmosApp = 
         match eventualCosmosDbStorage with
@@ -122,7 +115,6 @@ module AppVersions =
     let resetCosmosDb() =
         ()
 
-
     let resetEventStore() =
 
         Cache.CurrentStateRef<_>.Instance.Clear()
@@ -164,7 +156,7 @@ module AppVersions =
     let currentPostgresApp =
         {
             _migrator  =        currentPgApp.Migrate |> Some
-            _reset  =           fun () -> resetDb pgStorage
+            _reset  =           fun () -> resetRefactoredDb refactoredStorage
             _forceStateUpdate = None
             // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _addEvents =        fun (version, e: List<string>, name) -> pgStorage.AddEvents version e name |> ignore // ignore?
@@ -178,27 +170,6 @@ module AppVersions =
             addTag =            currentPgApp.AddTag 
             removeTag =         currentPgApp.RemoveTag
             getAllTags =        currentPgApp.GetAllTags
-        }
-
-    let refApp: IApplication = 
-        {
-            _migrator  =        None
-            _reset  =           fun () -> resetRefactoredDb refactoredStorage
-            _forceStateUpdate = None
-            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (refactoredStorage :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
-            getAllTodos =       refactoredApp.GetAllTodos
-            addTodo =           refactoredApp.AddTodo
-            add2Todos =         refactoredApp.Add2Todos
-            removeTodo =        refactoredApp.RemoveTodo
-            getAllCategories =  refactoredApp.GetAllCategories
-            addCategory =       refactoredApp.AddCategory
-            removeCategory =    refactoredApp.RemoveCategory
-            addTag =            refactoredApp.AddTag 
-            removeTag =         refactoredApp.RemoveTag
-            getAllTags =        refactoredApp.GetAllTags
         }
 
     let eventualRerCosmosDbApp: option<IApplication> =
@@ -227,35 +198,14 @@ module AppVersions =
         | None -> None
 
 
-
-    let refMemoryApp: IApplication  =   
-        {
-            _migrator  =        None
-            _reset  =           fun () -> resetRefactoredDb refactoredMemoryStorage
-            _forceStateUpdate = None
-            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
-            getAllTodos =       refactoredMemoryApp.GetAllTodos
-            addTodo =           refactoredMemoryApp.AddTodo
-            add2Todos =         refactoredMemoryApp.Add2Todos
-            removeTodo =        refactoredMemoryApp.RemoveTodo
-            getAllCategories =  refactoredMemoryApp.GetAllCategories
-            addCategory =       refactoredMemoryApp.AddCategory
-            removeCategory =    refactoredMemoryApp.RemoveCategory
-            addTag =            refactoredMemoryApp.AddTag 
-            removeTag =         refactoredMemoryApp.RemoveTag
-            getAllTags =        refactoredMemoryApp.GetAllTags
-        }
-
-
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
             _migrator  =        None
-            _reset =            fun () -> resetDb pgStorage
-            _addEvents =        fun (version, e: List<string>, name ) -> pgStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredStorage :> IStorageRefactor).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
@@ -274,8 +224,10 @@ module AppVersions =
     let currentMemoryApp =
         {
             _migrator  =        currentMemApp.Migrate |> Some
-            _reset =            fun () -> resetDb memStorage
-            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
@@ -293,8 +245,10 @@ module AppVersions =
     let upgradedMemoryApp =
         {
             _migrator =         None
-            _reset =            fun () -> resetDb memStorage
-            _addEvents =        fun (version, e: List<string>, name) -> memStorage.AddEvents version e name |> ignore
+            _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo

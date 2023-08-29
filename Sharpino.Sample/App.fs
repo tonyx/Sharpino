@@ -2,7 +2,7 @@ namespace Sharpino.Sample
 
 open Sharpino
 open Sharpino.Utils
-open Sharpino.Repository
+open Sharpino.RepositoryRef
 
 open Sharpino.Sample
 open Sharpino.Storage
@@ -26,7 +26,7 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 module App =
     [<CurrentVersion>]
-    type CurrentVersionApp(storage: IStorage) =
+    type CurrentVersionApp(storage: IStorageRefactor) =
         member this.GetAllTodos() =
             async {
                 return
@@ -224,7 +224,7 @@ module App =
             |> Async.RunSynchronously
 
     [<UpgradedVersion>]
-    type UpgradedApp(storage: IStorage) =
+    type UpgradedApp(storage: IStorageRefactor) =
         member this.GetAllTodos() =
             async {
                 return

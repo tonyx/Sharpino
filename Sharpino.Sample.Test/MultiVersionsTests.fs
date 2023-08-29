@@ -37,15 +37,14 @@ let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
-        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
-        (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
-        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
-        (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
-        (AppVersions.refApp,                       AppVersions.refApp,                 fun () -> () |> Result.Ok)  
-        (AppVersions.refMemoryApp,                 AppVersions.refMemoryApp,           fun () -> () |> Result.Ok)  
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
+
         // (AppVersions.eventualRerCosmosDbApp.Value ,                AppVersions.eventualRerCosmosDbApp.Value, ((fun () -> () |> Result.Ok): unit -> Result<unit, obj>))  
          // eventualRerCosmosDbApp
 
@@ -80,7 +79,6 @@ let utilsTests =
             Expect.isOk result "should be error"
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
-
 
 [<Tests>]
 let multiVersionsTests =
@@ -600,7 +598,6 @@ let multiCallTests =
             ()
 
     ptestList "massive sequence adding - Ok" [
-
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
             let ap = AppVersions.currentPostgresApp
