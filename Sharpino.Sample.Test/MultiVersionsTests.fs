@@ -45,6 +45,7 @@ let allVersions =
         // (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
         // (AppVersions.refApp,                       AppVersions.refApp,                 fun () -> () |> Result.Ok)  
         (AppVersions.refMemoryApp,                 AppVersions.refMemoryApp,           fun () -> () |> Result.Ok)  
+        // (AppVersions.refCosmosDbApp,                AppVersions.refCosmosDbApp,           fun () -> () |> Result.Ok)  
 
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
@@ -81,7 +82,7 @@ let utilsTests =
 
 [<Tests>]
 let multiVersionsTests =
-    ftestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()
@@ -100,7 +101,7 @@ let multiVersionsTests =
             ap |> updateStateIfNecessary
             Expect.isTrue true "ok"
 
-            let todos = ap.getAllTodos()
+            // let todos = ap.getAllTodos()
             Expect.isTrue true "ok"
 
             // Expect.isOk todos "should be ok"
