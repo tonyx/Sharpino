@@ -14,7 +14,7 @@ open Sharpino.Storage
 
 // experimental support for EventStore
 module EventStore =
-    type EventStoreBridgeFS(connection) =
+    type EventStoreStorage(connection) =
         let lastEventIds = Collections.Generic.Dictionary<string, StreamPosition>()
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 

@@ -5,9 +5,9 @@ open FSharpPlus.Data
 open Newtonsoft.Json
 open Expecto
 open System
+open FsToolkit.ErrorHandling
 
 module Utils =
-    open FsToolkit.ErrorHandling
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore

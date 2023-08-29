@@ -2,29 +2,28 @@
 namespace Sharpino
 
 open FSharp.Data.Sql
-open FSharp.Core
-open FSharpPlus
 open FSharpPlus.Data
 
-open Sharpino
-open Sharpino.Utils
-open Sharpino.Cache
+open FSharp.Core
+open FSharpPlus
+
 open Sharpino.Core
-open FsToolkit.ErrorHandling
 open Sharpino.Storage
+
+open FsToolkit.ErrorHandling
 
 module Repository =
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
-        (storage: IStorageRefactor) =
+        (storage: IStorage) =
             async {
                 return
                     result {
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                            | Some (snapId, eventId, json) ->
+                            | Some (_, eventId, json) ->
                                 (eventId, json ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
@@ -36,7 +35,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>>(storage: IStorageRefactor) = 
+        and 'E :> Event<'A>>(storage: IStorage) = 
             
         async {
             return
@@ -53,7 +52,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>>(storage: IStorageRefactor): Result< int * 'A, string> = 
+        and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
 
             let eventuallyFromCache =
                 fun () ->
@@ -83,7 +82,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>>(storage: IStorageRefactor) (command: Command<'A, 'E>) =
+        and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
             async {
                 return
                     result {
@@ -98,7 +97,6 @@ module Repository =
             }
             |> Async.RunSynchronously
                         
-
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
@@ -108,7 +106,7 @@ module Repository =
         and 'A2: (static member Version: string)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
-            (storage: IStorageRefactor)
+            (storage: IStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
 
@@ -141,7 +139,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'E :> Event<'A>> (storage: IStorageRefactor) =
+        and 'E :> Event<'A>> (storage: IStorage) =
             async {
                 return
                     result
@@ -158,7 +156,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
-        and 'E :> Event<'A>>(storage: IStorageRefactor) =
+        and 'E :> Event<'A>>(storage: IStorage) =
             async {
                 return
                     result
@@ -179,6 +177,9 @@ module Repository =
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
+    // todo: remember that using a processor ensure strict single thread processing of commands. 
+    // in my example I used it sistematically but to be honest it is rare that we need this strict single thread processing
+    // probably I'll with more example relatedo to aggregate level locking or no lock at all (optimistic concurrency)
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {

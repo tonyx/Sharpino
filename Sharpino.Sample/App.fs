@@ -26,7 +26,7 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 module App =
     [<CurrentVersion>]
-    type CurrentVersionApp(storage: IStorageRefactor) =
+    type CurrentVersionApp(storage: IStorage) =
         member this.GetAllTodos() =
             async {
                 return
@@ -224,7 +224,7 @@ module App =
             |> Async.RunSynchronously
 
     [<UpgradedVersion>]
-    type UpgradedApp(storage: IStorageRefactor) =
+    type UpgradedApp(storage: IStorage) =
         member this.GetAllTodos() =
             async {
                 return

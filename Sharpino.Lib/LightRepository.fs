@@ -14,6 +14,7 @@ open FsToolkit.ErrorHandling
 
 module LightRepository =
 
+    // todo: remember to get rid of static Utils.serialize and use JsonSerializer instance instead
     let inline getState<'A
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)

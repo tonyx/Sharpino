@@ -43,55 +43,17 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
 
-    let pgStorage: IStorage = DbStorage.PgDb(connection)
-    // let memStorage: IStorage = MemoryStorage.MemoryStorage()
-    // let currentPgApp = App.CurrentVersionApp(pgStorage)
-    let refactoredStorage = DbStorageRef.PgDb(connection, jsonSerializer)
-    let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
+    let refactoredStorage = PgStorage.PgStorage(connection, jsonSerializer)
+    let refactoredMemoryStorage = MemoryStorage.MemoryStorage(jsonSerializer)
     let currentPgApp = App.CurrentVersionApp(refactoredStorage)
     let upgradedPgApp = App.UpgradedApp(refactoredStorage)
     let currentMemApp = App.CurrentVersionApp(refactoredMemoryStorage)
     let upgradedMemApp = App.UpgradedApp(refactoredMemoryStorage)
 
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection))
+    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection))
 
-    let eventualCosmosDbStorage =
-        try 
-            let cosmosDbStorage = CosmosDbStorage.ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
-            Some cosmosDbStorage
-        with 
-            | _ -> None
-
-    let refactoredCosmosApp = 
-        match eventualCosmosDbStorage with
-        | Some x -> AppRefStorage.CurrentVersionAppRef(x) |> Some
-        | None -> None
-
-    let refactoredMemoryApp = AppRefStorage.CurrentVersionAppRef(refactoredMemoryStorage)
-
-    let resetDb(db: IStorage) =
-        db.Reset TodosAggregate.Version TodosAggregate.StorageName 
-        Cache.EventCache<TodosAggregate>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate>.Instance.Clear()
-        Cache.StateCache<TodosAggregate>.Instance.Clear()
-
-        db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-
-        db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        Cache.EventCache<TagsAggregate>.Instance.Clear()
-        Cache.SnapCache<TagsAggregate>.Instance.Clear()
-        Cache.StateCache<TagsAggregate>.Instance.Clear()
-
-        db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        Cache.EventCache<CategoriesAggregate>.Instance.Clear()
-        Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
-        Cache.StateCache<CategoriesAggregate>.Instance.Clear()
-
-    let resetRefactoredDb (db: IStorageRefactor) =
+    let resetRefactoredDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
         Cache.EventCache<TodosAggregate>.Instance.Clear()
         Cache.SnapCache<TodosAggregate>.Instance.Clear()
@@ -112,9 +74,6 @@ module AppVersions =
         Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
         Cache.StateCache<CategoriesAggregate>.Instance.Clear()
 
-    let resetCosmosDb() =
-        ()
-
     let resetEventStore() =
 
         Cache.CurrentState<_>.Instance.Clear()
@@ -131,7 +90,6 @@ module AppVersions =
         eventStoreBridge.ResetEvents "_02" "_todo"
         eventStoreBridge.ResetSnapshots "_01" "_categories"
         eventStoreBridge.ResetEvents "_01" "_categories"
-
 
     type IApplication =
         {
@@ -156,10 +114,12 @@ module AppVersions =
     let currentPostgresApp =
         {
             _migrator  =        currentPgApp.Migrate |> Some
-            _reset  =           fun () -> resetRefactoredDb refactoredStorage
             _forceStateUpdate = None
             // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _addEvents =        fun (version, e: List<string>, name) -> pgStorage.AddEvents version e name |> ignore // ignore?
+            _reset =            fun () -> resetRefactoredDb refactoredStorage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    (refactoredStorage :> IStorage).AddEvents version deser name |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -172,32 +132,6 @@ module AppVersions =
             getAllTags =        currentPgApp.GetAllTags
         }
 
-    let eventualRerCosmosDbApp: option<IApplication> =
-        match eventualCosmosDbStorage with
-        | Some x -> 
-            let refCosmosDbApp: IApplication =
-                {
-                    _migrator =         None
-                    _reset =            fun () -> resetCosmosDb()
-                    _addEvents =        fun (version, e: List<string>, name) -> 
-                                            let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                            (x :> IStorageRefactor).AddEvents version deser name |> ignore // ignore?
-                    _forceStateUpdate = None
-                    getAllTodos =       refactoredCosmosApp.Value.GetAllTodos
-                    addTodo =           refactoredCosmosApp.Value.AddTodo
-                    add2Todos =         refactoredCosmosApp.Value.Add2Todos
-                    removeTodo =        refactoredCosmosApp.Value.RemoveTodo
-                    getAllCategories =  refactoredCosmosApp.Value.GetAllCategories
-                    addCategory =       refactoredCosmosApp.Value.AddCategory
-                    removeCategory =    refactoredCosmosApp.Value.RemoveCategory
-                    addTag =            refactoredCosmosApp.Value.AddTag
-                    removeTag =         refactoredCosmosApp.Value.RemoveTag
-                    getAllTags =        refactoredCosmosApp.Value.GetAllTags
-                }
-            Some refCosmosDbApp
-        | None -> None
-
-
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
@@ -205,7 +139,7 @@ module AppVersions =
             _reset =            fun () -> resetRefactoredDb refactoredStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (refactoredStorage :> IStorageRefactor).AddEvents version deser name |> ignore
+                                    (refactoredStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
@@ -227,7 +161,7 @@ module AppVersions =
             _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore
+                                    (refactoredMemoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
@@ -248,7 +182,7 @@ module AppVersions =
             _reset =            fun () -> resetRefactoredDb refactoredMemoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
-                                    (refactoredMemoryStorage :> IStorageRefactor).AddEvents version deser name |> ignore
+                                    (refactoredMemoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
@@ -264,12 +198,12 @@ module AppVersions =
 
     [<CurrentVersion>]
     let evSApp =
-        let eventStoreBridge: EventStore.EventStoreBridgeFS = EventStore.EventStoreBridgeFS(eventStoreConnection)
+        let eventStoreBridge: EventStore.EventStoreStorage = EventStore.EventStoreStorage(eventStoreConnection)
         {
             _migrator =         None
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
+                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
                                     async {
                                         let result = eventStore.AddEvents version e name
                                         return result

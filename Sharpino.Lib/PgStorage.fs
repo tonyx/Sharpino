@@ -1,3 +1,4 @@
+
 namespace Sharpino
 
 open FsToolkit.ErrorHandling
@@ -5,11 +6,13 @@ open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
+open Sharpino.Core
+open Sharpino.Utils
 open Sharpino.Storage
 open System
 
-module DbStorage =
-    type PgDb(connection) =
+module PgStorage =
+    type PgStorage(connection: string, serializer: JsonSerializer) =
         interface IStorage with
             member this.Reset version name =
                 if (Conf.isTestEnv) then
@@ -31,20 +34,26 @@ module DbStorage =
 
             member this.TryGetLastSnapshot version name =
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                connection
-                |> Sql.connect
-                |> Sql.query query
-                |> Sql.executeAsync (fun read ->
-                    (
-                        read.int "id",
-                        read.int "event_id",
-                        read.text "snapshot"
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.executeAsync (fun read ->
+                        (
+                            read.int "id",
+                            read.int "event_id",
+                            read.text "snapshot" 
+                        )
                     )
-                )
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Seq.tryHead
-
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.tryHead
+                match res with
+                | None -> None
+                | Some (id, event_id, snapshot) ->
+                    match (serializer.Deserialize snapshot) with
+                    | Ok snapshot -> Some (id, event_id, snapshot)
+                    | Error e -> failwith e
             member this.TryGetLastSnapshotId version name =
                 let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
@@ -81,25 +90,33 @@ module DbStorage =
 
             member this.TryGetEvent version id name =
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name
-                connection
-                |> Sql.connect
-                |> Sql.query query 
-                |> Sql.parameters ["id", Sql.int id]
-                |> Sql.executeAsync
-                    (
-                        fun read ->
-                        {
-                            Id = read.int "id"
-                            Event = read.string "event"
-                            Timestamp = read.dateTime "timestamp"
-                        }
-                    )
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> Seq.tryHead
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query 
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync
+                        (
+                            fun read ->
+                            {
+                                Id = read.int "id"
+                                Event = read.string "event"
+                                Timestamp = read.dateTime "timestamp"
+                            }
+                        )
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                        |> Seq.tryHead
+                match res with
+                | None -> None    
+                | Some x ->
+                    match (serializer.Deserialize<'E> x.Event) with
+                    | Ok event -> Some { EventRef = event; Id = x.Id; Timestamp = x.Timestamp }
+                    | Error e -> failwith e
 
-            member this.SetSnapshot version (id: int, snapshot: Json) name =
+            member this.SetSnapshot version (id: int, snapshot: 'A) name =
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
+                let serializedSnapshot = serializer.Serialize<'A> snapshot
                 ResultCE.result
                     {
                         let! event = ((this :> IStorage).TryGetEvent version id name) |> Result.ofOption "event not found"
@@ -112,7 +129,7 @@ module DbStorage =
                                         [
                                             [
                                                 ("@event_id", Sql.int event.Id);
-                                                ("snapshot",  Sql.jsonb snapshot);
+                                                ("snapshot",  Sql.jsonb serializedSnapshot);
                                                 ("timestamp", Sql.timestamp event.Timestamp)
                                             ]
                                         ]
@@ -122,7 +139,7 @@ module DbStorage =
                         return ()
                     }
 
-            member this.AddEvents version (events: List<Json>) name =
+            member this.AddEvents version (events: List<'E>) name =
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
                     let _ =
@@ -131,7 +148,7 @@ module DbStorage =
                         |> Sql.executeTransactionAsync
                             [
                                 command,
-                                events
+                                (events |>> (fun x -> serializer.Serialize<'E> x))
                                 |>>
                                 (
                                     fun x ->
@@ -147,14 +164,14 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) : Result<unit,string> = 
+            member this.MultiAddEvents (arg: List<List<obj> * version * Name>) : Result<unit, string> = 
                 let cmdList = 
                     arg 
                     |> List.map 
                         (
                             fun (events, version,  name) -> 
                                 let statement = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
-                                statement, events
+                                statement, (events |>> (fun x -> serializer.Serialize x))
                                 |>> 
                                 (
                                     fun x ->
@@ -175,19 +192,23 @@ module DbStorage =
                 with
                     | _ as ex -> (ex.ToString()) |> Error
 
-            member this.GetEventsAfterId version id name =    
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id" version name
-                connection
-                |> Sql.connect
-                |> Sql.query query
-                |> Sql.parameters ["id", Sql.int id]
-                |> Sql.executeAsync ( fun read ->
-                    (
-                        read.int "id",
-                        read.text "event"
+            member this.GetEventsAfterId<'E> version id name =
+
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync ( fun read ->
+                        (
+                            read.int "id",
+                            read.text "event"
+                        )
                     )
-                )
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Seq.toList
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.toList
+                // todo: handle error (no Result.get)
+                res |>> (fun (id, event) -> (id, serializer.Deserialize<'E> event |> Result.get))
 

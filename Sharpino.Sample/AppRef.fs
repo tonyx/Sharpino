@@ -29,7 +29,7 @@ module AppRefStorage =
     open Sharpino.Repository
 
     [<CurrentVersion>]
-    type CurrentVersionAppRef(storage: IStorageRefactor) =
+    type CurrentVersionAppRef(storage: IStorage) =
         member this.GetAllTodos() =
             async {
                 return

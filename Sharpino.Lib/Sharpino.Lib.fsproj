@@ -11,15 +11,12 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Storage.fs" />
-    <Compile Include="DbStorage.fs" />
-    <Compile Include="DbStorageRef.fs" />
+    <Compile Include="PgStorage.fs" />
     <Compile Include="MemoryStorage.fs" />
-    <Compile Include="MemoryStorageRef.fs" />
-    <Compile Include="EventStoreBridgeFs.fs" />
-    <Compile Include="CosmosDbStorage.fs" />
+    <Compile Include="EventStoreStorage.fs" />
 
     <Compile Include="Cache.fs" />
-    <Compile Include="RepositoryRef.fs" />
+    <Compile Include="Repository.fs" />
     <Compile Include="LightRepository.fs" />
   </ItemGroup>
 

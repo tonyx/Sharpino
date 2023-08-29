@@ -39,14 +39,11 @@ let allVersions =
 
         (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
         (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
-
-        // (AppVersions.eventualRerCosmosDbApp.Value ,                AppVersions.eventualRerCosmosDbApp.Value, ((fun () -> () |> Result.Ok): unit -> Result<unit, obj>))  
-         // eventualRerCosmosDbApp
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]

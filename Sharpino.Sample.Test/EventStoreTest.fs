@@ -24,7 +24,7 @@ open Sharpino.Sample.Tags.TagsEvents
 [<Tests>]
 let utilsTests =
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
-    let eventStoreBridge = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection) :> ILightStorage
+    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
     let SetUp() =
         
         Cache.CurrentState<_>.Instance.Clear()
