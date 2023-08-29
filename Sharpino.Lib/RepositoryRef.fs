@@ -41,14 +41,10 @@ module RepositoryRef =
         async {
             return
                 ResultCE.result {
-                    printf "snapIdStateAndEvents 100\n"
                     let! (id, state) = getLastSnapshot<'A> storage
-                    printf "snapIdStateAndEvents 110\n"
                     let events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
-                    printf "snapIdStateAndEvents 120\n"
                     let result =
                         (id, state, events)
-                    printf "snapIdStateAndEvents 130\n"
                     return result
                 }
         }
@@ -61,22 +57,20 @@ module RepositoryRef =
 
             let eventuallyFromCache =
                 fun () ->
-                    printf "get state 100\n"
                     ResultCE.result {
-                        printf "get state 120\n"
                         let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
-                        printf "get state 130\n"
                         let lastEventId =
                             match events.Length with
                             | x when x > 0 -> events |> List.last |> fst
                             | _ -> lastSnapshotId 
-                        printf "get state 140\n"
                         let result =
                             (events |>> snd) |> evolve<'A, 'E> state
-                        printf "get state 150\n"
-                        
-                        // todo: get rid of result.get
-                        return (lastEventId, result |> Result.get)
+
+                        let result' =
+                            match result with
+                            | Ok x -> (lastEventId, x) |> Ok
+                            | Error e -> Error e
+                        return! result' 
                     }
             let lastEventId =
                 async  {
@@ -84,7 +78,6 @@ module RepositoryRef =
                 }
                 |> Async.RunSynchronously
             eventuallyFromCache()
-        // StateCache<'A>.Instance.Memoize (fun () -> eventuallyFromCache()) (lastEventId, 'A.StorageName)
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -99,7 +92,6 @@ module RepositoryRef =
                             state
                             |> command.Execute
                         let! eventsAdded' =
-                            // storage.AddEvents 'A.Version (events |>> (fun x -> Utils.serialize x)) 'A.StorageName
                             storage.AddEvents 'A.Version events 'A.StorageName
                         return ()
                     } 

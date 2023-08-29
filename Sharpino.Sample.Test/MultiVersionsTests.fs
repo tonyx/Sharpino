@@ -31,21 +31,23 @@ open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
+open Sharpino.EventSourcing.Sample.AppVersions
 
 let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
-        // (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
+        (AppVersions.currentPostgresApp,        AppVersions.currentPostgresApp,     fun () -> () |> Result.Ok)
+        (AppVersions.upgradedPostgresApp,       AppVersions.upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (AppVersions.currentPostgresApp,        AppVersions.upgradedPostgresApp,    AppVersions.currentPostgresApp._migrator.Value)
 
-        // (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
-        // (AppVersions.refApp,                       AppVersions.refApp,                 fun () -> () |> Result.Ok)  
+        (AppVersions.currentMemoryApp,          AppVersions.currentMemoryApp,       fun () -> () |> Result.Ok)
+        (AppVersions.upgradedMemoryApp,         AppVersions.upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (AppVersions.currentMemoryApp,          AppVersions.upgradedMemoryApp,      AppVersions.currentMemoryApp._migrator.Value)
+        (AppVersions.refApp,                       AppVersions.refApp,                 fun () -> () |> Result.Ok)  
         (AppVersions.refMemoryApp,                 AppVersions.refMemoryApp,           fun () -> () |> Result.Ok)  
-        // (AppVersions.refCosmosDbApp,                AppVersions.refCosmosDbApp,           fun () -> () |> Result.Ok)  
+        // (AppVersions.eventualRerCosmosDbApp.Value ,                AppVersions.eventualRerCosmosDbApp.Value, ((fun () -> () |> Result.Ok): unit -> Result<unit, obj>))  
+         // eventualRerCosmosDbApp
 
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
@@ -88,7 +90,6 @@ let multiVersionsTests =
             | Some f -> f()
             | None -> ()
 
-        let eventStoreBridge: EventStore.EventStoreBridgeFS = Sharpino.EventStore.EventStoreBridgeFS(eventStoreConnection)
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
@@ -99,15 +100,13 @@ let multiVersionsTests =
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
             ap |> updateStateIfNecessary
-            Expect.isTrue true "ok"
 
-            // let todos = ap.getAllTodos()
-            Expect.isTrue true "ok"
+            let todos = ap.getAllTodos()
 
-            // Expect.isOk todos "should be ok"
-            // Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+            Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
-        pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }

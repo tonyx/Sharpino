@@ -26,6 +26,7 @@ module CosmosDbStorage =
             event: 'E
         }
 
+    // todo: remove. substitute with CosmosDbLightStorage
     type ComsmosDbStorage (accountEndPoing: string, authKeyorResourceToken: string) =
         // new(accountEndPoing: string, authKeyorResourceToken: string) = ComsmosDbStorage(accountEndPoing, authKeyorResourceToken
         // new () = ComsmosDbStorage("https://localhost:8081", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==")
@@ -115,3 +116,35 @@ module CosmosDbStorage =
 
 
 
+    type CosmosDbLightStorage (accountEndPoing: string, authKeyorResourceToken: string) =
+
+        let client = new CosmosClient( accountEndPoing, authKeyorResourceToken )
+        let database = client.CreateDatabaseIfNotExistsAsync("es_01") |> Async.AwaitTask |> Async.RunSynchronously
+        let db = database.Database
+
+        let mksSerializableEvent (version: version) (name: Name)  (event: 'E) =
+            {id = Guid.NewGuid().ToString(); aggregateName = version+name; event = event}
+
+        interface ILightStorageRefactor with
+            member this.AddEvents(version: version) (events: List<'E>) (name: Name) = 
+                let initIntIndex = 0
+
+                let indexes = [initIntIndex .. events.Length-1]
+                let eventsWithIndex = List.zip events indexes
+
+                try
+                    let streamName = version+name
+                    let container = db.CreateContainerIfNotExistsAsync("events", "/aggregateName") |> Async.AwaitTask |> Async.RunSynchronously
+                    let cnt = container.Container
+
+                    printf "add event 100\n"
+                    let created =
+                        eventsWithIndex 
+                        |> List.map (fun x -> 
+                            cnt.CreateItemAsync<Serializable<'E>>( ((x |> fst) |> mksSerializableEvent version name ) , Nullable(new PartitionKey(streamName))) |> Async.AwaitTask |> Async.RunSynchronously)
+
+                    printf "add event 100 %A\n" created
+
+                    () |> Ok
+                with
+                    e -> Error (sprintf "error %A" e)

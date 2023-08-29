@@ -52,6 +52,10 @@ module Storage =
         abstract member ConsumeEventsFromPosition: version -> Name -> uint64 -> (uint64 * Json) list
         abstract member GetLastSnapshot: version -> Name -> Option<UInt64 * Json>
 
+    // todo: this will be used by cosmosDbStorage instead of plain storage
+    type ILightStorageRefactor =
+        abstract member AddEvents: version -> List<'E> -> Name -> Result< unit, string >
+
     type IStorageRefactor =
         abstract member Reset: version -> Name -> unit
         abstract member TryGetLastSnapshot: version -> Name -> Option<int * int * 'A>
