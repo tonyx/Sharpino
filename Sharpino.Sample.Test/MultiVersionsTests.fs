@@ -122,7 +122,7 @@ let multiVersionsTests =
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
 
-        pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let id = Guid.NewGuid()
             let id2 = Guid.NewGuid()

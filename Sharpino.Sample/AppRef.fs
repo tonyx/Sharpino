@@ -28,6 +28,7 @@ open FsToolkit.ErrorHandling
 module AppRefStorage =
     open Sharpino.RepositoryRef
 
+    [<CurrentVersion>]
     type CurrentVersionAppRef(storage: IStorageRefactor) =
         member this.GetAllTodos() =
             async {

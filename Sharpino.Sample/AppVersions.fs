@@ -66,6 +66,7 @@ module AppVersions =
 
     let refactoredMemoryStorage = MemoryStorageRef.MemoryStorageRef(jsonSerializer)
     let refactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
+    let upgradedRefactoredApp = AppRefStorage.CurrentVersionAppRef(refactoredStorage)
 
     // let refactoredCosmosApp = AppRefStorage.CurrentVersionAppRef(cosmosDbStorage)
 
