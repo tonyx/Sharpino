@@ -48,11 +48,7 @@ module LightRepository =
                     let _ =
                         if (idAndEvents.Length > 0) then
                             let lastEventId = idAndEvents |>> fst |> List.last 
-                            let _ =
-                                CurrentState<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
-                            ()
-                        else
-                            ()
+                            CurrentState<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
                     return newState
                 }
             match newState with
