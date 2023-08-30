@@ -37,14 +37,16 @@ let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 
-        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        // enable if you had setup postgres (see dbmate scripts):
+        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
         (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
+        // enable if you have eventstore locally (tested only with docker on win and mac)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
 

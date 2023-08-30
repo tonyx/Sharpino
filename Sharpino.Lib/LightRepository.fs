@@ -31,14 +31,10 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: ILightStorage)  =
-
-        let consumed = storage.ConsumeEvents 'A.Version  'A.StorageName 
-
-        if (consumed |> Seq.length = 0) then
-            ()
-        else
             let newState =
                 result {
+                    let (eventId, state) = getState<'A> storage
+                    let consumed = storage.ConsumeEventsFromPosition 'A.Version 'A.StorageName eventId
                     let! idAndEvents =
                         consumed 
                         |> Utils.catchErrors
@@ -47,12 +43,16 @@ module LightRepository =
                                 | Ok x -> (i, x) |> Ok
                                 | Error e -> Error e
                             )
-                    let (eventId, state) = getState<'A> storage
 
                     let! newState = (idAndEvents |>> snd) |> evolve state
-                    let lastEventId = idAndEvents |>> fst |> List.last 
                     let _ =
-                        CurrentState<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
+                        if (idAndEvents.Length > 0) then
+                            let lastEventId = idAndEvents |>> fst |> List.last 
+                            let _ =
+                                CurrentState<'A>.Instance.Update('A.StorageName, (lastEventId, newState))
+                            ()
+                        else
+                            ()
                     return newState
                 }
             match newState with
