@@ -76,12 +76,6 @@ module AppVersions =
 
     let resetEventStore() =
 
-        Cache.CurrentState<_>.Instance.Clear()
-        Cache.CurrentState<TodosAggregate>.Instance.Clear()
-        Cache.CurrentState<TodosAggregate'>.Instance.Clear()
-        Cache.CurrentState<TagsAggregate>.Instance.Clear()
-        Cache.CurrentState<CategoriesAggregate>.Instance.Clear()
-
         eventStoreBridge.ResetSnapshots "_01" "_tags"
         eventStoreBridge.ResetEvents "_01"  "_tags"
         eventStoreBridge.ResetSnapshots "_01" "_todo"
@@ -210,13 +204,7 @@ module AppVersions =
                                     }
                                     |> Async.RunSynchronously
                                     |> ignore
-            _forceStateUpdate = (fun () -> 
-                                    (eventStoreBridge |> LightRepository.updateState<TodosAggregate, TodoEvent>)
-                                    (eventStoreBridge |> LightRepository.updateState<TodosAggregate', TodoEvent'>) 
-                                    (eventStoreBridge |> LightRepository.updateState<TagsAggregate, TagEvent>)
-                                    (eventStoreBridge |> LightRepository.updateState<CategoriesAggregate, CategoryEvent>)
-                                ) 
-                                |> Some
+            _forceStateUpdate = None
             getAllTodos =       evStoreApp.GetAllTodos
             addTodo =           evStoreApp.AddTodo
             add2Todos =         evStoreApp.Add2Todos
