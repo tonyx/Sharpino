@@ -2,14 +2,11 @@
 namespace Sharpino
 
 open FsToolkit.ErrorHandling
-open FSharp.Data.Sql
 open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
-open Sharpino.Core
 open Sharpino.Utils
 open Sharpino.Storage
-open System
 
 module PgStorage =
     type PgStorage(connection: string, serializer: JsonSerializer) =

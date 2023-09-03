@@ -2,7 +2,6 @@
 namespace Sharpino
 
 open Sharpino.Storage
-open FSharp.Data.Sql
 open System.Runtime.CompilerServices
 open FSharpPlus
 open System

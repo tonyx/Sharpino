@@ -1,7 +1,6 @@
 namespace Sharpino
 
 open FsToolkit.ErrorHandling
-open FSharp.Data.Sql
 open FSharpPlus
 
 open System
@@ -9,7 +8,6 @@ open System.Linq
 open System.Text
 open EventStore.Client
 
-open Sharpino
 open Sharpino.Storage
 
 // experimental support for EventStore

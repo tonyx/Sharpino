@@ -1,14 +1,12 @@
 
 namespace Sharpino
 
-open FSharp.Data.Sql
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
 open Sharpino.Storage
-open Sharpino.Cache
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
