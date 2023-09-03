@@ -171,9 +171,8 @@ module Repository =
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
-    // todo: remember that using a processor ensure strict single thread processing of commands. 
-    // in my example I used it sistematically but to be honest it is rare that we need this strict single thread processing
-    // probably I'll with more example relatedo to aggregate level locking or no lock at all (optimistic concurrency)
+    // by using this light processor we process the events in a single thread. It is not always needed but at the moment we stick to it
+    // note: I guess this is too strict, and it is almost always _not_ needed. Keep it for now but should not use it.
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {
