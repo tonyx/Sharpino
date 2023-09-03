@@ -199,6 +199,7 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
                                     async {
+                                        // todo: refactor here remember that addevents returns a result now
                                         let result = eventStore.AddEvents version e name
                                         return result
                                     }
