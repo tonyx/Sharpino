@@ -48,31 +48,6 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    // snapthots keeps the index of the related event so that after we get the
-    // latest snapshot we can also know when to start reading the next events
-    type CurrentState<'A> private() =
-        let dic = Generic.Dictionary<string, uint64 * 'A>()
-        static let instance = CurrentState()
-        static member Instance = instance
-
-        member this.Lookup(key: string, zero: uint64 * 'A) eventualSnapshot: uint64 * 'A =
-            let (b, res) = dic.TryGetValue key
-            if b then
-                res
-            else
-                match eventualSnapshot() with
-                | Some (index, state) ->
-                    dic.Add(key, (index, state))
-                    (index |> uint64, state)
-                | None -> zero
-        member this.Update(key: string, value: (uint64 * 'A)) =
-            dic.[key] <- value
-
-        member this.Clear() =
-            dic.Clear()
-        member this.Dic() =
-            dic
-
     type StateCache<'A> private () =
         let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
         let queue = Generic.Queue<(int * string)>()

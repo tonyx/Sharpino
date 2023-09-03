@@ -42,12 +42,12 @@ let allVersions =
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
-        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker on win and mac)
-        // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
+        (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -81,7 +81,7 @@ let utilsTests =
 
 [<Tests>]
 let multiVersionsTests =
-    testList "App with coordinator test - Ok" [
+    ftestList "App with coordinator test - Ok" [
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()

@@ -44,7 +44,7 @@ module EventStoreApp =
                 
         member this.GetAllTags() =
             ResultCE.result {
-                let (_, stateX ) = storage |> getState<TagsAggregate>
+                let! (_, stateX ) = storage |> getState<TagsAggregate, TagEvent >
 
                 let tags = stateX.GetTags()
                 return tags
@@ -52,7 +52,7 @@ module EventStoreApp =
 
         member this.GetAllTodos() =
             ResultCE.result {
-                let (_, state') = storage |> getState<TodosAggregate>
+                let! (_, state') = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let todos = state'.GetTodos()
                 return todos
             }
@@ -60,7 +60,7 @@ module EventStoreApp =
         member this.AddTodo todo =
             let f = fun() ->
                 ResultCE.result {
-                    let (_, tagState' ) = storage |> getState<TagsAggregate>
+                    let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
                     let! tagIdIsValid = 
@@ -111,7 +111,7 @@ module EventStoreApp =
 
         member this.GetAllCategories() =
             ResultCE.result {
-                let (_, state' ) = storage |> getState<TodosAggregate>
+                let! (_, state' ) = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let categories = state'.GetCategories()
                 return categories
             }
@@ -155,7 +155,7 @@ module EventStoreApp =
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
                 ResultCE.result {
-                    let (_, tagState' ) = storage |> getState<TagsAggregate>
+                    let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = 
                         tagState'.GetTags() 
                         |> List.map (fun x -> x.Id)

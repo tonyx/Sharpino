@@ -1,7 +1,6 @@
 
 namespace Sharpino
 
-open FSharp.Data.Sql
 open FSharpPlus.Data
 
 open FSharp.Core
