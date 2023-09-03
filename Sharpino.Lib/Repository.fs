@@ -52,25 +52,21 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
+            result {
+                let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
+                let lastEventId =
+                    match events.Length with
+                    | x when x > 0 -> events |> List.last |> fst
+                    | _ -> lastSnapshotId 
+                let result =
+                    (events |>> snd) |> evolve<'A, 'E> state
 
-            let eventuallyFromCache =
-                fun () ->
-                    result {
-                        let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
-                        let lastEventId =
-                            match events.Length with
-                            | x when x > 0 -> events |> List.last |> fst
-                            | _ -> lastSnapshotId 
-                        let result =
-                            (events |>> snd) |> evolve<'A, 'E> state
-
-                        let result' =
-                            match result with
-                            | Ok x -> (lastEventId, x) |> Ok
-                            | Error e -> Error e
-                        return! result' 
-                    }
-            eventuallyFromCache()
+                let result' =
+                    match result with
+                    | Ok x -> (lastEventId, x) |> Ok
+                    | Error e -> Error e
+                return! result' 
+            }
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
