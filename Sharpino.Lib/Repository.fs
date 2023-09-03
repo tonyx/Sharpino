@@ -58,14 +58,9 @@ module Repository =
                     match events.Length with
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
-                let result =
+                let! newState = 
                     (events |>> snd) |> evolve<'A, 'E> state
-
-                let result' =
-                    match result with
-                    | Ok x -> (lastEventId, x) |> Ok
-                    | Error e -> Error e
-                return! result' 
+                return (lastEventId, newState)
             }
 
     let inline runCommand<'A, 'E
@@ -76,13 +71,12 @@ module Repository =
             async {
                 return
                     result {
-                        let! (_, state) = getState<'A, 'E> storage
+                        let! (_, state) = storage |> getState<'A, 'E>
                         let! events =
                             state
                             |> command.Execute
-                        let! eventsAdded' =
+                        return! 
                             storage.AddEvents 'A.Version events 'A.StorageName
-                        return ()
                     } 
             }
             |> Async.RunSynchronously
@@ -114,13 +108,13 @@ module Repository =
 
                         let events1' = events1 |>> fun x -> x :> obj
                         let events2' = events2 |>> fun x -> x :> obj
-                        let! eventAdded =
+
+                        return! 
                             storage.MultiAddEvents 
                                 [
                                     (events1', 'A1.Version, 'A1.StorageName)
                                     (events2', 'A2.Version, 'A2.StorageName)
                                 ]
-                        return ()
                     } 
             }
             |> Async.RunSynchronously
@@ -155,12 +149,11 @@ module Repository =
                                 storage.TryGetLastEventId 'A.Version 'A.StorageName 
                                 |> Result.ofOption "lastEventId is None"
                             let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                            let! result =
+                            return! 
                                 if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
                                     mksnapshot<'A, 'E> storage
                                 else
                                     () |> Ok
-                            return result
                         }
             }    
             |> Async.RunSynchronously   

@@ -102,7 +102,8 @@ module EventStore =
                         return ev
                 }
                 |> Async.RunSynchronously
-                |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) |> List.ofSeq
+                |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
+                |> List.ofSeq
 
             member this.TryGetLastSnapshot version name =            
                 let streamName = "snapshots" + version + name

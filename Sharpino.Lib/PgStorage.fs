@@ -159,7 +159,7 @@ module PgStorage =
                             |> Async.RunSynchronously
                     () |> Ok
                 with
-                    | _ as ex -> (ex.ToString()) |> Error
+                    | _ as ex -> ex.Message |> Error
 
             member this.MultiAddEvents (arg: List<List<obj> * version * Name>) : Result<unit, string> = 
                 let cmdList = 
@@ -187,7 +187,7 @@ module PgStorage =
                         |> Async.RunSynchronously
                     () |> Ok
                 with
-                    | _ as ex -> (ex.ToString()) |> Error
+                    | _ as ex -> ex.Message |> Error
 
             member this.GetEventsAfterId<'E> version id name =
 

@@ -21,7 +21,7 @@ module LightRepository =
             async {
                 return
                     result {
-                        let! result =
+                        return!
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (eventId, json) ->
                                 let fromJson = Utils.deserialize<'A> json
@@ -29,7 +29,6 @@ module LightRepository =
                                 | Ok x -> (eventId, x) |> Ok
                                 | Error e -> Error e
                             | None -> (0 |> uint64, 'A.Zero) |> Ok
-                        return result
                     }
             }
             |> Async.RunSynchronously
@@ -45,9 +44,7 @@ module LightRepository =
                 result {
                     let! (id, state) = getLastSnapshot<'A> storage
                     let events = storage.ConsumeEventsFromPosition 'A.Version 'A.StorageName id
-                    let result =
-                        (id, state, events)
-                    return result
+                    return (id, state, events)
                 }
         }
         |> Async.RunSynchronously
@@ -63,16 +60,12 @@ module LightRepository =
                     match events.Length with
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
-
                 let! deserEvents = 
                     events |>> snd
                     |> Utils.catchErrors (fun x -> Utils.deserialize<'E> x)
-
                 let! newState = 
                     deserEvents |> evolve<'A, 'E> state
-
                 return (lastEventId, newState) 
-
             }
 
     let inline runUndoCommand<'A, 'E
@@ -84,13 +77,14 @@ module LightRepository =
         async {
             return
                 ResultCE.result {
-                    let! (_, state) = getState<'A, 'E> storage
+                    let! (_, state) = storage |> getState<'A, 'E> 
                     let! events =
                         state
                         |> undoer 
-                    let serEvents = events |> List.map (fun x -> Utils.serialize x)
-                    let! _ = storage.AddEvents 'A.Version serEvents 'A.StorageName 
-                    return ()
+                    let serEvents = 
+                        events 
+                        |>> Utils.serialize
+                    return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
                 } 
         }
         |> Async.RunSynchronously
@@ -103,15 +97,14 @@ module LightRepository =
         async {
             return
                 ResultCE.result {
-                    let! (_, state) = getState<'A, 'E> storage
+                    let! (_, state) = storage |> getState<'A, 'E>
                     let! events =
                         state
                         |> command.Execute
                     let serEvents = 
                         events 
-                        |> List.map (fun x -> Utils.serialize x) 
-                    let! _ = storage.AddEvents 'A.Version serEvents 'A.StorageName
-                    return ()
+                        |>> Utils.serialize
+                    return! storage.AddEvents 'A.Version serEvents 'A.StorageName
                 } 
         }
         |> Async.RunSynchronously
@@ -155,8 +148,7 @@ module LightRepository =
                     | Error err -> 
                         printf "warning can't do undo: %A\n" err
                 | _ -> ()
-                let! result2' = result2
-                return result2'
+                return! result2 
             }
 
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
@@ -232,7 +224,6 @@ module LightRepository =
                     if (difference > ('A.SnapshotsInterval |> uint64)) then
                         let _ = addNewShapshot eventId state 
                         ()
-
                     return ()
             }
             |> Async.RunSynchronously
