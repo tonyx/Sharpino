@@ -71,11 +71,6 @@ module Repository =
                             | Error e -> Error e
                         return! result' 
                     }
-            let lastEventId =
-                async  {
-                    return storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                }
-                |> Async.RunSynchronously
             eventuallyFromCache()
 
     let inline runCommand<'A, 'E
