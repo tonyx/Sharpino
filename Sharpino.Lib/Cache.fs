@@ -50,6 +50,7 @@ module Cache =
 
     // snapthots keeps the index of the related event so that after we get the
     // latest snapshot we can also know when to start reading the next events
+    
     type CurrentState<'A> private() =
         let dic = Generic.Dictionary<string, uint64 * 'A>()
         static let instance = CurrentState()

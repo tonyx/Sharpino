@@ -142,7 +142,7 @@ module EventStore =
                 with 
                 | _ -> []  
 
-            member this.GetLastSnapshot version name =            
+            member this.TryGetLastSnapshot version name =            
                 try
                     let streamName = "snapshots" + version + name
                     let snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End)

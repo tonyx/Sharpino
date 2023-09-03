@@ -15,12 +15,58 @@ open FsToolkit.ErrorHandling
 module LightRepository =
 
     // todo: remember to get rid of static Utils.serialize and use JsonSerializer instance instead
+    let inline private getLastSnapshot<'A 
+        when 'A: (static member Zero: 'A) 
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)>
+        (storage: ILightStorage) =
+            async {
+                return
+                    result {
+                        let! result =
+                            match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
+                            | Some (eventId, json) ->
+                                let fromJson = Utils.deserialize<'A>  json
+                                match fromJson with
+                                | Ok x -> (eventId, x) |> Ok
+                                | Error e -> Error e
+                            | None -> (0 |> uint64, 'A.Zero) |> Ok
+                        return result
+                    }
+            }
+            |> Async.RunSynchronously
+
+    let inline snapIdStateAndEvents<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>>(storage: ILightStorage) = 
+            
+        async {
+            return
+                result {
+                    let! (id, state) = getLastSnapshot<'A> storage
+                    let events = storage.ConsumeEventsFromPosition 'A.Version 'A.StorageName id
+                    let result =
+                        (id, state, events)
+                    return result
+                }
+        }
+        |> Async.RunSynchronously
+
+
     let inline getState<'A
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)> (storage: ILightStorage) =
 
-            let eventualSnapshot = fun () -> storage.GetLastSnapshot 'A.Version 'A.StorageName |> Option.map (fun (id, value) -> (id |> string|> System.UInt64.Parse, value |> Utils.deserialize<'A> |> Result.get :> obj))
+            let eventualSnapshot = 
+                fun () -> 
+                    storage.TryGetLastSnapshot 
+                        'A.Version 'A.StorageName 
+                        |> Option.map 
+                            (fun (id, value) -> 
+                                (id |> string|> System.UInt64.Parse, value |> Utils.deserialize<'A> |> Result.get :> obj))
 
             let (eventId, stateX) = CurrentState<'A>.Instance.Lookup('A.StorageName, ((0 |> uint64),'A.Zero)) eventualSnapshot
             let state' = stateX :?> 'A
@@ -241,7 +287,7 @@ module LightRepository =
                 storage.AddSnapshot eventId 'A.Version newSnapshot 'A.StorageName
 
             async {
-                let lastSnapshot = storage.GetLastSnapshot 'A.Version 'A.StorageName
+                let lastSnapshot = storage.TryGetLastSnapshot 'A.Version 'A.StorageName
                 let snapId = 
                     if lastSnapshot.IsSome then
                         let (id, value) = lastSnapshot.Value
