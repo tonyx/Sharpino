@@ -5,9 +5,9 @@ module Storage =
     type Json = string
     type Name = string
     type version = string
-    type StorageEvent =
+    type StorageEventJson =
         {
-            Event: Json
+            JsonEvent: Json
             Id: int
             Timestamp: System.DateTime
         }
@@ -18,9 +18,9 @@ module Storage =
         EventId: int
     }
 
-    type StorageEventRef<'E> =
+    type StorageEvent<'E> =
         {
-            EventRef: 'E
+            Event: 'E
             Id: int
             Timestamp: System.DateTime
         }
@@ -39,7 +39,7 @@ module Storage =
         abstract member TryGetLastEventId: version -> Name -> Option<int>
         abstract member TryGetLastSnapshotEventId: version -> Name -> Option<int>
         abstract member TryGetLastSnapshotId: version -> Name -> Option<int>
-        abstract member TryGetEvent: version -> int -> Name -> Option<StorageEventRef<obj>>
+        abstract member TryGetEvent: version -> int -> Name -> Option<StorageEvent<obj>>
         abstract member SetSnapshot: version -> int * 'A -> Name -> Result<unit, string>
         abstract member AddEvents: version -> List<'E> -> Name -> Result<unit, string>
         abstract member MultiAddEvents:  List<List<obj> * version * Name>  -> Result<unit, string>

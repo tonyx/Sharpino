@@ -97,7 +97,7 @@ module PgStorage =
                             fun read ->
                             {
                                 Id = read.int "id"
-                                Event = read.string "event"
+                                JsonEvent = read.string "event"
                                 Timestamp = read.dateTime "timestamp"
                             }
                         )
@@ -107,8 +107,8 @@ module PgStorage =
                 match res with
                 | None -> None    
                 | Some x ->
-                    match (serializer.Deserialize<'E> x.Event) with
-                    | Ok event -> Some { EventRef = event; Id = x.Id; Timestamp = x.Timestamp }
+                    match (serializer.Deserialize<'E> x.JsonEvent) with
+                    | Ok event -> Some { Event = event; Id = x.Id; Timestamp = x.Timestamp }
                     | Error e -> failwith e
 
             member this.SetSnapshot version (id: int, snapshot: 'A) name =

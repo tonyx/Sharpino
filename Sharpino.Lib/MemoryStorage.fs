@@ -11,7 +11,7 @@ module MemoryStorage =
     type MemoryStorage(serializer: Utils.JsonSerializer) = 
         let event_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
         let snapshot_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
-        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEvent>>>()
+        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEventJson>>>()
         let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshot>>>()
 
         // member this.foo = "bar"
@@ -58,7 +58,7 @@ module MemoryStorage =
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
             if (events_dic.ContainsKey version |> not) then
-                let dic = new Generic.Dictionary<string, List<StorageEvent>>()
+                let dic = new Generic.Dictionary<string, List<StorageEventJson>>()
                 dic.Add(name, events)
                 events_dic.Add(version, dic)
             else
@@ -107,7 +107,7 @@ module MemoryStorage =
                     [for e in xs do
                         yield {
                             Id = next_event_id version name
-                            Event = e |> serializer.Serialize
+                            JsonEvent = e |> serializer.Serialize
                             Timestamp = DateTime.Now
                         }
                     ]
@@ -121,7 +121,7 @@ module MemoryStorage =
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Id > id)
-                    |>> (fun x -> x.Id, x.Event |> serializer.Deserialize<'E> |> Result.get)
+                    |>> (fun x -> x.Id, x.JsonEvent |> serializer.Deserialize<'E> |> Result.get)
             member this.MultiAddEvents(arg: List<List<obj> * version * Name>): Result<unit,string> = 
                 arg 
                 |> List.iter 
@@ -152,8 +152,8 @@ module MemoryStorage =
                     match res with
                     | None -> None
                     | Some x ->
-                        match (serializer.Deserialize x.Event) with
-                        | Ok event -> Some { EventRef = event; Id = x.Id; Timestamp = x.Timestamp }
+                        match (serializer.Deserialize x.JsonEvent) with
+                        | Ok event -> Some { Event = event; Id = x.Id; Timestamp = x.Timestamp }
                         | Error e -> failwith e
 
             member this.TryGetLastEventId  version  name = 
