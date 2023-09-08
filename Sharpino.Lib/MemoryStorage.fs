@@ -191,4 +191,12 @@ module MemoryStorage =
                     snapshots_dic.[version].[name]
                     |> List.tryLast
                     |>> (fun x -> x.Id)
+            member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime): List<int * 'E> = 
+                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                    []
+                else
+                    events_dic.[version].[name]
+                    |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                    |>> (fun x -> x.Id, x.JsonEvent |> serializer.Deserialize<'E> |> Result.get)
+                    |>> (fun (id, event) -> id, event)
 

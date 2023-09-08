@@ -21,6 +21,7 @@ open Sharpino.Sample.Categories
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Categories.CategoriesCommands
 open Sharpino.Sample.Categories.CategoriesEvents
+open Sharpino.Sample.Entities.TodosReport
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -222,6 +223,10 @@ module App =
                 return processor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
+        member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
+            let events = storage.GetEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
+            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events }
+            result
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IStorage) =
@@ -430,4 +435,11 @@ module App =
                     }
             }
             |> Async.RunSynchronously
+
+        member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
+            let events = storage.GetEventsInATimeInterval TodosAggregate'.Version TodosAggregate'.StorageName dateFrom dateTo |>> snd
+            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events }
+            result
+
+
 
