@@ -20,7 +20,7 @@ module TagsAggregate =
             "_01"
         static member SnapshotsInterval =
             15
-        member this.AddTag(t: Tag) =
+        member this.AddTag (t: Tag) =
             result {
                 let! tags = this.Tags.AddTag t 
                 return

@@ -31,7 +31,7 @@ module CategoriesAggregate =
                             Categories = categories
                     }
             }
-        member this.RemoveCategory(id: Guid) =
+        member this.RemoveCategory (id: Guid) =
             result {
                 let! categories = this.Categories.RemoveCategory id 
                 return
@@ -40,7 +40,7 @@ module CategoriesAggregate =
                             Categories = categories
                     }
             }
-        member this.AddCategories(cs: List<Category>) =
+        member this.AddCategories (cs: List<Category>) =
             result {
                 let! categories = this.Categories.AddCategories cs 
                 return
