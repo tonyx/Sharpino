@@ -210,8 +210,6 @@ module PgStorage =
                         fun (id, event) ->  
                         Result.map (fun x -> (id, x)) (serializer.Deserialize<'E> event)
                     )
-                
-
 
             member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: System.DateTime) (dateTo: System.DateTime): List<int * 'E> = 
                 try
