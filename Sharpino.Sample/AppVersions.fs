@@ -53,7 +53,7 @@ module AppVersions =
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection))
 
-    let resetRefactoredDb (db: IStorage) =
+    let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
         Cache.EventCache<TodosAggregate>.Instance.Clear()
         Cache.SnapCache<TodosAggregate>.Instance.Clear()
@@ -110,7 +110,7 @@ module AppVersions =
             _migrator  =        currentPgApp.Migrate |> Some
             _forceStateUpdate = None
             // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _reset =            fun () -> resetRefactoredDb storage
+            _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
                                     (storage :> IStorage).AddEvents version deser name |> ignore
@@ -130,7 +130,7 @@ module AppVersions =
     let upgradedPostgresApp =
         {
             _migrator  =        None
-            _reset =            fun () -> resetRefactoredDb storage
+            _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
                                     (storage :> IStorage).AddEvents version deser name |> ignore
@@ -152,7 +152,7 @@ module AppVersions =
     let currentMemoryApp =
         {
             _migrator  =        currentMemApp.Migrate |> Some
-            _reset =            fun () -> resetRefactoredDb memoryStorage
+            _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
@@ -173,7 +173,7 @@ module AppVersions =
     let upgradedMemoryApp =
         {
             _migrator =         None
-            _reset =            fun () -> resetRefactoredDb memoryStorage
+            _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
