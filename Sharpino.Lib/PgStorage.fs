@@ -208,4 +208,27 @@ module PgStorage =
                     |> Seq.toList
                 // todo: handle error (no Result.get)
                 res |>> (fun (id, event) -> (id, serializer.Deserialize<'E> event |> Result.get))
+            member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: System.DateTime) (dateTo: System.DateTime): List<int * 'E> = 
+                try
+                    let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                    let res =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query query
+                        |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                        |> Sql.executeAsync ( fun read ->
+                            (
+                                read.int "id",
+                                read.text "event"
+                            )
+                        )
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                        |> Seq.toList
+                    res |>> (fun (id, event) -> (id, serializer.Deserialize<'E> event |> Result.get))
+                with
+                | _ as ex -> 
+                    printf "an error occurred: %A\n" ex
+                    []
+
 
