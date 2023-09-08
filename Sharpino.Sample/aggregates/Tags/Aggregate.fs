@@ -22,7 +22,7 @@ module TagsAggregate =
             15
         member this.AddTag(t: Tag) =
             result {
-                let! tags = this.Tags.AddTag(t)
+                let! tags = this.Tags.AddTag t 
                 return
                     {
                         this with
@@ -30,12 +30,12 @@ module TagsAggregate =
                     }
             }
 
-        member this.GetTag(id: Guid) =
-            this.Tags.GetTag(id)
+        member this.GetTag (id: Guid) =
+            this.Tags.GetTag id 
 
-        member this.RemoveTag(id: Guid) =
+        member this.RemoveTag (id: Guid) =
             result {
-                let! tags = this.Tags.RemoveTag(id)
+                let! tags = this.Tags.RemoveTag id 
                 return
                     {
                         this with

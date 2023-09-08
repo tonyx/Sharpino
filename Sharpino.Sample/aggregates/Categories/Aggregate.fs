@@ -22,9 +22,9 @@ module CategoriesAggregate =
             "_02"
         static member SnapshotsInterval =
             15
-        member this.AddCategory(c: Category) =
+        member this.AddCategory (c: Category) =
             result {
-                let! categories = this.Categories.AddCategory(c)
+                let! categories = this.Categories.AddCategory c 
                 return
                     {
                         this with
@@ -33,7 +33,7 @@ module CategoriesAggregate =
             }
         member this.RemoveCategory(id: Guid) =
             result {
-                let! categories = this.Categories.RemoveCategory(id)
+                let! categories = this.Categories.RemoveCategory id 
                 return
                     {
                         this with
@@ -42,7 +42,7 @@ module CategoriesAggregate =
             }
         member this.AddCategories(cs: List<Category>) =
             result {
-                let! categories = this.Categories.AddCategories(cs)
+                let! categories = this.Categories.AddCategories cs 
                 return
                     {
                         this with
