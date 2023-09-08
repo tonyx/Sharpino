@@ -192,22 +192,27 @@ module PgStorage =
             member this.GetEventsAfterId<'E> version id name =
 
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query
-                    |> Sql.parameters ["id", Sql.int id]
-                    |> Sql.executeAsync ( fun read ->
-                        (
-                            read.int "id",
-                            read.text "event"
-                        )
+                connection
+                |> Sql.connect
+                |> Sql.query query
+                |> Sql.parameters ["id", Sql.int id]
+                |> Sql.executeAsync ( fun read ->
+                    (
+                        read.int "id",
+                        read.text "event"
                     )
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> Seq.toList
-                // todo: handle error (no Result.get)
-                res |>> (fun (id, event) -> (id, serializer.Deserialize<'E> event |> Result.get))
+                )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.toList
+                |> catchErrors 
+                    (
+                        fun (id, event) ->  
+                        Result.map (fun x -> (id, x)) (serializer.Deserialize<'E> event)
+                    )
+                
+
+
             member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: System.DateTime) (dateTo: System.DateTime): List<int * 'E> = 
                 try
                     let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name

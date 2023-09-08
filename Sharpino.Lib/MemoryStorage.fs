@@ -117,11 +117,12 @@ module MemoryStorage =
 
             member this.GetEventsAfterId<'E> version id name =
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
-                    []
+                    [] |> Ok
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent |> serializer.Deserialize<'E> |> Result.get)
+                    |> Ok
             member this.MultiAddEvents(arg: List<List<obj> * version * Name>): Result<unit,string> = 
                 arg 
                 |> List.iter 

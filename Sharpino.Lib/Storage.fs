@@ -43,5 +43,5 @@ module Storage =
         abstract member SetSnapshot: version -> int * 'A -> Name -> Result<unit, string>
         abstract member AddEvents: version -> List<'E> -> Name -> Result<unit, string>
         abstract member MultiAddEvents:  List<List<obj> * version * Name>  -> Result<unit, string>
-        abstract member GetEventsAfterId: version -> int -> Name -> List<int * 'E >
+        abstract member GetEventsAfterId: version -> int -> Name -> Result< List< int * 'E >, string >
         abstract member GetEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<int * 'E >

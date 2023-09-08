@@ -33,7 +33,6 @@ open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
 open Sharpino.EventSourcing.Sample.AppVersions
 
-let eventStoreConnection = "esdb://localhost:2113?tls=false"
 let allVersions =
     [
 

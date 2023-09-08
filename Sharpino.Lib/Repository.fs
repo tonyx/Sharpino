@@ -40,7 +40,7 @@ module Repository =
             return
                 result {
                     let! (id, state) = getLastSnapshot<'A> storage
-                    let events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
+                    let! events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
                     let result =
                         (id, state, events)
                     return result
