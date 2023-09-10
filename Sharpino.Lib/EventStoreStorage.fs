@@ -7,11 +7,15 @@ open System
 open System.Linq
 open System.Text
 open EventStore.Client
-
 open Sharpino.Storage
+open log4net
+open log4net.Config
 
 // experimental support for EventStore
 module EventStore =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // no config: uncomment the folloing line for quick conf
+    // BasicConfigurator.Configure() |> ignore 
     type EventStoreStorage(connection) =
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 

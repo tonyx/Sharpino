@@ -9,8 +9,13 @@ open Sharpino
 open Sharpino.Storage
 open Sharpino.Core
 open FsToolkit.ErrorHandling
+open log4net
+open log4net.Config
 
 module LightRepository =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // no config: uncomment the folloing line for quick conf
+    // BasicConfigurator.Configure() |> ignore
 
     // todo: remember to get rid of static Utils.serialize and use JsonSerializer instance instead
     let inline private getLastSnapshot<'A 
@@ -18,6 +23,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
         (storage: ILightStorage) =
+            log.Debug "getLastSnapshot"
             async {
                 return
                     result {
@@ -38,7 +44,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: ILightStorage) = 
-            
+        log.Debug "snapIdStateAndEvents"
         async {
             return
                 result {
@@ -54,6 +60,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: ILightStorage) = 
+            log.Debug "getState"
             result {
                 let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
                 let lastEventId =
@@ -73,6 +80,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: ILightStorage) (undoer: Undoer<'A, 'E>)  =
+        log.Debug "runUndoCommand"
 
         async {
             return
@@ -94,6 +102,7 @@ module LightRepository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: ILightStorage) (command: Command<'A, 'E>)  =
+        log.Debug "runCommand"
         async {
             return
                 ResultCE.result {
@@ -121,6 +130,7 @@ module LightRepository =
             (storage: ILightStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
+            log.Debug (sprintf "runTwoCommands %A %A\n" command1 command2)
             result {
                 let! (_, a1State) = getState<'A1, 'E1> storage 
 

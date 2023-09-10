@@ -10,13 +10,22 @@ open Sharpino.Core
 open Sharpino.Storage
 
 open FsToolkit.ErrorHandling
+open log4net
+open log4net.Config
+open System.Runtime.CompilerServices
+open System.Threading
 
 module Repository =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // no config: uncomment the folloing line for quick conf
+    // BasicConfigurator.Configure() |> ignore 
+
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)>
         (storage: IStorage) =
+            log.Debug "getLastSnapshot"
             async {
                 return
                     result {
@@ -35,7 +44,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) = 
-            
+        log.Debug "snapIdStateAndEvents"
         async {
             return
                 result {
@@ -52,6 +61,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
+            log.Debug "getState"
             result {
                 let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
                 let lastEventId =
@@ -68,6 +78,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
+            log.Debug (sprintf "runCommand %A" command)
             async {
                 return
                     result {
@@ -93,6 +104,7 @@ module Repository =
             (storage: IStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
+            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
             async {
                 return
@@ -119,19 +131,23 @@ module Repository =
             }
             |> Async.RunSynchronously
 
+    [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mksnapshot<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
-                return
-                    result
+                return //let toReturn =
+                    ResultCE.result
                         {
                             let! (id, state) = getState<'A, 'E> storage
                             let! result = storage.SetSnapshot 'A.Version (id, state) 'A.StorageName
-                            return result
+                            // let result = () |> Ok
+                            // return! result
+                            return result 
                         }
+                    // toReturn
             }
             |> Async.RunSynchronously
 
@@ -141,6 +157,7 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>>(storage: IStorage) =
+            log.Debug "mkSnapshotIfInterval"
             async {
                 return
                     result

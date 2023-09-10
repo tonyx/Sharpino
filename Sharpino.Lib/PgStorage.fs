@@ -7,8 +7,13 @@ open FSharpPlus
 open Sharpino
 open Sharpino.Utils
 open Sharpino.Storage
+open log4net
+open log4net.Config
 
 module PgStorage =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // no config: uncomment the folloing line for quick conf
+    // BasicConfigurator.Configure() |> ignore 
     type PgStorage(connection: string, serializer: JsonSerializer) =
         interface IStorage with
             member this.Reset version name =
@@ -30,6 +35,7 @@ module PgStorage =
                     failwith "operation allowed only in test db"
 
             member this.TryGetLastSnapshot version name =
+                log.Debug "TryGetLastSnapshot"
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 let res =
                     connection
@@ -52,6 +58,7 @@ module PgStorage =
                     | Ok snapshot -> Some (id, event_id, snapshot)
                     | Error e -> failwith e
             member this.TryGetLastSnapshotId version name =
+                log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
@@ -66,6 +73,7 @@ module PgStorage =
                 |> Seq.tryHead
 
             member this.TryGetLastEventId version name =
+                log.Debug (sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
@@ -76,6 +84,7 @@ module PgStorage =
                 |> Seq.tryHead
 
             member this.TryGetLastSnapshotEventId version name =
+                log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
@@ -86,6 +95,7 @@ module PgStorage =
                 |> Seq.tryHead
 
             member this.TryGetEvent version id name =
+                log.Debug (sprintf "TryGetEvent %s %s" version name)
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name
                 let res =
                     connection
@@ -112,31 +122,34 @@ module PgStorage =
                     | Error e -> failwith e
 
             member this.SetSnapshot version (id: int, snapshot: 'A) name =
+                log.Debug "entered in setSnapshot"
+
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
                 let serializedSnapshot = serializer.Serialize<'A> snapshot
-                ResultCE.result
-                    {
-                        let! event = ((this :> IStorage).TryGetEvent version id name) |> Result.ofOption "event not found"
-                        let _ =
-                            connection
-                            |> Sql.connect
-                            |> Sql.executeTransactionAsync
-                                [
-                                    command,
+                let tryEvent = ((this :> IStorage).TryGetEvent version id name)
+                match tryEvent with
+                | None -> Error (sprintf "event %d not found" id)
+                | Some event -> 
+                    let _ =
+                        connection
+                        |> Sql.connect
+                        |> Sql.executeTransactionAsync
+                            [
+                                command,
+                                    [
                                         [
-                                            [
-                                                ("@event_id", Sql.int event.Id);
-                                                ("snapshot",  Sql.jsonb serializedSnapshot);
-                                                ("timestamp", Sql.timestamp event.Timestamp)
-                                            ]
+                                            ("@event_id", Sql.int event.Id);
+                                            ("snapshot",  Sql.jsonb serializedSnapshot);
+                                            ("timestamp", Sql.timestamp event.Timestamp)
                                         ]
-                                ]
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
-                        return ()
-                    }
+                                    ]
+                            ]
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    () |> Ok
 
             member this.AddEvents version (events: List<'E>) name =
+                log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
                     let _ =
@@ -157,11 +170,15 @@ module PgStorage =
                             ]
                             |> Async.AwaitTask
                             |> Async.RunSynchronously
+                    log.Debug "exiting from add events"
                     () |> Ok
                 with
-                    | _ as ex -> ex.Message |> Error
+                    | _ as ex -> 
+                        log.Debug (sprintf "an error occurred: %A" ex.Message)
+                        ex.Message |> Error
 
             member this.MultiAddEvents (arg: List<List<obj> * version * Name>) : Result<unit, string> = 
+                log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmdList = 
                     arg 
                     |> List.map 
@@ -189,22 +206,25 @@ module PgStorage =
                 with
                     | _ as ex -> ex.Message |> Error
 
-            member this.GetEventsAfterId<'E> version id name =
 
+            member this.GetEventsAfterId<'E> version id name =
+                log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
-                connection
-                |> Sql.connect
-                |> Sql.query query
-                |> Sql.parameters ["id", Sql.int id]
-                |> Sql.executeAsync ( fun read ->
-                    (
-                        read.int "id",
-                        read.text "event"
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync ( fun read ->
+                        (
+                            read.int "id",
+                            read.text "event"
+                        )
                     )
-                )
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Seq.toList
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.toList
+                res 
                 |> catchErrors 
                     (
                         fun (id, event) ->  
@@ -212,6 +232,7 @@ module PgStorage =
                     )
 
             member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: System.DateTime) (dateTo: System.DateTime): List<int * 'E> = 
+                log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 try
                     let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                     let res =
@@ -231,7 +252,8 @@ module PgStorage =
                     res |>> (fun (id, event) -> (id, serializer.Deserialize<'E> event |> Result.get))
                 with
                 | _ as ex -> 
-                    printf "an error occurred: %A\n" ex
+                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                    printf "an error occurred: %A\n" ex.Message
                     []
 
 
