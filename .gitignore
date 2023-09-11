@@ -15,6 +15,7 @@ packages/
 *.orig
 *.DotSettings.user
 *.trx
+Sharpino.Lib/Sharpino.1.0.0.nupkg
 __azurite_db_blob__.json
 __azurite_db_blob_extent__.json
 __azurite_db_queue__.json
