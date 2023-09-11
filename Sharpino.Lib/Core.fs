@@ -23,7 +23,7 @@ module Core =
                     | Ok h -> h |> e.Process
             ) (h |> Ok)
 
-    // may be this can be refactored:
+    // warning: I cannot write this function less convoluted than this, at the moment
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
         let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
             match acc, events with

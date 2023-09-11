@@ -84,7 +84,7 @@ let utilsTests =
 [<Tests>] 
 let postgressAppTests =
     // todo: here the test is only based on postgres implementation. The feature is simple but I implemented it only in the app based on IStorage (no IlightStorage)
-    ptestList "Single Version App - Ok" [
+    testList "Single Version App - Ok" [
         testCase "add two todos and then retrieve the report/projection - Ok" <| fun _ ->
             let _ = resetDb storage 
             let now = System.DateTime.Now
@@ -102,7 +102,7 @@ let postgressAppTests =
                 |> Set.ofList
             Expect.equal actualEvents expcted "should be equal"
 
-        ftestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " <| fun _ ->
+        testCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " <| fun _ ->
             let _ = resetDb storage 
             let todo1 = { Id = Guid.NewGuid(); Description = "test one"; CategoryIds = []; TagIds = [] }
             let added1 = currentPgApp.AddTodo todo1
@@ -159,13 +159,12 @@ let postgressAppTests =
 
 
 [<Tests>]
-let multiVersionsTests =
-    testList "App with coordinator test - Ok" [
-        let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
-            match ap._forceStateUpdate with
-            | Some f -> f()
-            | None -> ()
-
+let testCoreEvolve =
+    let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
+        match ap._forceStateUpdate with
+        | Some f -> f()
+        | None -> ()
+    testList "evolve test" [
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
@@ -227,6 +226,18 @@ let multiVersionsTests =
                     ] 
                     |> Set.ofList
                 ) "should be equal"
+        ]
+        |> testSequenced
+
+
+
+[<Tests>]
+let multiVersionsTests =
+    testList "App with coordinator test - Ok" [
+        let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
+            match ap._forceStateUpdate with
+            | Some f -> f()
+            | None -> ()
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
