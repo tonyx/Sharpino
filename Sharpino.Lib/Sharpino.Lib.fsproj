@@ -6,9 +6,12 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Antonio Lucca</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackgeLicenseExpression>MIT</PackgeLicenseExpression>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Framework</Description>
     <ReleaseNotes>This release supports In-memory, Postgres and EventStoreDB to store and retrieve events and snapshots</ReleaseNotes> 
@@ -29,6 +32,8 @@
     <Compile Include="Cache.fs" />
     <Compile Include="Repository.fs" />
     <Compile Include="LightRepository.fs" />
+    <None Include="LICENSE" Pack="true" PackagePath=""/>
+    <None Include="README.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 
   <ItemGroup>

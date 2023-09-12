@@ -138,16 +138,13 @@ module Repository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
-                return //let toReturn =
+                return
                     ResultCE.result
                         {
                             let! (id, state) = getState<'A, 'E> storage
                             let! result = storage.SetSnapshot 'A.Version (id, state) 'A.StorageName
-                            // let result = () |> Ok
-                            // return! result
                             return result 
                         }
-                    // toReturn
             }
             |> Async.RunSynchronously
 
