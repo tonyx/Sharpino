@@ -20,7 +20,7 @@
     <Compile Include="aggregates/Categories/Aggregate.fs" />
     <Compile Include="aggregates/Categories/Events.fs" />
     <Compile Include="aggregates/Categories/Commands.fs" />
-    <Compile Include="projections/TodosReport.fs" />
+    <Compile Include="reports/TodosReport.fs" />
 
 
     <Compile Include="App.fs" />
