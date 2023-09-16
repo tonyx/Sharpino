@@ -6,6 +6,8 @@
 
 ## A minimalistic event-sourcing framework for F#
 
+a library and an example of a simple event-sourcing framework in F#.
+
 ## Projects:
 
 __Sharpino.Lib__:
@@ -79,17 +81,10 @@ __Faq__:
         - Discriminated Unions are suitable to represent events and commands.
         - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
-- Can it be used in production?
-    - I don't how well it could scale at the moment because the IStorage interface has basically only an in-memory (for development) and Postgres implementation (for production) and I don't know how well can it scale using it. I started also supporting EventStoreDB, but it is still experimental.
-
-- What about porting (rewriting) to other languages?
-    - Many concepts I used in the "sample" application are typical F#, so I would say it is not convenient rewriting them in C#. Another functional language soiupporting Discriminated Unions would be ok. I think that Rust, Ocaml, Erlang, and Haskell... can be good candidates for easy porting.
-
 - How to use it
     - add the nuget package Sharpino to your project (current version 1.0.1)
     - note: on my side, when I added Sharpino as a library into a web app then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
-
-[More docs (still in progress)](https://tonyx.github.io)
+A small gitbook on the subject is available [(click to read)](https://tonyx.github.io)
