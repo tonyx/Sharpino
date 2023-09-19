@@ -4,7 +4,7 @@
 <img src="ico/sharpino.png" alt="drawing" width="50"/>
 
 
-## A minimalistic event-sourcing framework for F#
+## A little event-sourcing framework for F#
 
 a library and an example of a simple event-sourcing framework in F#.
 
