@@ -12,8 +12,7 @@ open log4net.Config
 
 module PgStorage =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // no config: uncomment the folloing line for quick conf
-    // BasicConfigurator.Configure() |> ignore 
+    // you can configure log here, or in the main program (see tests)
     type PgStorage(connection: string, serializer: JsonSerializer) =
         interface IStorage with
             member this.Reset version name =

@@ -14,13 +14,13 @@ open log4net.Config
 // experimental support for EventStore
 module EventStore =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // no config: uncomment the folloing line for quick conf
-    // BasicConfigurator.Configure() |> ignore 
+    // you can configure log here, or in the main program (see tests)
     type EventStoreStorage(connection) =
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 
         interface ILightStorage with
             member this.ResetEvents version name =
+                log.Debug (sprintf "ResetEvents %s %s" version name)
                 let strExists = 
                     _client.ReadStreamAsync(
                         Direction.Forwards,
@@ -37,6 +37,7 @@ module EventStore =
                 |> Async.RunSynchronously
 
             member this.ResetSnapshots version name =
+                log.Debug (sprintf "ResetSnapshots %s %s" version name)
                 let strExists = 
                     _client.ReadStreamAsync(
                         Direction.Forwards,
@@ -55,6 +56,7 @@ module EventStore =
                 |> Async.RunSynchronously
 
             member this.AddEvents version (events: List<string>) name =
+                log.Debug (sprintf "AddEvents %s %s" version name)
                 try
                     let streamName = "events" + version + name
                     let eventData = 
@@ -77,6 +79,7 @@ module EventStore =
                 | ex -> Error(ex.Message)
 
             member this.AddSnapshot (eventId: UInt64) (version: string) (snapshot: string) (name: string) =
+                log.Debug (sprintf "AddSnapshot %s %s" version name)
                 let streamName = "snapshots" + version + name
                 let eventData = 
                     EventData(
@@ -92,6 +95,7 @@ module EventStore =
                 |> Async.RunSynchronously
 
             member this.ConsumeEventsFromPosition version name id =
+                log.Debug (sprintf "ConsumeEventsFromPosition %s %s %A" version name id)
                 let streamName = "events" + version + name
                 let position = new StreamPosition(id)
 
@@ -110,6 +114,7 @@ module EventStore =
                 |> List.ofSeq
 
             member this.TryGetLastSnapshot version name =            
+                log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
                 let streamName = "snapshots" + version + name
                 let snapshotVals =
                     async {

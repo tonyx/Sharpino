@@ -2,9 +2,11 @@ namespace Sharpino
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
+open log4net
+open log4net.Config
 
 module Core =
-
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
 
@@ -30,14 +32,12 @@ module Core =
             // if the accumulator is an error then skip it, and use the guard instead which was the 
             // latest valid value of the accumulator
             | Error err, _::es -> 
-                // you may want to print or log this
-                printf "warning 1: %A\n" err
+                log.Info (sprintf "warning 1: %A" err)
                 evolveSkippingErrors (guard |> Ok) es guard
             // if the accumulator is error and the list is empty then we are at the end, and so we just
             // get the guard as the latest valid value of the accumulator
             | Error err, [] -> 
-                // you may want to print or log this
-                printf "warning 2: %A\n" err
+                log.Info (sprintf "warning 2: %A" err)
                 guard |> Ok
             // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
             // accumulator processed if is not error itself, otherwise we keep using the old guard
@@ -45,8 +45,7 @@ module Core =
                 let newGuard = state |> e.Process
                 match newGuard with
                 | Error err -> 
-                    // use your favorite logging library here
-                    printf "warning 3: %A\n" err
+                    log.Info (sprintf "warning 3: %A" err)
                     evolveSkippingErrors (guard |> Ok) es guard
                 | Ok h' ->
                     evolveSkippingErrors (h' |> Ok) es h'

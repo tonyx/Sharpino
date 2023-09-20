@@ -17,8 +17,7 @@ open System.Threading
 
 module Repository =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // no config: uncomment the folloing line for quick conf
-    // BasicConfigurator.Configure() |> ignore 
+    // you can configure log here, or in the main program (see tests)
 
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
