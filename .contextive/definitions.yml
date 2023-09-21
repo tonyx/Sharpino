@@ -1,0 +1,75 @@
+# Welcome to Contextive!
+#
+# This initial definitions file illustrates the syntax of the file by providing definitions and examples of the terms
+# used in schema of the definitions file.
+#
+# Hover over some of the defined words, such as `context`, `term`, `definition` and `example` to see Contextive in action.
+#
+# Update the yaml below to define your specific contexts and definitions, and feel free to use markdown in definitions and examples.
+contexts:
+  - name: Todo
+    domainVisionStatement: Defining things to do and attaching them tags and categories.
+    paths:
+    # Globs are supported. Multiple paths may be included. If any match the currently open file, the context will be used.
+    - "**" # This is the default path glob if the `paths` key is excluded, and will match all files
+    terms:
+    - name: Todo
+      definition: An item that describes things to do.
+      examples:
+        - We will define todos and tagging them with one or more tag (which include colors) or assigning them any number of categories like urgent stuff and so on
+      aliases:
+        - _TodoItem_
+    - name: Todos
+      definition: A collection of todos.
+
+    - name: Tag
+      definition: 
+        Some entity consisting on a definition and on a color that we can attach to any Todo. 
+      examples:
+        - _Todo_ u.i. will be tagged as "red"
+    - name: Category
+      definition: Description of category that can be attributed to any todo
+      examples:
+        - _Todo_ "front end" has the "urgent" and "complex" attributes.
+
+  - name: Sharpino
+    domainVisionStatement: Event sourcing framework for F# 
+    paths:
+    - "**"
+
+    terms:
+    - name: Sharpino
+      definition: Event souring framework for F#
+      examples:
+        - Sharpino is a framework for F# that helps you build event sourced applications.
+
+    - name : Entity
+      definition: An entity is a thing that has a unique identity, and a lifecycle that spans multiple events.
+      examples:
+        - A user
+        - A product
+        - A shopping cart
+    - name: Event
+      definition: A fact that something happened.
+      examples:
+        - A user was created
+        - A user was updated
+        - A user was deleted 
+    - name: Command
+      definition: A request to do something.
+      examples:
+        - Create a user
+        - Update a user
+        - Delete a user
+    - name: Aggregate
+      definition: A collection of entities treated as a single unit.
+      examples:
+        - A shopping cart (wich includes order and orderitems entities)
+    - name: Repository
+      definition: Utility funcions to process commands, read and save aggregates and events.
+      examples:
+        - Repository lets you save and load aggregates using the storage, and process commands.
+    - name: Storage
+      definition: A storage is a place where you can save and load events.
+    - name: Application layer
+      definition: The application layer is where you expose logics that consist of building your commands and sending them to the repository.
