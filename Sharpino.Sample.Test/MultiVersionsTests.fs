@@ -38,6 +38,7 @@ let allVersions =
 
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
+        
 
         // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
@@ -47,7 +48,7 @@ let allVersions =
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
         (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
-        // enable if you have eventstore locally (tested only with docker on win and mac)
+        // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
     ]
 
@@ -80,86 +81,10 @@ let utilsTests =
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
 
-
-[<Tests>] 
-let postgressAppTests =
-    // todo: here the test is only based on postgres implementation. The feature is simple but I implemented it only in the app based on IStorage (no IlightStorage)
-    testList "Single Version App - Ok" [
-        testCase "add two todos and then retrieve the report/projection - Ok" <| fun _ ->
-            let _ = resetDb storage 
-            let now = System.DateTime.Now
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
-            let added1 = currentPgApp.AddTodo todo1
-            let added2 = currentPgApp.AddTodo todo2
-            let result = currentPgApp.TodoReport now System.DateTime.Now
-            let actualEvents = result.TodoEvents |> Set.ofList
-            let expcted = 
-                [
-                    TodoEvent.TodoAdded todo1
-                    TodoEvent.TodoAdded todo2
-                ]
-                |> Set.ofList
-            Expect.equal actualEvents expcted "should be equal"
-
-        testCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " <| fun _ ->
-            let _ = resetDb storage 
-            let todo1 = { Id = Guid.NewGuid(); Description = "test one"; CategoryIds = []; TagIds = [] }
-            let added1 = currentPgApp.AddTodo todo1
-            async {
-                do! Async.Sleep 10
-                return ()
-            } |> Async.RunSynchronously
-            let timeBeforeAddingSecondTodo = System.DateTime.Now
-            async {
-                do! Async.Sleep 10
-                return ()
-            } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test two"; CategoryIds = []; TagIds = [] }
-            let added2 = currentPgApp.AddTodo todo2
-            async {
-                do! Async.Sleep 10
-                return ()
-            } |> Async.RunSynchronously
-            let result = currentPgApp.TodoReport timeBeforeAddingSecondTodo System.DateTime.Now
-            let actualEvents = result.TodoEvents |> Set.ofList
-            let expcted = 
-                [
-                    TodoEvent.TodoAdded todo2
-                ]
-                |> Set.ofList
-            Expect.equal actualEvents  expcted "should be equal"
-
-        testCase "add two todos and retrieve a patial report projection using a timeframe including only the first event - Ok " <| fun _ ->
-            let _ = resetDb storage 
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let beforeAddingFirst = System.DateTime.Now
-            async {
-                do! Async.Sleep 10
-                return ()
-            } |> Async.RunSynchronously
-            let added1 = currentPgApp.AddTodo todo1
-            let beforeAddingSecond = System.DateTime.Now
-            async {
-                do! Async.Sleep 1
-                return ()
-            } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
-            let added2 = currentPgApp.AddTodo todo2
-            let result = currentPgApp.TodoReport beforeAddingFirst beforeAddingSecond 
-            let actualEvents = result.TodoEvents |> Set.ofList
-            let expcted = 
-                [
-                    TodoEvent.TodoAdded { Id = todo1.Id; Description = todo1.Description; CategoryIds = todo1.CategoryIds; TagIds = todo1.TagIds }
-                ]
-                |> Set.ofList
-            Expect.equal actualEvents expcted "should be equal"
-    ]
-    |> testSequenced
-
-
 [<Tests>]
 let testCoreEvolve =
+    // quick and dirty way to log for debug:
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
         match ap._forceStateUpdate with
         | Some f -> f()
@@ -230,10 +155,10 @@ let testCoreEvolve =
         |> testSequenced
 
 
-
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
+        // not needed anymore but I keep it for reference and future storages that may require this approach
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
             match ap._forceStateUpdate with
             | Some f -> f()
@@ -673,6 +598,77 @@ let multiVersionsTests =
 
             let result = ap.getAllTodos().OkValue 
             Expect.equal (result |> List.head).TagIds [tagId2] "should be equal"
+
+        multipleTestCase "add two todos and then retrieve the report/projection - Ok" currentTestConfs <| fun (ap, upgd, migrator) ->
+            let _ = ap._reset()
+            let now = System.DateTime.Now
+            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let added1 = ap.addTodo todo1
+            let added2 = ap.addTodo todo2
+            let result = ap.todoReport now System.DateTime.Now
+            let actualEvents = result.TodoEvents |> Set.ofList
+            let expcted = 
+                [
+                    TodoEvent.TodoAdded todo1
+                    TodoEvent.TodoAdded todo2
+                ]
+                |> Set.ofList
+            Expect.equal actualEvents expcted "should be equal"
+
+        multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " currentTestConfs <| fun (ap, upgd, migrator) ->
+            let _ = ap._reset()
+            let todo1 = { Id = Guid.NewGuid(); Description = "test one"; CategoryIds = []; TagIds = [] }
+            let added1 = ap.addTodo todo1
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
+            let timeBeforeAddingSecondTodo = System.DateTime.Now
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
+            let todo2 = { Id = Guid.NewGuid(); Description = "test two"; CategoryIds = []; TagIds = [] }
+            let added2 = ap.addTodo todo2
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
+            let result = ap.todoReport timeBeforeAddingSecondTodo System.DateTime.Now
+            let actualEvents = result.TodoEvents |> Set.ofList
+            let expcted = 
+                [
+                    TodoEvent.TodoAdded todo2
+                ]
+                |> Set.ofList
+            Expect.equal actualEvents  expcted "should be equal"
+
+        multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only the first event - Ok " currentTestConfs <| fun (ap, _, _) ->
+            let _ = ap._reset()
+            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let beforeAddingFirst = System.DateTime.Now
+            async {
+                do! Async.Sleep 10
+                return ()
+            } |> Async.RunSynchronously
+            let added1 = ap.addTodo todo1
+            let beforeAddingSecond = System.DateTime.Now
+            async {
+                do! Async.Sleep 1
+                return ()
+            } |> Async.RunSynchronously
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let added2 = ap.addTodo todo2
+            let result = ap.todoReport beforeAddingFirst beforeAddingSecond 
+            let actualEvents = result.TodoEvents |> Set.ofList
+            let expcted = 
+                [
+                    TodoEvent.TodoAdded { Id = todo1.Id; Description = todo1.Description; CategoryIds = todo1.CategoryIds; TagIds = todo1.TagIds }
+                ]
+                |> Set.ofList
+            Expect.equal actualEvents expcted "should be equal"
+
 
     ] 
     |> testSequenced

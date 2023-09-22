@@ -17,6 +17,7 @@ open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Tags.TagCommands
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample.Categories
 open Sharpino.Sample.CategoriesAggregate
@@ -25,8 +26,11 @@ open Sharpino.Sample.Categories.CategoriesEvents
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
+open log4net
+open log4net.Config
 
 module EventStoreApp =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     open Sharpino.Sample.Tags.TagCommands
     type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
@@ -177,3 +181,13 @@ module EventStoreApp =
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
+
+        member this.TodoReport (dateFrom: DateTime) (dateTo: DateTime) =
+            try
+                let events = storage.ConsumeEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
+                let deserEvents = events |> List.map (fun x -> x |> Utils.deserialize<TodoEvent> |> Result.get)
+                let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents}
+                result
+            with _ as ex ->
+                log.Error (sprintf "error: %A\n" ex)
+                {InitTime = dateFrom; EndTime = dateTo; TodoEvents = []}

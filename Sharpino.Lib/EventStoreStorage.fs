@@ -113,6 +113,29 @@ module EventStore =
                 |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
                 |> List.ofSeq
 
+            // can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
+            // https://stackoverflow.com/questions/74829893/eventstore-read-specific-time-frame-from-stream
+            member this.ConsumeEventsInATimeInterval version name dateFrom dateTo =
+                log.Debug (sprintf "ConsumeEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let streamName = "events" + version + name
+                let withTimeStamp =
+                    async {
+                        let events = _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start)
+
+                        let! readState = events.ReadState |> Async.AwaitTask
+                        if readState = ReadState.StreamNotFound then
+                            return [] |> Collections.Generic.List
+                        else
+                            let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
+                            return ev
+                    }
+                    |> Async.RunSynchronously
+                    |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()), e.Event.Created.ToLocalTime())) 
+                    |> Seq.filter (fun (_, _, timestamp) -> timestamp >= dateFrom && timestamp <= dateTo)
+                    |> List.ofSeq
+
+                withTimeStamp |>> (fun (id, json, _) -> (id, json))
+
             member this.TryGetLastSnapshot version name =            
                 log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
                 let streamName = "snapshots" + version + name
