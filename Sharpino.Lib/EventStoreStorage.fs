@@ -113,8 +113,10 @@ module EventStore =
                 |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
                 |> List.ofSeq
 
-            // can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
+            // there are two issues in this function:
+            // 1. can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
             // https://stackoverflow.com/questions/74829893/eventstore-read-specific-time-frame-from-stream
+            // 2. it will not survive after a migration because the timestamps will be different
             member this.ConsumeEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "ConsumeEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let streamName = "events" + version + name

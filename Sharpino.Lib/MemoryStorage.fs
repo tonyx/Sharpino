@@ -213,6 +213,8 @@ module MemoryStorage =
                     snapshots_dic.[version].[name]
                     |> List.tryLast
                     |>> (fun x -> x.Id)
+
+            // Issue: it will not survive after a version migration because the timestamps will be different
             member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime): List<int * 'E> = 
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
