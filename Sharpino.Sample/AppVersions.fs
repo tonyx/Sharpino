@@ -17,6 +17,8 @@ open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Tags.TagsEvents
+open Sharpino.Sample.Entities.TodosReport
+
 open Sharpino.Sample
 open FSharpPlus.Operators
 open Newtonsoft.Json
@@ -102,6 +104,8 @@ module AppVersions =
             addTag:             Tag -> Result<unit, string>
             removeTag:          Guid -> Result<unit, string>
             getAllTags:         unit -> Result<List<Tag>, string>
+            todoReport:         DateTime -> DateTime -> TodosEvents
+
         }
 
     [<CurrentVersion>]
@@ -109,7 +113,7 @@ module AppVersions =
         {
             _migrator  =        currentPgApp.Migrate |> Some
             _forceStateUpdate = None
-            // addevents is specifically used for testing to check what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
+            // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
@@ -124,6 +128,7 @@ module AppVersions =
             addTag =            currentPgApp.AddTag 
             removeTag =         currentPgApp.RemoveTag
             getAllTags =        currentPgApp.GetAllTags
+            todoReport =        currentPgApp.TodoReport
         }
 
     [<UpgradedVersion>]
@@ -145,6 +150,7 @@ module AppVersions =
             addTag =            upgradedPgApp.AddTag
             removeTag =         upgradedPgApp.removeTag
             getAllTags =        upgradedPgApp.GetAllTags
+            todoReport =        upgradedPgApp.TodoReport
         }
 
 
@@ -167,6 +173,7 @@ module AppVersions =
             addTag =            currentMemApp.AddTag 
             removeTag =         currentMemApp.RemoveTag
             getAllTags =        currentMemApp.GetAllTags
+            todoReport =        currentMemApp.TodoReport
         }
 
     [<UpgradedVersion>]
@@ -188,6 +195,7 @@ module AppVersions =
             addTag =            upgradedMemApp.AddTag
             removeTag =         upgradedMemApp.removeTag
             getAllTags =        upgradedMemApp.GetAllTags
+            todoReport =        upgradedMemApp.TodoReport
         }
 
     [<CurrentVersion>]
@@ -216,4 +224,5 @@ module AppVersions =
             addTag =            evStoreApp.AddTag
             removeTag =         evStoreApp.RemoveTag
             getAllTags =        evStoreApp.GetAllTags
+            todoReport =        evStoreApp.TodoReport
         }

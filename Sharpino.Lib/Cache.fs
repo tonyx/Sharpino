@@ -5,8 +5,11 @@ open Sharpino.Core
 open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
+open log4net
+open log4net.Config
 
 module Cache =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type EventCache<'A when 'A: equality> private () =
         let dic = Generic.Dictionary<'A * List<Event<'A>>, Result<'A, string>>()
         let queue = Generic.Queue<'A * List<Event<'A>>>()
@@ -24,6 +27,7 @@ module Cache =
                 ()
             with :? _ as e -> 
                 printf "error: cache is doing something wrong. Resetting. %A\n" e   
+                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
                 dic.Clear()
                 queue.Clear()
                 ()
@@ -65,6 +69,7 @@ module Cache =
                 ()
             with :? _ as e -> 
                 printf "error: cache is doing something wrong. Resetting. %A\n" e   
+                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
                 dic.Clear()
                 queue.Clear()
                 ()
@@ -100,8 +105,8 @@ module Cache =
                     dic.Remove removed |> ignore
                 ()
             with :? _ as e -> 
-                printf "warning: cache is doing something wrong %A\n" e
-                printf "resetting cache of snapthots"
+                printf "error: cache is doing something wrong. Resetting. %A\n" e
+                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
                 dic.Clear()
                 queue.Clear()
                 ()
