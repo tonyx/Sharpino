@@ -2,6 +2,7 @@ namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
+open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 module Todos =
@@ -10,8 +11,9 @@ module Todos =
             Id: Guid
             CategoryIds : List<Guid>
             TagIds: List<Guid>
-            Description: string
+            Description: Forgettable<string>
         }
+
     type Todos =
         {
             todos: List<Todo>
@@ -23,10 +25,14 @@ module Todos =
                 }
 
             member this.AddTodo (t: Todo) =
+                let pred (x: Forgettable<string>) (y: string) =
+                    x.Value = y
                 result {
                     let! description_must_not_exist_already =
                         this.todos
-                        |> List.exists (fun x -> x.Description = t.Description)
+                        // |> List.exists (fun x -> x.Description.Value = t.Description.Value)
+                        // |> List.exists (fun x -> pred x.Description t.Description)
+                        |> List.exists (fun x -> (x.Description.EvalPredicate ((pred t.Description)) false))
                         |> not
                         |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
                     return

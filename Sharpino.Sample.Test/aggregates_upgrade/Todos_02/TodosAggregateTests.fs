@@ -3,6 +3,7 @@ module Tests.Sharpino.Sample02.Sample.TodoTests
 open Expecto
 open System
 open FSharp.Core
+open Sharpino.Core
 
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Entities.Todos
@@ -12,7 +13,7 @@ open FsToolkit.ErrorHandling
 let todosAggregateUpgrade02Tests =
     testList "todos aggregate upgrade tests" [
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable ; CategoryIds = []; TagIds = []}
             let aggregate = TodosAggregate'.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
@@ -21,7 +22,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
             let aggregate = TodosAggregate'.Zero.AddTodo todo |> Result.get
             Expect.equal (aggregate.GetTodos() |> List.length) 1 "should be equal"
             let aggregate' = aggregate.RemoveTodo id 
@@ -31,7 +32,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "add todo with any category refererence - Ok" <| fun _ ->
             let categoryId = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId]; TagIds = []} 
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = []} 
             let aggregate = TodosAggregate'.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
@@ -40,7 +41,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "remove a category reference affects any todo that references that category - Ok" <| fun _ ->
             let categoryId = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId]; TagIds = []} 
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = []} 
             let aggregate = TodosAggregate'.Zero.AddTodo todo |> Result.get
 
             let aggregate' = aggregate.RemoveCategoryReference categoryId
@@ -53,8 +54,8 @@ let todosAggregateUpgrade02Tests =
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
             let categoryId3 = Guid.NewGuid()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId1; categoryId2]; TagIds = []} 
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = [categoryId1; categoryId2; categoryId3]; TagIds = []} 
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = []} 
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = [categoryId1; categoryId2; categoryId3]; TagIds = []} 
 
             let aggregate =
                 ResultCE.result {
