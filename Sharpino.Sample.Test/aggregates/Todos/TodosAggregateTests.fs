@@ -13,12 +13,16 @@ open Sharpino.EncriptUtils
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
+
+
+let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
+
 [<Tests>]
 let todosAggregateTests =
     testList "todos aggregate tests" [
 
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = []}
             let aggregate = TodosAggregate.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
@@ -36,7 +40,7 @@ let todosAggregateTests =
             let category = { Id = guid; Name = "test"}
             let aggregate = TodosAggregate.Zero.AddCategory category |> Result.get
             let anotherGuid = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [anotherGuid]; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [anotherGuid]; TagIds = [] }
             let aggregate' = aggregate.AddTodo todo
             Expect.isError aggregate' "should be error"
             let errMsg = aggregate' |> getError
@@ -45,7 +49,7 @@ let todosAggregateTests =
         testCase "add a todo referencing an existing category - Ok" <| fun _ ->
             let category = { Id = Guid.NewGuid(); Name = "test"}
             let aggregate = TodosAggregate.Zero.AddCategory category |> Result.get
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [category.Id]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [category.Id]; TagIds = []}
             let result = aggregate.AddTodo todo |> Result.get
             Expect.equal (result.GetTodos()) [todo] "should be equal"
 
@@ -64,7 +68,7 @@ let todosAggregateTests =
                     }
                 ).OkValue
 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [category1.Id]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [category1.Id]; TagIds = []}
             let aggregate'' = aggregateWithCategories.AddTodo todo
             Expect.isOk aggregate'' "should be ok"
             let result = aggregate''.OkValue
@@ -82,7 +86,7 @@ let todosAggregateTests =
                     }
                 ).OkValue
 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [category1.Id; category2.Id]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [category1.Id; category2.Id]; TagIds = []}
             let aggregate = aggregateWithCategories.AddTodo todo
             Expect.isOk aggregate "should be ok"
 
@@ -102,7 +106,7 @@ let todosAggregateTests =
                 ).OkValue
 
             let newGuid = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [category1.Id; newGuid]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [category1.Id; newGuid]; TagIds = []}
             let result = aggregateWithCategories.AddTodo todo
             Expect.isError result "should be error"
 
@@ -113,7 +117,7 @@ let todosAggregateTests =
             let categoryId = Guid.NewGuid()
             let category = { Id = categoryId; Name = "test"}
             let aggregate = (TodosAggregate.Zero.AddCategory category) |> Result.get
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId]; TagIds = []}
             let aggregate' = aggregate.AddTodo todo  |> Result.get
 
             Expect.equal (aggregate'.GetTodos() |> List.length) 1 "should be equal"
@@ -129,7 +133,7 @@ let todosAggregateTests =
             let category2 = { Id = categoryId2; Name = "test2"}
             let aggregate = (TodosAggregate.Zero.AddCategory category) |> Result.get
             let aggregate2 = (aggregate.AddCategory category2) |> Result.get
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId; categoryId2]; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId; categoryId2]; TagIds = []}
             let aggregate' = aggregate2.AddTodo todo  |> Result.get
 
             Expect.equal (aggregate'.GetTodos() |> List.length) 1 "should be equal"
@@ -147,8 +151,8 @@ let todosAggregateTests =
             let aggregate1 = (TodosAggregate.Zero.AddCategory category1).OkValue 
             let aggregate2 = (aggregate1.AddCategory category2).OkValue 
 
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = []}
-            let todo2 = { Id = Guid.NewGuid(); Description = "another test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = []}
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = []}
+            let todo2 = { Id = Guid.NewGuid(); Description = "another test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = []}
 
             let aggregate' = (aggregate2.AddTodo todo1).OkValue
             let aggregate'' = (aggregate'.AddTodo todo2).OkValue

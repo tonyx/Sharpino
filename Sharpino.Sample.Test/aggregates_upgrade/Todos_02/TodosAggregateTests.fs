@@ -13,8 +13,9 @@ open FsToolkit.ErrorHandling
 [<Tests>]
 let todosAggregateUpgrade02Tests =
     testList "todos aggregate upgrade tests" [
+        let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable ; CategoryIds = []; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex ; CategoryIds = []; TagIds = []}
             let aggregate = TodosAggregate'.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
@@ -23,7 +24,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
+            let todo = { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = []}
             let aggregate = TodosAggregate'.Zero.AddTodo todo |> Result.get
             Expect.equal (aggregate.GetTodos() |> List.length) 1 "should be equal"
             let aggregate' = aggregate.RemoveTodo id 
@@ -33,7 +34,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "add todo with any category refererence - Ok" <| fun _ ->
             let categoryId = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = []} 
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId]; TagIds = []} 
             let aggregate = TodosAggregate'.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
@@ -42,7 +43,7 @@ let todosAggregateUpgrade02Tests =
 
         testCase "remove a category reference affects any todo that references that category - Ok" <| fun _ ->
             let categoryId = Guid.NewGuid()
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = []} 
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId]; TagIds = []} 
             let aggregate = TodosAggregate'.Zero.AddTodo todo |> Result.get
 
             let aggregate' = aggregate.RemoveCategoryReference categoryId
@@ -55,8 +56,8 @@ let todosAggregateUpgrade02Tests =
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
             let categoryId3 = Guid.NewGuid()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = []} 
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = [categoryId1; categoryId2; categoryId3]; TagIds = []} 
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = []} 
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2; categoryId3]; TagIds = []} 
 
             let aggregate =
                 ResultCE.result {

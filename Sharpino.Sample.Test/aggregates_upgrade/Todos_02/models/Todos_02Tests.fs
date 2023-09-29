@@ -12,9 +12,10 @@ open Sharpino.EncriptUtils
 
 [<Tests>]
 let todosModelTests =
+    let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
     testList "todos model 02 tests" [
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = []}
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let result = todos.OkValue
@@ -22,7 +23,7 @@ let todosModelTests =
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
+            let todo = { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = []}
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue
@@ -34,7 +35,7 @@ let todosModelTests =
 
         testCase "try removing an unexisting todo - Ko" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = []}
+            let todo = { Id = id; Description = "test" |> mkForgettable secretKeyIndex ; CategoryIds = []; TagIds = []}
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue

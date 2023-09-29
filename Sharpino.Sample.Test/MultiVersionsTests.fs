@@ -56,6 +56,9 @@ let allVersions =
 
 let currentTestConfs = allVersions
 
+let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
+
+
 [<Tests>]
 let utilsTests =
     testList "catch errors test" [
@@ -112,14 +115,14 @@ let encryptTest =
             Expect.equal decripted "ab" "should be equal"
 
         testCase "forgettable equality - Ok" <| fun _ ->
-            let forgettable = Forgettable ("test")
-            let forgettable2 = Forgettable ("test")
+            let forgettable = Forgettable (secretKeyIndex, "test")
+            let forgettable2 = Forgettable (secretKeyIndex, "test")
             Expect.equal forgettable forgettable2 "should be equal"
 
         testCase "test Todo equality with forgettable - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             Expect.equal todo todo2 "should be equal"
     ]
 
@@ -129,7 +132,7 @@ let appEnctyptTests =
     ptestList "single application tests" [
         testCase "serialize forgettable - Ok" <| fun _ ->
             let _ = resetDb memoryStorage
-            let forgettable = "test" |> mkForgettable   
+            let forgettable = "test" |> mkForgettable secretKeyIndex   
             let serialized = forgettable |> serialize<Forgettable>
             printf "serialized %A\n" serialized
             let deserialized = serialized |> deserialize<Forgettable> |> Result.get
@@ -139,7 +142,7 @@ let appEnctyptTests =
             Expect.equal deserialized forgettable "should be equal"
 
         testCase "serialize event" <| fun _ ->
-            let event = TodoEvent.TodoAdded { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let event = TodoEvent.TodoAdded { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             printf "event: %A\n" event
             let serialized = event |> serialize
             let deserialized: TodoEvent = serialized |> deserialize |> Result.get
@@ -147,7 +150,7 @@ let appEnctyptTests =
 
         testCase "add a todo and read the event" <| fun _ ->
             let _ = resetDb memoryStorage
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added = currentMemApp.AddTodo todo   
             let result = (memoryStorage :> Storage.IStorage).GetEventsAfterId TodosAggregate.Version 0 TodosAggregate.StorageName
             Expect.isOk result "should be ok"
@@ -159,7 +162,7 @@ let appEnctyptTests =
 
         testCase "add two todos" <| fun _ ->
             let _ = resetDb memoryStorage
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added = currentMemApp.AddTodo todo
             Expect.isOk added "should be ok"
             let result = currentMemApp.AddTodo todo
@@ -179,7 +182,7 @@ let testCoreEvolve =
         pmultipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
-            let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable ; CategoryIds = []; TagIds = [] }
+            let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable secretKeyIndex ; CategoryIds = []; TagIds = [] }
 
             // I am adding twice the same event and the "evolve" will ignore it
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName )
@@ -190,12 +193,12 @@ let testCoreEvolve =
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
-            Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }] "should be equal"
+            Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }] "should be equal"
 
         pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
-            let event = TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let event = TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
 
@@ -205,15 +208,15 @@ let testCoreEvolve =
             ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
-            Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }] "should be equal"
+            Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }] "should be equal"
 
         pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let id = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let event = TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let event = TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
 
-            let event2 = TodoEvents.TodoAdded { Id = id2; Description = "test second part" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let event2 = TodoEvents.TodoAdded { Id = id2; Description = "test second part" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
 
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
@@ -231,8 +234,8 @@ let testCoreEvolve =
             Expect.equal (todos.OkValue |> List.sortBy (fun x -> x.Id))
                 (
                     [
-                        { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
-                        { Id = id2; Description = "test second part" |> mkForgettable; CategoryIds = []; TagIds = [] }
+                        { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+                        { Id = id2; Description = "test second part" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
                     ] 
                     |> List.sortBy (fun x -> x.Id)
                 ) "should be equal"
@@ -252,7 +255,7 @@ let multiVersionsTests =
         // FOCUS !!!
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
             let result = ap.addTodo todo
@@ -261,7 +264,7 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo and retrieve it - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             printf "todo1 . %A\n" todo
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
@@ -270,15 +273,15 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo = { Id = Guid.NewGuid(); Description = "testoh" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "testoh" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
 
         multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
 
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let result = ap.add2Todos (todo1, todo2)
             Expect.isOk result "should be ok"
             let todos = ap.getAllTodos()
@@ -286,8 +289,8 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added = ap.add2Todos (todo1, todo2)
             Expect.isError added "should be error"
             let todos = ap.getAllTodos().OkValue 
@@ -295,8 +298,8 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos, one has an unexisting tag - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = []; TagIds = [Guid.NewGuid()] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [Guid.NewGuid()] }
             let added = ap.add2Todos (todo1, todo2)
             Expect.isError added "should be error"
             let result = ap.getAllTodos().OkValue 
@@ -306,7 +309,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let todo = { Id = id1; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [id2] }
+            let todo = { Id = id1; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [id2] }
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
@@ -319,7 +322,7 @@ let multiVersionsTests =
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
-            let todo = { Id = id1; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [id2] }
+            let todo = { Id = id1; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [id2] }
             let result = ap.addTodo todo
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
@@ -339,7 +342,7 @@ let multiVersionsTests =
         multipleTestCase "add and remove a todo 1 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
@@ -357,7 +360,7 @@ let multiVersionsTests =
         multipleTestCase "add and remove a todo 2 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
@@ -480,7 +483,7 @@ let multiVersionsTests =
 
             apUpgd |> updateStateIfNecessary
 
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
             let result = apUpgd.addTodo todo
             Expect.isError result "should be error"
 
@@ -488,7 +491,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let categoryId = Guid.NewGuid()
             let category = { Id = categoryId; Name = "test" }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId]; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId]; TagIds = [] }
 
             let _ = ap.addCategory category
 
@@ -525,7 +528,7 @@ let multiVersionsTests =
             let categoryId2 = Guid.NewGuid()
             let category = { Id = categoryId1; Name = "test" }
             let category2 = { Id = categoryId2; Name = "test2" }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
 
             let _ = ap.addCategory category
             let _ = ap.addCategory category2
@@ -550,7 +553,7 @@ let multiVersionsTests =
             let categoryId2 = Guid.NewGuid()
             let category = { Id = categoryId1; Name = "test" }
             let category2 = { Id = categoryId2; Name = "test2" }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
 
             let added = ap.addCategory category
             Expect.isOk added "should be ok"
@@ -605,7 +608,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
             let tag = { Id = tagId; Name = "test"; Color = Color.Blue }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [tagId] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [tagId] }
 
             let added =
                 ResultCE.result {
@@ -636,7 +639,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
             let tag = { Id = tagId; Name = "test"; Color = Color.Blue }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [tagId] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [tagId] }
 
             let added =
                 ResultCE.result {
@@ -670,7 +673,7 @@ let multiVersionsTests =
             let tag1 = { Id = tagId; Name = "test"; Color = Color.Blue }
             let tagId2 = Guid.NewGuid()
             let tag2 = { Id = tagId2; Name = "test2"; Color = Color.Red }
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [tagId; tagId2] }
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [tagId; tagId2] }
 
             let added = ap.addTag tag1
             Expect.isOk added "should be ok"
@@ -691,8 +694,8 @@ let multiVersionsTests =
         multipleTestCase "add two todos and then retrieve the report/projection - Ok" currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
             let now = System.DateTime.Now
-            let todo1 = { Id = Guid.NewGuid(); Description = "testa" |> mkForgettable; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "testb" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "testa" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "testb" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added1 = ap.addTodo todo1
             let added2 = ap.addTodo todo2
             let result = ap.todoReport now System.DateTime.Now
@@ -706,7 +709,7 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "testxone" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "testxone" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added1 = ap.addTodo todo1
             async {
                 do! Async.Sleep 10
@@ -717,7 +720,7 @@ let multiVersionsTests =
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "testxtwo" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "testxtwo" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added2 = ap.addTodo todo2
             async {
                 do! Async.Sleep 10
@@ -734,7 +737,7 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only the first event - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             // let todo1 = { Id = Guid.NewGuid(); Description = Forgettable("test");  CategoryIds = []; TagIds = [] }
             let beforeAddingFirst = System.DateTime.Now
             async {
@@ -747,7 +750,7 @@ let multiVersionsTests =
                 do! Async.Sleep 1
                 return ()
             } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             // let todo2 = { Id = Guid.NewGuid(); Description = Forgettable("test2"); CategoryIds = []; TagIds = [] }
             let added2 = ap.addTodo todo2
             let result = ap.todoReport beforeAddingFirst beforeAddingSecond 
@@ -767,7 +770,7 @@ let multiCallTests =
     let doAddNewTodo() =
         let ap = AppVersions.currentPostgresApp
         for i = 0 to 9 do
-            let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString()) |> mkForgettable); CategoryIds = []; TagIds = [] }
+            let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString()) |> mkForgettable secretKeyIndex); CategoryIds = []; TagIds = [] }
             ap.addTodo todo |> ignore
             ()
 
@@ -778,7 +781,7 @@ let multiCallTests =
             let _ = ap._reset()
 
             for i = 0 to 999 do
-                let todo = { Id = Guid.NewGuid(); Description = "todo"+(i.ToString()) |> mkForgettable; CategoryIds = []; TagIds = [] }
+                let todo = { Id = Guid.NewGuid(); Description = "todo"+(i.ToString()) |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
                 let added = ap.addTodo todo 
                 ()
 

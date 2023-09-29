@@ -110,8 +110,14 @@ module TestUtils =
 
 
 module EncriptUtils =
-    let encriptionKey = 1 |> Some
-    // let encriptionKey = None
+
+    let keys = 
+        [
+            ("4b938de9-cb4b-4297-8687-865181836548", 7)
+        ]
+        |> Map.ofList
+
+    let encriptionKey = 7 |> Some
 
     let encrypt (text: string) (shift: int) =
         if text = "" then
@@ -126,6 +132,12 @@ module EncriptUtils =
         encrypt text (26 - shift) 
 
     type Secret () =
+
+        // let encriptionKey = 
+        //     match keys.TryFind("4b938de9-cb4b-4297-8687-865181836548") with
+        //     | Some k -> k |> Some
+        //     | None -> None
+
         member this.encript x = 
             match encriptionKey with
             | Some k ->
@@ -157,9 +169,22 @@ module EncriptUtils =
             let result = writer.WriteValue(value.ToString())
             result
 
-    type Forgettable (value: string) =
+    type Forgettable (indexOfKey: string, value: string) =
+
+        member this.IndexOfKey = indexOfKey
+        // let encriptionKey = 7 |> Some
+        member this.EncriptionKey = 
+            printf "indexofkey: %A\n" indexOfKey
+            match keys.TryFind(this.IndexOfKey) with
+            | Some k -> 
+                printf "found key: %A" k
+                k |> Some
+            | None -> 
+                printf "not found key: %A" this.IndexOfKey
+                None
+
         member this.EvalPredicate f fallback =
-            if (encriptionKey.IsSome) then
+            if (this.EncriptionKey.IsSome) then
                 f
             else fallback
 
@@ -173,5 +198,5 @@ module EncriptUtils =
         override this.ToString() = this.Value 
 
     // let mkForgettable (v: 'A when 'A: equality and 'A: comparison) =
-    let mkForgettable v =
-        Forgettable(v)
+    let mkForgettable secretKeyIndex v =
+        Forgettable(secretKeyIndex, v)
