@@ -6,12 +6,21 @@
 
 ## A little F# event-sourcing library
 
+[![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## What is it?
+
+It is a little library for event-sourcing in F#.
+There is a sample application that shows how to use it. 
+The events are stored in append mode and cannot be deleted or updated, so the solution at the moment it is not suitable for sensitive data (see GDPR).
+
 ## Projects:
+
 
 __Sharpino.Lib__:
 
 - [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former rise an error if there are some events that cannot be applied to the current state of the aggregate. The latter just skip those events.
-Note: in some strict setups, for instance in using Postgres or in-memory storage, and in making the command be processed by the Mailboxprocessor (which is how you will see in the examples ensuring single-threaded execution of command->event->store), the EvolveUnForgivingErrors would not be necessary. However, it is theoretically possible to have inconsistent events when the order of the events is not guaranteed (e.g. in a distributed system). To increase the throughput you may actually want to process commands not in single-thread anymore assuming the risk of storing conflicting/inconsistent events.
 
 - [Repository.fs](Sharpino.Lib/Repository.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
 - [LightRepository.fs](Sharpino.Lib/LightRepository.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
@@ -85,4 +94,4 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
-A small gitbook on the subject is available [(click to read)](https://tonyx.github.io)
+More documentation [(Sharpino gitbook)](https://tonyx.github.io)
