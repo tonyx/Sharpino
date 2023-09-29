@@ -59,64 +59,61 @@ module Core =
         evolveSkippingErrors (h |> Ok) events h
 
 
-    let encriptionKey = 1 |> Some
+    // let encriptionKey = 1 |> Some
 
-    let encrypt (text: string) (shift: int) =
-        if text = "" then
-            ""
-        else
-            let lText = text |> List.ofSeq
-            // let rVal = lText |> List.map (fun c -> char ((int c + shift)))
-            let rVal = lText |> List.map (fun c -> char (((int c - int 'a' + shift) % 26) + int 'a'))
-            let result = rVal |> List.toArray |> System.String
-            result
+    // let encrypt (text: string) (shift: int) =
+    //     if text = "" then
+    //         ""
+    //     else
+    //         let lText = text |> List.ofSeq
+    //         // let rVal = lText |> List.map (fun c -> char ((int c + shift)))
+    //         let rVal = lText |> List.map (fun c -> char (((int c - int 'a' + shift) % 26) + int 'a'))
+    //         let result = rVal |> List.toArray |> System.String
+    //         result
 
-    let decrypt (text: string) (shift: int) = 
-        encrypt text (26 - shift) 
+    // let decrypt (text: string) (shift: int) = 
+    //     encrypt text (26 - shift) 
 
-    type Secret () =
-        member this.encript x = encrypt x 1
-        member this.decript x = decrypt x 1
-        // member this.encript x = x
-        // member this.decript x = x
+    // type Secret () =
+    //     member this.encript x = encrypt x encriptionKey.Value
+    //     member this.decript x = decrypt x encriptionKey.Value
 
-    let simpleEncriptor: Secret =
-        Secret()
+    // let simpleEncriptor: Secret =
+    //     Secret()
 
-    type ForgettableValueConverter() =
-        inherit JsonConverter()
+    // type ForgettableValueConverter() =
+    //     inherit JsonConverter()
 
-        override this.CanConvert(objectType: Type): bool =
-            failwith "Not Implemented"
-        override this.CanRead: bool =
-            true
-        override this.CanWrite: bool =
-            true
-        override this.ReadJson(reader: JsonReader, objectType: Type, existingValue: obj, serializer: JsonSerializer): obj =
-            let result = reader.Value |> string |> simpleEncriptor.decript 
-            result
+    //     override this.CanConvert(objectType: Type): bool =
+    //         true
+    //     override this.CanRead: bool =
+    //         true
+    //     override this.CanWrite: bool =
+    //         true
+    //     override this.ReadJson(reader: JsonReader, objectType: Type, existingValue: obj, serializer: JsonSerializer): obj =
+    //         let result = reader.Value |> string |> simpleEncriptor.decript 
+    //         result
 
-        override this.WriteJson(writer: JsonWriter, value: obj, serializer: JsonSerializer): unit =
-            let result = writer.WriteValue(value.ToString())
-            result
-    type Forgettable (value: string) =
+    //     override this.WriteJson(writer: JsonWriter, value: obj, serializer: JsonSerializer): unit =
+    //         let result = writer.WriteValue(value.ToString())
+    //         result
+    // type Forgettable (value: string) =
 
-        member this.EvalPredicate f fallback  = 
-            f (this.Value)
+    //     member this.EvalPredicate f fallback  = 
+    //         f (this.Value)
 
-        member this.EvalPredicate' f =
-            f
+    //     member this.EvalPredicate' f =
+    //         f
 
-        [<JsonConverter(typeof<ForgettableValueConverter>)>]
-        member this.Value = simpleEncriptor.encript value
-        override this.GetHashCode() = hash this.Value
-        // override this.GetHashCode() = hash (simpleEncriptor.decript this.Value)
-        override this.Equals (obj: obj) =
-            match obj with
-            | :? Forgettable as f -> f.Value = this.Value
-            | _ -> false
-        override this.ToString() = this.Value 
+    //     [<JsonConverter(typeof<ForgettableValueConverter>)>]
+    //     member this.Value = simpleEncriptor.encript value
+    //     override this.GetHashCode() = hash this.Value
+    //     override this.Equals (obj: obj) =
+    //         match obj with
+    //         | :? Forgettable as f -> f.Value = this.Value
+    //         | _ -> false
+    //     override this.ToString() = this.Value 
 
-    // let mkForgettable (v: 'A when 'A: equality and 'A: comparison) =
-    let mkForgettable v =
-        Forgettable(v)
+    // // let mkForgettable (v: 'A when 'A: equality and 'A: comparison) =
+    // let mkForgettable v =
+    //     Forgettable(v)

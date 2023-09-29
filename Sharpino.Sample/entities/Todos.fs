@@ -2,6 +2,7 @@ namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
+open Sharpino.EncriptUtils
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
@@ -35,7 +36,7 @@ module Todos =
                     let! description_must_not_exist_already =
                         this.todos
                         // |> List.exists (fun x -> (x.Description.EvalPredicate ((pred t.Description)) false))
-                        |> List.exists (fun x -> x.Description.EvalPredicate' (x.Description.Value = t.Description.Value))
+                        |> List.exists (fun x -> x.Description.EvalPredicate (x.Description.Value = t.Description.Value) false) 
                         // |> 
                         //     List.exists (fun x -> 
                         //         (x.Description.Value = t.Description.Value))

@@ -20,6 +20,7 @@ open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Categories
 open Sharpino.Sample.Tags
 open Sharpino.Utils
+open Sharpino.EncriptUtils
 open Sharpino.EventSourcing.Sample
 open Sharpino.EventSourcing
 open Sharpino.Sample.CategoriesAggregate
@@ -124,7 +125,7 @@ let encryptTest =
 
 [<Tests>] 
 let appEnctyptTests =
-    log4net.Config.BasicConfigurator.Configure() |> ignore
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     ptestList "single application tests" [
         testCase "serialize forgettable - Ok" <| fun _ ->
             let _ = resetDb memoryStorage
@@ -254,7 +255,6 @@ let multiVersionsTests =
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
-            // ap |> updateStateIfNecessary
             let result = ap.addTodo todo
             printf "error: %A" result
             Expect.isError result "should be error"

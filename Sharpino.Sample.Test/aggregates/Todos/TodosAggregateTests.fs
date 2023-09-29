@@ -9,6 +9,7 @@ open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Utils
+open Sharpino.EncriptUtils
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 

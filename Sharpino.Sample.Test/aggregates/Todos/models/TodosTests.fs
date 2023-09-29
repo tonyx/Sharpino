@@ -8,6 +8,7 @@ open Sharpino.Core
 
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
+open Sharpino.EncriptUtils
 
 [<Tests>]
 let todosModelTests =

@@ -4,6 +4,7 @@ open Expecto
 open System
 open FSharp.Core
 open Sharpino.Core
+open Sharpino.EncriptUtils
 
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Entities.Todos
