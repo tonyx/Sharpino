@@ -83,9 +83,93 @@ let utilsTests =
     ]
 
 [<Tests>]
+let encryptTest =
+    testList "silly encription tests" [
+        testCase "when the shift is one the he decripted is the next letter" <| fun _ ->
+            let encripted = encrypt "t" 1
+            Expect.equal encripted "u" "should be equal"
+
+        testCase "when the shift is one and te text is 'a' then the encripted is 'b'" <| fun _ ->
+            let encripted = encrypt "a" 1
+            Expect.equal encripted "b" "should be equal"
+
+        testCase "when the shift is one and the text is 'z' then the encripted is 'a'" <| fun _ ->
+            let encripted = encrypt "z" 1
+            Expect.equal encripted "a" "should be equal"
+
+        testCase "encript two chars string " <| fun _ ->
+            let encripted = encrypt "ab" 1
+            Expect.equal encripted "bc" "should be equal"
+
+        testCase "encript two chars string offset is 2 " <| fun _ ->
+            let encripted = encrypt "ab" 2
+            Expect.equal encripted "cd" "should be equal"
+
+        testCase "encrypt and decrypt - Ok" <| fun _ ->
+            let encripted = encrypt "ab" 2
+            let decripted = decrypt encripted 2
+            Expect.equal decripted "ab" "should be equal"
+
+        testCase "forgettable equality - Ok" <| fun _ ->
+            let forgettable = Forgettable ("test")
+            let forgettable2 = Forgettable ("test")
+            Expect.equal forgettable forgettable2 "should be equal"
+
+        testCase "test Todo equality with forgettable - Ok" <| fun _ ->
+            let id = Guid.NewGuid()
+            let todo = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = id; Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            Expect.equal todo todo2 "should be equal"
+    ]
+
+[<Tests>] 
+let appEnctyptTests =
+    log4net.Config.BasicConfigurator.Configure() |> ignore
+    ptestList "single application tests" [
+        testCase "serialize forgettable - Ok" <| fun _ ->
+            let _ = resetDb memoryStorage
+            let forgettable = "test" |> mkForgettable   
+            let serialized = forgettable |> serialize<Forgettable>
+            printf "serialized %A\n" serialized
+            let deserialized = serialized |> deserialize<Forgettable> |> Result.get
+            printf "deserialized value %A\n" deserialized.Value
+            let reserialized = deserialized |> serialize<Forgettable>
+            printf "reserialized: %A\n" reserialized
+            Expect.equal deserialized forgettable "should be equal"
+
+        testCase "serialize event" <| fun _ ->
+            let event = TodoEvent.TodoAdded { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            printf "event: %A\n" event
+            let serialized = event |> serialize
+            let deserialized: TodoEvent = serialized |> deserialize |> Result.get
+            Expect.equal deserialized event "should be equal"
+
+        testCase "add a todo and read the event" <| fun _ ->
+            let _ = resetDb memoryStorage
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let added = currentMemApp.AddTodo todo   
+            let result = (memoryStorage :> Storage.IStorage).GetEventsAfterId TodosAggregate.Version 0 TodosAggregate.StorageName
+            Expect.isOk result "should be ok"
+            Expect.equal (result.OkValue).Length 1 "should be equal"
+            let firstEvent = (result.OkValue).Head |> snd 
+            let firstEvent': TodoEvent = firstEvent 
+            Expect.equal firstEvent' (TodoEvent.TodoAdded todo) "should be equal"
+            Expect.isTrue true "true"
+
+        testCase "add two todos" <| fun _ ->
+            let _ = resetDb memoryStorage
+            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let added = currentMemApp.AddTodo todo
+            Expect.isOk added "should be ok"
+            let result = currentMemApp.AddTodo todo
+            printf "error: %A" result
+            Expect.isError result "should be error"
+    ]
+
+[<Tests>]
 let testCoreEvolve =
     // quick and dirty way to log for debug:
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
+
     let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
         match ap._forceStateUpdate with
         | Some f -> f()
@@ -164,20 +248,25 @@ let multiVersionsTests =
             | Some f -> f()
             | None -> ()
 
+        // FOCUS !!!
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
+            // ap |> updateStateIfNecessary
             let result = ap.addTodo todo
+            printf "error: %A" result
             Expect.isError result "should be error"
 
-        multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "add a todo and retrieve it - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            printf "todo1 . %A\n" todo
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
+            let todos = ap.getAllTodos()
+            Expect.equal todo (todos.OkValue).Head "should be equal"
 
         multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
@@ -602,8 +691,8 @@ let multiVersionsTests =
         multipleTestCase "add two todos and then retrieve the report/projection - Ok" currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
             let now = System.DateTime.Now
-            let todo1 = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "testa" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "testb" |> mkForgettable; CategoryIds = []; TagIds = [] }
             let added1 = ap.addTodo todo1
             let added2 = ap.addTodo todo2
             let result = ap.todoReport now System.DateTime.Now
@@ -617,7 +706,7 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test one" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo1 = { Id = Guid.NewGuid(); Description = "testxone" |> mkForgettable; CategoryIds = []; TagIds = [] }
             let added1 = ap.addTodo todo1
             async {
                 do! Async.Sleep 10
@@ -628,7 +717,7 @@ let multiVersionsTests =
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test two" |> mkForgettable; CategoryIds = []; TagIds = [] }
+            let todo2 = { Id = Guid.NewGuid(); Description = "testxtwo" |> mkForgettable; CategoryIds = []; TagIds = [] }
             let added2 = ap.addTodo todo2
             async {
                 do! Async.Sleep 10

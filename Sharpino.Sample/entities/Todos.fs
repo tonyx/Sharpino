@@ -11,7 +11,7 @@ module Todos =
             Id: Guid
             CategoryIds : List<Guid>
             TagIds: List<Guid>
-            Description: Forgettable<string>
+            Description: Forgettable
         }
 
     type Todos =
@@ -25,14 +25,21 @@ module Todos =
                 }
 
             member this.AddTodo (t: Todo) =
-                let pred (x: Forgettable<string>) (y: string) =
-                    x.Value = y
+                // let pred (x: Forgettable) (y: string) =
+                //     x.Value = y
+
+                // let pred' (x: Forgettable) (y: Forgettable) =
+                //     x.Value = y.Value
+
                 result {
                     let! description_must_not_exist_already =
                         this.todos
-                        // |> List.exists (fun x -> x.Description.Value = t.Description.Value)
-                        // |> List.exists (fun x -> pred x.Description t.Description)
-                        |> List.exists (fun x -> (x.Description.EvalPredicate ((pred t.Description)) false))
+                        // |> List.exists (fun x -> (x.Description.EvalPredicate ((pred t.Description)) false))
+                        |> List.exists (fun x -> x.Description.EvalPredicate' (x.Description.Value = t.Description.Value))
+                        // |> 
+                        //     List.exists (fun x -> 
+                        //         (x.Description.Value = t.Description.Value))
+                        // |> List.exists (fun x -> (x.Description.EvalPredicate' (pred' t.Description x.Description )))
                         |> not
                         |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
                     return

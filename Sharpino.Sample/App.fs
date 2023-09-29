@@ -39,6 +39,7 @@ module App =
             }
             |> Async.RunSynchronously
         member this.AddTodo todo =
+            printf "X. AddTodo %A\n" todo
             let f = fun () ->
                 ResultCE.result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
