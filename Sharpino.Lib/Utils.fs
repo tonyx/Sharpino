@@ -3,14 +3,105 @@ open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 open Newtonsoft.Json
+open Newtonsoft.Json.Linq
 open Expecto
 open System
 open FsToolkit.ErrorHandling
 
-module Utils =
+module rec Utils =
+    let encrypt (text: string) (shift: int) =
+        if text = "" then
+            ""
+        else
+            let lText = text |> List.ofSeq
+            let rVal = lText |> List.map (fun c -> char (((int c - int 'a' + shift) % 26) + int 'a'))
+            let result = rVal |> List.toArray |> System.String
+            result
+
+    let decrypt (text: string) (shift: int) = 
+        encrypt text (26 - shift) 
+    let keys = 
+        [
+            ("4b938de9-cb4b-4297-8687-865181836548", 7)
+        ]
+        |> Map.ofList
+
+    type ForgettableXX (indexOfKey: string, value: string) =
+        member this.IndexOfKey = indexOfKey
+        member this.EncriptionKey = 
+            match keys.TryFind(this.IndexOfKey) with
+            | Some k -> 
+                k |> Some
+            | None -> 
+                None
+
+        member this.EvalPredicate f fallback =
+            if (this.EncriptionKey.IsSome) then
+                f this.Value
+            else fallback
+
+        member this.Value = 
+            if this.EncriptionKey.IsSome then
+                encrypt value this.EncriptionKey.Value
+            else value
+
+        override this.GetHashCode() = hash this.Value
+        override this.Equals (obj: obj) =
+            match obj with
+            | :? ForgettableXX as f -> f.Value = this.Value
+            | _ -> false
+        override this.ToString() = this.Value 
+
+    type ForgettableValueConverter() =
+        inherit JsonConverter()
+
+        override this.CanConvert(objectType: Type): bool =
+            true
+        override this.CanRead: bool =
+            true
+        override this.CanWrite: bool =
+            true
+        override this.ReadJson(reader: JsonReader, objectType: Type, existingValue: obj, serializer: Newtonsoft.Json.JsonSerializer): obj =
+            // printf "XXXXXXX obj type %A\n" (existingValue.GetType())
+            // printf "XXXXXXX read\n"
+            // let result = reader.Value
+            let result = ForgettableXX("4b938de9-cb4b-4297-8687-865181836548","test")
+            result
+
+        override this.WriteJson(writer: JsonWriter, valueX: obj, serializer: Newtonsoft.Json.JsonSerializer): unit =
+            let resobj =     
+                JObject()
+            // resobj.Add("$type", "Sharpino.Utils+ForgettableXX, Sharpino.Lib")
+            // resobj.Item("a") <- JValue("b")
+            resobj.AddFirst(JProperty("a", "b"))
+            // resobj.Add("a", "b")
+
+            // resobj.Add("IndexOfKey", "4b938de9-cb4b-4297-8687-865181836548")
+            // // resobj.Add("EncriptionKey", """{"Case":"Some","Fields":[7]}""")
+            // resobj.Add("EncriptionKey", """{"Case":"Some","Fields":[7]}""")
+            // resobj.Add("Value", "alza")
+
+            let _ =
+                match valueX with 
+                | :? ForgettableXX -> 
+                    printf "YYYYY. is forgettable \n"
+                    let casted = valueX :?> ForgettableXX
+                    printf "value: %A\n" casted.Value
+                | _ -> printf "YYYYY. is not forgettable \n"
+
+            resobj.WriteTo(writer)
+
+            // let result = serializer.Serialize (writer, ForgettableXX("4b938de9-cb4b-4297-8687-865181836548", "test"))
+            // printf "result!!!!!! %A\n" result
+            // // let result = ForgettableXX("4b938de9-cb4b-4297-8687-865181836548", "test")
+            // result
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
+    let converters = new Collections.Generic.List<JsonConverter>()
+    // converters.Add(new ForgettableValueConverter())
+
+    // serSettings.Converters <- converters
 
     let deserialize<'A> (json: string): Result<'A, string> =
         try
@@ -21,6 +112,9 @@ module Utils =
             Error (ex.ToString())
     let serialize<'A> (x: 'A): string =
         JsonConvert.SerializeObject(x, serSettings)
+
+    let mkForgettableXX secretKeyIndex v =
+        ForgettableXX(secretKeyIndex, v)
 
     type JsonSerializer(serSettings: JsonSerializerSettings) =
         member this.Deserialize<'A> (json: string): Result<'A, string> =
@@ -132,12 +226,6 @@ module EncriptUtils =
         encrypt text (26 - shift) 
 
     type Secret () =
-
-        // let encriptionKey = 
-        //     match keys.TryFind("4b938de9-cb4b-4297-8687-865181836548") with
-        //     | Some k -> k |> Some
-        //     | None -> None
-
         member this.encript x = 
             match encriptionKey with
             | Some k ->
@@ -162,6 +250,24 @@ module EncriptUtils =
         override this.CanWrite: bool =
             true
         override this.ReadJson(reader: JsonReader, objectType: Type, existingValue: obj, serializer: JsonSerializer): obj =
+            // let result = reader.Value |> string |> simpleEncriptor.decript 
+            let result = reader.Value |> string |> simpleEncriptor.decript 
+            result
+
+        override this.WriteJson(writer: JsonWriter, value: obj, serializer: JsonSerializer): unit =
+            let result = writer.WriteValue(value.ToString())
+            result
+
+    type ForgettableJsonConverter() =
+        inherit JsonConverter()
+        override this.CanConvert(objectType: Type): bool =
+            true
+        override this.CanRead: bool =
+            true
+        override this.CanWrite: bool =
+            true
+        override this.ReadJson(reader: JsonReader, objectType: Type, existingValue: obj, serializer: JsonSerializer): obj =
+            // let result = reader.Value |> string |> simpleEncriptor.decript 
             let result = reader.Value |> string |> simpleEncriptor.decript 
             result
 
@@ -172,24 +278,24 @@ module EncriptUtils =
     type Forgettable (indexOfKey: string, value: string) =
 
         member this.IndexOfKey = indexOfKey
-        // let encriptionKey = 7 |> Some
         member this.EncriptionKey = 
-            printf "indexofkey: %A\n" indexOfKey
             match keys.TryFind(this.IndexOfKey) with
             | Some k -> 
-                printf "found key: %A" k
                 k |> Some
             | None -> 
-                printf "not found key: %A" this.IndexOfKey
                 None
 
         member this.EvalPredicate f fallback =
             if (this.EncriptionKey.IsSome) then
-                f
+                f this.Value
             else fallback
 
         [<JsonConverter(typeof<ForgettableValueConverter>)>]
-        member this.Value = simpleEncriptor.encript value
+        member this.Value = 
+            if this.EncriptionKey.IsSome then
+                encrypt value this.EncriptionKey.Value
+            else value
+
         override this.GetHashCode() = hash this.Value
         override this.Equals (obj: obj) =
             match obj with

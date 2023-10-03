@@ -33,7 +33,10 @@ open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
 open Microsoft.FSharp.Quotations
+open FluentAssertions
+open FluentAssertions.Json
 open Sharpino.EventSourcing.Sample.AppVersions
+open Newtonsoft.Json.Linq
 
 let allVersions =
     [
@@ -129,8 +132,8 @@ let encryptTest =
 [<Tests>] 
 let appEnctyptTests =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
-    ptestList "single application tests" [
-        testCase "serialize forgettable - Ok" <| fun _ ->
+    testList "forgettable tests" [
+        testCase "serialize and deserialize forgettable when key is present - Ok" <| fun _ ->
             let _ = resetDb memoryStorage
             let forgettable = "test" |> mkForgettable secretKeyIndex   
             let serialized = forgettable |> serialize<Forgettable>
@@ -160,6 +163,7 @@ let appEnctyptTests =
             Expect.equal firstEvent' (TodoEvent.TodoAdded todo) "should be equal"
             Expect.isTrue true "true"
 
+        // FOCUS the serialize/deserialize issue will make this test not pass (the field when serialized/deserialized encripted/decripted magically changes)
         testCase "add two todos" <| fun _ ->
             let _ = resetDb memoryStorage
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
@@ -242,6 +246,37 @@ let testCoreEvolve =
         ]
         |> testSequenced
 
+[<Tests>]
+let forgettablejsonTests =
+    testList "convert a forgettable" [
+
+        ptestCase "serialize a test forgettable - Ok" <| fun _ ->
+            let forgettable = "test" |> mkForgettableXX secretKeyIndex
+            printf "forgettable %A\n" forgettable
+            let jsonForgettable = forgettable |> Utils.serialize
+
+            printf "jsonForgettable: %A\n\n" jsonForgettable
+
+            // let myValue = 
+            //     """
+            //         {"$type":"Sharpino.Utils+ForgettableXX, Sharpino.Lib","IndexOfKey":"4b938de9-cb4b-4297-8687-865181836548","EncriptionKey":{"Case":"Some","Fields":[7]},"Value":"alza"}
+            //     """
+
+            let result = jsonForgettable |> Utils.deserialize<ForgettableXX>
+            Expect.isOk result "should be ok"
+
+            // // let result' = myValue |> Utils.deserialize<ForgettableXX>
+            // Expect.isOk result "should be ok"
+            // // Expect.isOk result' "should be ok"
+
+            // // Expect.equal result result' "should be equal"
+            // printf "result %A" result
+
+            // // printf "result %A\n" result
+            // Expect.equal result.OkValue forgettable "should be equal"
+
+            // Expect.equal result forgettable "should be equal" 
+    ]
 
 [<Tests>]
 let multiVersionsTests =
@@ -252,7 +287,6 @@ let multiVersionsTests =
             | Some f -> f()
             | None -> ()
 
-        // FOCUS !!!
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }

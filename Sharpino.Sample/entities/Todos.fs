@@ -35,12 +35,8 @@ module Todos =
                 result {
                     let! description_must_not_exist_already =
                         this.todos
-                        // |> List.exists (fun x -> (x.Description.EvalPredicate ((pred t.Description)) false))
-                        |> List.exists (fun x -> x.Description.EvalPredicate (x.Description.Value = t.Description.Value) false) 
-                        // |> 
-                        //     List.exists (fun x -> 
-                        //         (x.Description.Value = t.Description.Value))
-                        // |> List.exists (fun x -> (x.Description.EvalPredicate' (pred' t.Description x.Description )))
+                        // |> List.exists (fun x -> x.Description.EvalPredicate (x.Description.Value = t.Description.Value) false) 
+                        |> List.exists (fun x -> x.Description.EvalPredicate (fun y -> y = t.Description.Value) false)
                         |> not
                         |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
                     return
