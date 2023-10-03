@@ -27,6 +27,8 @@ open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
 open System.Runtime.CompilerServices
 open Sharpino.Conf
+open Tests.Sharpino.Shared
+
 open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
@@ -126,9 +128,8 @@ let testCoreEvolve =
             let _ = ap._reset() 
             let id = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-
-            let event2 = TodoEvents.TodoAdded { Id = id2; Description = "test second part"; CategoryIds = []; TagIds = [] }
+            let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
+            let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
 
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
             let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
@@ -166,7 +167,7 @@ let multiVersionsTests =
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
             ap |> updateStateIfNecessary
@@ -175,21 +176,21 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
         multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo = { Id = Guid.NewGuid(); Description = "testoh"; CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
 
         multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
 
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test" [] []
+            let todo2 = mkTodo  (Guid.NewGuid()) "test2" [] []
             let result = ap.add2Todos (todo1, todo2)
             Expect.isOk result "should be ok"
             let todos = ap.getAllTodos()
@@ -197,8 +198,8 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test" [Guid.NewGuid()] []
+            let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
             let added = ap.add2Todos (todo1, todo2)
             Expect.isError added "should be error"
             let todos = ap.getAllTodos().OkValue 
@@ -206,8 +207,8 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos, one has an unexisting tag - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [Guid.NewGuid()] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test" [] []
+            let todo2 = mkTodo (Guid.NewGuid()) "test2" [] [Guid.NewGuid()]
             let added = ap.add2Todos (todo1, todo2)
             Expect.isError added "should be error"
             let result = ap.getAllTodos().OkValue 
@@ -217,7 +218,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
+            let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
@@ -225,12 +226,12 @@ let multiVersionsTests =
             let _ = ap._reset()
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let tag = { Id = id2; Name = "test"; Color = Color.Blue }
+            let tag = mkTag id2 "test" Color.Blue
             let result = ap.addTag tag
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
-            let todo = { Id = id1; Description = "test"; CategoryIds = []; TagIds = [id2] }
+            let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
@@ -250,7 +251,7 @@ let multiVersionsTests =
         multipleTestCase "add and remove a todo 1 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
 
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
@@ -268,7 +269,7 @@ let multiVersionsTests =
         multipleTestCase "add and remove a todo 2 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
 
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
@@ -296,7 +297,7 @@ let multiVersionsTests =
 
         multipleTestCase "add category" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
             ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
@@ -309,7 +310,7 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a category 1" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
             async {
                 do! Async.Sleep 10
@@ -332,7 +333,7 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a category 2" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "testuu"}
+            let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
             ap |> updateStateIfNecessary
             async {
@@ -356,7 +357,7 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a category 3" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "testuu"}
+            let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
             ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
@@ -373,7 +374,7 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo with an unexisting category - KO" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
             Expect.isOk added "should be ok"
             ap |> updateStateIfNecessary
@@ -391,15 +392,15 @@ let multiVersionsTests =
 
             apUpgd |> updateStateIfNecessary
 
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [Guid.NewGuid()]; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [Guid.NewGuid()] []
             let result = apUpgd.addTodo todo
             Expect.isError result "should be error"
 
         multipleTestCase "when remove a category all references to it should be removed from todos - Ok" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
             let categoryId = Guid.NewGuid()
-            let category = { Id = categoryId; Name = "test" }
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId]; TagIds = [] }
+            let category = mkCategory categoryId "test"
+            let todo = mkTodo (Guid.NewGuid()) "test" [categoryId] []
 
             let _ = ap.addCategory category
 
@@ -434,9 +435,9 @@ let multiVersionsTests =
             let _ = ap._reset()
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
-            let category = { Id = categoryId1; Name = "test" }
+            let category = mkCategory categoryId1 "test"
             let category2 = { Id = categoryId2; Name = "test2" }
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) "test" [categoryId1; categoryId2] []
 
             let _ = ap.addCategory category
             let _ = ap.addCategory category2
@@ -459,8 +460,8 @@ let multiVersionsTests =
             let _ = ap._reset()
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
-            let category = { Id = categoryId1; Name = "test" }
-            let category2 = { Id = categoryId2; Name = "test2" }
+            let category = mkCategory categoryId1 "test"
+            let category2 = mkCategory categoryId2 "test2"
             let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
 
             let added = ap.addCategory category
@@ -485,7 +486,7 @@ let multiVersionsTests =
 
         multipleTestCase "add tag" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let added = ap.addTag tag
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
@@ -496,7 +497,7 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a tag" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let added = ap.addTag tag
             ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
@@ -515,8 +516,8 @@ let multiVersionsTests =
         multipleTestCase "when remove a tag all references to it should be removed from existing todos - Ok" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
-            let tag = { Id = tagId; Name = "test"; Color = Color.Blue }
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId] }
+            let tag = mkTag tagId "test" Color.Blue
+            let todo = mkTodo (Guid.NewGuid()) "test" [] [tagId]
 
             let added =
                 ResultCE.result {
@@ -546,8 +547,8 @@ let multiVersionsTests =
         multipleTestCase "when remove a tag all references to it should be removed from existing todos 2 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
-            let tag = { Id = tagId; Name = "test"; Color = Color.Blue }
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId] }
+            let tag = mkTag tagId "test" Color.Blue
+            let todo = mkTodo (Guid.NewGuid()) "test" [] [tagId]
 
             let added =
                 ResultCE.result {
@@ -578,10 +579,10 @@ let multiVersionsTests =
         multipleTestCase "when remove a tag all references to it should be removed from existing todos 3 - Ok" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) ->
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
-            let tag1 = { Id = tagId; Name = "test"; Color = Color.Blue }
+            let tag1 = mkTag tagId "test" Color.Blue
             let tagId2 = Guid.NewGuid()
-            let tag2 = { Id = tagId2; Name = "test2"; Color = Color.Red }
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [tagId; tagId2] }
+            let tag2 = mkTag tagId2 "test2" Color.Red
+            let todo = mkTodo (Guid.NewGuid()) "test" [] [tagId; tagId2]
 
             let added = ap.addTag tag1
             Expect.isOk added "should be ok"
@@ -602,8 +603,8 @@ let multiVersionsTests =
         multipleTestCase "add two todos and then retrieve the report/projection - Ok" currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
             let now = System.DateTime.Now
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test" [] []
+            let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
             let added1 = ap.addTodo todo1
             let added2 = ap.addTodo todo2
             let result = ap.todoReport now System.DateTime.Now
@@ -618,7 +619,7 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " currentTestConfs <| fun (ap, upgd, migrator) ->
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test one"; CategoryIds = []; TagIds = [] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test one" [] []
             let added1 = ap.addTodo todo1
             async {
                 do! Async.Sleep 10
@@ -629,7 +630,7 @@ let multiVersionsTests =
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test two"; CategoryIds = []; TagIds = [] }
+            let todo2 = mkTodo (Guid.NewGuid()) "test two" [] []
             let added2 = ap.addTodo todo2
             async {
                 do! Async.Sleep 10
@@ -646,7 +647,7 @@ let multiVersionsTests =
 
         multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only the first event - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let todo1 = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = [] }
+            let todo1 = mkTodo (Guid.NewGuid()) "test one" [] []
             let beforeAddingFirst = System.DateTime.Now
             async {
                 do! Async.Sleep 10
@@ -658,18 +659,16 @@ let multiVersionsTests =
                 do! Async.Sleep 1
                 return ()
             } |> Async.RunSynchronously
-            let todo2 = { Id = Guid.NewGuid(); Description = "test2"; CategoryIds = []; TagIds = [] }
+            let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
             let added2 = ap.addTodo todo2
             let result = ap.todoReport beforeAddingFirst beforeAddingSecond 
             let actualEvents = result.TodoEvents |> Set.ofList
             let expcted = 
                 [
-                    TodoEvent.TodoAdded { Id = todo1.Id; Description = todo1.Description; CategoryIds = todo1.CategoryIds; TagIds = todo1.TagIds }
+                    TodoEvent.TodoAdded todo1 //(mkTodo todo1.Id todo1.Description todo1.CategoryIds todo1.TagIds)
                 ]
                 |> Set.ofList
             Expect.equal actualEvents expcted "should be equal"
-
-
     ] 
     |> testSequenced
 
@@ -678,7 +677,7 @@ let multiCallTests =
     let doAddNewTodo() =
         let ap = AppVersions.currentPostgresApp
         for i = 0 to 9 do
-            let todo = { Id = Guid.NewGuid(); Description = ((Guid.NewGuid().ToString()) + "todo"+(i.ToString())); CategoryIds = []; TagIds = [] }
+            let todo = mkTodo (Guid.NewGuid()) ("todo" + (i.ToString())) [] []
             ap.addTodo todo |> ignore
             ()
 
@@ -689,7 +688,7 @@ let multiCallTests =
             let _ = ap._reset()
 
             for i = 0 to 999 do
-                let todo = { Id = Guid.NewGuid(); Description = "todo"+(i.ToString()); CategoryIds = []; TagIds = [] }
+                let todo = mkTodo (Guid.NewGuid()) ("todo" + (i.ToString())) [] []
                 let added = ap.addTodo todo 
                 ()
 

@@ -5,6 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
+open Tests.Sharpino.Shared
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
 
@@ -12,7 +13,8 @@ open Sharpino.Utils
 let todosModelTests =
     testList "todos model 02 tests" [
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
+            // let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let result = todos.OkValue
@@ -20,7 +22,7 @@ let todosModelTests =
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo id "test" [] []
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue
@@ -32,7 +34,7 @@ let todosModelTests =
 
         testCase "try removing an unexisting todo - Ko" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo id "test" [] []
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue

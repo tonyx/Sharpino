@@ -1,5 +1,6 @@
 
 module Tests.Sharpino.Sample.Todos.Models.TodoTests
+open Tests.Sharpino.Shared
 
 open Expecto
 open System
@@ -12,7 +13,7 @@ open Sharpino.Utils
 let todosModelTests =
     testList "todos model tests" [
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let result = todos.OkValue
@@ -20,7 +21,7 @@ let todosModelTests =
 
         testCase "add and remove a todo - Ok" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo id "test" [] []
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue
@@ -32,7 +33,7 @@ let todosModelTests =
 
         testCase "try removing an unexisting todo - Ko" <| fun _ ->
             let id = Guid.NewGuid()
-            let todo = { Id = id; Description = "test"; CategoryIds = []; TagIds = []}
+            let todo = mkTodo id "test" [] []
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue
