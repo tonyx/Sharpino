@@ -6,9 +6,9 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.1.0</Version>
     <Authors>Antonio Lucca</Authors>
-    <PackgeLicenseExpression>MIT</PackgeLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
