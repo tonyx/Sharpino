@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
 
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
