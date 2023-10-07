@@ -25,6 +25,8 @@ module TodosAggregate =
             "_01"
         static member SnapshotsInterval =
             5 
+        static member Lock =
+            new Object()
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
@@ -130,6 +132,8 @@ module TodosAggregate =
             "_02"
         static member SnapshotsInterval =
             15
+        static member Lock = 
+            new Object()
         member this.AddTodo (t: Todo) =
             result
                 {

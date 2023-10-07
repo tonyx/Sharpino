@@ -22,7 +22,8 @@ module Repository =
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)>
+        and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)>
         (storage: IStorage) =
             log.Debug "getLastSnapshot"
             async {
@@ -42,6 +43,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>>(storage: IStorage) = 
         log.Debug "snapIdStateAndEvents"
         async {
@@ -59,6 +61,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
             log.Debug "getState"
             result {
@@ -76,6 +79,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
             async {
@@ -98,6 +102,8 @@ module Repository =
         and 'A2: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
             (storage: IStorage)
@@ -135,6 +141,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
                 return
@@ -152,6 +159,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>>(storage: IStorage) =
             log.Debug "mkSnapshotIfInterval"
             async {

@@ -38,6 +38,8 @@ module App =
                     }
             }
             |> Async.RunSynchronously
+
+        // here I am using the mailboxprocessor which is a thread safe queue
         member this.AddTodo todo =
             let f = fun () ->
                 ResultCE.result {
@@ -63,8 +65,10 @@ module App =
             }
             |> Async.RunSynchronously
 
+        // here I am using two lock object to synchronize the access to the storage in
+        // dealing with two aggregates
         member this.Add2Todos (todo1, todo2) =
-            let f = fun () ->
+            lock (TodosAggregate.Lock, TagsAggregate.Lock) (fun () -> 
                 ResultCE.result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -88,26 +92,22 @@ module App =
                         |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
                     return ()
                 }
-            async {
-                return processor.PostAndReply (fun rc -> f, rc)
-            } 
-            |> Async.RunSynchronously
+            )
 
+        // here I am using no sync strategy at all because the worst thing that can happen is that
+        // the TodoRemoved events is generated twice, so the second one will just be ignored by the evolve (Core.fs)
+        // 
         member this.RemoveTodo id =
-            let f = fun () ->
-                ResultCE.result {
-                    let! _ =
-                        id
-                        |> TodoCommand.RemoveTodo
-                        |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = 
-                        storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
-                    return ()
-                }
-            async {
-                return processor.PostAndReply (fun rc -> f, rc)
-            } |> Async.RunSynchronously
+            ResultCE.result {
+                let! _ =
+                    id
+                    |> TodoCommand.RemoveTodo
+                    |> runCommand<TodosAggregate, TodoEvent> storage
+                let _ = 
+                    storage
+                    |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                return ()
+            }
 
         member this.GetAllCategories() =
             async {
@@ -120,6 +120,7 @@ module App =
             }
             |> Async.RunSynchronously
 
+        // I will use mailboxprocessor even if I don't need any sync strategy
         member this.AddCategory category =
             let f = fun () ->
                 ResultCE.result {
