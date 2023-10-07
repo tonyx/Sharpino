@@ -22,6 +22,8 @@ module CategoriesAggregate =
             "_02"
         static member SnapshotsInterval =
             15
+        static member Lock =
+            new Object()
         member this.AddCategory (c: Category) =
             result {
                 let! categories = this.Categories.AddCategory c 
