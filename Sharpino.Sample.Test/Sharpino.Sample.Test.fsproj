@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <compile Include="Shared.fs"/>
+    <compile Include="Shared.fs" />
     <Compile Include="aggregates/Tags/models/TagsTests.fs" />
     <Compile Include="aggregates/Tags/TagsAggregateTests.fs" />
     <Compile Include="aggregates/Todos/TodosAggregateTests.fs" />
@@ -26,13 +26,14 @@
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
+    <PackageReference Include="Sharpino" Version="1.1.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="7.*" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    <!-- <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" /> -->
     <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>
 </Project>
