@@ -136,6 +136,59 @@ module Repository =
             }
             |> Async.RunSynchronously
 
+    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+        and 'A3: (static member Zero: 'A3)
+        and 'A3: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'A3: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
+        and 'A3: (static member Lock: obj)
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2> 
+        and 'E3 :> Event<'A3>> 
+            (storage: IStorage)
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) 
+            (command3: Command<'A3, 'E3>) =
+            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            async {
+                return
+                    result {
+                        let! (_, state1) = getState<'A1, 'E1> storage
+                        let! (_, state2) = getState<'A2, 'E2> storage
+                        let! (_, state3) = getState<'A3, 'E3> storage
+                        let! events1 =
+                            state1
+                            |> command1.Execute
+                        let! events2 =
+                            state2
+                            |> command2.Execute
+                        let! events3 =
+                            state3
+                            |> command3.Execute
+
+                        let events1' = events1 |>> fun x -> x :> obj
+                        let events2' = events2 |>> fun x -> x :> obj
+                        let events3' = events3 |>> fun x -> x :> obj
+
+                        return! 
+                            storage.MultiAddEvents 
+                                [
+                                    (events1', 'A1.Version, 'A1.StorageName)
+                                    (events2', 'A2.Version, 'A2.StorageName)
+                                    (events3', 'A3.Version, 'A2.StorageName)
+                                ]
+                    } 
+            }
+            |> Async.RunSynchronously
+
+
     [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mksnapshot<'A, 'E
         when 'A: (static member Zero: 'A)

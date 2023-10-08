@@ -160,6 +160,92 @@ module LightRepository =
                 return! result2 
             }
 
+
+    // not tested yet
+    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+
+        and 'A3: (static member Zero: 'A3)
+        and 'A3: (static member StorageName: string)
+
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'A3: (static member Version: string)
+
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2>
+        and 'E3 :> Event<'A3>> 
+            (storage: ILightStorage)
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) 
+            (command3: Command<'A3, 'E3>) =
+            log.Debug (sprintf "runThreeCommands %A %A %A\n" command1 command2 command3)
+            result {
+                let! (_, a1State) = getState<'A1, 'E1> storage 
+
+                let command1Undoer = 
+                    match command1.Undoer with
+                    | Some f -> a1State |> f |> Some 
+                    | _ -> None
+
+                let command1Undoer2 = 
+                    match command1Undoer with
+                    | Some x -> 
+                        match x with
+                        | Ok x -> Some x
+                        | _ -> None
+                    | _ -> None
+
+                let! result1 = runCommand<'A1, 'E1> storage command1
+                let result2 = runCommand<'A2, 'E2> storage command2
+
+                let! _ =
+                    match result2, command1Undoer2 with
+                    | Error _, Some undoer ->
+                        let doUndo = runUndoCommand storage undoer
+                        match doUndo with
+                        | Ok _ -> () |> Ok
+                        | Error err -> 
+                            printf "warning can't do undo: %A\n" err
+                            Error err
+                    | _ -> () |> Ok
+
+                let! (_, a2State) = getState<'A2, 'E2> storage 
+                let command2Undoer = 
+                    match command2.Undoer with
+                    | Some f -> a2State |> f |> Some 
+                    | _ -> None
+
+                let command2Undoer2 = 
+                    match command2Undoer with
+                    | Some x -> 
+                        match x with
+                        | Ok x -> Some x
+                        | _ -> None
+                    | _ -> None
+
+                let result3 = runCommand<'A3, 'E3> storage command3
+
+                match result3, command1Undoer2, command2Undoer2 with
+                | Error _, Some undoer1, Some undoer2 ->
+                    let doUndo1 = runUndoCommand storage undoer1
+                    let doUndo2 = runUndoCommand storage undoer2
+                    match doUndo1, doUndo2 with
+                    | Ok _, Ok _ -> ()
+                    | Error err, _ -> 
+                        printf "warning can't do undo: %A\n" err
+                    | _, Error err -> 
+                        printf "warning can't do undo: %A\n" err
+                | _ -> ()
+
+                return! result3 
+            }
+
+
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
     let inline runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
