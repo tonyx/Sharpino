@@ -160,7 +160,6 @@ module LightRepository =
                 return! result2 
             }
 
-
     // not tested yet
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
