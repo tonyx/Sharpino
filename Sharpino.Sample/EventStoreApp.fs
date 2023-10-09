@@ -34,17 +34,12 @@ module EventStoreApp =
     open Sharpino.Sample.Tags.TagCommands
     type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
-            let f = fun() ->
-                result {
-                    return!
-                        tag
-                        |> TagCommand.AddTag
-                        |> runCommand<TagsAggregate, TagEvent> storage
-                }
-            async {
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            result {
+                return!
+                    tag
+                    |> TagCommand.AddTag
+                    |> runCommand<TagsAggregate, TagEvent> storage
             }
-            |> Async.RunSynchronously
                 
         member this.GetAllTags() =
             ResultCE.result {
@@ -62,32 +57,26 @@ module EventStoreApp =
             }
 
         member this.AddTodo todo =
-            let f = fun() ->
-                ResultCE.result {
-                    let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
-                    let tagIds = tagState'.GetTags() |>> fun x -> x.Id
+            ResultCE.result {
+                let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
+                let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
-                    let! tagIdIsValid = 
-                        (todo.TagIds.IsEmpty || 
-                        (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
-                        |> boolToResult "Tag id is not valid"
+                let! tagIdIsValid = 
+                    (todo.TagIds.IsEmpty || 
+                    (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
+                    |> boolToResult "Tag id is not valid"
 
-                    let! _ =
-                        todo
-                        |> TodoCommand.AddTodo
-                        |> runCommand<TodosAggregate, TodoEvent> storage
+                let! _ =
+                    todo
+                    |> TodoCommand.AddTodo
+                    |> runCommand<TodosAggregate, TodoEvent> storage
 
-                    let _ =
-                        storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
-                    return ()
-                }
-            async {
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
+                let _ =
+                    storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
+                return ()
             }
-            |> Async.RunSynchronously
 
         member this.RemoveTodo id =
-            // printf "removing 1.\n"
             let f = fun() ->
                 ResultCE.result {
                     return!
@@ -95,9 +84,9 @@ module EventStoreApp =
                         |> TodoCommand.RemoveTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
                 }
-            async { 
+            async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
-            }   
+            }
             |> Async.RunSynchronously
 
         member this.AddCategory category =
