@@ -7,6 +7,11 @@ open Expecto
 open System
 open FsToolkit.ErrorHandling
 
+module Definitions =
+    type Json = string
+    type Name = string
+    type version = string
+
 module Utils =
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects

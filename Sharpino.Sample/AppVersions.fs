@@ -1,6 +1,7 @@
 
 namespace Sharpino.EventSourcing.Sample
 open Sharpino
+open Sharpino.Cache
 open Sharpino.Storage
 open Sharpino.Utils
 
@@ -52,29 +53,29 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
     let upgradedMemApp = App.UpgradedApp(memoryStorage)
 
-    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection))
+    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
 
     let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
-        Cache.EventCache<TodosAggregate>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate>.Instance.Clear()
-        Cache.StateCache<TodosAggregate>.Instance.Clear()
+        EventCache<TodosAggregate>.Instance.Clear()
+        SnapCache<TodosAggregate>.Instance.Clear()
+        StateCache<TodosAggregate>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
 
         db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        Cache.EventCache<TagsAggregate>.Instance.Clear()
-        Cache.SnapCache<TagsAggregate>.Instance.Clear()
-        Cache.StateCache<TagsAggregate>.Instance.Clear()
+        EventCache<TagsAggregate>.Instance.Clear()
+        SnapCache<TagsAggregate>.Instance.Clear()
+        StateCache<TagsAggregate>.Instance.Clear()
 
         db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        Cache.EventCache<CategoriesAggregate>.Instance.Clear()
-        Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
-        Cache.StateCache<CategoriesAggregate>.Instance.Clear()
+        EventCache<CategoriesAggregate>.Instance.Clear()
+        SnapCache<CategoriesAggregate>.Instance.Clear()
+        StateCache<CategoriesAggregate>.Instance.Clear()
 
     let resetEventStore() =
 
@@ -200,15 +201,15 @@ module AppVersions =
 
     [<CurrentVersion>]
     let evSApp =
-        let eventStoreBridge: EventStore.EventStoreStorage = EventStore.EventStoreStorage(eventStoreConnection)
         {
             _migrator =         None
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
+                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
+                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
                                     async {
                                         // todo: refactor here remember that addevents returns a result now
-                                        let result = eventStore.AddEvents version e name
+                                        let result = eventStore.AddEvents version deser name
                                         return result
                                     }
                                     |> Async.RunSynchronously

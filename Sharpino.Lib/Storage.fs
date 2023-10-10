@@ -26,12 +26,14 @@ module Storage =
         }
 
     type ILightStorage =
-        abstract member AddEvents: version -> List<Json> -> Name -> Result<unit, string>
+        abstract member AddEvents: version -> List<'E> -> Name -> Result<unit, string>
         abstract member ResetEvents: version -> Name -> unit
         abstract member ResetSnapshots: version -> Name -> unit
-        abstract member AddSnapshot: UInt64 -> version -> Json -> Name -> unit
+        abstract member AddSnapshot: UInt64 -> version -> 'A -> Name -> unit
         abstract member ConsumeEventsFromPosition: version -> Name -> uint64 -> (uint64 * Json) list
         abstract member TryGetLastSnapshot: version -> Name -> Option<UInt64 * Json>
+
+        abstract member TryGetLastSnapshotRef: version -> Name -> Option<UInt64 * 'A>
         abstract member ConsumeEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<uint64 * Json>
 
     type IStorage =

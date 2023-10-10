@@ -3,19 +3,22 @@ namespace Sharpino
 open FsToolkit.ErrorHandling
 open FSharpPlus
 
+open Sharpino.Definitions
+
 open System
 open System.Linq
 open System.Text
 open EventStore.Client
 open Sharpino.Storage
+open Sharpino.Utils
 open log4net
 open log4net.Config
 
 // experimental support for EventStore
 module EventStore =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
-    type EventStoreStorage(connection) =
+    type EventStoreStorage(connection, serializer: JsonSerializer) =
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 
         interface ILightStorage with
@@ -35,7 +38,6 @@ module EventStore =
                         return ()
                 }
                 |> Async.RunSynchronously
-
             member this.ResetSnapshots version name =
                 log.Debug (sprintf "ResetSnapshots %s %s" version name)
                 let strExists = 
@@ -55,12 +57,13 @@ module EventStore =
                 }
                 |> Async.RunSynchronously
 
-            member this.AddEvents version (events: List<string>) name =
+            member this.AddEvents version (events: List<'E>) name =
                 log.Debug (sprintf "AddEvents %s %s" version name)
                 try
                     let streamName = "events" + version + name
                     let eventData = 
                         events 
+                        |>> serializer.Serialize
                         |>> 
                             (fun e -> 
                                 EventData(
@@ -78,19 +81,22 @@ module EventStore =
                 with
                 | ex -> Error(ex.Message)
 
-            member this.AddSnapshot (eventId: UInt64) (version: string) (snapshot: string) (name: string) =
+            member this.AddSnapshot (eventId: UInt64) (version: version) (snapshot: 'A) (name: Name) =
                 log.Debug (sprintf "AddSnapshot %s %s" version name)
                 let streamName = "snapshots" + version + name
+                let serSnapshot = snapshot |> serializer.Serialize
+
                 let eventData = 
                     EventData(
                         Uuid.NewUuid(), 
                         streamName,
-                        Encoding.UTF8.GetBytes(snapshot),
+                        Encoding.UTF8.GetBytes(serSnapshot),
                         new Nullable<ReadOnlyMemory<byte>>(Encoding.UTF8.GetBytes(eventId.ToString()))
                     )
                 async {
                     let! _ = _client.AppendToStreamAsync(streamName, StreamState.Any, [eventData]) |> Async.AwaitTask
                     return ()
+
                 }
                 |> Async.RunSynchronously
 
@@ -158,7 +164,33 @@ module EventStore =
                 else
                     let last = snapshotVals.FirstOrDefault()
                     let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
-                    let snapshotData = Encoding.UTF8.GetString(last.Event.Data.ToArray())
+                    let snapshotData = 
+                        Encoding.UTF8.GetString(last.Event.Data.ToArray())
+                    (eventId, snapshotData) |> Some
+
+            member this.TryGetLastSnapshotRef version name =            
+                log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
+                let streamName = "snapshots" + version + name
+                let snapshotVals =
+                    async {
+                        let snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End)
+                        let! readState = snapshots.ReadState |> Async.AwaitTask
+                        if readState = ReadState.StreamNotFound then
+                            return [] |> Collections.Generic.List
+                        else
+                            let! ev = snapshots.ToListAsync().AsTask() |> Async.AwaitTask
+                            return ev
+                    }
+                    |> Async.RunSynchronously
+
+                if ((snapshotVals |> Seq.length) = 0) then
+                    None
+                else
+                    let last = snapshotVals.FirstOrDefault()
+                    let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
+                    let snapshotData = 
+                        Encoding.UTF8.GetString(last.Event.Data.ToArray())
+                        |> serializer.Deserialize<'A> |> Result.get
                     (eventId, snapshotData) |> Some
 
             

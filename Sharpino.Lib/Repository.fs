@@ -31,8 +31,8 @@ module Repository =
                     result {
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                            | Some (_, eventId, json) ->
-                                (eventId, json ) |> Ok
+                            | Some (_, eventId, state) ->
+                                (eventId, state ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }

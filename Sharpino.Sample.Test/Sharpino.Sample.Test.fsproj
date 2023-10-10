@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" /> -->
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
     <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>
 </Project>

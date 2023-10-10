@@ -30,8 +30,7 @@ open log4net
 open log4net.Config
 
 module EventStoreApp =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    open Sharpino.Sample.Tags.TagCommands
+    let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
             result {

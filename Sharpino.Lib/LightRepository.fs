@@ -6,6 +6,7 @@ open FSharpPlus
 open FSharpPlus.Data
 
 open Sharpino
+open Sharpino.Utils
 open Sharpino.Storage
 open Sharpino.Core
 open FsToolkit.ErrorHandling
@@ -111,7 +112,6 @@ module LightRepository =
                         |> command.Execute
                     let serEvents = 
                         events 
-                        |>> Utils.serialize
                     return! storage.AddEvents 'A.Version serEvents 'A.StorageName
                 } 
         }
@@ -294,11 +294,6 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>> (storage: ILightStorage) =
-
-            let addNewShapshot eventId state = 
-                let newSnapshot = state |> Utils.serialize<'A>
-                storage.AddSnapshot eventId 'A.Version newSnapshot 'A.StorageName
-
             async {
                 let lastSnapshot = storage.TryGetLastSnapshot 'A.Version 'A.StorageName
                 let snapId = 
@@ -316,7 +311,7 @@ module LightRepository =
                 | Ok (eventId, state) ->
                     let difference = eventId - snapId
                     if (difference > ('A.SnapshotsInterval |> uint64)) then
-                        let _ = addNewShapshot eventId state 
+                        let _ = storage.AddSnapshot eventId 'A.Version state 'A.StorageName
                         ()
                     return ()
             }
