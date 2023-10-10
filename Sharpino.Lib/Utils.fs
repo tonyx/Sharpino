@@ -17,16 +17,6 @@ module Utils =
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    let deserialize<'A> (json: string): Result<'A, string> =
-        try
-            JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
-        with
-        | ex  ->
-            printf "error deserialize: %A" ex
-            Error (ex.ToString())
-    let serialize<'A> (x: 'A): string =
-        JsonConvert.SerializeObject(x, serSettings)
-
     type JsonSerializer(serSettings: JsonSerializerSettings) =
         member this.Deserialize<'A> (json: string): Result<'A, string> =
             try

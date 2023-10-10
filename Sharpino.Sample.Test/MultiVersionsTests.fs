@@ -87,6 +87,7 @@ let utilsTests =
 let testCoreEvolve =
     // quick and dirty way to log for debug:
     // log4net.Config.BasicConfigurator.Configure() |> ignore
+    let serializer = JsonSerializer(serSettings)
     let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
         match ap._forceStateUpdate with
         | Some f -> f()
@@ -98,9 +99,9 @@ let testCoreEvolve =
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
             // I am adding twice the same event and the "evolve" will ignore it
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName )
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName )
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize], TodosAggregate'.StorageName)
             ap |> updateStateIfNecessary
 
             let todos = ap.getAllTodos()
@@ -112,11 +113,11 @@ let testCoreEvolve =
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize], TodosAggregate'.StorageName)
 
             ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
@@ -130,14 +131,14 @@ let testCoreEvolve =
             let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
             let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize ],  TodosAggregate.StorageName) 
+            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize ],  TodosAggregate.StorageName) 
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ],  TodosAggregate'.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate.Version,  [ event2 |> serialize ], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event2 |> serialize ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version,  [ event2 |> serializer.Serialize ], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event2 |> serializer.Serialize ], TodosAggregate'.StorageName)
 
             ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()

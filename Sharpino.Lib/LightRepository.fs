@@ -30,30 +30,11 @@ module LightRepository =
                         return!
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (eventId, json) ->
-                                let fromJson = Utils.deserialize<'A> json
-                                match fromJson with
-                                | Ok x -> (eventId, x) |> Ok
-                                | Error e -> Error e
+                                (eventId, json) |> Ok
                             | None -> (0 |> uint64, 'A.Zero) |> Ok
                     }
             }
             |> Async.RunSynchronously
-
-    let inline snapIdStateAndEvents<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'E :> Event<'A>>(storage: ILightStorage) = 
-        log.Debug "snapIdStateAndEvents"
-        async {
-            return
-                result {
-                    let! (id, state) = getLastSnapshot<'A> storage
-                    let events = storage.ConsumeEventsFromPosition 'A.Version 'A.StorageName id
-                    return (id, state, events)
-                }
-        }
-        |> Async.RunSynchronously
 
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -61,15 +42,27 @@ module LightRepository =
         and 'A: (static member Version: string)
         and 'E :> Event<'A>>(storage: ILightStorage) = 
             log.Debug "getState"
+
+            let inline snapIdStateAndEvents (storage: ILightStorage) = 
+                log.Debug "snapIdStateAndEvents"
+                async {
+                    return
+                        result {
+                            let! (id, state) = getLastSnapshot<'A> storage
+                            let events = storage.ConsumeEventsFromPosition 'A.Version 'A.StorageName id
+                            return (id, state, events)
+                        }
+                }
+                |> Async.RunSynchronously
+
             result {
-                let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
+                let! (lastSnapshotId, state, events) = snapIdStateAndEvents storage
                 let lastEventId =
                     match events.Length with
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
-                let! deserEvents = 
-                    events |>> snd
-                    |> Utils.catchErrors (fun x -> Utils.deserialize<'E> x)
+                let deserEvents = 
+                    events |>> snd 
                 let! newState = 
                     deserEvents |> evolve<'A, 'E> state
                 return (lastEventId, newState) 
@@ -91,7 +84,7 @@ module LightRepository =
                         |> undoer 
                     let serEvents = 
                         events 
-                        |>> Utils.serialize
+                        // |>> Utils.serialize
                     return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
                 } 
         }

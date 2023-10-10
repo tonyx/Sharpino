@@ -102,33 +102,12 @@ module EventStore =
 
             member this.ConsumeEventsFromPosition version name id =
                 log.Debug (sprintf "ConsumeEventsFromPosition %s %s %A" version name id)
-                let streamName = "events" + version + name
-                let position = new StreamPosition(id)
+                try
+                    let streamName = "events" + version + name
+                    let position = new StreamPosition(id)
 
-                async {
-                    let events = _client.ReadStreamAsync(Direction.Forwards, streamName, position.Next())
-
-                    let! readState = events.ReadState |> Async.AwaitTask
-                    if readState = ReadState.StreamNotFound then
-                        return [] |> Collections.Generic.List
-                    else
-                        let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
-                        return ev
-                }
-                |> Async.RunSynchronously
-                |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
-                |> List.ofSeq
-
-            // there are two issues in this function:
-            // 1. can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
-            // https://stackoverflow.com/questions/74829893/eventstore-read-specific-time-frame-from-stream
-            // 2. it will not survive after a migration because the timestamps will be different
-            member this.ConsumeEventsInATimeInterval version name dateFrom dateTo =
-                log.Debug (sprintf "ConsumeEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let streamName = "events" + version + name
-                let withTimeStamp =
                     async {
-                        let events = _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start)
+                        let events = _client.ReadStreamAsync(Direction.Forwards, streamName, position.Next())
 
                         let! readState = events.ReadState |> Async.AwaitTask
                         if readState = ReadState.StreamNotFound then
@@ -138,11 +117,39 @@ module EventStore =
                             return ev
                     }
                     |> Async.RunSynchronously
-                    |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()), e.Event.Created.ToLocalTime())) 
-                    |> Seq.filter (fun (_, _, timestamp) -> timestamp >= dateFrom && timestamp <= dateTo)
+                    // |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
+                    |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()) |> serializer.Deserialize<'E> |> Result.get )) 
                     |> List.ofSeq
+                with
+                    _ -> []
 
-                withTimeStamp |>> (fun (id, json, _) -> (id, json))
+            // there are two issues in this function:
+            // 1. can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
+            // https://stackoverflow.com/questions/74829893/eventstore-read-specific-time-frame-from-stream
+            // 2. it will not survive after a migration because the timestamps will be different
+            member this.ConsumeEventsInATimeInterval version name dateFrom dateTo =
+                log.Debug (sprintf "ConsumeEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                try
+                    let streamName = "events" + version + name
+                    let withTimeStamp =
+                        async {
+                            let events = _client.ReadStreamAsync(Direction.Forwards, streamName, StreamPosition.Start)
+
+                            let! readState = events.ReadState |> Async.AwaitTask
+                            if readState = ReadState.StreamNotFound then
+                                return [] |> Collections.Generic.List
+                            else
+                                let! ev = events.ToListAsync().AsTask() |> Async.AwaitTask
+                                return ev
+                        }
+                        |> Async.RunSynchronously
+                        |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()), e.Event.Created.ToLocalTime())) 
+                        |> Seq.filter (fun (_, _, timestamp) -> timestamp >= dateFrom && timestamp <= dateTo)
+                        |> List.ofSeq
+
+                    withTimeStamp |>> (fun (id, json, _) -> (id, json |> serializer.Deserialize<'E> |> Result.get))
+                with
+                    _ -> []
 
             member this.TryGetLastSnapshot version name =            
                 log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
@@ -162,35 +169,13 @@ module EventStore =
                 if ((snapshotVals |> Seq.length) = 0) then
                     None
                 else
-                    let last = snapshotVals.FirstOrDefault()
-                    let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
-                    let snapshotData = 
-                        Encoding.UTF8.GetString(last.Event.Data.ToArray())
-                    (eventId, snapshotData) |> Some
+                    try
+                        let last = snapshotVals.FirstOrDefault()
+                        let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
+                        let snapshotData = 
+                            Encoding.UTF8.GetString(last.Event.Data.ToArray())
+                            |> serializer.Deserialize<'A> |> Result.get
+                        (eventId, snapshotData) |> Some
+                    with _ -> None
 
-            member this.TryGetLastSnapshotRef version name =            
-                log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
-                let streamName = "snapshots" + version + name
-                let snapshotVals =
-                    async {
-                        let snapshots = _client.ReadStreamAsync(Direction.Backwards, streamName, StreamPosition.End)
-                        let! readState = snapshots.ReadState |> Async.AwaitTask
-                        if readState = ReadState.StreamNotFound then
-                            return [] |> Collections.Generic.List
-                        else
-                            let! ev = snapshots.ToListAsync().AsTask() |> Async.AwaitTask
-                            return ev
-                    }
-                    |> Async.RunSynchronously
 
-                if ((snapshotVals |> Seq.length) = 0) then
-                    None
-                else
-                    let last = snapshotVals.FirstOrDefault()
-                    let eventId = UInt64.Parse(Encoding.UTF8.GetString(last.Event.Metadata.ToArray()))
-                    let snapshotData = 
-                        Encoding.UTF8.GetString(last.Event.Data.ToArray())
-                        |> serializer.Deserialize<'A> |> Result.get
-                    (eventId, snapshotData) |> Some
-
-            

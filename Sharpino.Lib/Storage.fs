@@ -30,11 +30,9 @@ module Storage =
         abstract member ResetEvents: version -> Name -> unit
         abstract member ResetSnapshots: version -> Name -> unit
         abstract member AddSnapshot: UInt64 -> version -> 'A -> Name -> unit
-        abstract member ConsumeEventsFromPosition: version -> Name -> uint64 -> (uint64 * Json) list
-        abstract member TryGetLastSnapshot: version -> Name -> Option<UInt64 * Json>
-
-        abstract member TryGetLastSnapshotRef: version -> Name -> Option<UInt64 * 'A>
-        abstract member ConsumeEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<uint64 * Json>
+        abstract member ConsumeEventsFromPosition: version -> Name -> uint64 -> (uint64 * 'E) list
+        abstract member TryGetLastSnapshot: version -> Name -> Option<UInt64 * 'A>
+        abstract member ConsumeEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<uint64 * 'E>
 
     type IStorage =
         abstract member Reset: version -> Name -> unit

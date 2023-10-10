@@ -173,8 +173,7 @@ module EventStoreApp =
         member this.TodoReport (dateFrom: DateTime) (dateTo: DateTime) =
             try
                 let events = storage.ConsumeEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
-                let deserEvents = events |> List.map (fun x -> x |> Utils.deserialize<TodoEvent> |> Result.get)
-                let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents}
+                let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = events}
                 result
             with _ as ex ->
                 log.Error (sprintf "error: %A\n" ex)
