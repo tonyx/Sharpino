@@ -46,8 +46,8 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
-    let storage = PgStorage.PgStorage(connection, jsonSerializer)
-    let memoryStorage = MemoryStorage.MemoryStorage(jsonSerializer)
+    let storage = PgStorage.PgStorage(connection)
+    let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(storage)
     let upgradedPgApp = App.UpgradedApp(storage)
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
@@ -117,7 +117,7 @@ module AppVersions =
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (storage :> IStorage).AddEvents version deser name |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
@@ -138,7 +138,7 @@ module AppVersions =
             _migrator  =        None
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (storage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
@@ -161,7 +161,7 @@ module AppVersions =
             _migrator  =        currentMemApp.Migrate |> Some
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
@@ -183,7 +183,7 @@ module AppVersions =
             _migrator =         None
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e 
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
@@ -206,7 +206,7 @@ module AppVersions =
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     async {
                                         // todo: refactor here remember that addevents returns a result now
                                         let result = eventStore.AddEvents version deser name

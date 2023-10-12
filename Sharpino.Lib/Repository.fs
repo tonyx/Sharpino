@@ -14,8 +14,10 @@ open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
 open System.Threading
+open Sharpino.Utils
 
 module Repository =
+    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
@@ -23,7 +25,9 @@ module Repository =
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)>
+        and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> string)
+        >
         (storage: IStorage) =
             log.Debug "getLastSnapshot"
             async {
@@ -32,7 +36,8 @@ module Repository =
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (_, eventId, state) ->
-                                (eventId, state ) |> Ok
+                                let deserState =  state |> serializer.Deserialize<'A> |> Result.get
+                                (eventId, deserState ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
@@ -44,13 +49,16 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'E :> Event<'A>>(storage: IStorage) = 
+        and 'E :> Event<'A>
+        and 'A: (member Serialize: ISerializer -> string)>
+        (storage: IStorage) = 
         log.Debug "snapIdStateAndEvents"
         async {
             return
                 result {
                     let! (id, state) = getLastSnapshot<'A> storage
-                    let! events = storage.GetEventsAfterId<'E> 'A.Version id 'A.StorageName
+                    let! events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
+                    // let deserEvents = events |> List.map (fun (id, json) -> json |> serializer.Deserialize<'E> |> Result.get)
                     let result =
                         (id, state, events)
                     return result
@@ -62,6 +70,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> Json)
         and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
             log.Debug "getState"
             result {
@@ -71,7 +80,8 @@ module Repository =
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
                 let! newState = 
-                    (events |>> snd) |> evolve<'A, 'E> state
+                    // (events |>> snd ) |> evolve<'A, 'E> state
+                    events |>> snd |> List.map(fun x -> serializer.Deserialize x |> Result.get) |> evolve<'A, 'E> state
                 return (lastEventId, newState)
             }
 
@@ -80,6 +90,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> string)
         and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
             async {
@@ -89,8 +100,9 @@ module Repository =
                         let! events =
                             state
                             |> command.Execute
+                        let serEvents = events |>> serializer.Serialize
                         return! 
-                            storage.AddEvents 'A.Version events 'A.StorageName
+                            storage.AddEvents 'A.Version serEvents 'A.StorageName
                     } 
             }
             |> Async.RunSynchronously
@@ -98,8 +110,10 @@ module Repository =
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
+        and 'A1: (member Serialize: ISerializer -> string)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
+        and 'A2: (member Serialize: ISerializer -> string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A1: (static member Lock: obj)
@@ -123,8 +137,11 @@ module Repository =
                             state2
                             |> command2.Execute
 
-                        let events1' = events1 |>> fun x -> x :> obj
-                        let events2' = events2 |>> fun x -> x :> obj
+                        // let events1' = events1 |>> fun x -> x :> obj
+                        // let events2' = events2 |>> fun x -> x :> obj
+
+                        let events1' = events1 |>> serializer.Serialize
+                        let events2' = events2 |>> serializer.Serialize
 
                         return! 
                             storage.MultiAddEvents 
@@ -139,10 +156,13 @@ module Repository =
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
+        and 'A1: (member Serialize: ISerializer -> string)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
+        and 'A2: (member Serialize: ISerializer -> string)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
+        and 'A3: (member Serialize: ISerializer -> string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A3: (static member Version: string)
@@ -173,9 +193,13 @@ module Repository =
                             state3
                             |> command3.Execute
 
-                        let events1' = events1 |>> fun x -> x :> obj
-                        let events2' = events2 |>> fun x -> x :> obj
-                        let events3' = events3 |>> fun x -> x :> obj
+                        // let events1' = events1 |>> fun x -> x :> obj
+                        // let events2' = events2 |>> fun x -> x :> obj
+                        // let events3' = events3 |>> fun x -> x :> obj
+
+                        let events1' = events1 |>> serializer.Serialize
+                        let events2' = events2 |>> serializer.Serialize
+                        let events3' = events3 |>> serializer.Serialize
 
                         return! 
                             storage.MultiAddEvents 
@@ -194,6 +218,7 @@ module Repository =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
@@ -201,7 +226,8 @@ module Repository =
                     ResultCE.result
                         {
                             let! (id, state) = getState<'A, 'E> storage
-                            let! result = storage.SetSnapshot 'A.Version (id, state) 'A.StorageName
+                            let serState = state.Serialize serializer
+                            let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
                         }
             }
@@ -213,6 +239,7 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> string)
         and 'E :> Event<'A>>(storage: IStorage) =
             log.Debug "mkSnapshotIfInterval"
             async {

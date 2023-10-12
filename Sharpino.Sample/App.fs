@@ -26,6 +26,7 @@ open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 module App =
+
     [<CurrentVersion>]
     type CurrentVersionApp(storage: IStorage) =
         member this.GetAllTodos() =
@@ -226,7 +227,8 @@ module App =
             |> Async.RunSynchronously
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
             let events = storage.GetEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
-            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events }
+            let deserEvents = events |>> (serializer.Deserialize >> Result.get)
+            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
             result
 
     [<UpgradedVersion>]
@@ -439,7 +441,8 @@ module App =
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
             let events = storage.GetEventsInATimeInterval TodosAggregate'.Version TodosAggregate'.StorageName dateFrom dateTo |>> snd
-            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events }
+            let deserEvents = events |>> (serializer.Deserialize >> Result.get)
+            let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
             result
 
 

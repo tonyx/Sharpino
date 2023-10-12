@@ -28,6 +28,9 @@ module TodoEvents =
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
                     | TagRefRemoved (g: Guid) ->            
                         EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
 
 
     [<UpgradedVersion>]
@@ -50,3 +53,6 @@ module TodoEvents =
                         EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [this])
                     | TodosAdded (ts: List<Todo>) ->
                         EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodos ts) (x, [this])
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize

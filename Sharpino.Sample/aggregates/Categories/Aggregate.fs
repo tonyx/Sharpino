@@ -2,6 +2,7 @@
 namespace Sharpino.Sample
 
 open FsToolkit.ErrorHandling
+open Sharpino.Utils
 
 open Sharpino.Sample.Entities.Categories
 open System
@@ -52,3 +53,10 @@ module CategoriesAggregate =
                     }
             }
         member this.GetCategories() = this.Categories.GetCategories()
+
+
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+        member this.Deserialize (serializer: ISerializer) =
+            serializer.Deserialize<CategoriesAggregate> (serializer.Serialize this)

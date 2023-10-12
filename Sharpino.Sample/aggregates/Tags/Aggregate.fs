@@ -1,6 +1,7 @@
 namespace Sharpino.Sample
 
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Utils
 
 open System
 open FsToolkit.ErrorHandling
@@ -45,3 +46,9 @@ module TagsAggregate =
                     }
             }
         member this.GetTags() = this.Tags.GetTags()
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+
+        member this.Deserialize (serializer: ISerializer) =
+            serializer.Deserialize<TagsAggregate> (serializer.Serialize this)

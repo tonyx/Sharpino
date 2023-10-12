@@ -113,6 +113,16 @@ module TodosAggregate =
                 }
         member this.GetCategories() = this.categories.GetCategories()
 
+        // assume this should me moved but atm doesn't work in a separate module
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+
+        member this.Deserialize(serializer: ISerializer) =
+            serializer.Deserialize<TodosAggregate> (serializer.Serialize this)
+
+
+
 // what follows is the same code as above, but with the new version of the aggregate
     [<UpgradedVersion>]
 
@@ -214,3 +224,8 @@ module TodosAggregate =
                                     }
                         }
                 }
+        member this.Serialize(serializer: ISerializer) =
+            this |> serializer.Serialize
+
+        member this.Deserialize(serializer: ISerializer) =
+            serializer.Deserialize<TodosAggregate'> (serializer.Serialize this)

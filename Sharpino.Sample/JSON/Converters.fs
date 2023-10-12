@@ -1,4 +1,4 @@
-namespace Sharpino.EventSourcing.Sample.JSON
+namespace Sharpino.Sample
 open Sharpino.Utils
 open Sharpino.Definitions
 
@@ -20,7 +20,11 @@ open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
 open System.Runtime.CompilerServices
 open FsToolkit.ErrorHandling
+open FSharpPlus
+open System.Runtime.CompilerServices
 
+
+// try making it work
 module Converters =
     // entities
     type Todo with
@@ -50,6 +54,14 @@ module Converters =
     type TodosAggregate with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
+
+    [<Extension>]
+    type TodosAggregateExtension =
+        [<Extension>]
+        static member Serialize (this: TodosAggregate, serializer: ISerializer) =
+            this |> serializer.Serialize
+
+
     type TodosAggregate' with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
