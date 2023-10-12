@@ -3,6 +3,7 @@ namespace Sharpino.Sample
 
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
+open Sharpino.Storage
 
 open Sharpino.Sample.Entities.Categories
 open System
@@ -58,5 +59,5 @@ module CategoriesAggregate =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
-        member this.Deserialize (serializer: ISerializer) =
-            serializer.Deserialize<CategoriesAggregate> (serializer.Serialize this)
+        static member Deserialize (serializer: ISerializer, json: Json)=
+            serializer.Deserialize<CategoriesAggregate> json

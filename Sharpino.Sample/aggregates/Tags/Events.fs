@@ -2,6 +2,7 @@ namespace Sharpino.Sample.Tags
 
 open Sharpino.Cache
 open Sharpino.Core
+open Sharpino.Storage
 open Sharpino.Utils
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
@@ -22,3 +23,6 @@ module TagsEvents =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
+
+        static member Deserialize (serializer: ISerializer, json: Json) =
+            serializer.Deserialize<TagEvent> json

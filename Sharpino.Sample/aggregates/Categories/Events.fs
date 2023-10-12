@@ -5,6 +5,7 @@ open System
 open Sharpino.Core
 open Sharpino.Cache
 open Sharpino.Utils
+open Sharpino.Storage
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesAggregate
@@ -26,3 +27,6 @@ module CategoriesEvents =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
+
+        static member Deserialize (serializer: ISerializer, json: Json) =
+            serializer.Deserialize<CategoryEvent> json

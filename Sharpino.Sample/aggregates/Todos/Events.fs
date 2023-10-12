@@ -5,6 +5,7 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Core
+open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Utils
 
@@ -31,6 +32,8 @@ module TodoEvents =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
+        static member Deserialize (serializer: ISerializer, json: Json) =
+            serializer.Deserialize<TodoEvent> json
 
 
     [<UpgradedVersion>]
@@ -56,3 +59,6 @@ module TodoEvents =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
+
+        static member Deserialize (serializer: ISerializer, json: Json) =
+            serializer.Deserialize<TodoEvent'> json

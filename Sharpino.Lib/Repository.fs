@@ -27,6 +27,7 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
         >
         (storage: IStorage) =
             log.Debug "getLastSnapshot"
@@ -36,7 +37,8 @@ module Repository =
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (_, eventId, state) ->
-                                let deserState =  state |> serializer.Deserialize<'A> |> Result.get
+                                let deserState = 'A.Deserialize (serializer, state) |> Result.get
+                                // let deserState =  state |> serializer.Deserialize<'A> |> Result.get
                                 (eventId, deserState ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
@@ -50,7 +52,9 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
-        and 'A: (member Serialize: ISerializer -> string)>
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
+        >
         (storage: IStorage) = 
         log.Debug "snapIdStateAndEvents"
         async {
@@ -58,7 +62,6 @@ module Repository =
                 result {
                     let! (id, state) = getLastSnapshot<'A> storage
                     let! events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                    // let deserEvents = events |> List.map (fun (id, json) -> json |> serializer.Deserialize<'E> |> Result.get)
                     let result =
                         (id, state, events)
                     return result
@@ -70,8 +73,11 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (member Serialize: ISerializer -> Json)
-        and 'E :> Event<'A>>(storage: IStorage): Result< int * 'A, string> = 
+        and 'E :> Event<'A>
+        >
+        (storage: IStorage): Result< int * 'A, string> = 
             log.Debug "getState"
             result {
                 let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
@@ -80,7 +86,6 @@ module Repository =
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
                 let! newState = 
-                    // (events |>> snd ) |> evolve<'A, 'E> state
                     events |>> snd |> List.map(fun x -> serializer.Deserialize x |> Result.get) |> evolve<'A, 'E> state
                 return (lastEventId, newState)
             }
@@ -91,7 +96,10 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
-        and 'E :> Event<'A>>(storage: IStorage) (command: Command<'A, 'E>) =
+        and 'E :> Event<'A>
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
+        >
+        (storage: IStorage) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
             async {
                 return
@@ -111,9 +119,11 @@ module Repository =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
         and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A1: (static member Lock: obj)
@@ -137,9 +147,6 @@ module Repository =
                             state2
                             |> command2.Execute
 
-                        // let events1' = events1 |>> fun x -> x :> obj
-                        // let events2' = events2 |>> fun x -> x :> obj
-
                         let events1' = events1 |>> serializer.Serialize
                         let events2' = events2 |>> serializer.Serialize
 
@@ -157,12 +164,15 @@ module Repository =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
         and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
         and 'A3: (member Serialize: ISerializer -> string)
+        and 'A3: (static member Deserialize: ISerializer -> Json -> Result<'A3, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A3: (static member Version: string)
@@ -219,6 +229,7 @@ module Repository =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>> (storage: IStorage) =
             async {
@@ -240,6 +251,7 @@ module Repository =
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'E :> Event<'A>>(storage: IStorage) =
             log.Debug "mkSnapshotIfInterval"
             async {
