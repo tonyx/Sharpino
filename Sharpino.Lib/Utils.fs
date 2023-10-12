@@ -13,21 +13,27 @@ module Definitions =
     type version = string
 
 module Utils =
+    open Definitions
     let serSettings = JsonSerializerSettings()
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
+    type ISerializer =
+        abstract member Deserialize<'A> : Json -> Result<'A, string>
+        abstract member Serialize<'A> : 'A -> Json
+
     type JsonSerializer(serSettings: JsonSerializerSettings) =
-        member this.Deserialize<'A> (json: string): Result<'A, string> =
-            try
-                JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
-            with
-            | ex  ->
-                printf "error deserialize: %A" ex
-                Error (ex.ToString())
+        interface ISerializer with
+            member this.Deserialize<'A> (json: string): Result<'A, string> =
+                try
+                    JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
+                with
+                | ex  ->
+                    printf "error deserialize: %A" ex
+                    Error (ex.ToString())
         
-        member this.Serialize<'A> (x: 'A): string =
-            JsonConvert.SerializeObject(x, serSettings)
+            member this.Serialize<'A> (x: 'A): string =
+                JsonConvert.SerializeObject(x, serSettings)
 
     let catchErrors f l =
         l

@@ -44,7 +44,7 @@ module AppVersions =
     jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
     jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
+    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
     let storage = PgStorage.PgStorage(connection, jsonSerializer)
     let memoryStorage = MemoryStorage.MemoryStorage(jsonSerializer)
