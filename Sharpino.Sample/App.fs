@@ -42,7 +42,7 @@ module App =
         // here I am using the mailboxprocessor which is a thread safe queue
         member this.AddTodo todo =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -69,7 +69,7 @@ module App =
         // dealing with two aggregates
         member this.Add2Todos (todo1, todo2) =
             lock (TodosAggregate.Lock, TagsAggregate.Lock) (fun () -> 
-                ResultCE.result {
+                result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -98,7 +98,7 @@ module App =
         // the TodoRemoved events is generated twice, so the second one will just be ignored by the evolve (Core.fs)
         // 
         member this.RemoveTodo id =
-            ResultCE.result {
+            result {
                 let! _ =
                     id
                     |> TodoCommand.RemoveTodo
@@ -123,7 +123,7 @@ module App =
         // I will use mailboxprocessor even if I don't need any sync strategy
         member this.AddCategory category =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! _ =
                         category
                         |> TodoCommand.AddCategory
@@ -140,7 +140,7 @@ module App =
 
         member this.RemoveCategory id = 
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! _ =
                         id
                         |> TodoCommand.RemoveCategory
@@ -157,7 +157,7 @@ module App =
 
         member this.AddTag tag =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let! _ =
                         tag
                         |> AddTag
@@ -174,7 +174,7 @@ module App =
 
         member this.RemoveTag id =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -194,7 +194,7 @@ module App =
         member this.GetAllTags () =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state) = storage |> getState<TagsAggregate, TagEvent>
                         let tags = state.GetTags()
                         return tags
@@ -234,7 +234,7 @@ module App =
         member this.GetAllTodos() =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>
                         let todos = state.GetTodos()
                         return todos
@@ -244,7 +244,7 @@ module App =
 
         member this.AddTodo todo =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -278,7 +278,7 @@ module App =
 
         member this.Add2Todos (todo1, todo2) =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -321,7 +321,7 @@ module App =
 
         member this.RemoveTodo id =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! _ =
                         id
                         |> TodoCommand'.RemoveTodo
@@ -339,7 +339,7 @@ module App =
         member this.GetAllCategories() =
             async { 
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state) = storage |> getState<CategoriesAggregate, CategoryEvent>
                         let categories = state.GetCategories()
                         return categories
@@ -349,7 +349,7 @@ module App =
 
         member this.AddCategory category =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! _ =
                         category
                         |> CategoryCommand.AddCategory
@@ -366,7 +366,7 @@ module App =
 
         member this.RemoveCategory id =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let removeCategory = CategoryCommand.RemoveCategory id
                     let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
                     let! _ = 
@@ -391,7 +391,7 @@ module App =
 
         member this.AddTag tag =
             let f = fun () ->
-                ResultCE.result {
+                result {
                     let! _ =
                         tag
                         |> AddTag
@@ -408,7 +408,7 @@ module App =
 
         member this.removeTag id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand'.RemoveTagRef id
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
@@ -428,7 +428,7 @@ module App =
         member this.GetAllTags () =
             async {
                 return
-                    ResultCE.result {
+                    result {
                         let! (_, state) = 
                             storage |> getState<TagsAggregate, TagEvent>
                         let tags = state.GetTags()
@@ -441,6 +441,5 @@ module App =
             let events = storage.GetEventsInATimeInterval TodosAggregate'.Version TodosAggregate'.StorageName dateFrom dateTo |>> snd
             let result = { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events }
             result
-
 
 

@@ -41,7 +41,7 @@ module EventStoreApp =
             }
                 
         member this.GetAllTags() =
-            ResultCE.result {
+            result {
                 let! (_, stateX ) = storage |> getState<TagsAggregate, TagEvent >
 
                 let tags = stateX.GetTags()
@@ -49,14 +49,14 @@ module EventStoreApp =
             }
 
         member this.GetAllTodos() =
-            ResultCE.result {
+            result {
                 let! (_, state') = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let todos = state'.GetTodos()
                 return todos
             }
 
         member this.AddTodo todo =
-            ResultCE.result {
+            result {
                 let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
                 let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
@@ -77,7 +77,7 @@ module EventStoreApp =
 
         member this.RemoveTodo id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return!
                         id
                         |> TodoCommand.RemoveTodo
@@ -90,7 +90,7 @@ module EventStoreApp =
 
         member this.AddCategory category =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return!
                         category
                         |> TodoCommand.AddCategory
@@ -102,7 +102,7 @@ module EventStoreApp =
             |> Async.RunSynchronously
 
         member this.GetAllCategories() =
-            ResultCE.result {
+            result {
                 let! (_, state' ) = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let categories = state'.GetCategories()
                 return categories
@@ -110,7 +110,7 @@ module EventStoreApp =
 
         member this.RemoveCategory id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return! 
                         id
                         |> TodoCommand.RemoveCategory
@@ -123,7 +123,7 @@ module EventStoreApp =
 
         member this.RemoveTag id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     return! runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -134,7 +134,7 @@ module EventStoreApp =
             |> Async.RunSynchronously
         member this.RemoveTagFakingErrorOnSecondCommand id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -146,7 +146,7 @@ module EventStoreApp =
 
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = 
                         tagState'.GetTags() 

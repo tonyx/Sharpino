@@ -77,14 +77,13 @@ module LightRepository =
 
         async {
             return
-                ResultCE.result {
+                result {
                     let! (_, state) = storage |> getState<'A, 'E> 
                     let! events =
                         state
                         |> undoer 
                     let serEvents = 
                         events 
-                        // |>> Utils.serialize
                     return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
                 } 
         }
@@ -98,7 +97,7 @@ module LightRepository =
         log.Debug "runCommand"
         async {
             return
-                ResultCE.result {
+                result {
                     let! (_, state) = storage |> getState<'A, 'E>
                     let! events =
                         state
@@ -153,7 +152,7 @@ module LightRepository =
                 return! result2 
             }
 
-    // not tested yet
+    // todo: write test about
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
@@ -251,7 +250,7 @@ module LightRepository =
             (storage: ILightStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
-            ResultCE.result {
+            result {
                 let! (_, a1State) = getState<'A1, 'E1> storage
                 let command1Undoer = 
                     match command1.Undoer with

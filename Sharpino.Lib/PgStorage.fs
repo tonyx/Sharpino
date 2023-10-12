@@ -17,19 +17,22 @@ module PgStorage =
         interface IStorage with
             member this.Reset version name =
                 if (Conf.isTestEnv) then
-                    // additional precautions to avoid deleting data in non dev/test env 
-                    // is configuring the db user rights in prod accordingly (only read and write/append)
-                    let res1 =
-                        connection
-                        |> Sql.connect
-                        |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                        |> Sql.executeNonQuery
-                    let res2 =
-                        connection
-                        |> Sql.connect
-                        |> Sql.query (sprintf "DELETE from events%s%s" version name)
-                        |> Sql.executeNonQuery
-                    ()
+                    try
+                        // additional precautions to avoid deleting data in non dev/test env 
+                        // is configuring the db user rights in prod accordingly (only read and write/append)
+                        let res1 =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
+                            |> Sql.executeNonQuery
+                        let res2 =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query (sprintf "DELETE from events%s%s" version name)
+                            |> Sql.executeNonQuery
+                        ()
+                    with 
+                        | _ as e -> failwith (e.ToString())
                 else
                     failwith "operation allowed only in test db"
 

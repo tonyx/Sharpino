@@ -117,7 +117,6 @@ module EventStore =
                             return ev
                     }
                     |> Async.RunSynchronously
-                    // |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()))) 
                     |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()) |> serializer.Deserialize<'E> |> Result.get )) 
                     |> List.ofSeq
                 with
