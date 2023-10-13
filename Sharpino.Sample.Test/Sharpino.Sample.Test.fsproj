@@ -17,7 +17,6 @@
     <Compile Include="aggregates_upgrade/Categories_02/models/Categories_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
     <Compile Include="MultiVersionsTests.fs" />
-    <!-- <Compile Include="EventStoreTest.fs" /> -->
     <Compile Include="Main.fs" />
   </ItemGroup>
 
@@ -26,14 +25,12 @@
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
-    <PackageReference Include="Sharpino" Version="1.1.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="7.*" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
     <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>
 </Project>

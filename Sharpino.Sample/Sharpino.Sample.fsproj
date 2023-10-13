@@ -28,13 +28,13 @@
     <Compile Include="AppVersions.fs" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <ItemGroup>
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
-    <!-- <PackageReference Include="Sharpino" Version="1.1.0" /> -->
+    <PackageReference Include="Sharpino" Version="1.2.2" />
   </ItemGroup>
 
 </Project>
