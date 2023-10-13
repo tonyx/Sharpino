@@ -1,30 +1,17 @@
 namespace Sharpino.Sample
 open Sharpino.Utils
-open Sharpino.Definitions
-
-open Sharpino
-open Sharpino.Sample
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.Categories
-open Sharpino.Sample.Tags
-open Sharpino.Utils
-open Sharpino.Definitions
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
-open System.Runtime.CompilerServices
-open FsToolkit.ErrorHandling
-open FSharpPlus
-open System.Runtime.CompilerServices
 
-
-// try making it work
+// this is to remind you that you wanto to extend entities behavior
+// for json in a separate file like this but it does not work yet.
 module Converters =
     // entities
     type Todo with
@@ -54,14 +41,6 @@ module Converters =
     type TodosAggregate with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-
-    [<Extension>]
-    type TodosAggregateExtension =
-        [<Extension>]
-        static member Serialize (this: TodosAggregate, serializer: ISerializer) =
-            this |> serializer.Serialize
-
-
     type TodosAggregate' with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize

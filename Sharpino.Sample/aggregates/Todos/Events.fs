@@ -44,7 +44,7 @@ module TodoEvents =
         | CategoryRefRemoved of Guid
         | TodosAdded of List<Todo>
             interface Event<TodosAggregate'> with
-                member this.Process (x: TodosAggregate' ) =
+                member this.Process (x: TodosAggregate') =
                     match this with
                     | TodoAdded (t: Todo) ->
                         EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodo t) (x, [this])

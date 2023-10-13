@@ -5,8 +5,6 @@ open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
 
-open Sharpino
-open Sharpino.Utils
 open Sharpino.Storage
 open Sharpino.Core
 open FsToolkit.ErrorHandling

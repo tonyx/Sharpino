@@ -22,6 +22,7 @@ open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.Categories.CategoriesCommands
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Entities.TodosReport
+open Sharpino.Sample.Converters
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling

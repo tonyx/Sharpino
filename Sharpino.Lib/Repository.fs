@@ -13,7 +13,6 @@ open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
-open System.Threading
 open Sharpino.Utils
 
 module Repository =
@@ -27,7 +26,7 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
         (storage: IStorage) =
             log.Debug "getLastSnapshot"
@@ -38,7 +37,6 @@ module Repository =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (_, eventId, state) ->
                                 let deserState = 'A.Deserialize (serializer, state) |> Result.get
-                                // let deserState =  state |> serializer.Deserialize<'A> |> Result.get
                                 (eventId, deserState ) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
@@ -53,7 +51,9 @@ module Repository =
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
         and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage) = 
         log.Debug "snapIdStateAndEvents"
@@ -76,6 +76,8 @@ module Repository =
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (member Serialize: ISerializer -> Json)
         and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage): Result< int * 'A, string> = 
             log.Debug "getState"
@@ -86,7 +88,8 @@ module Repository =
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
                 let! newState = 
-                    events |>> snd |> List.map(fun x -> serializer.Deserialize x |> Result.get) |> evolve<'A, 'E> state
+                    // events |>> snd |> List.map(fun x -> serializer.Deserialize x |> Result.get) |> evolve<'A, 'E> state
+                    events |>> snd |> List.map(fun x -> 'E.Deserialize (serializer, x) |> Result.get) |> evolve<'A, 'E> state
                 return (lastEventId, newState)
             }
 
@@ -96,8 +99,10 @@ module Repository =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'E :> Event<'A>
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A,string>)
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
@@ -108,7 +113,12 @@ module Repository =
                         let! events =
                             state
                             |> command.Execute
-                        let serEvents = events |>> serializer.Serialize
+
+                        // let serEvents = events |>> serializer.Serialize
+
+                        let serEvents = 
+                            events |>> (fun x -> x.Serialize serializer)
+
                         return! 
                             storage.AddEvents 'A.Version serEvents 'A.StorageName
                     } 
@@ -129,8 +139,14 @@ module Repository =
         and 'A1: (static member Lock: obj)
         and 'A2: (static member Lock: obj)
         and 'E1 :> Event<'A1>
-        and 'E2 :> Event<'A2>> 
+        and 'E2 :> Event<'A2> 
+        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> string)
+        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> string)
+        >
             (storage: IStorage)
+
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
@@ -147,8 +163,10 @@ module Repository =
                             state2
                             |> command2.Execute
 
-                        let events1' = events1 |>> serializer.Serialize
-                        let events2' = events2 |>> serializer.Serialize
+                        let events1' =
+                            events1 |>> (fun x -> x.Serialize serializer)
+                        let events2' =
+                            events2 |>> (fun x -> x.Serialize serializer)
 
                         return! 
                             storage.MultiAddEvents 
@@ -181,7 +199,14 @@ module Repository =
         and 'A3: (static member Lock: obj)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
-        and 'E3 :> Event<'A3>> 
+        and 'E3 :> Event<'A3>
+        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> string)
+        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> string)
+        and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
+        and 'E3: (member Serialize: ISerializer -> string)
+        > 
             (storage: IStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
@@ -203,13 +228,12 @@ module Repository =
                             state3
                             |> command3.Execute
 
-                        // let events1' = events1 |>> fun x -> x :> obj
-                        // let events2' = events2 |>> fun x -> x :> obj
-                        // let events3' = events3 |>> fun x -> x :> obj
-
-                        let events1' = events1 |>> serializer.Serialize
-                        let events2' = events2 |>> serializer.Serialize
-                        let events3' = events3 |>> serializer.Serialize
+                        let events1' =
+                            events1 |>> (fun x -> x.Serialize serializer)
+                        let events2' =
+                            events2 |>> (fun x -> x.Serialize serializer)
+                        let events3' =
+                            events3 |>> (fun x -> x.Serialize serializer)
 
                         return! 
                             storage.MultiAddEvents 
@@ -231,7 +255,11 @@ module Repository =
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member Lock: obj)
-        and 'E :> Event<'A>> (storage: IStorage) =
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        > 
+        (storage: IStorage) =
             async {
                 return
                     ResultCE.result
@@ -252,7 +280,11 @@ module Repository =
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-        and 'E :> Event<'A>>(storage: IStorage) =
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >
+        (storage: IStorage) =
             log.Debug "mkSnapshotIfInterval"
             async {
                 return

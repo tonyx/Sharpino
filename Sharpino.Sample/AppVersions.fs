@@ -206,7 +206,7 @@ module AppVersions =
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-                                    let deser = e
+                                    let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)
                                     async {
                                         // todo: refactor here remember that addevents returns a result now
                                         let result = eventStore.AddEvents version deser name

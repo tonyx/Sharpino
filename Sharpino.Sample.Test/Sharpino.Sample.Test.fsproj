@@ -8,12 +8,12 @@
 
   <ItemGroup>
     <compile Include="Shared.fs" />
-    <Compile Include="aggregates/Tags/models/TagsTests.fs" />
+    <Compile Include="aggregates/Tags/entities/TagsTests.fs" />
     <Compile Include="aggregates/Tags/TagsAggregateTests.fs" />
     <Compile Include="aggregates/Todos/TodosAggregateTests.fs" />
-    <Compile Include="aggregates/Todos/models/TodosTests.fs" />
-    <Compile Include="aggregates/Todos/models/CategoriesTests.fs" />
-    <Compile Include="aggregates_upgrade/Todos_02/models/Todos_02Tests.fs" />
+    <Compile Include="aggregates/Todos/entities/TodosTests.fs" />
+    <Compile Include="aggregates/Todos/entities/CategoriesTests.fs" />
+    <Compile Include="aggregates_upgrade/Todos_02/entities/Todos_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Categories_02/models/Categories_02Tests.fs" />
     <Compile Include="aggregates_upgrade/Todos_02/TodosAggregateTests.fs" />
     <Compile Include="MultiVersionsTests.fs" />

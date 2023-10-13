@@ -22,7 +22,7 @@
     <Compile Include="aggregates/Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />
 
-
+    <Compile Include="JSON/Converters.fs" />
     <Compile Include="App.fs" />
     <Compile Include="EventStoreApp.fs" />
     <Compile Include="AppVersions.fs" />

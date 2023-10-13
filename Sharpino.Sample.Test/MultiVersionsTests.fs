@@ -2,9 +2,6 @@
 module Tests.Sharpino.Sample.MultiVersionsTests
 
 open Expecto
-open FsCheck
-open FsCheck.Prop
-open Expecto.Tests
 open System
 open FSharp.Core
 
@@ -14,23 +11,16 @@ open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
-open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.Categories
-open Sharpino.Sample.Tags
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
+open Sharpino.EventSourcing.Sample.AppVersions
 open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Tags.TagsEvents
-open System.Runtime.CompilerServices
-open Sharpino.Conf
 open Tests.Sharpino.Shared
 
 open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
-open Microsoft.FSharp.Quotations
-open Sharpino.EventSourcing.Sample.AppVersions
 
 let allVersions =
     [
@@ -39,9 +29,9 @@ let allVersions =
         // enable if you had setup postgres (see dbmate scripts):
         
 
-        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -85,7 +75,9 @@ let testCoreEvolve =
     // quick and dirty way to log for debug:
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     let serializer = JsonSerializer(serSettings) :> ISerializer
+
     let updateStateIfNecessary (ap: AppVersions.IApplication) =
+        // dismiss this code soon
         match ap._forceStateUpdate with
         | Some f -> f()
         | None -> ()
@@ -95,11 +87,10 @@ let testCoreEvolve =
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
-            // I am adding twice the same event and the "evolve" will ignore it
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName )
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize], TodosAggregate'.StorageName)
-            ap |> updateStateIfNecessary
+            // I am adding the same event twice and the "evolve" will ignore it
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer], TodosAggregate.StorageName )
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
 
             let todos = ap.getAllTodos()
 
@@ -110,13 +101,12 @@ let testCoreEvolve =
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize  serializer], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize  serializer], TodosAggregate.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ], TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
 
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
@@ -128,16 +118,15 @@ let testCoreEvolve =
             let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
             let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize ],  TodosAggregate.StorageName) 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serializer.Serialize ],  TodosAggregate.StorageName) 
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer ],  TodosAggregate.StorageName) 
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer ],  TodosAggregate.StorageName) 
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ],  TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serializer.Serialize ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate.Version,  [ event2 |> serializer.Serialize ], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event2 |> serializer.Serialize ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version,  [ event2.Serialize serializer ], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event2.Serialize serializer ], TodosAggregate'.StorageName)
 
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
@@ -158,6 +147,7 @@ let multiVersionsTests =
     testList "App with coordinator test - Ok" [
         // not needed anymore but I keep it for reference and future storages that may require this approach
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
+            // dismiss this code soon
             match ap._forceStateUpdate with
             | Some f -> f()
             | None -> ()
@@ -167,7 +157,6 @@ let multiVersionsTests =
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
             Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
@@ -225,12 +214,10 @@ let multiVersionsTests =
             let id2 = Guid.NewGuid()
             let tag = mkTag id2 "test" Color.Blue
             let result = ap.addTag tag
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -240,7 +227,6 @@ let multiVersionsTests =
             Expect.equal todos [todo] "should be equal"
 
             let removed = apUpgd.removeTag id2
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos().OkValue
             Expect.isTrue (result.Head.TagIds |> List.isEmpty) "should be true"
@@ -250,7 +236,6 @@ let multiVersionsTests =
 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -270,8 +255,6 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
-            ap |> updateStateIfNecessary
-
             let todos = ap.getAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
 
@@ -279,7 +262,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTodo todo.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos() |> Result.get
             Expect.equal result [] "should be equal"
@@ -296,7 +278,6 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -313,7 +294,6 @@ let multiVersionsTests =
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            ap |> updateStateIfNecessary
             
             Expect.isOk added "should be ok"
 
@@ -323,7 +303,6 @@ let multiVersionsTests =
             let categories = apUpgd.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
             let removed = apUpgd.removeCategory category.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
@@ -332,7 +311,6 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             async {
                 do! Async.Sleep 10
                 return ()
@@ -346,7 +324,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeCategory category.Id
-            apUpgd |> updateStateIfNecessary
 
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
@@ -356,7 +333,6 @@ let multiVersionsTests =
             let _ = ap._reset()
             let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let categories = ap.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
@@ -374,8 +350,6 @@ let multiVersionsTests =
             let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
             Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
-            Expect.isOk added "should be ok"
 
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
@@ -386,8 +360,6 @@ let multiVersionsTests =
             } |> Async.RunSynchronously
             let category' = apUpgd.getAllCategories() |> Result.get
             Expect.equal category' [category] "should be equal"
-
-            apUpgd |> updateStateIfNecessary
 
             let todo = mkTodo (Guid.NewGuid()) "test" [Guid.NewGuid()] []
             let result = apUpgd.addTodo todo
@@ -401,8 +373,6 @@ let multiVersionsTests =
 
             let _ = ap.addCategory category
 
-            ap |> updateStateIfNecessary
-
             async {
                 do! Async.Sleep 10
                 return ()
@@ -410,8 +380,6 @@ let multiVersionsTests =
             
             let added = ap.addTodo todo    
             
-            ap |> updateStateIfNecessary
-
             Expect.isOk added "should be ok"
 
             let hasMigrated = migrator()
@@ -420,8 +388,6 @@ let multiVersionsTests =
             let todos = apUpgd.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
             let result = apUpgd.removeCategory categoryId
-
-            apUpgd |> updateStateIfNecessary
 
             Expect.isOk result "should be ok"
 
@@ -488,7 +454,6 @@ let multiVersionsTests =
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
             Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [tag] "should be equal"
 
@@ -496,7 +461,6 @@ let multiVersionsTests =
             let _ = ap._reset()
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let added = ap.addTag tag
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let tags = ap.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"
@@ -505,7 +469,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTag tag.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [] "should be equal"
@@ -523,11 +486,9 @@ let multiVersionsTests =
                         do! Async.Sleep 1
                         return ()
                     } |> Async.RunSynchronously
-                    ap |> updateStateIfNecessary
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -550,7 +511,6 @@ let multiVersionsTests =
             let added =
                 ResultCE.result {
                     let! _ = ap.addTag tag
-                    ap |> updateStateIfNecessary
                     async {
                         do! Async.Sleep 1
                         return ()
@@ -558,7 +518,6 @@ let multiVersionsTests =
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let todos = ap.getAllTodos().OkValue 
@@ -588,7 +547,6 @@ let multiVersionsTests =
             let added'' = ap.addTodo todo
             Expect.isOk added'' "should be ok"
 
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
             let removed = ap.removeTag tagId
