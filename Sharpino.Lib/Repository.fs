@@ -36,8 +36,12 @@ module Repository =
                         let! result =
                             match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
                             | Some (_, eventId, state) ->
-                                let deserState = 'A.Deserialize (serializer, state) |> Result.get
-                                (eventId, deserState ) |> Ok
+                                let deserState = 'A.Deserialize (serializer, state) 
+                                match deserState with
+                                | Ok deserState -> (eventId, deserState) |> Ok
+                                | Error e -> 
+                                    log.Error (sprintf "getLastSnapshot: %s" e)
+                                    (0, 'A.Zero) |> Ok
                             | None -> (0, 'A.Zero) |> Ok
                         return result
                     }
@@ -87,9 +91,12 @@ module Repository =
                     match events.Length with
                     | x when x > 0 -> events |> List.last |> fst
                     | _ -> lastSnapshotId 
+                let! deserEvents =
+                    events 
+                    |>> snd 
+                    |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
                 let! newState = 
-                    // events |>> snd |> List.map(fun x -> serializer.Deserialize x |> Result.get) |> evolve<'A, 'E> state
-                    events |>> snd |> List.map(fun x -> 'E.Deserialize (serializer, x) |> Result.get) |> evolve<'A, 'E> state
+                    deserEvents |> evolve<'A, 'E> state
                 return (lastEventId, newState)
             }
 
@@ -113,12 +120,8 @@ module Repository =
                         let! events =
                             state
                             |> command.Execute
-
-                        // let serEvents = events |>> serializer.Serialize
-
                         let serEvents = 
                             events |>> (fun x -> x.Serialize serializer)
-
                         return! 
                             storage.AddEvents 'A.Version serEvents 'A.StorageName
                     } 
@@ -164,9 +167,11 @@ module Repository =
                             |> command2.Execute
 
                         let events1' =
-                            events1 |>> (fun x -> x.Serialize serializer)
+                            events1 |>> 
+                            (fun x -> x.Serialize serializer)
                         let events2' =
-                            events2 |>> (fun x -> x.Serialize serializer)
+                            events2 
+                            |>> (fun x -> x.Serialize serializer)
 
                         return! 
                             storage.MultiAddEvents 
@@ -229,11 +234,14 @@ module Repository =
                             |> command3.Execute
 
                         let events1' =
-                            events1 |>> (fun x -> x.Serialize serializer)
+                            events1 
+                            |>> (fun x -> x.Serialize serializer)
                         let events2' =
-                            events2 |>> (fun x -> x.Serialize serializer)
+                            events2 
+                            |>> (fun x -> x.Serialize serializer)
                         let events3' =
-                            events3 |>> (fun x -> x.Serialize serializer)
+                            events3 
+                            |>> (fun x -> x.Serialize serializer)
 
                         return! 
                             storage.MultiAddEvents 

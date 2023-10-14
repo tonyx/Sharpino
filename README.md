@@ -62,7 +62,7 @@ In the latter case, you get the output from _Expecto_ test runner (in this case 
 By default, the tests run only the in-memory implementation of the storage. You can set up the postgres tables and db by using dbmate.
 In the Sharpino.Sample folder you can run the following command to setup the Postgres database:
 ```bash
-dbmate -e DATABASE_URL up
+dbmate -e up
 ```
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
 If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).

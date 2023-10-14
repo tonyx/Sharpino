@@ -55,7 +55,6 @@ module CategoriesAggregate =
             }
         member this.GetCategories() = this.Categories.GetCategories()
 
-
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

@@ -119,8 +119,9 @@ module EventStore =
                     |> Async.RunSynchronously
                     |>> (fun e -> (e.OriginalEventNumber.ToUInt64(), Encoding.UTF8.GetString(e.Event.Data.ToArray()) |> serializer.Deserialize<'E> |> Result.get )) 
                     |> List.ofSeq
-                with
-                    _ -> []
+                with e -> 
+                    log.Error (sprintf "error deserializing events: %A" e)
+                    []
 
             // there are two issues in this function:
             // 1. can't use in an efficient way the query api of eventstore, so we have to read all the events and then filter them
@@ -148,7 +149,9 @@ module EventStore =
 
                     withTimeStamp |>> (fun (id, json, _) -> (id, json |> serializer.Deserialize<'E> |> Result.get))
                 with
-                    _ -> []
+                    e -> 
+                        log.Error (sprintf "error deserializing events: %A" e)
+                        []
 
             member this.TryGetLastSnapshot version name =            
                 log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
@@ -175,6 +178,8 @@ module EventStore =
                             Encoding.UTF8.GetString(last.Event.Data.ToArray())
                             |> serializer.Deserialize<'A> |> Result.get
                         (eventId, snapshotData) |> Some
-                    with _ -> None
+                    with e -> 
+                        log.Error (sprintf "error deserializing snapshot: %A" e)
+                        None
 
 
