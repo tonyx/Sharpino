@@ -2,6 +2,7 @@ namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
+open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 module Todos =
@@ -12,6 +13,8 @@ module Todos =
             TagIds: List<Guid>
             Description: string
         }
+        interface Entity with
+            member this.Id = this.Id
     type Todos =
         {
             todos: List<Todo>

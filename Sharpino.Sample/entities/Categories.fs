@@ -3,7 +3,9 @@ open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
+open Sharpino.Core
 open Sharpino.Utils
+
 
 module Categories =
     type Category =
@@ -11,6 +13,8 @@ module Categories =
             Id: Guid
             Name: string
         }
+        interface Entity with
+            member this.Id = this.Id
     type Categories = 
         {
             categories: List<Category>

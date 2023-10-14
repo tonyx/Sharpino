@@ -4,8 +4,12 @@ open FSharpPlus
 open FSharpPlus.Data
 open log4net
 open log4net.Config
+open System
 
 module Core =
+    type Entity =
+        abstract member Id: Guid
+
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
