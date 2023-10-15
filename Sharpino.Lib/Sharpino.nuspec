@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>1.2.3</version>
+    <version>1.2.4</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Framework</description>
@@ -35,9 +35,8 @@
   </metadata>
   <files>
     <file src="lib\**\*.*" target="lib"/> 
-    <!-- hanlde copying Sharpino.Lib.dll and Sharpino.Lib.xml from bin\Debug etc...  and put into lib -->
+    <!-- handlde copying Sharpino.Lib.dll and Sharpino.Lib.xml from bin\Debug etc...  and put into lib -->
     <file src="README.md" target="/"/> 
-    <!-- use ../README.md next time -->
    </files>
 
 </package>

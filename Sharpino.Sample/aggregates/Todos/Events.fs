@@ -8,6 +8,7 @@ open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Utils
+open type Sharpino.Cache.EventCache<TodosAggregate>
 
 module TodoEvents =
     type TodoEvent =
@@ -20,15 +21,15 @@ module TodoEvents =
                 member this.Process (x: TodosAggregate ) =
                     match this with
                     | TodoAdded (t: Todo) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [this])
+                        Instance.Memoize (fun () -> x.AddTodo t) (x, [this])
                     | TodoRemoved (g: Guid) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [this])
+                        Instance.Memoize (fun () -> x.RemoveTodo g) (x, [this])
                     | CategoryAdded (c: Category) ->
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
+                        Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
                     | CategoryRemoved (g: Guid) ->  
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
+                        Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
                     | TagRefRemoved (g: Guid) ->            
-                        EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
+                        Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
