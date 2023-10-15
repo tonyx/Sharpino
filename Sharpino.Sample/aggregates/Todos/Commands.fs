@@ -8,6 +8,7 @@ open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosAggregate
+open type Sharpino.Cache.EventCache<TodosAggregate>
 open Sharpino.Cache
 
 module TodoCommands =
@@ -23,16 +24,16 @@ module TodoCommands =
             member this.Execute (x: TodosAggregate) =
                 match this with
                 | AddTodo t -> 
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t])
+                    Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t])
                     |> Result.map (fun _ -> [TodoEvent.TodoAdded t])
                 | RemoveTodo g ->
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g])
+                    Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g])
                     |> Result.map (fun _ -> [TodoEvent.TodoRemoved g])
                 | AddCategory c ->
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.AddCategory c) (x, [TodoEvent.CategoryAdded c])
+                    Instance.Memoize (fun () -> x.AddCategory c) (x, [TodoEvent.CategoryAdded c])
                     |> Result.map (fun _ -> [TodoEvent.CategoryAdded c])
                 | RemoveCategory g ->
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveCategory g) (x, [TodoEvent.CategoryRemoved g]) 
+                    Instance.Memoize (fun () -> x.RemoveCategory g) (x, [TodoEvent.CategoryRemoved g]) 
                     |> Result.map (fun _ -> [TodoEvent.CategoryRemoved g])
                 | RemoveTagRef g ->
                     EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent.TagRefRemoved g])
