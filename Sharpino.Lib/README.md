@@ -6,7 +6,8 @@
 
 ## A little event-sourcing framework for F#
 
-a library and an example of a simple event-sourcing framework in F#.
+A library about a simple event-sourcing framework in F#.
+Warning: the example app I provided is more related to the Property-Sourcing (see [here](https://event-driven.io/en/property-sourcing/) for a nice explanation of the difference between event-sourcing and property-sourcing).
 
 ## Projects:
 
