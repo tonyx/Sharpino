@@ -31,8 +31,8 @@
     <Compile Include="EventStoreStorage.fs" />
 
     <Compile Include="Cache.fs" />
-    <Compile Include="Repository.fs" />
-    <Compile Include="LightRepository.fs" />
+    <Compile Include="CommandHandler.fs" />
+    <Compile Include="LightCommandHandler.fs" />
     <None Include="LICENSE" Pack="true" PackagePath="" />
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>

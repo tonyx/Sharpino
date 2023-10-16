@@ -47,6 +47,7 @@ module TodoCommands =
                     |> Result.map (fun _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
             member this.Undoer = None
 
+    open type Sharpino.Cache.EventCache<TodosAggregate'>
     [<UpgradedVersion>]
     type TodoCommand' =
         | AddTodo of Todo
@@ -61,17 +62,17 @@ module TodoCommands =
                 match this with
                 | AddTodo t ->
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent'.TodoAdded t]) with
+                        Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent'.TodoAdded t]) with
                         | Ok _ -> [TodoAdded t] |> Ok
                         | Error x -> x |> Error
                 | RemoveTodo g ->
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent'.TodoRemoved g]) with
+                        Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent'.TodoRemoved g]) with
                         | Ok _ -> [TodoRemoved g] |> Ok
                         | Error x -> x |> Error
                 | RemoveTagRef g ->
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent'.TagRefRemoved g]) with
+                        Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent'.TagRefRemoved g]) with
                         | Ok _ -> [TagRefRemoved g] |> Ok
                         | Error x -> x |> Error
                 | Add2Todos (t1, t2) -> 
@@ -80,17 +81,17 @@ module TodoCommands =
                         [TodoAdded t1; TodoAdded t2]
                         |> evolveUNforgivingErrors x
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent'.TodoAdded t1; TodoEvent'.TodoAdded t2]) with
+                        Instance.Memoize (fun () -> evolved()) (x, [TodoEvent'.TodoAdded t1; TodoEvent'.TodoAdded t2]) with
                         | Ok _ -> [TodoAdded t1; TodoAdded t2] |> Ok
                         | Error x -> x |> Error
                 | RemoveCategoryRef g ->
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [TodoEvent'.CategoryRefRemoved g]) with
+                        Instance.Memoize (fun () -> x.RemoveCategoryReference g) (x, [TodoEvent'.CategoryRefRemoved g]) with
                         | Ok _ -> [CategoryRefRemoved g] |> Ok
                         | Error x -> x |> Error
                 | AddTodos ts ->
                     match
-                        EventCache<TodosAggregate'>.Instance.Memoize (fun () -> x.AddTodos ts) (x, [TodoEvent'.TodosAdded ts]) with
+                        Instance.Memoize (fun () -> x.AddTodos ts) (x, [TodoEvent'.TodosAdded ts]) with
                         | Ok _ -> [TodoEvent'.TodosAdded ts] |> Ok
                         | Error x -> x |> Error
             member this.Undoer = None

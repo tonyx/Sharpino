@@ -15,7 +15,7 @@ open log4net.Config
 open System.Runtime.CompilerServices
 open Sharpino.Utils
 
-module Repository =
+module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
