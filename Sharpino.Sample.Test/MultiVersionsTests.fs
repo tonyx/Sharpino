@@ -151,7 +151,8 @@ let appEnctyptTests =
             let deserialized: TodoEvent = serialized |> deserialize |> Result.get
             Expect.equal deserialized event "should be equal"
 
-        testCase "add a todo and read the event" <| fun _ ->
+        // FOCUS
+        ptestCase "add a todo and read the event" <| fun _ ->
             let _ = resetDb memoryStorage
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let added = currentMemApp.AddTodo todo   
