@@ -11,8 +11,10 @@
 
 ## What is it?
 
-It is a little library for event-sourcing in F#.
-There is a sample application that shows how to use it. 
+
+A library about a simple event-sourcing framework in F#.
+The example app I provided is more related to the Property-Sourcing (see [here](https://event-driven.io/en/property-sourcing/) for a nice explanation of the difference between event-sourcing and property-sourcing).
+However, that is a limitation of my example, and not a limitation of the library (and more examples will come later)
 The events are stored in append mode and cannot be deleted or updated, so the solution at the moment it is not suitable for sensitive data (see GDPR).
 
 ## Projects:
