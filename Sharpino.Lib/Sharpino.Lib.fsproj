@@ -3,12 +3,13 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
 
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
-    <Version>1.0.2</Version>
+    <Version>1.2.4</Version>
     <Authors>Antonio Lucca</Authors>
-    <PackgeLicenseExpression>MIT</PackgeLicenseExpression>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
@@ -30,10 +31,10 @@
     <Compile Include="EventStoreStorage.fs" />
 
     <Compile Include="Cache.fs" />
-    <Compile Include="Repository.fs" />
-    <Compile Include="LightRepository.fs" />
-    <None Include="LICENSE" Pack="true" PackagePath=""/>
-    <None Include="README.md" Pack="true" PackagePath=""/>
+    <Compile Include="CommandHandler.fs" />
+    <Compile Include="LightCommandHandler.fs" />
+    <None Include="LICENSE" Pack="true" PackagePath="" />
+    <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,6 +45,7 @@
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.35.3" />
+    <PackageReference Include="Thoth.json" Version="10.2.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 

@@ -1,5 +1,6 @@
 namespace Sharpino.Sample.Entities
 open Sharpino.Utils
+open Sharpino.Core
 open FSharpPlus
 open System
 open FsToolkit.ErrorHandling
@@ -16,6 +17,8 @@ module Tags =
             Name: string
             Color: Color
         }
+        interface Entity with
+            member this.Id = this.Id
     type Tags = 
         {
             tags: List<Tag>

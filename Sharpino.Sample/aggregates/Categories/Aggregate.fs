@@ -2,6 +2,8 @@
 namespace Sharpino.Sample
 
 open FsToolkit.ErrorHandling
+open Sharpino.Utils
+open Sharpino.Storage
 
 open Sharpino.Sample.Entities.Categories
 open System
@@ -22,6 +24,8 @@ module CategoriesAggregate =
             "_02"
         static member SnapshotsInterval =
             15
+        static member Lock =
+            new Object()
         member this.AddCategory (c: Category) =
             result {
                 let! categories = this.Categories.AddCategory c 
@@ -50,3 +54,9 @@ module CategoriesAggregate =
                     }
             }
         member this.GetCategories() = this.Categories.GetCategories()
+
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+        static member Deserialize (serializer: ISerializer, json: Json)=
+            serializer.Deserialize<CategoriesAggregate> json

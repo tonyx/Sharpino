@@ -1,5 +1,6 @@
 
 module Tests.Sharpino.Sample.Todos.Models.TodoTests
+open Tests.Sharpino.Shared
 
 open Expecto
 open System
@@ -15,7 +16,8 @@ let todosModelTests =
     let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
     testList "todos model tests" [
         testCase "add todo - Ok" <| fun _ ->
-            let todo = { Id = Guid.NewGuid(); Description = mkForgettable secretKeyIndex "test"; CategoryIds = []; TagIds = []}
+            let id = Guid.NewGuid()
+            let todo = { Id = id; Description = mkForgettable secretKeyIndex "test"; CategoryIds = []; TagIds = []}
             let todos = Todos.Zero.AddTodo todo
             Expect.isOk todos "should be ok"
             let result = todos.OkValue

@@ -1,6 +1,7 @@
 
 namespace Sharpino.EventSourcing.Sample
 open Sharpino
+open Sharpino.Cache
 open Sharpino.Storage
 open Sharpino.Utils
 
@@ -43,38 +44,38 @@ module AppVersions =
     jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
     jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings)
+    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
-    let storage = PgStorage.PgStorage(connection, jsonSerializer)
-    let memoryStorage = MemoryStorage.MemoryStorage(jsonSerializer)
+    let storage = PgStorage.PgStorage(connection)
+    let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(storage)
     let upgradedPgApp = App.UpgradedApp(storage)
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
     let upgradedMemApp = App.UpgradedApp(memoryStorage)
 
-    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection))
+    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
+    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
 
     let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
-        Cache.EventCache<TodosAggregate>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate>.Instance.Clear()
-        Cache.StateCache<TodosAggregate>.Instance.Clear()
+        EventCache<TodosAggregate>.Instance.Clear()
+        SnapCache<TodosAggregate>.Instance.Clear()
+        StateCache<TodosAggregate>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        Cache.EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        Cache.StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
 
         db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        Cache.EventCache<TagsAggregate>.Instance.Clear()
-        Cache.SnapCache<TagsAggregate>.Instance.Clear()
-        Cache.StateCache<TagsAggregate>.Instance.Clear()
+        EventCache<TagsAggregate>.Instance.Clear()
+        SnapCache<TagsAggregate>.Instance.Clear()
+        StateCache<TagsAggregate>.Instance.Clear()
 
         db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        Cache.EventCache<CategoriesAggregate>.Instance.Clear()
-        Cache.SnapCache<CategoriesAggregate>.Instance.Clear()
-        Cache.StateCache<CategoriesAggregate>.Instance.Clear()
+        EventCache<CategoriesAggregate>.Instance.Clear()
+        SnapCache<CategoriesAggregate>.Instance.Clear()
+        StateCache<CategoriesAggregate>.Instance.Clear()
 
     let resetEventStore() =
 
@@ -116,7 +117,7 @@ module AppVersions =
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (storage :> IStorage).AddEvents version deser name |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
@@ -137,7 +138,7 @@ module AppVersions =
             _migrator  =        None
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (storage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
@@ -160,7 +161,7 @@ module AppVersions =
             _migrator  =        currentMemApp.Migrate |> Some
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
@@ -182,7 +183,7 @@ module AppVersions =
             _migrator =         None
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
-                                    let deser = e |>> (fun x -> jsonSerializer.Deserialize x |> Result.get)
+                                    let deser = e 
                                     (memoryStorage :> IStorage).AddEvents version deser name |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
@@ -200,15 +201,15 @@ module AppVersions =
 
     [<CurrentVersion>]
     let evSApp =
-        let eventStoreBridge: EventStore.EventStoreStorage = EventStore.EventStoreStorage(eventStoreConnection)
         {
             _migrator =         None
             _reset =            fun () -> resetEventStore()
             _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection) :> ILightStorage
+                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
+                                    let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)
                                     async {
                                         // todo: refactor here remember that addevents returns a result now
-                                        let result = eventStore.AddEvents version e name
+                                        let result = eventStore.AddEvents version deser name
                                         return result
                                     }
                                     |> Async.RunSynchronously

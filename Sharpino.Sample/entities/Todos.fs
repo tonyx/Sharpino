@@ -15,6 +15,8 @@ module Todos =
             Description: Forgettable
         }
 
+        interface Entity with
+            member this.Id = this.Id
     type Todos =
         {
             todos: List<Todo>

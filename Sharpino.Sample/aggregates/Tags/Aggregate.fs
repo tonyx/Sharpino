@@ -1,6 +1,8 @@
 namespace Sharpino.Sample
 
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Utils
+open Sharpino.Storage
 
 open System
 open FsToolkit.ErrorHandling
@@ -20,6 +22,8 @@ module TagsAggregate =
             "_01"
         static member SnapshotsInterval =
             15
+        static member Lock =
+            new Object()
         member this.AddTag (t: Tag) =
             result {
                 let! tags = this.Tags.AddTag t 
@@ -43,3 +47,9 @@ module TagsAggregate =
                     }
             }
         member this.GetTags() = this.Tags.GetTags()
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+
+        static member Deserialize (serializer: ISerializer, json: Json) =
+            serializer.Deserialize<TagsAggregate> json

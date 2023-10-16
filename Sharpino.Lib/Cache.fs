@@ -6,7 +6,6 @@ open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
 open log4net
-open log4net.Config
 
 module Cache =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)

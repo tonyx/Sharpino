@@ -5,6 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
+open Tests.Sharpino.Shared
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
 open Sharpino.Core

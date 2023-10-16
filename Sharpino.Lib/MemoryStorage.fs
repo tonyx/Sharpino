@@ -11,14 +11,13 @@ open log4net
 open log4net.Config
 
 module MemoryStorage =
-    type MemoryStorage(serializer: Utils.JsonSerializer) = 
+
+    type MemoryStorage() =
         let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
         let event_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
         let snapshot_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
         let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEventJson>>>()
         let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshot>>>()
-
-        // member this.foo = "bar"
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id version name =
             log.Debug (sprintf "next_event_id %s %s" version name)
@@ -104,6 +103,35 @@ module MemoryStorage =
             else
                 events_dic.[version].[name]
 
+
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
+        let storeSnapshots version name snapshots =
+            log.Debug (sprintf "storeSnapshots %s %s" version name)
+            if (snapshots_dic.ContainsKey version |> not) then
+                let dic = new Generic.Dictionary<string, List<StorageSnapshot>>()
+                dic.Add(name, snapshots)
+                snapshots_dic.Add(version, dic)
+            else
+                let dic = snapshots_dic.[version]
+                if (dic.ContainsKey name |> not) then
+                    dic.Add(name, snapshots)
+                else
+                    dic.[name] <- snapshots
+
+        let getExistingSnapshots version name =
+            log.Debug (sprintf "getExistingSnapshots %s %s" version name)
+            if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                []
+            else
+                snapshots_dic.[version].[name]
+
+        let getExistingEvents version name =
+            log.Debug (sprintf "getExistingEvents %s %s" version name)
+            if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                []
+            else
+                events_dic.[version].[name]
+
         interface IStorage with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.Reset version name =
@@ -120,7 +148,7 @@ module MemoryStorage =
                     [for e in xs do
                         yield {
                             Id = next_event_id version name
-                            JsonEvent = e |> serializer.Serialize
+                            JsonEvent = e 
                             Timestamp = DateTime.Now
                         }
                     ]
@@ -128,16 +156,16 @@ module MemoryStorage =
                 storeEvents version name events
                 () |> Ok
 
-            member this.GetEventsAfterId<'E> version id name =
+            member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Id > id)
-                    |>> (fun x -> x.Id, x.JsonEvent |> serializer.Deserialize<'E> |> Result.get)
+                    |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents(arg: List<List<obj> * version * Name>): Result<unit,string> = 
+            member this.MultiAddEvents(arg: List<List<Json> * version * Name>): Result<unit,string> = 
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 arg 
                 |> List.iter 
@@ -150,7 +178,7 @@ module MemoryStorage =
                 let newSnapshot =
                     {
                         Id = next_snapshot_id version name
-                        Snapshot = snapshot |> serializer.Serialize
+                        Snapshot = snapshot 
                         TimeStamp = DateTime.Now
                         EventId = id
                     }
@@ -167,12 +195,7 @@ module MemoryStorage =
                     let res =
                         events_dic.[version].[name]
                         |> List.tryFind (fun x -> x.Id = id)
-                    match res with
-                    | None -> None
-                    | Some x ->
-                        match (serializer.Deserialize x.JsonEvent) with
-                        | Ok event -> Some { Event = event; Id = x.Id; Timestamp = x.Timestamp }
-                        | Error e -> failwith e
+                    res
 
             member this.TryGetLastEventId  version  name = 
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
@@ -193,9 +216,7 @@ module MemoryStorage =
                     match res with
                     | None -> None
                     | Some x ->
-                        match (serializer.Deserialize x.Snapshot) with
-                        | Ok snapshot -> Some (x.Id, x.EventId, snapshot)
-                        | Error e -> failwith e
+                        Some (x.Id, x.EventId, x.Snapshot)
 
             member this.TryGetLastSnapshotEventId version name =
                 log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
@@ -215,13 +236,13 @@ module MemoryStorage =
                     |>> (fun x -> x.Id)
 
             // Issue: it will not survive after a version migration because the timestamps will be different
-            member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime): List<int * 'E> = 
+            member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     []
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
-                    |>> (fun x -> x.Id, x.JsonEvent |> serializer.Deserialize<'E> |> Result.get)
+                    |>> (fun x -> x.Id, x.JsonEvent)// |> serializer.Deserialize<'E> |> Result.get)
                     |>> (fun (id, event) -> id, event)
 

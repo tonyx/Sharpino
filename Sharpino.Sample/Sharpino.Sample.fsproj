@@ -22,19 +22,22 @@
     <Compile Include="aggregates/Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />
 
-
+    <Compile Include="JSON/Converters.fs" />
     <Compile Include="App.fs" />
-    <Compile Include="AppRef.fs" />
     <Compile Include="EventStoreApp.fs" />
     <Compile Include="AppVersions.fs" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- uncomment this while developing the library -->
+  <!-- <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+  </ItemGroup> -->
 
   <ItemGroup>
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.6.0" />
+
+    <!-- comment this while developing the library -->
+    <PackageReference Include="Sharpino" Version="1.2.3" />
   </ItemGroup>
 
 </Project>

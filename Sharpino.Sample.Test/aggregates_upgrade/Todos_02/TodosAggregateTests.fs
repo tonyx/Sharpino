@@ -6,6 +6,8 @@ open FSharp.Core
 open Sharpino.Core
 open Sharpino.EncriptUtils
 
+open Tests.Sharpino.Shared
+
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Entities.Todos
 open FsToolkit.ErrorHandling
@@ -16,6 +18,7 @@ let todosAggregateUpgrade02Tests =
         let secretKeyIndex = "4b938de9-cb4b-4297-8687-865181836548"
         testCase "add todo - Ok" <| fun _ ->
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex ; CategoryIds = []; TagIds = []}
+
             let aggregate = TodosAggregate'.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue

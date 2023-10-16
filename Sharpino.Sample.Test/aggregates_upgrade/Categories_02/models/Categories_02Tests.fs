@@ -6,6 +6,7 @@ open Expecto
 open System
 open FSharp.Core
 
+open Tests.Sharpino.Shared
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Utils
 
@@ -14,14 +15,14 @@ open Sharpino.Utils
 let categoryModelTests =
     testList "categories 02 model tests" [
         testCase "add category - Ok" <| fun _ ->
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let categories = Categories.Zero.AddCategory category
             Expect.isOk categories "should be ok"
             let categories' = categories.OkValue
             Expect.equal (categories'.categories |> List.length) 1 "should be equal"
 
         testCase "add and remove a category - Ok" <| fun _ ->
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let categories = Categories.Zero.AddCategory category
             Expect.isOk categories "should be ok"
             let categories' = categories.OkValue
@@ -31,7 +32,7 @@ let categoryModelTests =
             Expect.equal (result.categories |> List.length) 0 "should be equal"
 
         testCase "try removing an unexisting category - Ko" <| fun _ ->
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let categories = (Categories.Zero.AddCategory category) |> Result.get
             let wrongId = Guid.NewGuid()
             let result = categories.RemoveCategory wrongId

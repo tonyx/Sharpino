@@ -7,4 +7,3 @@ module Conf =
     let isTestEnv = true
 
     let cacheSize = 100 
-    let stateCacheSize = 10 

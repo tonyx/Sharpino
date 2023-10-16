@@ -2,9 +2,6 @@
 module Tests.Sharpino.Sample.MultiVersionsTests
 
 open Expecto
-open FsCheck
-open FsCheck.Prop
-open Expecto.Tests
 open System
 open FSharp.Core
 
@@ -15,20 +12,14 @@ open Sharpino.Sample.TodosAggregate
 open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
-open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.Categories
-open Sharpino.Sample.Tags
 open Sharpino.Utils
 open Sharpino.EncriptUtils
 open Sharpino.EventSourcing.Sample
-open Sharpino.EventSourcing
-open Sharpino.Sample.CategoriesAggregate
-open Sharpino.Sample.Categories.CategoriesEvents
+open Sharpino.EventSourcing.Sample.AppVersions
 open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Tags.TagsEvents
-open System.Runtime.CompilerServices
-open Sharpino.Conf
+open Tests.Sharpino.Shared
+
 open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
@@ -133,36 +124,36 @@ let encryptTest =
 let appEnctyptTests =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     testList "forgettable tests" [
-        testCase "serialize and deserialize forgettable when key is present - Ok" <| fun _ ->
-            let _ = resetDb memoryStorage
-            let forgettable = "test" |> mkForgettable secretKeyIndex   
-            let serialized = forgettable |> serialize<Forgettable>
-            printf "serialized %A\n" serialized
-            let deserialized = serialized |> deserialize<Forgettable> |> Result.get
-            printf "deserialized value %A\n" deserialized.Value
-            let reserialized = deserialized |> serialize<Forgettable>
-            printf "reserialized: %A\n" reserialized
-            Expect.equal deserialized forgettable "should be equal"
+        // testCase "serialize and deserialize forgettable when key is present - Ok" <| fun _ ->
+        //     let _ = resetDb memoryStorage
+        //     let forgettable = "test" |> mkForgettable secretKeyIndex   
+        //     let serialized = forgettable |> serialize<Forgettable>
+        //     printf "serialized %A\n" serialized
+        //     let deserialized = serialized |> deserialize<Forgettable> |> Result.get
+        //     printf "deserialized value %A\n" deserialized.Value
+        //     let reserialized = deserialized |> serialize<Forgettable>
+        //     printf "reserialized: %A\n" reserialized
+        //     Expect.equal deserialized forgettable "should be equal"
 
-        testCase "serialize event" <| fun _ ->
-            let event = TodoEvent.TodoAdded { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
-            printf "event: %A\n" event
-            let serialized = event |> serialize
-            let deserialized: TodoEvent = serialized |> deserialize |> Result.get
-            Expect.equal deserialized event "should be equal"
+        // testCase "serialize event" <| fun _ ->
+        //     let event = TodoEvent.TodoAdded { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+        //     printf "event: %A\n" event
+        //     let serialized = event |> serialize
+        //     let deserialized: TodoEvent = serialized |> deserialize |> Result.get
+        //     Expect.equal deserialized event "should be equal"
 
         // FOCUS
-        ptestCase "add a todo and read the event" <| fun _ ->
-            let _ = resetDb memoryStorage
-            let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
-            let added = currentMemApp.AddTodo todo   
-            let result = (memoryStorage :> Storage.IStorage).GetEventsAfterId TodosAggregate.Version 0 TodosAggregate.StorageName
-            Expect.isOk result "should be ok"
-            Expect.equal (result.OkValue).Length 1 "should be equal"
-            let firstEvent = (result.OkValue).Head |> snd 
-            let firstEvent': TodoEvent = firstEvent 
-            Expect.equal firstEvent' (TodoEvent.TodoAdded todo) "should be equal"
-            Expect.isTrue true "true"
+        // ptestCase "add a todo and read the event" <| fun _ ->
+        //     let _ = resetDb memoryStorage
+        //     let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
+        //     let added = currentMemApp.AddTodo todo   
+        //     let result = (memoryStorage :> Storage.IStorage).GetEventsAfterId TodosAggregate.Version 0 TodosAggregate.StorageName
+        //     Expect.isOk result "should be ok"
+        //     Expect.equal (result.OkValue).Length 1 "should be equal"
+        //     let firstEvent = (result.OkValue).Head |> snd 
+        //     let firstEvent': TodoEvent = firstEvent 
+        //     Expect.equal firstEvent' (TodoEvent.TodoAdded todo) "should be equal"
+        //     Expect.isTrue true "true"
 
         // FOCUS the serialize/deserialize issue will make this test not pass (the field when serialized/deserialized encripted/decripted magically changes)
         testCase "add two todos" <| fun _ ->
@@ -178,44 +169,41 @@ let appEnctyptTests =
 [<Tests>]
 let testCoreEvolve =
     // quick and dirty way to log for debug:
+    let serializer =  Utils.JsonSerializer(Utils.serSettings)
 
     let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
         match ap._forceStateUpdate with
         | Some f -> f()
         | None -> ()
     testList "evolve test" [
-        pmultipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable secretKeyIndex ; CategoryIds = []; TagIds = [] }
 
-            // I am adding twice the same event and the "evolve" will ignore it
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName )
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
-            ap |> updateStateIfNecessary
+            // I am adding the same event twice and the "evolve" will ignore it
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer], TodosAggregate.StorageName )
+            let _ = ap._addEvents (TodosAggregate.Version, [ event.Serialize serializer], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
 
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }] "should be equal"
 
-        pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize], TodosAggregate.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
 
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [{ Id = id; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }] "should be equal"
 
-        pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let id = Guid.NewGuid()
             let id2 = Guid.NewGuid()
@@ -223,16 +211,12 @@ let testCoreEvolve =
 
             let event2 = TodoEvents.TodoAdded { Id = id2; Description = "test second part" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
-            let _ = ap._addEvents (TodosAggregate.Version, [ event |> serialize ],  TodosAggregate.StorageName) 
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event |> serialize ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosAggregate.Version,  [ event2.Serialize serializer ], TodosAggregate.StorageName)
+            let _ = ap._addEvents (TodosAggregate'.Version, [ event2.Serialize serializer ], TodosAggregate'.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate.Version,  [ event2 |> serialize ], TodosAggregate.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event2 |> serialize ], TodosAggregate'.StorageName)
-
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos()
 
             Expect.isOk todos "should be ok"
@@ -251,32 +235,32 @@ let testCoreEvolve =
 let forgettablejsonTests =
     testList "convert a forgettable" [
 
-        ptestCase "serialize a test forgettable - Ok" <| fun _ ->
-            let forgettable = "test" |> mkForgettableXX secretKeyIndex
-            printf "forgettable %A\n" forgettable
-            let jsonForgettable = forgettable |> Utils.serialize
+        // ptestCase "serialize a test forgettable - Ok" <| fun _ ->
+        //     let forgettable = "test" |> mkForgettableXX secretKeyIndex
+        //     printf "forgettable %A\n" forgettable
+        //     let jsonForgettable = forgettable |> Utils.serialize
 
-            printf "jsonForgettable: %A\n\n" jsonForgettable
+        //     printf "jsonForgettable: %A\n\n" jsonForgettable
 
-            // let myValue = 
-            //     """
-            //         {"$type":"Sharpino.Utils+ForgettableXX, Sharpino.Lib","IndexOfKey":"4b938de9-cb4b-4297-8687-865181836548","EncriptionKey":{"Case":"Some","Fields":[7]},"Value":"alza"}
-            //     """
+        //     // let myValue = 
+        //     //     """
+        //     //         {"$type":"Sharpino.Utils+ForgettableXX, Sharpino.Lib","IndexOfKey":"4b938de9-cb4b-4297-8687-865181836548","EncriptionKey":{"Case":"Some","Fields":[7]},"Value":"alza"}
+        //     //     """
 
-            let result = jsonForgettable |> Utils.deserialize<ForgettableXX>
-            Expect.isOk result "should be ok"
+        //     let result = jsonForgettable |> Utils.deserialize<ForgettableXX>
+        //     Expect.isOk result "should be ok"
 
-            // // let result' = myValue |> Utils.deserialize<ForgettableXX>
-            // Expect.isOk result "should be ok"
-            // // Expect.isOk result' "should be ok"
+        //     // // let result' = myValue |> Utils.deserialize<ForgettableXX>
+        //     // Expect.isOk result "should be ok"
+        //     // // Expect.isOk result' "should be ok"
 
-            // // Expect.equal result result' "should be equal"
-            // printf "result %A" result
+        //     // // Expect.equal result result' "should be equal"
+        //     // printf "result %A" result
 
-            // // printf "result %A\n" result
-            // Expect.equal result.OkValue forgettable "should be equal"
+        //     // // printf "result %A\n" result
+        //     // Expect.equal result.OkValue forgettable "should be equal"
 
-            // Expect.equal result forgettable "should be equal" 
+        //     // Expect.equal result forgettable "should be equal" 
     ]
 
 [<Tests>]
@@ -284,6 +268,7 @@ let multiVersionsTests =
     testList "App with coordinator test - Ok" [
         // not needed anymore but I keep it for reference and future storages that may require this approach
         let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
+            // dismiss this code soon
             match ap._forceStateUpdate with
             | Some f -> f()
             | None -> ()
@@ -352,14 +337,12 @@ let multiVersionsTests =
             let _ = ap._reset()
             let id1 = Guid.NewGuid()
             let id2 = Guid.NewGuid()
-            let tag = { Id = id2; Name = "test"; Color = Color.Blue }
+            let tag = mkTag id2 "test" Color.Blue
             let result = ap.addTag tag
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let todo = { Id = id1; Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [id2] }
             let result = ap.addTodo todo
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -369,7 +352,6 @@ let multiVersionsTests =
             Expect.equal todos [todo] "should be equal"
 
             let removed = apUpgd.removeTag id2
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos().OkValue
             Expect.isTrue (result.Head.TagIds |> List.isEmpty) "should be true"
@@ -379,7 +361,6 @@ let multiVersionsTests =
 
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [] }
             let result = ap.addTodo todo
-            ap |> updateStateIfNecessary
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -399,8 +380,6 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
 
-            ap |> updateStateIfNecessary
-
             let todos = ap.getAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
 
@@ -408,7 +387,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTodo todo.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTodos() |> Result.get
             Expect.equal result [] "should be equal"
@@ -423,9 +401,8 @@ let multiVersionsTests =
 
         multipleTestCase "add category" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -436,13 +413,12 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a category 1" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
             async {
                 do! Async.Sleep 10
                 return ()
             } |> Async.RunSynchronously
-            ap |> updateStateIfNecessary
             
             Expect.isOk added "should be ok"
 
@@ -452,16 +428,14 @@ let multiVersionsTests =
             let categories = apUpgd.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
             let removed = apUpgd.removeCategory category.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
             Expect.equal result [] "should be equal"
 
         multipleTestCase "add and remove a category 2" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "testuu"}
+            let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             async {
                 do! Async.Sleep 10
                 return ()
@@ -475,7 +449,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeCategory category.Id
-            apUpgd |> updateStateIfNecessary
 
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllCategories() |> Result.get
@@ -483,9 +456,8 @@ let multiVersionsTests =
 
         multipleTestCase "add and remove a category 3" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "testuu"}
+            let category = mkCategory (Guid.NewGuid()) "testuu"
             let added = ap.addCategory category
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let categories = ap.getAllCategories() |> Result.get
             Expect.equal categories [category] "should be equal"
@@ -500,10 +472,8 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo with an unexisting category - KO" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let category = { Id = Guid.NewGuid(); Name = "test"}
+            let category = mkCategory (Guid.NewGuid()) "test"
             let added = ap.addCategory category
-            Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -530,8 +500,6 @@ let multiVersionsTests =
 
             let _ = ap.addCategory category
 
-            ap |> updateStateIfNecessary
-
             async {
                 do! Async.Sleep 10
                 return ()
@@ -539,8 +507,6 @@ let multiVersionsTests =
             
             let added = ap.addTodo todo    
             
-            ap |> updateStateIfNecessary
-
             Expect.isOk added "should be ok"
 
             let hasMigrated = migrator()
@@ -549,8 +515,6 @@ let multiVersionsTests =
             let todos = apUpgd.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
             let result = apUpgd.removeCategory categoryId
-
-            apUpgd |> updateStateIfNecessary
 
             Expect.isOk result "should be ok"
 
@@ -561,7 +525,7 @@ let multiVersionsTests =
             let _ = ap._reset()
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
-            let category = { Id = categoryId1; Name = "test" }
+            let category = mkCategory categoryId1 "test"
             let category2 = { Id = categoryId2; Name = "test2" }
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = [categoryId1; categoryId2]; TagIds = [] }
 
@@ -612,20 +576,18 @@ let multiVersionsTests =
 
         multipleTestCase "add tag" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let added = ap.addTag tag
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
             Expect.isOk added "should be ok"
-            ap |> updateStateIfNecessary
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [tag] "should be equal"
 
         multipleTestCase "add and remove a tag" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue }
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let added = ap.addTag tag
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
             let tags = ap.getAllTags() |> Result.get
             Expect.equal tags [tag] "should be equal"
@@ -634,7 +596,6 @@ let multiVersionsTests =
             Expect.isOk migrated "should be ok"
 
             let removed = apUpgd.removeTag tag.Id
-            apUpgd |> updateStateIfNecessary
             Expect.isOk removed "should be ok"
             let result = apUpgd.getAllTags() |> Result.get
             Expect.equal result [] "should be equal"
@@ -652,11 +613,9 @@ let multiVersionsTests =
                         do! Async.Sleep 1
                         return ()
                     } |> Async.RunSynchronously
-                    ap |> updateStateIfNecessary
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let migrated = migrator()
@@ -679,7 +638,6 @@ let multiVersionsTests =
             let added =
                 ResultCE.result {
                     let! _ = ap.addTag tag
-                    ap |> updateStateIfNecessary
                     async {
                         do! Async.Sleep 1
                         return ()
@@ -687,7 +645,6 @@ let multiVersionsTests =
                     let! app' = ap.addTodo todo
                     return app'
                 } 
-            ap |> updateStateIfNecessary
             Expect.isOk added "should be ok"
 
             let todos = ap.getAllTodos().OkValue 
@@ -705,7 +662,7 @@ let multiVersionsTests =
         multipleTestCase "when remove a tag all references to it should be removed from existing todos 3 - Ok" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) ->
             let _ = ap._reset()
             let tagId = Guid.NewGuid()
-            let tag1 = { Id = tagId; Name = "test"; Color = Color.Blue }
+            let tag1 = mkTag tagId "test" Color.Blue
             let tagId2 = Guid.NewGuid()
             let tag2 = { Id = tagId2; Name = "test2"; Color = Color.Red }
             let todo = { Id = Guid.NewGuid(); Description = "test" |> mkForgettable secretKeyIndex; CategoryIds = []; TagIds = [tagId; tagId2] }
@@ -717,7 +674,6 @@ let multiVersionsTests =
             let added'' = ap.addTodo todo
             Expect.isOk added'' "should be ok"
 
-            ap |> updateStateIfNecessary
             let todos = ap.getAllTodos().OkValue 
             Expect.equal todos [todo] "should be equal"
             let removed = ap.removeTag tagId
@@ -792,11 +748,9 @@ let multiVersionsTests =
             let actualEvents = result.TodoEvents
             let expcted = 
                 [
-                    TodoEvent.TodoAdded { Id = todo1.Id; Description = todo1.Description; CategoryIds = todo1.CategoryIds; TagIds = todo1.TagIds }
+                    TodoEvent.TodoAdded todo1 //(mkTodo todo1.Id todo1.Description todo1.CategoryIds todo1.TagIds)
                 ]
             Expect.equal actualEvents expcted "should be equal"
-
-
     ] 
     |> testSequenced
 

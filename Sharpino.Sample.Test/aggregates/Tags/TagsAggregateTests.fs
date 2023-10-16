@@ -1,4 +1,5 @@
 module Tests.Sharpino.Sample.Tags.TagsTests
+open Tests.Sharpino.Shared
 
 open Expecto
 open System
@@ -14,14 +15,14 @@ open Sharpino.EventSourcing.Sample
 let tagsAggregateTests =
     testList "tags aggregate tests" [
         testCase "add a tag - Ok" <| fun _ ->
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue}
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let aggregate = TagsAggregate.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
 
         testCase "add and remove a tag - Ok" <| fun _ ->
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue}
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let aggregate = TagsAggregate.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get
@@ -31,7 +32,7 @@ let tagsAggregateTests =
             Expect.equal (result'.GetTags() |> List.length) 0 "should be equal"
 
         testCase "try removing an unexisting tag - Ko" <| fun _ ->
-            let tag = { Id = Guid.NewGuid(); Name = "test"; Color = Color.Blue}
+            let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
             let aggregate = TagsAggregate.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get

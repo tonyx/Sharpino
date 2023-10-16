@@ -4,6 +4,7 @@ open System
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
+open Sharpino.Storage
 
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -25,6 +26,11 @@ module TodosAggregate =
             "_01"
         static member SnapshotsInterval =
             5 
+        static member Lock =
+            new Object()
+        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosAggregate, string>  =
+            serializer.Deserialize<TodosAggregate> json
+
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories() 
@@ -111,6 +117,14 @@ module TodosAggregate =
                 }
         member this.GetCategories() = this.categories.GetCategories()
 
+        // assume this should me moved but atm doesn't work in a separate module
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+
+
+
+
 // what follows is the same code as above, but with the new version of the aggregate
     [<UpgradedVersion>]
 
@@ -130,6 +144,8 @@ module TodosAggregate =
             "_02"
         static member SnapshotsInterval =
             15
+        static member Lock = 
+            new Object()
         member this.AddTodo (t: Todo) =
             result
                 {
@@ -210,3 +226,8 @@ module TodosAggregate =
                                     }
                         }
                 }
+        member this.Serialize(serializer: ISerializer) =
+            this |> serializer.Serialize
+
+        static member Deserialize (serializer: ISerializer, json: Json)=
+            serializer.Deserialize<TodosAggregate'> json

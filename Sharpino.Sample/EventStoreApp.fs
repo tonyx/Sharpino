@@ -30,24 +30,18 @@ open log4net
 open log4net.Config
 
 module EventStoreApp =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    open Sharpino.Sample.Tags.TagCommands
+    let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type EventStoreApp(storage: ILightStorage) =
         member this.AddTag tag =
-            let f = fun() ->
-                result {
-                    return!
-                        tag
-                        |> TagCommand.AddTag
-                        |> runCommand<TagsAggregate, TagEvent> storage
-                }
-            async {
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
+            result {
+                return!
+                    tag
+                    |> TagCommand.AddTag
+                    |> runCommand<TagsAggregate, TagEvent> storage
             }
-            |> Async.RunSynchronously
                 
         member this.GetAllTags() =
-            ResultCE.result {
+            result {
                 let! (_, stateX ) = storage |> getState<TagsAggregate, TagEvent >
 
                 let tags = stateX.GetTags()
@@ -55,54 +49,48 @@ module EventStoreApp =
             }
 
         member this.GetAllTodos() =
-            ResultCE.result {
+            result {
                 let! (_, state') = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let todos = state'.GetTodos()
                 return todos
             }
 
         member this.AddTodo todo =
-            let f = fun() ->
-                ResultCE.result {
-                    let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
-                    let tagIds = tagState'.GetTags() |>> fun x -> x.Id
+            result {
+                let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
+                let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
-                    let! tagIdIsValid = 
-                        (todo.TagIds.IsEmpty || 
-                        (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
-                        |> boolToResult "Tag id is not valid"
+                let! tagIdIsValid = 
+                    (todo.TagIds.IsEmpty || 
+                    (todo.TagIds |> List.forall (fun x -> tagIds |> List.contains x)))
+                    |> boolToResult "Tag id is not valid"
 
-                    let! _ =
-                        todo
-                        |> TodoCommand.AddTodo
+                let! _ =
+                    todo
+                    |> TodoCommand.AddTodo
+                    |> runCommand<TodosAggregate, TodoEvent> storage
+
+                let _ =
+                    storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
+                return ()
+            }
+
+        member this.RemoveTodo id =
+            let f = fun() ->
+                result {
+                    return!
+                        id
+                        |> TodoCommand.RemoveTodo
                         |> runCommand<TodosAggregate, TodoEvent> storage
-
-                    let _ =
-                        storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
-                    return ()
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
             }
             |> Async.RunSynchronously
 
-        member this.RemoveTodo id =
-            // printf "removing 1.\n"
-            let f = fun() ->
-                ResultCE.result {
-                    return!
-                        id
-                        |> TodoCommand.RemoveTodo
-                        |> runCommand<TodosAggregate, TodoEvent> storage
-                }
-            async { 
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
-            }   
-            |> Async.RunSynchronously
-
         member this.AddCategory category =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return!
                         category
                         |> TodoCommand.AddCategory
@@ -114,7 +102,7 @@ module EventStoreApp =
             |> Async.RunSynchronously
 
         member this.GetAllCategories() =
-            ResultCE.result {
+            result {
                 let! (_, state' ) = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
                 let categories = state'.GetCategories()
                 return categories
@@ -122,7 +110,7 @@ module EventStoreApp =
 
         member this.RemoveCategory id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     return! 
                         id
                         |> TodoCommand.RemoveCategory
@@ -135,7 +123,7 @@ module EventStoreApp =
 
         member this.RemoveTag id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     return! runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -146,7 +134,7 @@ module EventStoreApp =
             |> Async.RunSynchronously
         member this.RemoveTagFakingErrorOnSecondCommand id =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
                     return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
@@ -158,7 +146,7 @@ module EventStoreApp =
 
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
-                ResultCE.result {
+                result {
                     let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
                     let tagIds = 
                         tagState'.GetTags() 
@@ -185,8 +173,7 @@ module EventStoreApp =
         member this.TodoReport (dateFrom: DateTime) (dateTo: DateTime) =
             try
                 let events = storage.ConsumeEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
-                let deserEvents = events |> List.map (fun x -> x |> Utils.deserialize<TodoEvent> |> Result.get)
-                let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents}
+                let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = events}
                 result
             with _ as ex ->
                 log.Error (sprintf "error: %A\n" ex)
