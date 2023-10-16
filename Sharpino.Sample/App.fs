@@ -2,7 +2,7 @@ namespace Sharpino.Sample
 
 open Sharpino
 open Sharpino.Utils
-open Sharpino.Repository
+open Sharpino.CommandHandler
 
 open Sharpino.Sample
 open Sharpino.Storage
