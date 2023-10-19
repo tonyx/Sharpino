@@ -142,7 +142,7 @@ module MemoryStorage =
                 snapshot_id_seq_dic.Clear()
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents version xs name: Result<unit,string> = 
+            member this.AddEvents version name xs: Result<unit,string> = 
                 log.Debug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
                     [for e in xs do
@@ -170,7 +170,7 @@ module MemoryStorage =
                 arg 
                 |> List.iter 
                     (fun (xs, version, name) ->
-                        (this :> IStorage).AddEvents version xs name |> ignore
+                        (this :> IStorage).AddEvents version name xs |> ignore
                     ) 
                 () |> Ok
             member this.SetSnapshot  version (id, snapshot) name =

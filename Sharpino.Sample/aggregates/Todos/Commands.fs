@@ -24,26 +24,23 @@ module TodoCommands =
             member this.Execute (x: TodosAggregate) =
                 match this with
                 | AddTodo t -> 
-                    Instance.Memoize (fun () -> x.AddTodo t) (x, [TodoEvent.TodoAdded t])
+                    x.AddTodo t
                     |> Result.map (fun _ -> [TodoEvent.TodoAdded t])
                 | RemoveTodo g ->
-                    Instance.Memoize (fun () -> x.RemoveTodo g) (x, [TodoEvent.TodoRemoved g])
+                    x.RemoveTodo g
                     |> Result.map (fun _ -> [TodoEvent.TodoRemoved g])
                 | AddCategory c ->
-                    Instance.Memoize (fun () -> x.AddCategory c) (x, [TodoEvent.CategoryAdded c])
+                    x.AddCategory c
                     |> Result.map (fun _ -> [TodoEvent.CategoryAdded c])
                 | RemoveCategory g ->
-                    Instance.Memoize (fun () -> x.RemoveCategory g) (x, [TodoEvent.CategoryRemoved g]) 
+                    x.RemoveCategory g
                     |> Result.map (fun _ -> [TodoEvent.CategoryRemoved g])
                 | RemoveTagRef g ->
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [TodoEvent.TagRefRemoved g])
+                    x.RemoveTagReference g
                     |> Result.map (fun _ -> [TodoEvent.TagRefRemoved g])
                 | Add2Todos (t1, t2) -> 
-                    let evolved =
-                        fun () ->
-                        [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
-                        |> evolveUNforgivingErrors x
-                    EventCache<TodosAggregate>.Instance.Memoize (fun () -> evolved()) (x, [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
+                    [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
+                    |> evolveUNforgivingErrors x
                     |> Result.map (fun _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
             member this.Undoer = None
 

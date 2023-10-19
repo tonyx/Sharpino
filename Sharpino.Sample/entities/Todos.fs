@@ -6,6 +6,10 @@ open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 module Todos =
+
+    let b2r (b: bool)  =
+        if b then Ok () else Error "msg"
+
     type Todo =
         {
             Id: Guid
@@ -27,11 +31,16 @@ module Todos =
 
             member this.AddTodo (t: Todo) =
                 result {
-                    let! description_must_not_exist_already =
-                        this.todos
-                        |> List.exists (fun x -> x.Description = t.Description)
-                        |> not
+                    let! idAndDescriptionsNotAlreadyExists =
+                        this.todos 
+                        |> List.forall
+                            ( fun 
+                                x -> 
+                                    x.Description <> t.Description 
+                                    || x.Id <> t.Id 
+                            )
                         |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
+
                     return
                         {
                             this with
@@ -39,15 +48,24 @@ module Todos =
                         }
                 }
             member this.AddTodos (ts: List<Todo>) =
-                let checkNotExists t =
+                let descriptionNotAlreadyExists t =
                     this.todos
                     |> List.exists (fun x -> x.Description = t.Description || x.Id = t.Id)
                     |> not
                     |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
 
+                let idNotAlreadyExists t =
+                    this.todos
+                    |> List.exists (fun x -> x.Id = t.Id)
+                    |> not
+                    |> boolToResult (sprintf "A todo with the id %A already exists" t.Id)
+
                 result {
-                    let! mustNotExist =
-                        ts |> catchErrors checkNotExists
+                    let! descMustNotExist =
+                        ts |> catchErrors descriptionNotAlreadyExists
+                    let! idMustNotExist =
+                        ts |> catchErrors idNotAlreadyExists
+
                     return
                         {
                             this with

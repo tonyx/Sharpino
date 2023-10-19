@@ -96,7 +96,7 @@ module PgStorage =
                         |> Async.RunSynchronously
                         |> Seq.tryHead
                 res
-            member this.AddEvents version events name =
+            member this.AddEvents version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try

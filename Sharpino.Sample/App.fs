@@ -2,7 +2,7 @@ namespace Sharpino.Sample
 
 open Sharpino
 open Sharpino.Utils
-open Sharpino.Repository
+open Sharpino.CommandHandler
 
 open Sharpino.Sample
 open Sharpino.Storage
@@ -43,29 +43,20 @@ module App =
 
         // here I am using the mailboxprocessor which is a thread safe queue
         member this.AddTodo todo =
-            let f = fun () ->
-                result {
-                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
-                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+            result {
+                let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
+                let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                    let! tagIdIsValid =    
-                        (todo.TagIds.IsEmpty ||
-                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                let! tagIdIsValid =    
+                    (todo.TagIds.IsEmpty ||
+                    todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                    |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                    let! _ =
-                        todo
-                        |> TodoCommand.AddTodo
-                        |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = 
-                        storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
-                return ()
-            }
-            async {
-                return processor.PostAndReply (fun rc -> f, rc)
-            }
-            |> Async.RunSynchronously
+                return!
+                    todo
+                    |> TodoCommand.AddTodo
+                    |> runCommand<TodosAggregate, TodoEvent> storage
+        }
 
         // here I am using two lock object to synchronize the access to the storage in
         // dealing with two aggregates
@@ -124,21 +115,12 @@ module App =
 
         // I will use mailboxprocessor even if I don't need any sync strategy
         member this.AddCategory category =
-            let f = fun () ->
-                result {
-                    let! _ =
-                        category
-                        |> TodoCommand.AddCategory
-                        |> runCommand<TodosAggregate, TodoEvent> storage
-                    let _ = 
-                        storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
-                    return ()
-                }
-            async {
-                return processor.PostAndReply (fun rc -> f, rc)
+            result {
+                return!
+                    category
+                    |> TodoCommand.AddCategory
+                    |> runCommand<TodosAggregate, TodoEvent> storage
             }
-            |> Async.RunSynchronously
 
         member this.RemoveCategory id = 
             let f = fun () ->

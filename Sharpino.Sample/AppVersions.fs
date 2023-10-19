@@ -118,7 +118,7 @@ module AppVersions =
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (storage :> IStorage).AddEvents version deser name |> ignore
+                                    (storage :> IStorage).AddEvents version name deser |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -139,7 +139,7 @@ module AppVersions =
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (storage :> IStorage).AddEvents version deser name |> ignore
+                                    (storage :> IStorage).AddEvents version name deser |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
@@ -162,7 +162,7 @@ module AppVersions =
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (memoryStorage :> IStorage).AddEvents version deser name |> ignore
+                                    (memoryStorage :> IStorage).AddEvents version name deser |> ignore
             _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
@@ -184,7 +184,7 @@ module AppVersions =
             _reset =            fun () -> resetDb memoryStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
-                                    (memoryStorage :> IStorage).AddEvents version deser name |> ignore
+                                    (memoryStorage :> IStorage).AddEvents version name deser |> ignore
             _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo

@@ -30,6 +30,9 @@ module TodosAggregate =
             new Object()
         static member Deserialize (serializer: ISerializer, json: Json): Result<TodosAggregate, string>  =
             serializer.Deserialize<TodosAggregate> json
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
 
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
@@ -118,9 +121,6 @@ module TodosAggregate =
         member this.GetCategories() = this.categories.GetCategories()
 
         // assume this should me moved but atm doesn't work in a separate module
-        member this.Serialize(serializer: ISerializer) =
-            this
-            |> serializer.Serialize
 
 
 

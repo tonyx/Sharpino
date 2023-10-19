@@ -18,18 +18,18 @@ module TodoEvents =
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
             interface Event<TodosAggregate> with
-                member this.Process (x: TodosAggregate ) =
+                member this.Process (x: TodosAggregate) =
                     match this with
                     | TodoAdded (t: Todo) ->
-                        Instance.Memoize (fun () -> x.AddTodo t) (x, [this])
+                        t |> x.AddTodo
                     | TodoRemoved (g: Guid) ->
-                        Instance.Memoize (fun () -> x.RemoveTodo g) (x, [this])
+                        g |> x.RemoveTodo
                     | CategoryAdded (c: Category) ->
-                        Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
+                        c |> x.AddCategory
                     | CategoryRemoved (g: Guid) ->  
-                        Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
+                        g |> x.RemoveCategory
                     | TagRefRemoved (g: Guid) ->            
-                        Instance.Memoize (fun () -> x.RemoveTagReference g) (x, [this])
+                        g |> x.RemoveTagReference
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

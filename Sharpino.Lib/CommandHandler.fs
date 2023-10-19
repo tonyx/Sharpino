@@ -120,10 +120,10 @@ module CommandHandler =
                         let! events =
                             state
                             |> command.Execute
-                        let serEvents = 
-                            events |>> (fun x -> x.Serialize serializer)
                         return! 
-                            storage.AddEvents 'A.Version serEvents 'A.StorageName
+                            events |>> (fun x -> x.Serialize serializer)
+                            |>
+                            storage.AddEvents 'A.Version 'A.StorageName 
                     } 
             }
             |> Async.RunSynchronously
