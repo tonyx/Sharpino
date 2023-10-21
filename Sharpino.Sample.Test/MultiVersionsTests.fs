@@ -231,21 +231,21 @@ let multiVersionsTests =
             let result = apUpgd.getAllTodos().OkValue
             Expect.isTrue (result.Head.TagIds |> List.isEmpty) "should be true"
 
-        multipleTestCase "add and remove a todo 1 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->
-            let _ = ap._reset()
+        multipleTestCase "add and remove a todo 1 - Ok" currentTestConfs <| fun (app, upgdAp, migrator)  ->
+            let _ = app._reset()
 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
-            let result = ap.addTodo todo
+            let result = app.addTodo todo
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
             Expect.isOk migrated "should be ok"
 
-            let todos = apUpgd.getAllTodos() |> Result.get
+            let todos = upgdAp.getAllTodos() |> Result.get
             Expect.equal todos [todo] "should be equal"
-            let result = apUpgd.removeTodo todo.Id
+            let result = upgdAp.removeTodo todo.Id
             Expect.isOk result "should be ok"
-            let todos = apUpgd.getAllTodos() |> Result.get
+            let todos = upgdAp.getAllTodos() |> Result.get
             Expect.equal todos [] "should be equal"
 
         multipleTestCase "add and remove a todo 2 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator)  ->

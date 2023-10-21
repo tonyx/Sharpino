@@ -93,7 +93,7 @@ module AppVersions =
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         version * List<Json> * Name -> unit
-            _forceStateUpdate:  option<unit -> unit>
+            _forceStateUpdate:  option<unit -> unit> // obsolete
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
