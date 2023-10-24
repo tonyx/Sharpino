@@ -135,13 +135,12 @@ module LightCommandHandler =
                 result {
                     let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                    let command1Undoer = 
-                        match command1.Undoer with
-                        | Some f -> a1State |> f |> Some 
-                        | _ -> None
-
-                    let command1Undoer2 = 
-                        match command1Undoer with
+                    let undoer = 
+                        let undoContext = 
+                            match command1.Undoer with
+                            | Some f -> a1State |> f |> Some 
+                            | _ -> None
+                        match undoContext with
                         | Some x -> 
                             match x with
                             | Ok x -> Some x
@@ -151,7 +150,7 @@ module LightCommandHandler =
                     let! result1 = runCommand<'A1, 'E1> storage command1
                     let result2 = runCommand<'A2, 'E2> storage command2
 
-                    match result2, command1Undoer2 with
+                    match result2, undoer with
                     | Error _, Some undoer ->
                         let doUndo = runUndoCommand storage undoer
                         match doUndo with
@@ -193,13 +192,12 @@ module LightCommandHandler =
                 result {
                     let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                    let command1Undoer = 
-                        match command1.Undoer with
-                        | Some f -> a1State |> f |> Some 
-                        | _ -> None
-
-                    let command1Undoer2 = 
-                        match command1Undoer with
+                    let undoer1 = 
+                        let undoer1Context = 
+                            match command1.Undoer with
+                            | Some f -> a1State |> f |> Some 
+                            | _ -> None
+                        match undoer1Context with
                         | Some x -> 
                             match x with
                             | Ok x -> Some x
@@ -210,7 +208,7 @@ module LightCommandHandler =
                     let result2 = runCommand<'A2, 'E2> storage command2
 
                     let! _ =
-                        match result2, command1Undoer2 with
+                        match result2, undoer1 with
                         | Error _, Some undoer ->
                             let doUndo = runUndoCommand storage undoer
                             match doUndo with
@@ -221,13 +219,13 @@ module LightCommandHandler =
                         | _ -> () |> Ok
 
                     let! (_, a2State) = getState<'A2, 'E2> storage 
-                    let command2Undoer = 
-                        match command2.Undoer with
-                        | Some f -> a2State |> f |> Some 
-                        | _ -> None
 
-                    let command2Undoer2 = 
-                        match command2Undoer with
+                    let undoer2 = 
+                        let undoer2Context = 
+                            match command2.Undoer with
+                            | Some f -> a2State |> f |> Some 
+                            | _ -> None
+                        match undoer2Context with
                         | Some x -> 
                             match x with
                             | Ok x -> Some x
@@ -236,7 +234,7 @@ module LightCommandHandler =
 
                     let result3 = runCommand<'A3, 'E3> storage command3
 
-                    match result3, command1Undoer2, command2Undoer2 with
+                    match result3, undoer1, undoer2 with
                     | Error _, Some undoer1, Some undoer2 ->
                         let doUndo1 = runUndoCommand storage undoer1
                         let doUndo2 = runUndoCommand storage undoer2
@@ -269,13 +267,14 @@ module LightCommandHandler =
             (command2: Command<'A2, 'E2>) =
             result {
                 let! (_, a1State) = getState<'A1, 'E1> storage
-                let command1Undoer = 
-                    match command1.Undoer with
-                    | Some f -> a1State |> f |> Some 
-                    | _ -> None
 
-                let command1Undoer2 = 
-                    match command1Undoer with
+                let undoer1 = 
+                    let context = 
+                        match command1.Undoer with
+                        | Some f -> a1State |> f |> Some 
+                        | _ -> None
+
+                    match context with
                     | Some x -> 
                         match x with
                         | Ok x -> Some x
@@ -285,7 +284,7 @@ module LightCommandHandler =
                 let! result1 = runCommand<'A1, 'E1> storage command1
                 let result2: Result<unit, string> = Error "error"
                 
-                match result2, command1Undoer2 with
+                match result2, undoer1 with
                 | Error _, Some undoer ->
                     let doUndo = runUndoCommand storage undoer
                     match doUndo with
