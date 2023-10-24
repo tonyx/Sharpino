@@ -27,7 +27,8 @@ SET default_table_access_method = heap;
 CREATE TABLE public.events_01_tags (
     id integer NOT NULL,
     event json NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -52,7 +53,8 @@ ALTER TABLE public.events_01_tags ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 CREATE TABLE public.events_01_todo (
     id integer NOT NULL,
     event json NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -77,7 +79,8 @@ ALTER TABLE public.events_01_todo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
     event json NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -102,7 +105,8 @@ ALTER TABLE public.events_02_categories ALTER COLUMN id ADD GENERATED ALWAYS AS 
 CREATE TABLE public.events_02_todo (
     id integer NOT NULL,
     event json NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -342,4 +346,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20230618084021'),
     ('20230618084147'),
     ('20230618084416'),
-    ('20230618084628');
+    ('20230618084628'),
+    ('20231023130328'),
+    ('20231023130943'),
+    ('20231023131031'),
+    ('20231023131113');
