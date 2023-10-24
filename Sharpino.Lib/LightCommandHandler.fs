@@ -19,7 +19,9 @@ module LightCommandHandler =
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)>
+        and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
+        >
         (storage: ILightStorage) =
             log.Debug "getLastSnapshot"
             async {
@@ -38,6 +40,7 @@ module LightCommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>>(storage: ILightStorage) = 
             log.Debug "getState"
 
@@ -70,42 +73,46 @@ module LightCommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>> (storage: ILightStorage) (undoer: Undoer<'A, 'E>)  =
         log.Debug "runUndoCommand"
 
-        async {
-            return
-                result {
-                    let! (_, state) = storage |> getState<'A, 'E> 
-                    let! events =
-                        state
-                        |> undoer 
-                    let serEvents = 
-                        events 
-                    return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
-                } 
-        }
-        |> Async.RunSynchronously
+        lock 'A.Lock <| fun () ->
+            async {
+                return
+                    result {
+                        let! (_, state) = storage |> getState<'A, 'E> 
+                        let! events =
+                            state
+                            |> undoer 
+                        let serEvents = 
+                            events 
+                        return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
+                    } 
+            }
+            |> Async.RunSynchronously
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>> (storage: ILightStorage) (command: Command<'A, 'E>)  =
         log.Debug "runCommand"
-        async {
-            return
-                result {
-                    let! (_, state) = storage |> getState<'A, 'E>
-                    let! events =
-                        state
-                        |> command.Execute
-                    let serEvents = 
-                        events 
-                    return! storage.AddEvents 'A.Version serEvents 'A.StorageName
-                } 
-        }
-        |> Async.RunSynchronously
+        lock 'A.Lock <| fun () ->
+            async {
+                return
+                    result {
+                        let! (_, state) = storage |> getState<'A, 'E>
+                        let! events =
+                            state
+                            |> command.Execute
+                        let serEvents = 
+                            events 
+                        return! storage.AddEvents 'A.Version serEvents 'A.StorageName
+                    } 
+            }
+            |> Async.RunSynchronously
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -114,41 +121,46 @@ module LightCommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
             (storage: ILightStorage)
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A\n" command1 command2)
-            result {
-                let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                let command1Undoer = 
-                    match command1.Undoer with
-                    | Some f -> a1State |> f |> Some 
-                    | _ -> None
+            lock ('A1.Lock, 'A2.Lock) <| fun () ->
 
-                let command1Undoer2 = 
-                    match command1Undoer with
-                    | Some x -> 
-                        match x with
-                        | Ok x -> Some x
+                result {
+                    let! (_, a1State) = getState<'A1, 'E1> storage 
+
+                    let command1Undoer = 
+                        match command1.Undoer with
+                        | Some f -> a1State |> f |> Some 
                         | _ -> None
-                    | _ -> None
 
-                let! result1 = runCommand<'A1, 'E1> storage command1
-                let result2 = runCommand<'A2, 'E2> storage command2
+                    let command1Undoer2 = 
+                        match command1Undoer with
+                        | Some x -> 
+                            match x with
+                            | Ok x -> Some x
+                            | _ -> None
+                        | _ -> None
 
-                match result2, command1Undoer2 with
-                | Error _, Some undoer ->
-                    let doUndo = runUndoCommand storage undoer
-                    match doUndo with
-                    | Ok _ -> ()
-                    | Error err -> 
-                        printf "warning can't do undo: %A\n" err
-                | _ -> ()
-                return! result2 
-            }
+                    let! result1 = runCommand<'A1, 'E1> storage command1
+                    let result2 = runCommand<'A2, 'E2> storage command2
+
+                    match result2, command1Undoer2 with
+                    | Error _, Some undoer ->
+                        let doUndo = runUndoCommand storage undoer
+                        match doUndo with
+                        | Ok _ -> ()
+                        | Error err -> 
+                            printf "warning can't do undo: %A\n" err
+                    | _ -> ()
+                    return! result2 
+                }
 
     // todo: write test about
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
@@ -164,6 +176,9 @@ module LightCommandHandler =
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A3: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
+        and 'A3: (static member Lock: obj)
 
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>
@@ -173,66 +188,68 @@ module LightCommandHandler =
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) =
             log.Debug (sprintf "runThreeCommands %A %A %A\n" command1 command2 command3)
-            result {
-                let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                let command1Undoer = 
-                    match command1.Undoer with
-                    | Some f -> a1State |> f |> Some 
-                    | _ -> None
+            lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
+                result {
+                    let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                let command1Undoer2 = 
-                    match command1Undoer with
-                    | Some x -> 
-                        match x with
-                        | Ok x -> Some x
+                    let command1Undoer = 
+                        match command1.Undoer with
+                        | Some f -> a1State |> f |> Some 
                         | _ -> None
-                    | _ -> None
 
-                let! result1 = runCommand<'A1, 'E1> storage command1
-                let result2 = runCommand<'A2, 'E2> storage command2
+                    let command1Undoer2 = 
+                        match command1Undoer with
+                        | Some x -> 
+                            match x with
+                            | Ok x -> Some x
+                            | _ -> None
+                        | _ -> None
 
-                let! _ =
-                    match result2, command1Undoer2 with
-                    | Error _, Some undoer ->
-                        let doUndo = runUndoCommand storage undoer
-                        match doUndo with
-                        | Ok _ -> () |> Ok
-                        | Error err -> 
+                    let! result1 = runCommand<'A1, 'E1> storage command1
+                    let result2 = runCommand<'A2, 'E2> storage command2
+
+                    let! _ =
+                        match result2, command1Undoer2 with
+                        | Error _, Some undoer ->
+                            let doUndo = runUndoCommand storage undoer
+                            match doUndo with
+                            | Ok _ -> () |> Ok
+                            | Error err -> 
+                                printf "warning can't do undo: %A\n" err
+                                Error err
+                        | _ -> () |> Ok
+
+                    let! (_, a2State) = getState<'A2, 'E2> storage 
+                    let command2Undoer = 
+                        match command2.Undoer with
+                        | Some f -> a2State |> f |> Some 
+                        | _ -> None
+
+                    let command2Undoer2 = 
+                        match command2Undoer with
+                        | Some x -> 
+                            match x with
+                            | Ok x -> Some x
+                            | _ -> None
+                        | _ -> None
+
+                    let result3 = runCommand<'A3, 'E3> storage command3
+
+                    match result3, command1Undoer2, command2Undoer2 with
+                    | Error _, Some undoer1, Some undoer2 ->
+                        let doUndo1 = runUndoCommand storage undoer1
+                        let doUndo2 = runUndoCommand storage undoer2
+                        match doUndo1, doUndo2 with
+                        | Ok _, Ok _ -> ()
+                        | Error err, _ -> 
                             printf "warning can't do undo: %A\n" err
-                            Error err
-                    | _ -> () |> Ok
+                        | _, Error err -> 
+                            printf "warning can't do undo: %A\n" err
+                    | _ -> ()
 
-                let! (_, a2State) = getState<'A2, 'E2> storage 
-                let command2Undoer = 
-                    match command2.Undoer with
-                    | Some f -> a2State |> f |> Some 
-                    | _ -> None
-
-                let command2Undoer2 = 
-                    match command2Undoer with
-                    | Some x -> 
-                        match x with
-                        | Ok x -> Some x
-                        | _ -> None
-                    | _ -> None
-
-                let result3 = runCommand<'A3, 'E3> storage command3
-
-                match result3, command1Undoer2, command2Undoer2 with
-                | Error _, Some undoer1, Some undoer2 ->
-                    let doUndo1 = runUndoCommand storage undoer1
-                    let doUndo2 = runUndoCommand storage undoer2
-                    match doUndo1, doUndo2 with
-                    | Ok _, Ok _ -> ()
-                    | Error err, _ -> 
-                        printf "warning can't do undo: %A\n" err
-                    | _, Error err -> 
-                        printf "warning can't do undo: %A\n" err
-                | _ -> ()
-
-                return! result3 
-            }
+                    return! result3 
+                }
 
 
     // this is the same as runTwoCommands but with a failure in the second command to test the undo
@@ -243,6 +260,8 @@ module LightCommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2>> 
             (storage: ILightStorage)
@@ -282,6 +301,7 @@ module LightCommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>> (storage: ILightStorage) =
             async {
