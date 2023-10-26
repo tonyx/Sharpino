@@ -141,24 +141,19 @@ module CommandHandler =
                     }
                     |> Async.RunSynchronously 
 
-                // now send them to kafka
-                // check what should happen if sending to kafka fails
-                // no need to lock
-
                 let _ =
                     async {
                         return
                             match events with
                             | Ok events ->
-                                    KafkaBroker.notifyIfEventBrokerIsSome eventBroker 'A.Version 'A.StorageName events
+                                    KafkaBroker.notifyInCase eventBroker 'A.Version 'A.StorageName events
                             | Error _ -> 
                                 Ok ()
                     }   
                     |> Async.StartAsTask
-                    // |> Async.AwaitTask
-                    // |> Async.RunSynchronously
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
                     |> ignore
-                    printf "runCommand 100\n"
                 result
             
                         
