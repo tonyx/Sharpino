@@ -8,6 +8,7 @@ open FsToolkit.ErrorHandling
 open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
+open Sharpino.Utils
 open Sharpino.Storage
 open log4net
 open log4net.Config
@@ -22,10 +23,10 @@ module KafkaBroker =
         let producer = ProducerBuilder<Null, string>(config)
         let p = producer.Build()
 
+        let message = Message<Null, string>()
 
         let notifySingleMessage (topic: string) (msg: string) =
             try
-                let message = Message<Null, string>()
                 message.Key <- null
                 message.Value <- msg
                 p.ProduceAsync(topic, message)
@@ -42,31 +43,17 @@ module KafkaBroker =
                 notify = 
                     fun version name events ->
                         printf "entered in notify %s \n" name
-                        try
-                            printf "entered in notify 100. %s \n" name
-                            let topic = name + "-" + version |> String.replace "_" ""
-                            let message = Message<Null, string>()
-                            message.Key <- null
-                            message.Value <- events |> String.concat "\n" // TODO: check if this is the right way to do it
-                            printf "entered in notify 200. %s \n" name
-                            p.ProduceAsync(topic, message)
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
-                            |> ignore
-                            printf "entered in notify 300. %s \n" name
-                            printf "entered in notify 2 %s \n" name
-                            Ok ()
-                        with 
-                            | _ as e -> 
-                                Error(e.Message.ToString())
+                        let topic = name + "-" + version |> String.replace "_" ""
+                        let _ = events |> List.map (fun x -> notifySingleMessage topic x)  |> ignore
+                        Ok ()
                     |> Some
             }
         notifier
 
 
-                // version name events = 
-                // //     fun version name events ->
-                // //         let topic = name + "-" + version |> String.replace "_" ""
-                // //         let result = events |> Utils.catchErrors (fun x -> notifySingleMessage topic x)
-                // //         Ok ()
-                // //     |> Some
+    let notifyIfEventBrokerIsSome (broker: IEventBroker ) (version: string) (name: string) (events: List<string>) =
+        match broker.notify with
+        | Some notify ->
+            notify version name events
+        | None ->
+            Ok ()

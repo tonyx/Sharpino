@@ -174,7 +174,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
 
-        fmultipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
+        multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
 
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []

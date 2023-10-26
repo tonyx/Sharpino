@@ -149,15 +149,10 @@ module CommandHandler =
                     async {
                         return
                             match events with
-                            | Ok events -> 
-                                match eventBroker.notify with
-                                | Some notify -> 
-                                    notify 'A.Version 'A.StorageName events
-                                | None -> 
-                                    Ok ()
-                            | Error e -> 
-                                log.Error e
-                                Error e
+                            | Ok events ->
+                                    KafkaBroker.notifyIfEventBrokerIsSome eventBroker 'A.Version 'A.StorageName events
+                            | Error _ -> 
+                                Ok ()
                     }   
                     |> Async.StartAsTask
                     // |> Async.AwaitTask
