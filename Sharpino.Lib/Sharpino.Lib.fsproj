@@ -27,6 +27,7 @@
     <Compile Include="Core.fs" />
     <Compile Include="Storage.fs" />
     <Compile Include="PgStorage.fs" />
+    <Compile Include="KafkaBroker.fs" />
     <Compile Include="MemoryStorage.fs" />
     <Compile Include="EventStoreStorage.fs" />
 
@@ -38,6 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Confluent.Kafka" Version="2.2.0" />
     <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.1.0" />
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />

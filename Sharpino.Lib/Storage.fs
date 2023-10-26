@@ -1,7 +1,6 @@
 namespace Sharpino
 open System
 open Sharpino.Utils
-
 module Storage =
     type Json = string
     type Name = string
@@ -47,3 +46,8 @@ module Storage =
         abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<unit, string>
         abstract member GetEventsAfterId: version -> int -> Name -> Result< List< int * Json >, string >
         abstract member GetEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<int * Json >
+
+    type IEventBroker =
+        {
+            notify: Option<version -> Name -> List<Json> -> Result< unit, string >>
+        }

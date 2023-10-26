@@ -13,7 +13,11 @@ open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
+open Newtonsoft.Json.Linq
 open Sharpino.Utils
+open System.Collections.Generic;
+open System.Linq;
+open Newtonsoft.Json.Linq;
 
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
@@ -111,24 +115,55 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage) (command: Command<'A, 'E>) =
+        (storage: IStorage) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
+
             lock 'A.Lock <| fun () ->
-                async {
-                    return
-                        result {
-                            let! (id, state) = getState<'A, 'E> storage
-                            let! events =
-                                state
-                                |> command.Execute
-                            let events' =
-                                events |>> 
-                                (fun x -> x.Serialize serializer)
-                            return! 
-                                storage.AddEvents 'A.Version 'A.StorageName events'
-                        }
-                }
-                |> Async.RunSynchronously 
+                let events =
+                    result {
+                        let! (id, state) = getState<'A, 'E> storage
+                        let! events =
+                            state
+                            |> command.Execute
+                        return
+                            events 
+                            |>> (fun x -> x.Serialize serializer)
+                    }
+                let result =
+                    async {
+                        return
+                            result {
+                                let! events' = events
+                                return! 
+                                    events'
+                                    |> storage.AddEvents 'A.Version 'A.StorageName
+                            }
+                    }
+                    |> Async.RunSynchronously 
+
+                // now send them to kafka
+                // check what should happen if sending to kafka fails
+                // no need to lock
+
+                let _ =
+                    async {
+                        return
+                            match events with
+                            | Ok events -> 
+                                match eventBroker.notify with
+                                | Some notify -> 
+                                    notify 'A.Version 'A.StorageName events
+                                | None -> 
+                                    Ok ()
+                            | Error e -> 
+                                log.Error e
+                                Error e
+                    }   
+                    |> Async.StartAsTask
+                    // |> Async.AwaitTask
+                    // |> Async.RunSynchronously
+                result
+            
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -151,6 +186,7 @@ module CommandHandler =
         and 'E2: (member Serialize: ISerializer -> string)
         >
             (storage: IStorage)
+            (eventBroker: IEventBroker) 
 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =

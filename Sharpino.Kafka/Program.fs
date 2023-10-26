@@ -16,7 +16,6 @@ p.ProduceAsync("quickstart-events", message)
 |> Async.RunSynchronously
 |> ignore
 
-
 // var result = await producer.ProduceAsync("weblog", new Message<Null, string> { Value="a log message" });
 
 printfn "Hello from F#"

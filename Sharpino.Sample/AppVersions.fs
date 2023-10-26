@@ -47,11 +47,22 @@ module AppVersions =
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
     let storage = PgStorage.PgStorage(connection)
+
+    let doNothingBroker = 
+        {
+            notify = None
+        }
+
+    let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092")
+
     let memoryStorage = MemoryStorage.MemoryStorage()
-    let currentPgApp = App.CurrentVersionApp(storage)
-    let upgradedPgApp = App.UpgradedApp(storage)
-    let currentMemApp = App.CurrentVersionApp(memoryStorage)
-    let upgradedMemApp = App.UpgradedApp(memoryStorage)
+    let currentPgApp = App.CurrentVersionApp(storage, doNothingBroker)
+
+    let currentPgAppWithKafka = App.CurrentVersionApp(storage, localHostbroker)
+
+    let upgradedPgApp = App.UpgradedApp(storage, doNothingBroker)
+    let currentMemApp = App.CurrentVersionApp(memoryStorage, doNothingBroker)
+    let upgradedMemApp = App.UpgradedApp(memoryStorage, doNothingBroker)
 
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
@@ -175,6 +186,28 @@ module AppVersions =
             removeTag =         currentMemApp.RemoveTag
             getAllTags =        currentMemApp.GetAllTags
             todoReport =        currentMemApp.TodoReport
+        }
+
+    [<CurrentVersion>]
+    let currentVersionPgWithKafkaApp =
+        {
+            _migrator =         None
+            _reset =            fun () -> resetDb storage
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e
+                                    (storage :> IStorage).AddEvents version name deser |> ignore
+            _forceStateUpdate = None
+            getAllTodos =       currentPgAppWithKafka.GetAllTodos
+            addTodo =           currentPgAppWithKafka.AddTodo
+            add2Todos =         currentPgAppWithKafka.Add2Todos
+            removeTodo =        currentPgAppWithKafka.RemoveTodo
+            getAllCategories =  currentPgAppWithKafka.GetAllCategories
+            addCategory =       currentPgAppWithKafka.AddCategory
+            removeCategory =    currentPgAppWithKafka.RemoveCategory
+            addTag =            currentPgAppWithKafka.AddTag
+            removeTag =         currentPgAppWithKafka.RemoveTag
+            getAllTags =        currentPgAppWithKafka.GetAllTags
+            todoReport =        currentPgAppWithKafka.TodoReport
         }
 
     [<UpgradedVersion>]
