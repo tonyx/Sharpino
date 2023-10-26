@@ -61,12 +61,12 @@ let utilsTests =
 
         testCase "catch errors 3 - Ko" <| fun _ ->
             let result = catchErrors (fun x -> if x = 2 then Error 2; else x |> Ok  ) [ 1; 3; 4 ]
-            Expect.isOk result "should be error"
+            Expect.isOk result "should be ok"
             Expect.equal result.OkValue [1; 3; 4] "should be equal"
 
         testCase "catch errors 4 - Ko" <| fun _ ->
             let result = catchErrors (fun x -> if x = 2 then Error 2; else x |> Ok  ) [ 1; 5; 3; 4; 9; 9; 3; 99 ]
-            Expect.isOk result "should be error"
+            Expect.isOk result "should be ok"
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
 
