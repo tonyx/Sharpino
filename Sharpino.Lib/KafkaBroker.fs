@@ -37,21 +37,25 @@ module KafkaBroker =
                 | _ as e -> 
                     Error(e.Message.ToString())
 
-
         let notifier: IEventBroker =
             {
                 notify = 
                     fun version name events ->
+                        printf "entered in notify %s \n" name
                         try
+                            printf "entered in notify 100. %s \n" name
                             let topic = name + "-" + version |> String.replace "_" ""
                             let message = Message<Null, string>()
                             message.Key <- null
                             message.Value <- events |> String.concat "\n" // TODO: check if this is the right way to do it
+                            printf "entered in notify 200. %s \n" name
                             p.ProduceAsync(topic, message)
-                            |> Async.AwaitTask 
+                            |> Async.AwaitTask
                             |> Async.RunSynchronously
                             |> ignore
-                            |> Ok
+                            printf "entered in notify 300. %s \n" name
+                            printf "entered in notify 2 %s \n" name
+                            Ok ()
                         with 
                             | _ as e -> 
                                 Error(e.Message.ToString())
@@ -59,3 +63,10 @@ module KafkaBroker =
             }
         notifier
 
+
+                // version name events = 
+                // //     fun version name events ->
+                // //         let topic = name + "-" + version |> String.replace "_" ""
+                // //         let result = events |> Utils.catchErrors (fun x -> notifySingleMessage topic x)
+                // //         Ok ()
+                // //     |> Some

@@ -162,6 +162,8 @@ module CommandHandler =
                     |> Async.StartAsTask
                     // |> Async.AwaitTask
                     // |> Async.RunSynchronously
+                    |> ignore
+                    printf "runCommand 100\n"
                 result
             
                         
