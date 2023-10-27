@@ -24,6 +24,16 @@ module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
+    let trySendKafka eventBroker version name events =
+        async {
+            return
+                KafkaBroker.notifyInCase eventBroker version name events
+        }
+        |> Async.StartAsTask
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        |> ignore
+
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
@@ -140,22 +150,12 @@ module CommandHandler =
                             }
                     }
                     |> Async.RunSynchronously 
-
                 let _ =
-                    async {
-                        return
-                            match events with
-                            | Ok events ->
-                                    KafkaBroker.notifyInCase eventBroker 'A.Version 'A.StorageName events
-                            | Error _ -> 
-                                Ok ()
-                    }   
-                    |> Async.StartAsTask
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> ignore
+                    match result with
+                    | Ok _ -> 
+                        trySendKafka eventBroker 'A.Version 'A.StorageName (events.OkValue)
+                    | _ -> ()
                 result
-            
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -184,35 +184,46 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            lock ('A1.Lock, 'A2.Lock) <| fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
+            let result =
+                lock ('A1.Lock, 'A2.Lock) <| fun () ->
+                    async {
+                        return
+                            result {
+                                let! (_, state1) = getState<'A1, 'E1> storage
+                                let! (_, state2) = getState<'A2, 'E2> storage
+                                let! events1 =
+                                    state1
+                                    |> command1.Execute
+                                let! events2 =
+                                    state2
+                                    |> command2.Execute
 
-                            let events1' =
-                                events1 |>> 
-                                (fun x -> x.Serialize serializer)
-                            let events2' =
-                                events2 
-                                |>> (fun x -> x.Serialize serializer)
+                                let events1' =
+                                    events1 |>> 
+                                    (fun x -> x.Serialize serializer)
+                                let events2' =
+                                    events2 
+                                    |>> (fun x -> x.Serialize serializer)
 
-                            return! 
-                                storage.MultiAddEvents 
-                                    [
-                                        (events1', 'A1.Version, 'A1.StorageName)
-                                        (events2', 'A2.Version, 'A2.StorageName)
-                                    ]
-                        } 
-                }
-                |> Async.RunSynchronously
+                                let result =
+                                    storage.MultiAddEvents 
+                                        [
+                                            (events1', 'A1.Version, 'A1.StorageName)
+                                            (events2', 'A2.Version, 'A2.StorageName)
+                                        ]
+                                let _ =
+                                    match result with
+                                    | Ok _ -> 
+                                        trySendKafka eventBroker 'A1.Version 'A1.StorageName events1'
+                                        trySendKafka eventBroker 'A2.Version 'A2.StorageName events2'
+                                    | _ -> ()
+
+                                return! result
+                            } 
+                    }
+                    |> Async.RunSynchronously
+
+            result
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
@@ -244,6 +255,8 @@ module CommandHandler =
         and 'E3: (member Serialize: ISerializer -> string)
         > 
             (storage: IStorage)
+            (eventBroker: IEventBroker) 
+
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) =
@@ -275,13 +288,22 @@ module CommandHandler =
                                 events3 
                                 |>> (fun x -> x.Serialize serializer)
 
-                            return! 
+                            let result =
                                 storage.MultiAddEvents 
                                     [
                                         (events1', 'A1.Version, 'A1.StorageName)
                                         (events2', 'A2.Version, 'A2.StorageName)
                                         (events3', 'A3.Version, 'A2.StorageName)
                                     ]
+                            let _ =
+                                match result with
+                                | Ok _ -> 
+                                    trySendKafka eventBroker 'A1.Version 'A1.StorageName events1'
+                                    trySendKafka eventBroker 'A2.Version 'A2.StorageName events2'
+                                    trySendKafka eventBroker 'A3.Version 'A3.StorageName events3'
+                                | _ -> ()
+
+                            return! result
                         } 
                 }
                 |> Async.RunSynchronously

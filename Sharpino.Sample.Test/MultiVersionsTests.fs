@@ -29,9 +29,9 @@ let allVersions =
         // enable if you had setup postgres (see dbmate scripts):
         
 
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
         // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -174,7 +174,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
 
-        multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
+        fmultipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
 
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []

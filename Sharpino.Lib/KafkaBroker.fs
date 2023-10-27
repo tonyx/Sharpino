@@ -17,6 +17,7 @@ open FsToolkit.ErrorHandling.ResultCE
 open FSharp.Core
 
 module KafkaBroker =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     let getKafkaBroker(bootStrapServer: string) =
         let config = ProducerConfig()
@@ -36,6 +37,7 @@ module KafkaBroker =
                 |> Ok
             with
                 | _ as e -> 
+                    log.Error e.Message
                     Error(e.Message.ToString())
 
         let notifier: IEventBroker =
@@ -47,11 +49,9 @@ module KafkaBroker =
                             let! _ =  events |> catchErrors (fun x -> notifySingleMessage topic x) 
                             return ()
                         }
-                        // b
                     |> Some
             }
         notifier
-
 
     let notifyInCase (broker: IEventBroker ) (version: string) (name: string) (events: List<string>) =
         match broker.notify with
