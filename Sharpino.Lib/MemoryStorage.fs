@@ -4,6 +4,7 @@ namespace Sharpino
 open Sharpino.Storage
 open System.Runtime.CompilerServices
 open FSharpPlus
+open FSharpPlus.Operators
 open System
 open System.Collections
 
@@ -63,6 +64,20 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
+            log.Debug (sprintf "storeEvents %s %s" version name)
+            if (events_dic.ContainsKey version |> not) then
+                let dic = new Generic.Dictionary<string, List<StorageEventJson>>()
+                dic.Add(name, events)
+                events_dic.Add(version, dic)
+            else
+                let dic = events_dic.[version]
+                if (dic.ContainsKey name |> not) then
+                    dic.Add(name, events)
+                else
+                    dic.[name] <- events
+
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
+        let storeEvents' version name events =
             log.Debug (sprintf "storeEvents %s %s" version name)
             if (events_dic.ContainsKey version |> not) then
                 let dic = new Generic.Dictionary<string, List<StorageEventJson>>()
@@ -156,6 +171,21 @@ module MemoryStorage =
                 storeEvents version name events
                 () |> Ok
 
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
+            member this.AddEvents' version name xs: Result<List<int>,string> = 
+                log.Debug (sprintf "AddEvents %s %s" version name)
+                let newEvents =
+                    [for e in xs do
+                        yield {
+                            Id = next_event_id version name
+                            JsonEvent = e 
+                            Timestamp = DateTime.Now
+                        }
+                    ]
+                let events = getExistingEvents version name @ newEvents
+                storeEvents version name events
+                newEvents |> List.map (fun x -> x.Id) |> Ok
+
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
@@ -165,7 +195,7 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents(arg: List<List<Json> * version * Name>): Result<unit,string> = 
+            member this.MultiAddEvents (arg: List<List<Json> * version * Name>): Result<unit,string> = 
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 arg 
                 |> List.iter 
@@ -173,6 +203,9 @@ module MemoryStorage =
                         (this :> IStorage).AddEvents version name xs |> ignore
                     ) 
                 () |> Ok
+
+
+                // |> Ok
             member this.SetSnapshot  version (id, snapshot) name =
                 log.Debug (sprintf "SetSnapshot %s %A %s" version id name)
                 let newSnapshot =

@@ -28,7 +28,6 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-
         (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
         (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
@@ -40,7 +39,7 @@ let allVersions =
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -162,7 +161,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isError result "should be error"
 
-        multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
@@ -174,7 +173,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
 
-        fmultipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
+        multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
 
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []

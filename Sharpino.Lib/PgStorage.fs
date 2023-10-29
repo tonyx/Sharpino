@@ -12,6 +12,7 @@ open log4net.Config
 module PgStorage =
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgStorage(connection: string) =
         interface IStorage with
             member this.Reset(version: version) (name: Name): unit = 
@@ -98,9 +99,40 @@ module PgStorage =
                 res
             member this.AddEvents version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
+                let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp);" version name
+                try
+                    let ids =
+                        connection
+                        |> Sql.connect
+                        |> Sql.executeTransactionAsync
+                            [
+                                command,
+                                events
+                                |>>
+                                (
+                                    fun x ->
+                                        [
+                                            ("@event", Sql.jsonb x);
+                                            ("timestamp", Sql.timestamp (System.DateTime.Now))
+                                        ]
+                                )
+                            ]
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
+                    log.Debug (sprintf "QQQ, ids: %A" ids)
+                    log.Debug "exiting from add events"
+                    () |> Ok
+                with
+                    | _ as ex -> 
+                        log.Debug (sprintf "an error occurred: %A" ex.Message)
+                        ex.Message |> Error
+
+            // reference of previous working AddEvents'
+            member this.AddEvents' version name events =
+                log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
                 try
-                    let _ =
+                    let ids =
                         connection
                         |> Sql.connect
                         |> Sql.executeTransactionAsync
@@ -119,7 +151,8 @@ module PgStorage =
                             |> Async.AwaitTask
                             |> Async.RunSynchronously
                     log.Debug "exiting from add events"
-                    () |> Ok
+                    log.Debug (sprintf "YYYY, ids: %A" ids)
+                    ids |> Ok
                 with
                     | _ as ex -> 
                         log.Debug (sprintf "an error occurred: %A" ex.Message)
@@ -143,15 +176,18 @@ module PgStorage =
                                 )
                         )
                 try 
-                    let _ =
+                    let added =
                         connection
                         |> Sql.connect
                         |> Sql.executeTransactionAsync cmdList
                         |> Async.AwaitTask
                         |> Async.RunSynchronously
+                    added 
+                    |> List.iter (fun x -> log.Debug (sprintf "XXXX. added: %A" x))
                     () |> Ok
                 with
                     | _ as ex -> ex.Message |> Error
+
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name

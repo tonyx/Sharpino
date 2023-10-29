@@ -21,7 +21,7 @@ open Newtonsoft.Json.Linq;
 
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
     let trySendKafka eventBroker version name events =
@@ -86,6 +86,7 @@ module CommandHandler =
                 }
         }
         |> Async.RunSynchronously
+
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -144,9 +145,14 @@ module CommandHandler =
                         return
                             result {
                                 let! events' = events
-                                return! 
+                                let! result =
                                     events'
+                                    // refactored here
                                     |> storage.AddEvents 'A.Version 'A.StorageName
+                                return ()
+                                // return! 
+                                //     events'
+                                //     |> storage.AddEvents 'A.Version 'A.StorageName
                             }
                     }
                     |> Async.RunSynchronously 
@@ -199,8 +205,8 @@ module CommandHandler =
                                     |> command2.Execute
 
                                 let events1' =
-                                    events1 |>> 
-                                    (fun x -> x.Serialize serializer)
+                                    events1 
+                                    |>> (fun x -> x.Serialize serializer)
                                 let events2' =
                                     events2 
                                     |>> (fun x -> x.Serialize serializer)
