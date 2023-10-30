@@ -44,12 +44,12 @@ module Storage =
         abstract member SetSnapshot: version -> int * Json -> Name -> Result<unit, string>
         abstract member AddEvents: version -> Name -> List<Json> -> Result<List<int>, string>
         abstract member AddEvents': version -> Name -> List<Json> -> Result<List<int>, string>
-        abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<unit, string>
-        // abstract member MultiAddEvents':  List<List<Json> * version * Name>  -> Result<List<List<int>>, string>
+        abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<List<list<int>>, string>
+        abstract member MultiAddEvents':  List<List<Json> * version * Name>  -> Result<List<List<int>>, string>
         abstract member GetEventsAfterId: version -> int -> Name -> Result< List< int * Json >, string >
         abstract member GetEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<int * Json >
 
     type IEventBroker =
         {
-            notify: Option<version -> Name -> List<Json> -> Result< unit, string >>
+            notify: Option<version -> Name -> List<int * Json> -> Result< unit, string >>
         }

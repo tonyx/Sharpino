@@ -24,22 +24,12 @@ module CommandHandler =
     // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
-    let trySendKafka' eventBroker version name events =
-        async {
-            return
-                // KafkaBroker.notifyInCase eventBroker version name events
-                KafkaBroker.notifyInCase eventBroker version name events
-        }
-        |> Async.StartAsTask
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> ignore
-
     let trySendKafka eventBroker version name idAndEvents =
         async {
             return
                 // KafkaBroker.notifyInCase eventBroker version name events
-                KafkaBroker.notifyInCase eventBroker version name (idAndEvents |> List.map (fun (_, event) -> event))
+                KafkaBroker.notifyInCase eventBroker version name idAndEvents
+                // KafkaBroker.notifyInCase eventBroker version name (idAndEvents |> List.map (fun (_, event) -> event))
         }
         |> Async.StartAsTask
         |> Async.AwaitTask
@@ -201,6 +191,7 @@ module CommandHandler =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            printf "entering in runTwo commands\n"
 
             let result =
                 lock ('A1.Lock, 'A2.Lock) <| fun () ->
@@ -231,16 +222,17 @@ module CommandHandler =
                                         ]
                                 let _ =
                                     match result with
-                                    | Ok _ -> 
-                                        trySendKafka' eventBroker 'A1.Version 'A1.StorageName events1'
-                                        trySendKafka' eventBroker 'A2.Version 'A2.StorageName events2'
+                                    | Ok idLists -> 
+                                        let idAndEvents1 = List.zip idLists.[0] events1'
+                                        let idAndEvents2 = List.zip idLists.[1] events2'
+                                        trySendKafka eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                        trySendKafka eventBroker 'A2.Version 'A2.StorageName idAndEvents2
                                     | _ -> ()
-
                                 return! result
                             } 
                     }
                     |> Async.RunSynchronously
-
+            printf "XXXX. runTwoCommands result: %A" result
             result
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
@@ -315,10 +307,14 @@ module CommandHandler =
                                     ]
                             let _ =
                                 match result with
-                                | Ok _ -> 
-                                    trySendKafka' eventBroker 'A1.Version 'A1.StorageName events1'
-                                    trySendKafka' eventBroker 'A2.Version 'A2.StorageName events2'
-                                    trySendKafka' eventBroker 'A3.Version 'A3.StorageName events3'
+                                | Ok idLists -> 
+                                    let idAndEvents1 = List.zip idLists.[0] events1'
+                                    let idAndEvents2 = List.zip idLists.[1] events2'
+                                    let idAndEvents3 = List.zip idLists.[2] events3'
+
+                                    trySendKafka eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                    trySendKafka eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                    trySendKafka eventBroker 'A3.Version 'A3.StorageName idAndEvents3
                                 | _ -> ()
 
                             return! result

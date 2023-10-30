@@ -166,7 +166,8 @@ module PgStorage =
                         log.Debug (sprintf "an error occurred: %A" ex.Message)
                         printf "an error occurred: %A" ex.Message
                         ex.Message |> Error
-            member this.MultiAddEvents(arg: List<List<Json> * version * Name>): Result<unit,string> = 
+            member this.MultiAddEvents' (arg: List<List<Json> * version * Name>) =
+            // : Result<unit,string> = 
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmdList = 
                     arg 
@@ -193,9 +194,44 @@ module PgStorage =
                         |> Async.RunSynchronously
                     added 
                     |> List.iter (fun x -> log.Debug (sprintf "XXXX. added: %A" x))
-                    () |> Ok
+                    [] |> Ok
                 with
                     | _ as ex -> ex.Message |> Error
+
+            member this.MultiAddEvents(arg: List<List<Json> * version * Name>) =
+                log.Debug (sprintf "MultiAddEvents %A" arg)
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                let transaction = conn.BeginTransaction() 
+                try
+                    let cmdList = 
+                        arg 
+                        |> List.map 
+                            (
+                                fun (events, version,  name) -> 
+                                    let stream_name = version + name
+                                    let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
+                                    events
+                                    |>> 
+                                    (
+                                        fun x ->
+                                            (
+                                                let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
+                                                param.Value <- x
+                                                command.Parameters.AddWithValue("event", x ) |> ignore
+                                                let result = command.ExecuteScalar() 
+                                                result :?> int
+                                            )
+                                    )
+                            )
+                    transaction.Commit()    
+                    conn.Close()
+                    printf "XXXX. added: %A\n" cmdList
+                    cmdList |> Ok
+                with
+                    | _ as ex -> 
+                        printf "QQQ. an error occurred: %A\n" ex.Message
+                        ex.Message |> Error
 
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)

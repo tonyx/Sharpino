@@ -54,7 +54,7 @@ module AppVersions =
             notify = None
         }
 
-    let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092")
+    let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(storage, doNothingBroker)

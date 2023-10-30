@@ -196,17 +196,25 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents (arg: List<List<Json> * version * Name>): Result<unit,string> = 
+            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) =
+                log.Debug (sprintf "MultiAddEvents %A" arg)
+                let cmds =
+                    arg 
+                    |> List.map 
+                        (fun (xs, version, name) ->
+                            (this :> IStorage).AddEvents version name xs |> Result.get
+                        ) 
+                cmds |> Ok
+
+            member this.MultiAddEvents' (arg: List<List<Json> * version * Name>): Result<List<List<int>>, string> = 
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 arg 
                 |> List.iter 
                     (fun (xs, version, name) ->
                         (this :> IStorage).AddEvents version name xs |> ignore
                     ) 
-                () |> Ok
+                [] |> Ok
 
-
-                // |> Ok
             member this.SetSnapshot  version (id, snapshot) name =
                 log.Debug (sprintf "SetSnapshot %s %A %s" version id name)
                 let newSnapshot =
