@@ -39,6 +39,7 @@ module AppVersions =
         "Database=es_01;" +
         "User Id=safe;"+
         "Password=safe;"
+
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
     let jsonSerSettings = JsonSerializerSettings()
     jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects

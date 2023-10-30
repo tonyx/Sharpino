@@ -24,10 +24,22 @@ module CommandHandler =
     // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
-    let trySendKafka eventBroker version name events =
+    let trySendKafka' eventBroker version name events =
         async {
             return
+                // KafkaBroker.notifyInCase eventBroker version name events
                 KafkaBroker.notifyInCase eventBroker version name events
+        }
+        |> Async.StartAsTask
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+        |> ignore
+
+    let trySendKafka eventBroker version name idAndEvents =
+        async {
+            return
+                // KafkaBroker.notifyInCase eventBroker version name events
+                KafkaBroker.notifyInCase eventBroker version name (idAndEvents |> List.map (fun (_, event) -> event))
         }
         |> Async.StartAsTask
         |> Async.AwaitTask
@@ -147,21 +159,21 @@ module CommandHandler =
                                 let! events' = events
                                 let! result =
                                     events'
-                                    // refactored here
                                     |> storage.AddEvents 'A.Version 'A.StorageName
-                                return ()
-                                // return! 
-                                //     events'
-                                //     |> storage.AddEvents 'A.Version 'A.StorageName
+                                let idAndEvents =
+                                    List.zip result events'
+                                return idAndEvents 
                             }
                     }
                     |> Async.RunSynchronously 
                 let _ =
                     match result with
-                    | Ok _ -> 
-                        trySendKafka eventBroker 'A.Version 'A.StorageName (events.OkValue)
+                    | Ok idAndEvents -> 
+                        // trySendKafka' eventBroker 'A.Version 'A.StorageName  (events.OkValue)
+                        trySendKafka eventBroker 'A.Version 'A.StorageName  idAndEvents
                     | _ -> ()
-                result
+
+                result |> Result.map (fun _ -> ())
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -220,8 +232,8 @@ module CommandHandler =
                                 let _ =
                                     match result with
                                     | Ok _ -> 
-                                        trySendKafka eventBroker 'A1.Version 'A1.StorageName events1'
-                                        trySendKafka eventBroker 'A2.Version 'A2.StorageName events2'
+                                        trySendKafka' eventBroker 'A1.Version 'A1.StorageName events1'
+                                        trySendKafka' eventBroker 'A2.Version 'A2.StorageName events2'
                                     | _ -> ()
 
                                 return! result
@@ -304,9 +316,9 @@ module CommandHandler =
                             let _ =
                                 match result with
                                 | Ok _ -> 
-                                    trySendKafka eventBroker 'A1.Version 'A1.StorageName events1'
-                                    trySendKafka eventBroker 'A2.Version 'A2.StorageName events2'
-                                    trySendKafka eventBroker 'A3.Version 'A3.StorageName events3'
+                                    trySendKafka' eventBroker 'A1.Version 'A1.StorageName events1'
+                                    trySendKafka' eventBroker 'A2.Version 'A2.StorageName events2'
+                                    trySendKafka' eventBroker 'A3.Version 'A3.StorageName events3'
                                 | _ -> ()
 
                             return! result
