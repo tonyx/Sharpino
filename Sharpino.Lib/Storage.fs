@@ -40,6 +40,7 @@ module Storage =
         abstract member TryGetLastEventId: version -> Name -> Option<int>
         abstract member TryGetLastSnapshotEventId: version -> Name -> Option<int>
         abstract member TryGetLastSnapshotId: version -> Name -> Option<int>
+        abstract member TryGetSnapshotById: version -> Name -> int ->Option<int * Json>
         abstract member TryGetEvent: version -> int -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: version -> int * Json -> Name -> Result<unit, string>
         abstract member AddEvents: version -> Name -> List<Json> -> Result<List<int>, string>

@@ -310,3 +310,22 @@ module PgStorage =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
+
+            member this.TryGetSnapshotById version name id =
+                log.Debug (sprintf "TryGetSnapshotById %s %s %d" version name id)
+                let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync (fun read ->
+                        (
+                            read.int "event_id",
+                            read.text "snapshot"
+                        )
+                    )
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.tryHead
+                res

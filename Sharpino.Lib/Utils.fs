@@ -11,6 +11,8 @@ module Definitions =
     type Json = string
     type Name = string
     type version = string
+    type SnapId = int
+    type EventId = int
 
 module ApplicationInstance =
     type ApplicationInstance() =

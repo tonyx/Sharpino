@@ -38,6 +38,26 @@ module CommandHandler =
         | Error e -> 
             log.Error (sprintf "trySendKafka: %s" e)
             ()
+    let inline tryGetSnapshotByIdAndDeserialize<'A
+        when 'A: (static member Zero: 'A) 
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        >
+        (id: int)
+        (storage: IStorage) =
+            let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
+            match snapshot |>> snd with
+            | Some snapshot' ->
+                let deserSnapshot = 'A.Deserialize (serializer, snapshot')
+                let eventid = snapshot |>> fst
+                match deserSnapshot with
+                | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
+                | Error e -> 
+                    Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
+            | None ->
+                (0, 'A.Zero) |> Ok
 
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
@@ -52,17 +72,13 @@ module CommandHandler =
             async {
                 return
                     result {
-                        let! result =
-                            match storage.TryGetLastSnapshot 'A.Version 'A.StorageName  with
-                            | Some (_, eventId, state) ->
-                                let deserState = 'A.Deserialize (serializer, state) 
-                                match deserState with
-                                | Ok deserState -> (eventId, deserState) |> Ok
-                                | Error e -> 
-                                    log.Error (sprintf "getLastSnapshot: %s" e)
-                                    (0, 'A.Zero) |> Ok
-                            | None -> (0, 'A.Zero) |> Ok
-                        return result
+                        let lastSnapshotId = storage.TryGetLastSnapshotId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                        if (lastSnapshotId = 0) then
+                            return (0, 'A.Zero)
+                        else
+                            let! (eventId, snapshot) = 
+                                Cache.SnapCache<'A>.Instance.Memoize (fun () -> tryGetSnapshotByIdAndDeserialize<'A> lastSnapshotId storage) lastSnapshotId
+                            return (eventId, snapshot)
                     }
             }
             |> Async.RunSynchronously
@@ -83,9 +99,11 @@ module CommandHandler =
         async {
             return
                 result {
-                    let! (id, state) = getLastSnapshot<'A> storage
-                    let! events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                    return (id, state, events)
+                    let! (eventId, state) = getLastSnapshot<'A> storage
+                    let! events = storage.GetEventsAfterId 'A.Version eventId 'A.StorageName
+                    let result =
+                        (eventId, state, events)
+                    return result
                 }
         }
         |> Async.RunSynchronously
