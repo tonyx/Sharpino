@@ -12,6 +12,15 @@ module Definitions =
     type Name = string
     type version = string
 
+module ApplicationInstance =
+    type ApplicationInstance() =
+        let ApplicationGuid = Guid.NewGuid()
+        static let instance = ApplicationInstance()
+        static member Instance = instance
+
+        member this.GetGuid() =
+            ApplicationGuid
+
 module Utils =
     open Definitions
     let serSettings = JsonSerializerSettings()

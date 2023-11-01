@@ -24,17 +24,20 @@ module CommandHandler =
     // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
-    let trySendKafka eventBroker version name idAndEvents =
-        async {
-            return
-                // KafkaBroker.notifyInCase eventBroker version name events
-                KafkaBroker.notifyInCase eventBroker version name idAndEvents
-                // KafkaBroker.notifyInCase eventBroker version name (idAndEvents |> List.map (fun (_, event) -> event))
-        }
-        |> Async.StartAsTask
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
-        |> ignore
+    let tryPublish eventBroker version name idAndEvents =
+        let sent =
+            async {
+                return
+                    KafkaBroker.notify eventBroker version name idAndEvents
+            }
+            |> Async.StartAsTask
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+        match sent with
+        | Ok _ -> ()
+        | Error e -> 
+            log.Error (sprintf "trySendKafka: %s" e)
+            ()
 
     let inline private getLastSnapshot<'A 
         when 'A: (static member Zero: 'A) 
@@ -82,9 +85,7 @@ module CommandHandler =
                 result {
                     let! (id, state) = getLastSnapshot<'A> storage
                     let! events = storage.GetEventsAfterId 'A.Version id 'A.StorageName
-                    let result =
-                        (id, state, events)
-                    return result
+                    return (id, state, events)
                 }
         }
         |> Async.RunSynchronously
@@ -159,10 +160,9 @@ module CommandHandler =
                 let _ =
                     match result with
                     | Ok idAndEvents -> 
-                        // trySendKafka' eventBroker 'A.Version 'A.StorageName  (events.OkValue)
-                        trySendKafka eventBroker 'A.Version 'A.StorageName  idAndEvents
-                    | _ -> ()
-
+                        tryPublish eventBroker 'A.Version 'A.StorageName  idAndEvents
+                    | Error e -> 
+                        log.Error (sprintf "runCommand: %s" e)
                 result |> Result.map (fun _ -> ())
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
@@ -225,14 +225,15 @@ module CommandHandler =
                                     | Ok idLists -> 
                                         let idAndEvents1 = List.zip idLists.[0] events1'
                                         let idAndEvents2 = List.zip idLists.[1] events2'
-                                        trySendKafka eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                        trySendKafka eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                    | _ -> ()
+                                        tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                        tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                    | Error e -> 
+                                        log.Error (sprintf "runTwoCommands: %s" e)
+                                        ()
                                 return! result
                             } 
                     }
                     |> Async.RunSynchronously
-            printf "XXXX. runTwoCommands result: %A" result
             result
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
@@ -312,10 +313,12 @@ module CommandHandler =
                                     let idAndEvents2 = List.zip idLists.[1] events2'
                                     let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                    trySendKafka eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                    trySendKafka eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                    trySendKafka eventBroker 'A3.Version 'A3.StorageName idAndEvents3
-                                | _ -> ()
+                                    tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                    tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                    tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
+                                | Error e -> 
+                                    log.Error (sprintf "runThreeCommands: %s" e)
+                                    ()
 
                             return! result
                         } 
