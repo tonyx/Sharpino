@@ -8,16 +8,18 @@ open FSharpPlus
 
 open Sharpino.Core
 open Sharpino.Storage
+open Sharpino.Utils
+open Sharpino.Definitions
 
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
 open Newtonsoft.Json.Linq
-open Sharpino.Utils
+
 open System.Collections.Generic;
 open System.Linq;
-open Newtonsoft.Json.Linq;
+
 
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
@@ -119,7 +121,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage): Result< int * 'A, string> = 
+        (storage: IStorage): Result<EventId * 'A, string> = 
             log.Debug "getState"
             result {
                 let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
