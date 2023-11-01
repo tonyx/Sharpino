@@ -52,9 +52,9 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    type StateCache<'A> private () =
-        let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
-        let queue = Generic.Queue<(int * string)>()
+    type StateCache<'A > private () =
+        let dic = Generic.Dictionary<EventId, Result<'A, string>>()
+        let queue = Generic.Queue<EventId>()
         static let instance = StateCache<'A>()
         static member Instance = instance
 
@@ -74,7 +74,7 @@ module Cache =
                 queue.Clear()
                 ()
 
-        member this.Memoize (f: unit -> Result<int*'A, string>) (arg: int * string) =
+        member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then

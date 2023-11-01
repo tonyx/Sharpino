@@ -8,6 +8,7 @@ open FSharpPlus
 
 open Sharpino.Core
 open Sharpino.Storage
+open Sharpino.Cache
 
 open FsToolkit.ErrorHandling
 open log4net
@@ -89,6 +90,7 @@ module CommandHandler =
                 }
         }
         |> Async.RunSynchronously
+
     let inline getState<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -102,20 +104,28 @@ module CommandHandler =
         >
         (storage: IStorage): Result< int * 'A, string> = 
             log.Debug "getState"
-            result {
-                let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
-                let lastEventId =
-                    match events.Length with
-                    | x when x > 0 -> events |> List.last |> fst
-                    | _ -> lastSnapshotId 
-                let! deserEvents =
-                    events 
-                    |>> snd 
-                    |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
-                let! newState = 
-                    deserEvents |> evolve<'A, 'E> state
-                return (lastEventId, newState)
-            }
+            let computeNewState =
+                fun () ->
+                    result {
+                        let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
+                        let lastEventId =
+                            match events.Length with
+                            | x when x > 0 -> events |> List.last |> fst
+                            | _ -> lastSnapshotId 
+                        let! deserEvents =
+                            events 
+                            |>> snd 
+                            |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
+                        let! newState = 
+                            deserEvents |> evolve<'A, 'E> state
+                        return newState
+                        // return (lastEventId, newState)
+                    }
+            let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+            let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
+            match state with
+            | Ok state -> (lastEventId, state) |> Ok
+            | Error e -> Error e
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
