@@ -235,6 +235,15 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.Id)
 
+            member this.TryGetSnapshotById version name id =
+                log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name id)
+                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                    None
+                else
+                    snapshots_dic.[version].[name]
+                    |> List.tryFind (fun x -> x.Id = id)
+                    |>> (fun x -> (x.EventId, x.Snapshot))
+
             // Issue: it will not survive after a version migration because the timestamps will be different
             member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
@@ -245,4 +254,5 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)// |> serializer.Deserialize<'E> |> Result.get)
                     |>> (fun (id, event) -> id, event)
+
 

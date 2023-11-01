@@ -88,9 +88,13 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
+
+    type SnapId = int
+    type EventId = int
+
     type SnapCache<'A> private () =
-        let dic = Generic.Dictionary<int * string, Result<'A, string>>()
-        let queue = Generic.Queue<int * string>()
+        let dic = Generic.Dictionary<SnapId, Result<EventId * 'A, string>>()
+        let queue = Generic.Queue<SnapId>()
         static let instance = SnapCache<'A>()
         static member Instance = instance
 
@@ -111,7 +115,7 @@ module Cache =
                 ()
 
         // this one looks like it's helping
-        member this.Memoize (f: unit -> Result<'A, string>) (arg: int * string) =
+        member this.Memoize (f: unit -> Result<EventId * 'A, string>) (arg: int) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
