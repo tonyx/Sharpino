@@ -9,19 +9,19 @@ open FSharpPlus
 open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Cache
+open Sharpino.Utils
 
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
-open Sharpino.Utils
 
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
-    let inline tryGetSnapshotByIdAndDeserialize<'A
+    let inline tryGetSnapshot<'A
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -38,6 +38,8 @@ module CommandHandler =
                 match deserSnapshot with
                 | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
                 | Error e -> 
+                    log.Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
+                    printf "deserialization error %A for snapshot %s" e snapshot'
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
             | None ->
                 (0, 'A.Zero) |> Ok
@@ -60,13 +62,13 @@ module CommandHandler =
                             return (0, 'A.Zero)
                         else
                             let! (eventId, snapshot) = 
-                                Cache.SnapCache<'A>.Instance.Memoize (fun () -> tryGetSnapshotByIdAndDeserialize<'A> lastSnapshotId storage) lastSnapshotId
+                                Cache.SnapCache<'A>.Instance.Memoize (fun () -> tryGetSnapshot<'A> lastSnapshotId storage) lastSnapshotId
                             return (eventId, snapshot)
                     }
             }
             |> Async.RunSynchronously
 
-    let inline snapIdStateAndEvents<'A, 'E
+    let inline snapEventIdStateAndEvents<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -107,11 +109,7 @@ module CommandHandler =
             let computeNewState =
                 fun () ->
                     result {
-                        let! (lastSnapshotId, state, events) = snapIdStateAndEvents<'A, 'E> storage
-                        let lastEventId =
-                            match events.Length with
-                            | x when x > 0 -> events |> List.last |> fst
-                            | _ -> lastSnapshotId 
+                        let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E> storage
                         let! deserEvents =
                             events 
                             |>> snd 
@@ -119,7 +117,6 @@ module CommandHandler =
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
                         return newState
-                        // return (lastEventId, newState)
                     }
             let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
@@ -144,7 +141,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (id, state) = getState<'A, 'E> storage
+                            let! (_, state) = getState<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -152,7 +149,7 @@ module CommandHandler =
                                 events |>> 
                                 (fun x -> x.Serialize serializer)
                             return! 
-                                storage.AddEvents 'A.Version 'A.StorageName events'
+                                events' |> storage.AddEvents 'A.Version 'A.StorageName 
                         }
                 }
                 |> Async.RunSynchronously 
@@ -197,8 +194,8 @@ module CommandHandler =
                                 |> command2.Execute
 
                             let events1' =
-                                events1 |>> 
-                                (fun x -> x.Serialize serializer)
+                                events1 
+                                |>> (fun x -> x.Serialize serializer)
                             let events2' =
                                 events2 
                                 |>> (fun x -> x.Serialize serializer)

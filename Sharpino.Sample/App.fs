@@ -52,10 +52,15 @@ module App =
                     todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                     |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                return!
+                let! _ =
                     todo
                     |> TodoCommand.AddTodo
                     |> runCommand<TodosAggregate, TodoEvent> storage
+
+                let _ =  
+                    storage
+                    |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                return ()
         }
 
         // here I am using two lock object to synchronize the access to the storage in

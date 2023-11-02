@@ -25,7 +25,7 @@ module TodosAggregate =
         static member Version =
             "_01"
         static member SnapshotsInterval =
-            5 
+            15 
         static member Lock =
             new Object()
         static member Deserialize (serializer: ISerializer, json: Json): Result<TodosAggregate, string>  =

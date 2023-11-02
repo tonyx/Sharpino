@@ -14,6 +14,8 @@ module PgStorage =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type PgStorage(connection: string) =
         interface IStorage with
+
+            // only test db should be able to reset
             member this.Reset(version: version) (name: Name): unit = 
                 if (Conf.isTestEnv) then
                     try

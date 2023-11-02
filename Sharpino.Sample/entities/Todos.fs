@@ -7,9 +7,6 @@ open FsToolkit.ErrorHandling
 
 module Todos =
 
-    let b2r (b: bool)  =
-        if b then Ok () else Error "msg"
-
     type Todo =
         {
             Id: Guid

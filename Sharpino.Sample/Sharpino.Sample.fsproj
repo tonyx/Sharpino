@@ -3,7 +3,6 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <!-- <DefineConstants>EVENT_CACHE_ENABLED</DefineConstants>  -->
   </PropertyGroup>
 
   <ItemGroup>
