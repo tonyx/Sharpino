@@ -146,8 +146,8 @@ module CommandHandler =
                                 state
                                 |> command.Execute
                             let events' =
-                                events |>> 
-                                (fun x -> x.Serialize serializer)
+                                events 
+                                |>> (fun x -> x.Serialize serializer)
                             return! 
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
                         }

@@ -41,7 +41,6 @@ module App =
             }
             |> Async.RunSynchronously
 
-        // here I am using the mailboxprocessor which is a thread safe queue
         member this.AddTodo todo =
             result {
                 let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 

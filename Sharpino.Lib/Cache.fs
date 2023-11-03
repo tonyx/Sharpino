@@ -75,7 +75,6 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
-            // f()
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
@@ -113,7 +112,6 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<EventId * 'A, string>) (arg: SnapId) =
-            // f()
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then

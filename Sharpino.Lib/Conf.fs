@@ -7,4 +7,4 @@ module Conf =
     // this will go away and the difference between test and prod db will be handled differently
     let isTestEnv = true
 
-    let cacheSize = 100 
+    let cacheSize = 10 
