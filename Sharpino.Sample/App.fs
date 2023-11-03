@@ -58,7 +58,7 @@ module App =
 
                 let _ =  
                     storage
-                    |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                    |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                 return ()
         }
 
@@ -86,7 +86,7 @@ module App =
                         |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ =  
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                     return ()
                 }
             )
@@ -102,7 +102,7 @@ module App =
                     |> runCommand<TodosAggregate, TodoEvent> storage
                 let _ = 
                     storage
-                    |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                    |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                 return ()
             }
 
@@ -135,7 +135,7 @@ module App =
                         |> runCommand<TodosAggregate, TodoEvent> storage
                     let _ = 
                         storage 
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent> 
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
                     return ()
                 }
             async {
@@ -152,7 +152,7 @@ module App =
                         |> runCommand<TagsAggregate, TagEvent> storage
                     let _ =  
                         storage 
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent> 
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent> 
                     return ()
                 }
             async {
@@ -168,10 +168,10 @@ module App =
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
@@ -257,7 +257,7 @@ module App =
 
                     let _ =  
                         storage 
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                 return ()
             }
             async {
@@ -300,7 +300,7 @@ module App =
                         |> runCommand<TodosAggregate', TodoEvent'> storage
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -317,7 +317,7 @@ module App =
                         |> runCommand<TodosAggregate', TodoEvent'> storage
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -345,7 +345,7 @@ module App =
                         |> runCommand<CategoriesAggregate, CategoryEvent> storage
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
+                        |> mkSnapshotIfIntervalPassed<CategoriesAggregate, CategoryEvent>
                     return ()
                 }
             async {
@@ -367,10 +367,10 @@ module App =
                             storage removeCategory removeCategoryRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
+                        |> mkSnapshotIfIntervalPassed<CategoriesAggregate, CategoryEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -387,7 +387,7 @@ module App =
                         |> runCommand<TagsAggregate, TagEvent> storage
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     return ()
                 }
             async {
@@ -403,10 +403,10 @@ module App =
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage removeTag removeTagRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {

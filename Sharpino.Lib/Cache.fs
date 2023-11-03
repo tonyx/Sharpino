@@ -74,7 +74,7 @@ module Cache =
                 queue.Clear()
                 ()
 
-        member this.Memoize (f: unit -> Result<'A, string>) (arg: int) =
+        member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId) =
             let fromCacheOrCalculated =
                 let (b, res) = dic.TryGetValue arg
                 if b then
@@ -84,13 +84,25 @@ module Cache =
                     this.TryAddToDictionary(arg, res)
                     res
             fromCacheOrCalculated
+        member this.LastEventId() =
+            dic.Keys  
+            |> List.ofSeq 
+            |> List.sort 
+            |> List.tryLast
+
+        member this.GestState (key: EventId) =
+            let (b, res) = dic.TryGetValue key
+            if b then
+                res
+            else
+                Error "state not found"
 
         member this.Clear() =
             dic.Clear()
             queue.Clear()
 
     type SnapCache<'A> private () =
-        let dic = Generic.Dictionary<SnapId, Result<EventId * 'A, string>>()
+        let dic = Generic.Dictionary<SnapId, Result<SnapId * 'A, string>>()
         let queue = Generic.Queue<SnapId>()
         static let instance = SnapCache<'A>()
         static member Instance = instance

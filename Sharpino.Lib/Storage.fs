@@ -1,11 +1,10 @@
 namespace Sharpino
 open System
 open Sharpino.Utils
+open Sharpino.Definitions
 
 module Storage =
-    type Json = string
-    type Name = string
-    type version = string
+
     type StorageEventJson =
         {
             JsonEvent: Json
@@ -27,24 +26,25 @@ module Storage =
         }
 
     type ILightStorage =
-        abstract member AddEvents: version -> List<'E> -> Name -> Result<unit, string>
-        abstract member ResetEvents: version -> Name -> unit
-        abstract member ResetSnapshots: version -> Name -> unit
-        abstract member AddSnapshot: UInt64 -> version -> 'A -> Name -> unit
-        abstract member ConsumeEventsFromPosition: version -> Name -> uint64 -> (uint64 * 'E) list
-        abstract member TryGetLastSnapshot: version -> Name -> Option<UInt64 * 'A>
-        abstract member ConsumeEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<uint64 * 'E>
+        abstract member AddEvents: Version -> List<'E> -> Name -> Result<unit, string>
+        abstract member ResetEvents: Version -> Name -> unit
+        abstract member ResetSnapshots: Version -> Name -> unit
+        abstract member AddSnapshot: UInt64 -> Version -> 'A -> Name -> unit
+        abstract member ConsumeEventsFromPosition: Version -> Name -> uint64 -> (uint64 * 'E) list
+        abstract member TryGetLastSnapshot: Version -> Name -> Option<UInt64 * 'A>
+        abstract member ConsumeEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<uint64 * 'E>
 
     type IStorage =
-        abstract member Reset: version -> Name -> unit
-        abstract member TryGetLastSnapshot: version -> Name -> Option<int * int * Json>
-        abstract member TryGetLastEventId: version -> Name -> Option<int>
-        abstract member TryGetLastSnapshotEventId: version -> Name -> Option<int>
-        abstract member TryGetLastSnapshotId: version -> Name -> Option<int>
-        abstract member TryGetSnapshotById: version -> Name -> int ->Option<int * Json>
-        abstract member TryGetEvent: version -> int -> Name -> Option<StorageEventJson>
-        abstract member SetSnapshot: version -> int * Json -> Name -> Result<unit, string>
-        abstract member AddEvents: version -> Name -> List<Json> -> Result<unit, string>
-        abstract member MultiAddEvents:  List<List<Json> * version * Name>  -> Result<unit, string>
-        abstract member GetEventsAfterId: version -> int -> Name -> Result< List< int * Json >, string >
-        abstract member GetEventsInATimeInterval: version -> Name -> DateTime -> DateTime -> List<int * Json >
+        abstract member Reset: Version -> Name -> unit
+        abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
+        abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
+        // toto: the following two can be unified
+        abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
+        abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
+        abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
+        abstract member TryGetEvent: Version -> int -> Name -> Option<StorageEventJson>
+        abstract member SetSnapshot: Version -> int * Json -> Name -> Result<unit, string>
+        abstract member AddEvents: Version -> Name -> List<Json> -> Result<unit, string>
+        abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<unit, string>
+        abstract member GetEventsAfterId: Version -> int -> Name -> Result< List< EventId * Json >, string >
+        abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >

@@ -6,6 +6,7 @@ open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
 open Sharpino.Storage
+open Sharpino.Definitions
 open log4net
 open log4net.Config
 
@@ -16,7 +17,7 @@ module PgStorage =
         interface IStorage with
 
             // only test db should be able to reset
-            member this.Reset(version: version) (name: Name): unit = 
+            member this.Reset(version: Version) (name: Name): unit = 
                 if (Conf.isTestEnv) then
                     try
                         // additional precautions to avoid deleting data in non dev/test env 
@@ -126,7 +127,7 @@ module PgStorage =
                     | _ as ex -> 
                         log.Debug (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
-            member this.MultiAddEvents(arg: List<List<Json> * version * Name>): Result<unit,string> = 
+            member this.MultiAddEvents(arg: List<List<Json> * Version * Name>): Result<unit,string> = 
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmdList = 
                     arg 
@@ -220,12 +221,13 @@ module PgStorage =
 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
-                let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.executeAsync (fun read ->
                     (
+                        read.int "event_id",
                         read.int "id"
                     )
                 )

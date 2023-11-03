@@ -5,6 +5,7 @@ open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
 open Sharpino.Storage
+open Sharpino.Definitions
 
 open FSharpPlus
 open FsToolkit.ErrorHandling

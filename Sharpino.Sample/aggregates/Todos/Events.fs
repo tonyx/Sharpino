@@ -6,6 +6,7 @@ open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosAggregate
 open Sharpino.Core
 open Sharpino.Storage
+open Sharpino.Definitions
 open Sharpino.Cache
 open Sharpino.Utils
 open type Sharpino.Cache.EventCache<TodosAggregate>

@@ -10,6 +10,7 @@ open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Utils
+open Sharpino.Definitions
 
 open FsToolkit.ErrorHandling
 open log4net
@@ -44,7 +45,7 @@ module CommandHandler =
             | None ->
                 (0, 'A.Zero) |> Ok
 
-    let inline private getLastSnapshot<'A 
+    let inline private getLastSnapshotOrStateCache<'A 
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -57,13 +58,19 @@ module CommandHandler =
             async {
                 return
                     result {
-                        let lastSnapshotId = storage.TryGetLastSnapshotId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                        if (lastSnapshotId = 0) then
+                        let lastCacheEventId = StateCache<'A>.Instance.LastEventId() |> Option.defaultValue 0
+                        let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotId 'A.Version 'A.StorageName |> Option.defaultValue (0, 0)
+                        if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                             return (0, 'A.Zero)
                         else
-                            let! (eventId, snapshot) = 
-                                Cache.SnapCache<'A>.Instance.Memoize (fun () -> tryGetSnapshot<'A> lastSnapshotId storage) lastSnapshotId
-                            return (eventId, snapshot)
+                            if lastCacheEventId >= snapshotEventId then
+                                let! state = 
+                                    Cache.StateCache<'A>.Instance.GestState lastCacheEventId
+                                return (lastCacheEventId, state)
+                            else
+                                let! (eventId, snapshot) = 
+                                    Cache.SnapCache<'A>.Instance.Memoize (fun () -> tryGetSnapshot<'A> lastSnapshotId storage) lastSnapshotId
+                                return (eventId, snapshot)
                     }
             }
             |> Async.RunSynchronously
@@ -84,7 +91,7 @@ module CommandHandler =
         async {
             return
                 result {
-                    let! (eventId, state) = getLastSnapshot<'A> storage
+                    let! (eventId, state) = getLastSnapshotOrStateCache<'A> storage
                     let! events = storage.GetEventsAfterId 'A.Version eventId 'A.StorageName
                     let result =
                         (eventId, state, events)
@@ -119,6 +126,7 @@ module CommandHandler =
                         return newState
                     }
             let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+            // printf "XXXX. last eventid %d\n" lastEventId
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state -> (lastEventId, state) |> Ok
@@ -296,6 +304,7 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IStorage) =
+            // printf "XXXX. making snapshot\n"
             async {
                 return
                     ResultCE.result
@@ -308,7 +317,7 @@ module CommandHandler =
             }
             |> Async.RunSynchronously
 
-    let inline mkSnapshotIfInterval<'A, 'E
+    let inline mkSnapshotIfIntervalPassed<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)

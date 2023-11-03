@@ -4,6 +4,7 @@ open Sharpino.Cache
 open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Utils
+open Sharpino.Definitions
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
 open type Sharpino.Cache.EventCache<TagsAggregate>
