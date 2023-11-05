@@ -3,9 +3,7 @@ namespace Sharpino.Sample.Categories
 
 open System
 open Sharpino.Core
-open Sharpino.Cache
 open Sharpino.Utils
-open Sharpino.Storage
 open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories

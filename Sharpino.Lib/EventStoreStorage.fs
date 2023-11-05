@@ -17,7 +17,8 @@ open log4net.Config
 // experimental support for EventStore
 module EventStore =
     let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // you can configure log here, or in the main program (see tests)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     type EventStoreStorage(connection, serializer: ISerializer) =
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 

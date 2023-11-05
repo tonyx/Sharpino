@@ -1,8 +1,6 @@
 namespace Sharpino.Sample.Tags
 
-open Sharpino.Cache
 open Sharpino.Core
-open Sharpino.Storage
 open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.Sample.TagsAggregate

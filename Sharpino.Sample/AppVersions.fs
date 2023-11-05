@@ -9,19 +9,12 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.EventStoreApp
-open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Categories.CategoriesEvents
-open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample
-open FSharpPlus.Operators
 open Newtonsoft.Json
 
 open System

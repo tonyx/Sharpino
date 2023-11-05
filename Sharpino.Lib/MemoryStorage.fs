@@ -12,9 +12,11 @@ open log4net
 open log4net.Config
 
 module MemoryStorage =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     type MemoryStorage() =
-        let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
         let event_id_seq_dic = new Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
         let snapshot_id_seq_dic = new Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
         let events_dic = new Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageEventJson>>>()

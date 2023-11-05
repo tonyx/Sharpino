@@ -13,6 +13,8 @@ open log4net.Config
 module PgStorage =
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgStorage(connection: string) =
         interface IStorage with
 

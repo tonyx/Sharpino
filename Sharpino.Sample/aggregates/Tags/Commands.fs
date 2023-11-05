@@ -2,7 +2,6 @@ namespace Sharpino.Sample.Tags
 
 open System
 open Sharpino.Core
-open Sharpino.Cache
 
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags.TagsEvents

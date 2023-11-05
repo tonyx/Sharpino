@@ -3,7 +3,6 @@ namespace Sharpino.Sample.Categories
 
 open System
 open Sharpino.Core
-open Sharpino.Cache
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesAggregate

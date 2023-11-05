@@ -20,7 +20,8 @@ open System.Runtime.CompilerServices
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // you can configure log here, or in the main program (see tests)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     let inline tryGetSnapshot<'A
         when 'A: (static member Zero: 'A) 
