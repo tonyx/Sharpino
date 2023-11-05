@@ -11,6 +11,8 @@ module Core =
         abstract member Id: Guid
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
 

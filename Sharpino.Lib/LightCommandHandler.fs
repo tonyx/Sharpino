@@ -14,6 +14,8 @@ open log4net.Config
 module LightCommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     // todo: remember to get rid of static Utils.serialize and use JsonSerializer instance instead
     let inline private getLastSnapshot<'A 

@@ -7,9 +7,12 @@ open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
 open log4net
+open System
 
 module Cache =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+
+    [<Obsolete("event must be dismissed or at least try use a smarter key dictionary")>]
     type EventCache<'A when 'A: equality> private () =
         let dic = Generic.Dictionary<'A * List<Event<'A>>, Result<'A, string>>()
         let queue = Generic.Queue<'A * List<Event<'A>>>()
@@ -32,7 +35,7 @@ module Cache =
                 queue.Clear()
                 ()
 
-        // event cache is disabled because at the moment it's not helping
+        [<Obsolete("event cache must be dismissed or at least try use smarter key dictionary")>]
         member this.Memoize (f: unit -> Result<'A, string>) (arg: 'A * List<Event<'A>>) =
             #if EVENTS_CACHE_IS_DISABLED
                 f()
@@ -52,9 +55,10 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    type StateCache<'A> private () =
-        let dic = Generic.Dictionary<(int * string), Result<int*'A, string>>()
-        let queue = Generic.Queue<(int * string)>()
+    // probably the size of this cache can be just 1 because I need to keep only the current state. 
+    type StateCache<'A > private () =
+        let dic = Generic.Dictionary<EventId, Result<'A, string>>()
+        let queue = Generic.Queue<EventId>()
         static let instance = StateCache<'A>()
         static member Instance = instance
 
@@ -74,22 +78,32 @@ module Cache =
                 queue.Clear()
                 ()
 
-        member this.Memoize (f: unit -> Result<int*'A, string>) (arg: int * string) =
-            let fromCacheOrCalculated =
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
-            fromCacheOrCalculated
+        member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId) =
+            let (b, res) = dic.TryGetValue arg
+            if b then
+                res
+            else
+                let res = f()
+                this.TryAddToDictionary(arg, res)
+                res
+        member this.LastEventId() =
+            dic.Keys  
+            |> List.ofSeq 
+            |> List.sort 
+            |> List.tryLast
+
+        member this.GestState (key: EventId) =
+            let (b, res) = dic.TryGetValue key
+            if b then
+                res
+            else
+                Error "state not found"
 
         member this.Clear() =
             dic.Clear()
             queue.Clear()
 
-
+    // probably this cache becomes useless when I use the previous cache of the current state
     type SnapCache<'A> private () =
         let dic = Generic.Dictionary<SnapId, Result<EventId * 'A, string>>()
         let queue = Generic.Queue<SnapId>()
@@ -112,17 +126,14 @@ module Cache =
                 queue.Clear()
                 ()
 
-        // this one looks like it's helping
         member this.Memoize (f: unit -> Result<EventId * 'A, string>) (arg: SnapId) =
-            let fromCacheOrCalculated =
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
-            fromCacheOrCalculated
+            let (b, res) = dic.TryGetValue arg
+            if b then
+                res
+            else
+                let res = f()
+                this.TryAddToDictionary(arg, res)
+                res
         member this.Clear() =
             dic.Clear()
             queue.Clear()

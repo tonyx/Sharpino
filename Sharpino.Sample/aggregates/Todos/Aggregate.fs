@@ -4,7 +4,7 @@ open System
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Utils
-open Sharpino.Storage
+open Sharpino.Definitions
 
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -25,7 +25,7 @@ module TodosAggregate =
         static member Version =
             "_01"
         static member SnapshotsInterval =
-            5 
+            15 
         static member Lock =
             new Object()
         static member Deserialize (serializer: ISerializer, json: Json): Result<TodosAggregate, string>  =
@@ -121,8 +121,6 @@ module TodosAggregate =
         member this.GetCategories() = this.categories.GetCategories()
 
         // assume this should me moved but atm doesn't work in a separate module
-
-
 
 
 // what follows is the same code as above, but with the new version of the aggregate

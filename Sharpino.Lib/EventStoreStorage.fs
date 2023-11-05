@@ -3,13 +3,13 @@ namespace Sharpino
 open FsToolkit.ErrorHandling
 open FSharpPlus
 
-open Sharpino.Definitions
 
 open System
 open System.Linq
 open System.Text
 open EventStore.Client
 open Sharpino.Storage
+open Sharpino.Definitions
 open Sharpino.Utils
 open log4net
 open log4net.Config
@@ -17,7 +17,8 @@ open log4net.Config
 // experimental support for EventStore
 module EventStore =
     let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // you can configure log here, or in the main program (see tests)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     type EventStoreStorage(connection, serializer: ISerializer) =
         let _client = new EventStoreClient(EventStoreClientSettings.Create(connection))
 
@@ -81,7 +82,7 @@ module EventStore =
                 with
                 | ex -> Error(ex.Message)
 
-            member this.AddSnapshot (eventId: UInt64) (version: version) (snapshot: 'A) (name: Name) =
+            member this.AddSnapshot (eventId: UInt64) (version: Version) (snapshot: 'A) (name: Name) =
                 log.Debug (sprintf "AddSnapshot %s %s" version name)
                 let streamName = "snapshots" + version + name
                 let serSnapshot = snapshot |> serializer.Serialize

@@ -10,9 +10,10 @@ open FsToolkit.ErrorHandling
 module Definitions =
     type Json = string
     type Name = string
-    type version = string
+    type Version = string
     type SnapId = int
     type EventId = int
+    type SnapshotId = int
 
 module ApplicationInstance =
     type ApplicationInstance() =

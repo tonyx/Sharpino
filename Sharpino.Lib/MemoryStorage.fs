@@ -1,24 +1,27 @@
 
 namespace Sharpino
 
-open Sharpino.Storage
 open System.Runtime.CompilerServices
 open FSharpPlus
 open FSharpPlus.Operators
 open System
 open System.Collections
+open Sharpino.Storage
+open Sharpino.Definitions
 
 open log4net
 open log4net.Config
 
 module MemoryStorage =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     type MemoryStorage() =
-        let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-        let event_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
-        let snapshot_id_seq_dic = new Generic.Dictionary<version, Generic.Dictionary<Name,int>>()
-        let events_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageEventJson>>>()
-        let snapshots_dic = new Generic.Dictionary<version, Generic.Dictionary<string, List<StorageSnapshot>>>()
+        let event_id_seq_dic = new Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
+        let snapshot_id_seq_dic = new Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
+        let events_dic = new Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageEventJson>>>()
+        let snapshots_dic = new Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageSnapshot>>>()
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id version name =
             log.Debug (sprintf "next_event_id %s %s" version name)
@@ -172,21 +175,6 @@ module MemoryStorage =
                 let ids = newEvents |> List.map (fun x -> x.Id)
                 ids |> Ok
 
-            [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents' version name xs: Result<List<int>,string> = 
-                log.Debug (sprintf "AddEvents %s %s" version name)
-                let newEvents =
-                    [for e in xs do
-                        yield {
-                            Id = next_event_id version name
-                            JsonEvent = e 
-                            Timestamp = DateTime.Now
-                        }
-                    ]
-                let events = getExistingEvents version name @ newEvents
-                storeEvents version name events
-                newEvents |> List.map (fun x -> x.Id) |> Ok
-
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
@@ -196,7 +184,7 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents (arg: List<List<Json> * version * Name>) =
+            member this.MultiAddEvents (arg: List<List<Json> * Version * Name>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
@@ -205,15 +193,6 @@ module MemoryStorage =
                             (this :> IStorage).AddEvents version name xs |> Result.get
                         ) 
                 cmds |> Ok
-
-            member this.MultiAddEvents' (arg: List<List<Json> * version * Name>): Result<List<List<int>>, string> = 
-                log.Debug (sprintf "MultiAddEvents %A" arg)
-                arg 
-                |> List.iter 
-                    (fun (xs, version, name) ->
-                        (this :> IStorage).AddEvents version name xs |> ignore
-                    ) 
-                [] |> Ok
 
             member this.SetSnapshot  version (id, snapshot) name =
                 log.Debug (sprintf "SetSnapshot %s %A %s" version id name)
@@ -275,7 +254,7 @@ module MemoryStorage =
                 else
                     snapshots_dic.[version].[name]
                     |> List.tryLast
-                    |>> (fun x -> x.Id)
+                    |>> (fun x -> x.EventId, x.Id)
 
             member this.TryGetSnapshotById version name id =
                 log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name id)
@@ -287,7 +266,7 @@ module MemoryStorage =
                     |>> (fun x -> (x.EventId, x.Snapshot))
 
             // Issue: it will not survive after a version migration because the timestamps will be different
-            member this.GetEventsInATimeInterval(version: version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
+            member this.GetEventsInATimeInterval (version: Version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     []

@@ -9,7 +9,6 @@ open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
 
 open Sharpino.Utils
-open Sharpino.EventSourcing.Sample
 
 [<Tests>]
 let tagsAggregateTests =

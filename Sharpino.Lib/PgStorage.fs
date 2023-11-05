@@ -7,16 +7,20 @@ open Npgsql
 open FSharpPlus
 open Sharpino
 open Sharpino.Storage
+open Sharpino.Definitions
 open log4net
 open log4net.Config
 
 module PgStorage =
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgStorage(connection: string) =
         interface IStorage with
-            member this.Reset(version: version) (name: Name): unit = 
+
+            // only test db should be able to reset
+            member this.Reset(version: Version) (name: Name): unit = 
                 if (Conf.isTestEnv) then
                     try
                         // additional precautions to avoid deleting data in non dev/test env 
@@ -132,73 +136,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-
-            // reference of previous working AddEvents'
-            member this.AddEvents' version name events =
-                log.Debug (sprintf "AddEvents %s %s %A" version name events)
-                let stream_name = version + name
-                // let command = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
-                let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
-                try
-                    let ids =
-                        connection
-                        |> Sql.connect
-                        |> Sql.executeTransactionAsync
-                            [
-                                command,
-                                events
-                                |>>
-                                (
-                                    fun x ->
-                                        [
-                                            // ("@event", Sql.jsonb x);
-                                            ("@event", Sql.text x);
-                                            // ("timestamp", Sql.timestamp (System.DateTime.Now))
-                                        ]
-                                )
-                            ]
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
-                    log.Debug "exiting from add events"
-                    ids |> Ok
-                with
-                    | _ as ex -> 
-                        log.Debug (sprintf "an error occurred: %A" ex.Message)
-                        printf "an error occurred: %A" ex.Message
-                        ex.Message |> Error
-            member this.MultiAddEvents' (arg: List<List<Json> * version * Name>) =
-            // : Result<unit,string> = 
-                log.Debug (sprintf "MultiAddEvents %A" arg)
-                let cmdList = 
-                    arg 
-                    |> List.map 
-                        (
-                            fun (events, version,  name) -> 
-                                let statement = sprintf "INSERT INTO events%s%s (event, timestamp) VALUES (@event, @timestamp)" version name
-                                statement, events
-                                |>> 
-                                (
-                                    fun x ->
-                                        [
-                                            ("@event", Sql.jsonb x);
-                                            ("timestamp", Sql.timestamp (System.DateTime.Now))
-                                        ]
-                                )
-                        )
-                try 
-                    let added =
-                        connection
-                        |> Sql.connect
-                        |> Sql.executeTransactionAsync cmdList
-                        |> Async.AwaitTask
-                        |> Async.RunSynchronously
-                    added 
-                    |> List.iter (fun x -> log.Debug (sprintf "XXXX. added: %A" x))
-                    [] |> Ok
-                with
-                    | _ as ex -> ex.Message |> Error
-
-            member this.MultiAddEvents(arg: List<List<Json> * version * Name>) =
+            member this.MultiAddEvents(arg: List<List<Json> * Version * Name>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -298,12 +236,13 @@ module PgStorage =
 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
-                let query = sprintf "SELECT id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
                 |> Sql.query query
                 |> Sql.executeAsync (fun read ->
                     (
+                        read.int "event_id",
                         read.int "id"
                     )
                 )

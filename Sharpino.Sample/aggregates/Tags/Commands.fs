@@ -2,12 +2,10 @@ namespace Sharpino.Sample.Tags
 
 open System
 open Sharpino.Core
-open Sharpino.Cache
 
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.TagsAggregate
-open type Sharpino.Cache.EventCache<TagsAggregate>
 
 module TagCommands =
     open FsToolkit.ErrorHandling
@@ -19,10 +17,10 @@ module TagCommands =
             member this.Execute (x: TagsAggregate) =
                 match this with
                 | AddTag t ->
-                    Instance.Memoize (fun () -> x.AddTag t) (x, [TagAdded t]) 
+                    x.AddTag t
                     |> Result.map (fun _ -> [TagAdded t]) 
                 | RemoveTag g ->
-                    Instance.Memoize (fun () -> x.RemoveTag g) (x, [TagRemoved g]) 
+                    x.RemoveTag g
                     |> Result.map (fun _ -> [TagRemoved g])
             member this.Undoer = 
                 match this with

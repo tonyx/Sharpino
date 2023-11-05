@@ -2,7 +2,7 @@ namespace Sharpino.Sample
 
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Utils
-open Sharpino.Storage
+open Sharpino.Definitions
 
 open System
 open FsToolkit.ErrorHandling

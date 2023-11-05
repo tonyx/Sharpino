@@ -9,19 +9,12 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.CategoriesAggregate
 open Sharpino.Sample.EventStoreApp
-open Sharpino.Sample.Todos.TodoEvents
-open Sharpino.Sample.Categories.CategoriesEvents
-open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample
-open FSharpPlus.Operators
 open Newtonsoft.Json
 
 open System
@@ -70,22 +63,18 @@ module AppVersions =
 
     let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
-        EventCache<TodosAggregate>.Instance.Clear()
         SnapCache<TodosAggregate>.Instance.Clear()
         StateCache<TodosAggregate>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
         SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
         StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
 
         db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        EventCache<TagsAggregate>.Instance.Clear()
         SnapCache<TagsAggregate>.Instance.Clear()
         StateCache<TagsAggregate>.Instance.Clear()
 
         db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        EventCache<CategoriesAggregate>.Instance.Clear()
         SnapCache<CategoriesAggregate>.Instance.Clear()
         StateCache<CategoriesAggregate>.Instance.Clear()
 
@@ -105,7 +94,6 @@ module AppVersions =
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         version * List<Json> * Name -> unit
-            _forceStateUpdate:  option<unit -> unit> // obsolete
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -125,7 +113,6 @@ module AppVersions =
     let currentPostgresApp =
         {
             _migrator  =        currentPgApp.Migrate |> Some
-            _forceStateUpdate = None
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
@@ -152,7 +139,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (storage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -175,7 +161,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -197,7 +182,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (storage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       currentPgAppWithKafka.GetAllTodos
             addTodo =           currentPgAppWithKafka.AddTodo
             add2Todos =         currentPgAppWithKafka.Add2Todos
@@ -219,7 +203,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos
@@ -248,7 +231,6 @@ module AppVersions =
                                     }
                                     |> Async.RunSynchronously
                                     |> ignore
-            _forceStateUpdate = None
             getAllTodos =       evStoreApp.GetAllTodos
             addTodo =           evStoreApp.AddTodo
             add2Todos =         evStoreApp.Add2Todos

@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>1.2.4</version>
+    <version>1.2.7</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
-    <description>Simple F# Event-Sourcing Framework</description>
+    <description>Simple F# Event-Sourcing Library</description>
     <copyright>Copyright ©2023 Antonio Lucca</copyright>
     <projectUrl>https://github.com/tonyx/Sharpino</projectUrl>
     <license type="expression">MIT</license>
@@ -16,18 +16,17 @@
         <dependency id="Expecto" version="10.1.0" />
         <dependency id="Expecto.FsCheck" version="10.1.0" />
         <dependency id="FsCheck" version="2.16.6" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.9.0" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.10.0" />
         <dependency id="Log4net" version="2.0.15" />
-        <dependency id="Microsoft.Azure.Cosmos" version="3.35.3" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.7.27" />
+        <dependency id="Farmer" version="1.7.31" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
-        <dependency id="FSharp.Data" version="6.2.0" />
-        <dependency id="FSharpPlus" version="1.4.1" />
+        <dependency id="FSharp.Data" version="6.3.0" />
+        <dependency id="FSharpPlus" version="1.5.0" />
         <dependency id="Newtonsoft.Json" version="13.0.3" />
-        <dependency id="Npgsql" version="7.0.4" />
+        <dependency id="Npgsql" version="7.0.6" />
         <dependency id="Npgsql.FSharp" version="5.7.0" />
         <dependency id="System.collections" version="4.3.0" />
       </group>
@@ -35,7 +34,7 @@
   </metadata>
   <files>
     <file src="lib\**\*.*" target="lib"/> 
-    <!-- handlde copying Sharpino.Lib.dll and Sharpino.Lib.xml from bin\Debug etc...  and put into lib -->
+    <!-- handle by copying Sharpino.Lib.dll and Sharpino.Lib.xml from bin\Debug etc...  and put into lib -->
     <file src="README.md" target="/"/> 
    </files>
 

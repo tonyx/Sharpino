@@ -41,7 +41,6 @@ module App =
             }
             |> Async.RunSynchronously
 
-        // here I am using the mailboxprocessor which is a thread safe queue
         member this.AddTodo todo =
             result {
                 let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
@@ -52,10 +51,15 @@ module App =
                     todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                     |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                return!
+                let! _ =
                     todo
                     |> TodoCommand.AddTodo
                     |> runCommand<TodosAggregate, TodoEvent> storage eventBroker
+
+                let _ =  
+                    storage
+                    |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
+                return ()
         }
 
         // here I am using two lock object to synchronize the access to the storage in
@@ -82,7 +86,7 @@ module App =
                         |> runCommand<TodosAggregate, TodoEvent> storage eventBroker
                     let _ =  
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                     return ()
                 }
             )
@@ -98,7 +102,7 @@ module App =
                     |> runCommand<TodosAggregate, TodoEvent> storage eventBroker
                 let _ = 
                     storage
-                    |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                    |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                 return ()
             }
 
@@ -116,10 +120,11 @@ module App =
         // I will use mailboxprocessor even if I don't need any sync strategy
         member this.AddCategory category =
             result {
-                return!
+                let! _ =
                     category
                     |> TodoCommand.AddCategory
                     |> runCommand<TodosAggregate, TodoEvent> storage eventBroker
+                return ()
             }
 
         member this.RemoveCategory id = 
@@ -131,7 +136,7 @@ module App =
                         |> runCommand<TodosAggregate, TodoEvent> storage eventBroker
                     let _ = 
                         storage 
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent> 
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
                     return ()
                 }
             async {
@@ -148,7 +153,7 @@ module App =
                         |> runCommand<TagsAggregate, TagEvent> storage eventBroker
                     let _ =  
                         storage 
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent> 
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent> 
                     return ()
                 }
             async {
@@ -164,10 +169,10 @@ module App =
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate, TodoEvent>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent>
                     return ()
                 }
             async {
@@ -254,7 +259,7 @@ module App =
 
                     let _ =  
                         storage 
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                 return ()
             }
             async {
@@ -297,7 +302,7 @@ module App =
                         |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -314,7 +319,7 @@ module App =
                         |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -342,7 +347,7 @@ module App =
                         |> runCommand<CategoriesAggregate, CategoryEvent> storage eventBroker
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
+                        |> mkSnapshotIfIntervalPassed<CategoriesAggregate, CategoryEvent>
                     return ()
                 }
             async {
@@ -364,10 +369,10 @@ module App =
                             storage eventBroker removeCategory removeCategoryRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<CategoriesAggregate, CategoryEvent>
+                        |> mkSnapshotIfIntervalPassed<CategoriesAggregate, CategoryEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {
@@ -384,7 +389,7 @@ module App =
                         |> runCommand<TagsAggregate, TagEvent> storage eventBroker
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     return ()
                 }
             async {
@@ -400,10 +405,10 @@ module App =
                     let! _ = runTwoCommands<TagsAggregate, TodosAggregate', TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TagsAggregate, TagEvent>
+                        |> mkSnapshotIfIntervalPassed<TagsAggregate, TagEvent>
                     let _ = 
                         storage
-                        |> mkSnapshotIfInterval<TodosAggregate', TodoEvent'>
+                        |> mkSnapshotIfIntervalPassed<TodosAggregate', TodoEvent'>
                     return ()
                 }
             async {

@@ -4,6 +4,7 @@ namespace Sharpino.Sample
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino.Storage
+open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories
 open System
