@@ -52,6 +52,7 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
+    // probably the size of this cache must be just 1. 
     type StateCache<'A > private () =
         let dic = Generic.Dictionary<EventId, Result<'A, string>>()
         let queue = Generic.Queue<EventId>()
@@ -75,15 +76,13 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId) =
-            let fromCacheOrCalculated =
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
-            fromCacheOrCalculated
+            let (b, res) = dic.TryGetValue arg
+            if b then
+                res
+            else
+                let res = f()
+                this.TryAddToDictionary(arg, res)
+                res
         member this.LastEventId() =
             dic.Keys  
             |> List.ofSeq 
@@ -101,8 +100,9 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
+    // probably this cache becomes useless when I use the previous cache of the current state
     type SnapCache<'A> private () =
-        let dic = Generic.Dictionary<SnapId, Result<SnapId * 'A, string>>()
+        let dic = Generic.Dictionary<SnapId, Result<EventId * 'A, string>>()
         let queue = Generic.Queue<SnapId>()
         static let instance = SnapCache<'A>()
         static member Instance = instance
@@ -124,15 +124,13 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<EventId * 'A, string>) (arg: SnapId) =
-            let fromCacheOrCalculated =
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
-            fromCacheOrCalculated
+            let (b, res) = dic.TryGetValue arg
+            if b then
+                res
+            else
+                let res = f()
+                this.TryAddToDictionary(arg, res)
+                res
         member this.Clear() =
             dic.Clear()
             queue.Clear()
