@@ -123,8 +123,6 @@ module TodosAggregate =
         // assume this should me moved but atm doesn't work in a separate module
 
 
-
-
 // what follows is the same code as above, but with the new version of the aggregate
     [<UpgradedVersion>]
 
