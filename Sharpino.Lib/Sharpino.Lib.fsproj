@@ -7,7 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
-    <Version>1.2.6</Version>
+    <Version>1.2.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -42,19 +42,18 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.9.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.10.0" />
     <PackageReference Include="Log4net" Version="2.0.15" />
-    <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.35.3" />
     <PackageReference Include="Thoth.json" Version="10.2.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.7.27" />
+    <PackageReference Include="Farmer" Version="1.7.31" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
-    <PackageReference Include="FSharp.Data" Version="6.2.0" />
-    <PackageReference Include="FSharpPlus" Version="1.4.1" />
+    <PackageReference Include="FSharp.Data" Version="6.3.0" />
+    <PackageReference Include="FSharpPlus" Version="1.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql" Version="7.0.4" />
+    <PackageReference Include="Npgsql" Version="7.0.6" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
     <PackageReference Update="FSharp.Core" Version="7.*" />
