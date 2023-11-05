@@ -76,11 +76,6 @@ let testCoreEvolve =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     let serializer = JsonSerializer(serSettings) :> ISerializer
 
-    let updateStateIfNecessary (ap: AppVersions.IApplication) =
-        // dismiss this code soon
-        match ap._forceStateUpdate with
-        | Some f -> f()
-        | None -> ()
     testList "evolve test" [
         multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
@@ -145,12 +140,6 @@ let testCoreEvolve =
 [<Tests>]
 let multiVersionsTests =
     testList "App with coordinator test - Ok" [
-        // not needed anymore but I keep it for reference and future storages that may require this approach
-        let updateStateIfNecessary (ap: Sharpino.EventSourcing.Sample.AppVersions.IApplication) =
-            // dismiss this code soon
-            match ap._forceStateUpdate with
-            | Some f -> f()
-            | None -> ()
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 

@@ -89,7 +89,6 @@ module AppVersions =
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         version * List<Json> * Name -> unit
-            _forceStateUpdate:  option<unit -> unit> // obsolete
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -109,7 +108,6 @@ module AppVersions =
     let currentPostgresApp =
         {
             _migrator  =        currentPgApp.Migrate |> Some
-            _forceStateUpdate = None
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =            fun () -> resetDb storage
             _addEvents =        fun (version, e: List<string>, name ) -> 
@@ -136,7 +134,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (storage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -159,7 +156,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -181,7 +177,6 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
-            _forceStateUpdate = None
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos
@@ -210,7 +205,6 @@ module AppVersions =
                                     }
                                     |> Async.RunSynchronously
                                     |> ignore
-            _forceStateUpdate = None
             getAllTodos =       evStoreApp.GetAllTodos
             addTodo =           evStoreApp.AddTodo
             add2Todos =         evStoreApp.Add2Todos
