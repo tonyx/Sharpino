@@ -10,7 +10,6 @@ open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesAggregate
-open type Sharpino.Cache.EventCache<CategoriesAggregate>
 
 module CategoriesEvents =
     type CategoryEvent =
@@ -21,11 +20,11 @@ module CategoriesEvents =
                 member this.Process (x: CategoriesAggregate) =
                     match this with
                     | CategoryAdded (c: Category) ->
-                        Instance.Memoize (fun () -> x.AddCategory c) (x, [this])
+                        x.AddCategory c
                     | CategoryRemoved (g: Guid) ->
-                        Instance.Memoize (fun () -> x.RemoveCategory g) (x, [this])
+                        x.RemoveCategory g
                     | CategoriesAdded (cs: List<Category>) ->
-                        Instance.Memoize (fun () -> x.AddCategories cs) (x, [this])
+                        x.AddCategories cs
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

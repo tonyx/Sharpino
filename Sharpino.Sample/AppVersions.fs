@@ -58,22 +58,18 @@ module AppVersions =
 
     let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
-        EventCache<TodosAggregate>.Instance.Clear()
         SnapCache<TodosAggregate>.Instance.Clear()
         StateCache<TodosAggregate>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        EventCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
         SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
         StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
 
         db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        EventCache<TagsAggregate>.Instance.Clear()
         SnapCache<TagsAggregate>.Instance.Clear()
         StateCache<TagsAggregate>.Instance.Clear()
 
         db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        EventCache<CategoriesAggregate>.Instance.Clear()
         SnapCache<CategoriesAggregate>.Instance.Clear()
         StateCache<CategoriesAggregate>.Instance.Clear()
 

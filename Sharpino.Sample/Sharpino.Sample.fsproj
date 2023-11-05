@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.10.0" />
-    <!-- <PackageReference Include="Sharpino" Version="1.2.6" /> -->
+    <!-- <PackageReference Include="Sharpino" Version="1.2.7" /> -->
     <!-- comment this while developing the library -->
   </ItemGroup>
 

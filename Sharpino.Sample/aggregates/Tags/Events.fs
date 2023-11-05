@@ -7,7 +7,6 @@ open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Entities.Tags
-open type Sharpino.Cache.EventCache<TagsAggregate>
 
 open System
 
@@ -19,9 +18,9 @@ module TagsEvents =
                 member this.Process (x: TagsAggregate) =
                     match this with
                     | TagAdded (t: Tag) ->
-                        Instance.Memoize (fun () -> x.AddTag t) (x, [this])
+                        x.AddTag t
                     | TagRemoved (g: Guid) ->
-                        Instance.Memoize (fun () -> x.RemoveTag g) (x, [this])
+                        x.RemoveTag g
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

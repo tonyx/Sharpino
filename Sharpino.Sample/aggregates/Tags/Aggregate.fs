@@ -22,9 +22,7 @@ module TagsAggregate =
         static member Version =
             "_01"
         static member SnapshotsInterval =
-            // 15
-            // 50
-            100
+            15
         static member Lock =
             new Object()
         member this.AddTag (t: Tag) =

@@ -304,7 +304,6 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IStorage) =
-            // printf "XXXX. making snapshot\n"
             async {
                 return
                     ResultCE.result

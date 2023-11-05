@@ -7,9 +7,12 @@ open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
 open log4net
+open System
 
 module Cache =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+
+    [<Obsolete("event must be dismissed or at least try use a smarter key dictionary")>]
     type EventCache<'A when 'A: equality> private () =
         let dic = Generic.Dictionary<'A * List<Event<'A>>, Result<'A, string>>()
         let queue = Generic.Queue<'A * List<Event<'A>>>()
@@ -32,7 +35,7 @@ module Cache =
                 queue.Clear()
                 ()
 
-        // event cache is disabled because at the moment it's not helping
+        [<Obsolete("event cache must be dismissed or at least try use smarter key dictionary")>]
         member this.Memoize (f: unit -> Result<'A, string>) (arg: 'A * List<Event<'A>>) =
             #if EVENTS_CACHE_IS_DISABLED
                 f()
@@ -52,7 +55,7 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    // probably the size of this cache must be just 1. 
+    // probably the size of this cache can be just 1 because I need to keep only the current state. 
     type StateCache<'A > private () =
         let dic = Generic.Dictionary<EventId, Result<'A, string>>()
         let queue = Generic.Queue<EventId>()
