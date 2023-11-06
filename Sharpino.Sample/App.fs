@@ -37,23 +37,25 @@ module App =
             }
 
         member this.AddTodo todo =
-            result {
-                let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
-                let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
+            lock (TodosAggregate.Lock, TagsAggregate.Lock) (fun () -> 
+                result {
+                    let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
+                    let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! tagIdIsValid =    
-                    (todo.TagIds.IsEmpty ||
-                    todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                    |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                    let! tagIdIsValid =    
+                        (todo.TagIds.IsEmpty ||
+                        todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
+                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                return! 
-                    todo
-                    |> TodoCommand.AddTodo
-                    |> runCommand<TodosAggregate, TodoEvent> storage
-        }
+                    return! 
+                        todo
+                        |> TodoCommand.AddTodo
+                        |> runCommand<TodosAggregate, TodoEvent> storage
+                }
+            )
 
         member this.Add2Todos (todo1, todo2) =
-            lock (TodosAggregate.Lock, TagsAggregate.Lock) (fun () -> 
+            lock (TodosAggregate.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = storage |> getState<TagsAggregate, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
