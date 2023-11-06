@@ -17,8 +17,5 @@ BEGIN
 END;
 $$
 
--- grant execute on function insert_01_tags_event_and_return_id(json) to safe; 
-
-
 -- migrate:down
 

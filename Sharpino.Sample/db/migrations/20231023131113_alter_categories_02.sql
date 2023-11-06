@@ -17,6 +17,5 @@ BEGIN
 END;
 $$
 
--- grant execute on function insert_02_categories_event_and_return_id(json) to safe; 
 -- migrate:down
 
