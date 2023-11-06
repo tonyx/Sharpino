@@ -385,19 +385,19 @@ module CommandHandler =
                                             (events2', 'A2.Version, 'A2.StorageName)
                                             (events3', 'A3.Version, 'A2.StorageName)
                                         ]
-                                // let _ =
-                                //     match result with
-                                //     | Ok idLists -> 
-                                //         let idAndEvents1 = List.zip idLists.[0] events1'
-                                //         let idAndEvents2 = List.zip idLists.[1] events2'
-                                //         let idAndEvents3 = List.zip idLists.[2] events3'
+                                let _ =
+                                    match result with
+                                    | Ok idLists -> 
+                                        let idAndEvents1 = List.zip idLists.[0] events1'
+                                        let idAndEvents2 = List.zip idLists.[1] events2'
+                                        let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                //         tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                //         tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                //         tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
-                                //     | Error e -> 
-                                //         log.Error (sprintf "runThreeCommands: %s" e)
-                                //         ()
+                                        tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                        tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                        tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
+                                    | Error e -> 
+                                        log.Error (sprintf "runThreeCommands: %s" e)
+                                        ()
 
                                 return! result
                             } 

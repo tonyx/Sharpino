@@ -44,7 +44,6 @@ It is an example of a library for managing todos with tags and categories. There
 - __aggregates__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/aggregates/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
 __Commands__ defines also _undoers_ that are functions that can undo the commands to reverse action in a multiple-stream operation for storage that don't support multiple-stream transactions (see _LightCommandHandler_).
 - A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves __aggregates__, _events_ and _snapshots_.
-- The [Repository](Sharpino.Lib/Repository.fs) can build and retrieve snapshots, run the __commands__ and store the related __events__.
 - The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more aggregates by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
