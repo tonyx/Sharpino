@@ -637,6 +637,7 @@ let multiCallTests =
         testCase "add many todos" <| fun _ ->
             Expect.isTrue true "should be true"
             let ap = AppVersions.currentPostgresApp
+            // let ap = currentVersionPgWithKafkaApp
             let _ = ap._reset()
 
             for i = 0 to 999 do
@@ -650,6 +651,7 @@ let multiCallTests =
 
         testCase "add many todos in parallel" <| fun _ ->
             let ap = AppVersions.currentPostgresApp
+            // let ap = currentVersionPgWithKafkaApp
             let _ = ap._reset()
 
             for i = 0 to 99 do   
