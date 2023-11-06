@@ -33,6 +33,13 @@ let allVersions =
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
         // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemorykkApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
         // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
