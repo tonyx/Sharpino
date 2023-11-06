@@ -49,7 +49,7 @@ module Storage =
         abstract member GetEventsAfterId: Version -> int -> Name -> Result< List< EventId * Json >, string >
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >
 
-type IEventBroker =
+    type IEventBroker =
         {
             notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
         }

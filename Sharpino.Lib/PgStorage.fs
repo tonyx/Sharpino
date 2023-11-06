@@ -126,6 +126,8 @@ module PgStorage =
                                     )
                             transaction.Commit()
                             conn.Close()
+
+                            printf "XXXX. added: %A\n" ids
                             // log.Debug "exiting from add events"
                             ids |> Ok
                         with

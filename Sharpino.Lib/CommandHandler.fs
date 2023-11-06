@@ -232,8 +232,17 @@ module CommandHandler =
                             let events' =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)
-                            return! 
+                            let result =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
+                            let _ =
+                                match result with
+                                | Ok idList -> 
+                                    let idAndEvents = List.zip idList events'
+                                    tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
+                                | Error e ->
+                                    log.Error (sprintf "runCommand: %s" e)
+                                    ()
+                            return! result
                         }
                 }
                 |> Async.RunSynchronously 
@@ -267,48 +276,47 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            let result =
-                lock ('A1.Lock, 'A2.Lock) <| fun () ->
-                    async {
-                        return
-                            result {
-                                let! (_, state1) = getState<'A1, 'E1> storage
-                                let! (_, state2) = getState<'A2, 'E2> storage
-                                let! events1 =
-                                    state1
-                                    |> command1.Execute
-                                let! events2 =
-                                    state2
-                                    |> command2.Execute
+            lock ('A1.Lock, 'A2.Lock) <| fun () ->
+                async {
+                    return
+                        result {
+                            let! (_, state1) = getState<'A1, 'E1> storage
+                            let! (_, state2) = getState<'A2, 'E2> storage
+                            let! events1 =
+                                state1
+                                |> command1.Execute
+                            let! events2 =
+                                state2
+                                |> command2.Execute
 
-                                let events1' =
-                                    events1 
-                                    |>> (fun x -> x.Serialize serializer)
-                                let events2' =
-                                    events2 
-                                    |>> (fun x -> x.Serialize serializer)
+                            let events1' =
+                                events1 
+                                |>> (fun x -> x.Serialize serializer)
+                            let events2' =
+                                events2 
+                                |>> (fun x -> x.Serialize serializer)
 
-                                let result =
-                                    storage.MultiAddEvents 
-                                        [
-                                            (events1', 'A1.Version, 'A1.StorageName)
-                                            (events2', 'A2.Version, 'A2.StorageName)
-                                        ]
-                                let _ =
-                                    match result with
-                                    | Ok idLists -> 
-                                        let idAndEvents1 = List.zip idLists.[0] events1'
-                                        let idAndEvents2 = List.zip idLists.[1] events2'
-                                        tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                        tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                    | Error e -> 
-                                        log.Error (sprintf "runTwoCommands: %s" e)
-                                        ()
-                                return! result
-                            } 
-                        }
-                    |> Async.RunSynchronously
-            result
+                            let result =
+                                storage.MultiAddEvents 
+                                    [
+                                        (events1', 'A1.Version, 'A1.StorageName)
+                                        (events2', 'A2.Version, 'A2.StorageName)
+                                    ]
+                            let _ =
+                                match result with
+                                | Ok idLists -> 
+                                    let idAndEvents1 = List.zip idLists.[0] events1'
+                                    let idAndEvents2 = List.zip idLists.[1] events2'
+                                    tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                    tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                | Error e -> 
+                                    log.Error (sprintf "runTwoCommands: %s" e)
+                                    ()
+                            return! result
+                        } 
+                    }
+                |> Async.RunSynchronously
+            // result
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
@@ -342,8 +350,6 @@ module CommandHandler =
         and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
         and 'E3: (member Serialize: ISerializer -> string)
         > 
-
-
             (storage: IStorage)
             (eventBroker: IEventBroker) 
             (command1: Command<'A1, 'E1>) 

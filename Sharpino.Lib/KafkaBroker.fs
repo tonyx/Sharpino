@@ -110,7 +110,7 @@ module KafkaBroker =
             }
         notifier
 
-    let notify (broker: IEventBroker ) (version: string) (name: string) (idAndEvents: List<int * string>) =
+    let notify (broker: IEventBroker) (version: string) (name: string) (idAndEvents: List<int * string>) =
         match broker.notify with
         | Some notify ->
             notify version name idAndEvents
