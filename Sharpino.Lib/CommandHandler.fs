@@ -127,170 +127,10 @@ module CommandHandler =
                         return newState
                     }
             let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-            // printf "XXXX. last eventid %d\n" lastEventId
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state -> (lastEventId, state) |> Ok
             | Error e -> Error e
-
-    let inline runCommand<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-        and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        >
-        (storage: IStorage) (command: Command<'A, 'E>) =
-            log.Debug (sprintf "runCommand %A" command)
-            lock 'A.Lock <| fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state) = getState<'A, 'E> storage
-                            let! events =
-                                state
-                                |> command.Execute
-                            let events' =
-                                events 
-                                |>> (fun x -> x.Serialize serializer)
-                            return! 
-                                events' |> storage.AddEvents 'A.Version 'A.StorageName 
-                        }
-                }
-                |> Async.RunSynchronously 
-                        
-    let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
-        when 'A1: (static member Zero: 'A1)
-        and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> string)
-        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
-        and 'A2: (static member Zero: 'A2)
-        and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> string)
-        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
-        and 'A1: (static member Version: string)
-        and 'A2: (static member Version: string)
-        and 'A1: (static member Lock: obj)
-        and 'A2: (static member Lock: obj)
-        and 'E1 :> Event<'A1>
-        and 'E2 :> Event<'A2> 
-        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> string)
-        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> string)
-        >
-            (storage: IStorage)
-
-            (command1: Command<'A1, 'E1>) 
-            (command2: Command<'A2, 'E2>) =
-            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
-
-            lock ('A1.Lock, 'A2.Lock) <| fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
-
-                            let events1' =
-                                events1 
-                                |>> (fun x -> x.Serialize serializer)
-                            let events2' =
-                                events2 
-                                |>> (fun x -> x.Serialize serializer)
-
-                            return! 
-                                storage.MultiAddEvents 
-                                    [
-                                        (events1', 'A1.Version, 'A1.StorageName)
-                                        (events2', 'A2.Version, 'A2.StorageName)
-                                    ]
-                        } 
-                }
-                |> Async.RunSynchronously
-
-    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
-        when 'A1: (static member Zero: 'A1)
-        and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> string)
-        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
-        and 'A2: (static member Zero: 'A2)
-        and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> string)
-        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
-        and 'A3: (static member Zero: 'A3)
-        and 'A3: (static member StorageName: string)
-        and 'A3: (member Serialize: ISerializer -> string)
-        and 'A3: (static member Deserialize: ISerializer -> Json -> Result<'A3, string>)
-        and 'A1: (static member Version: string)
-        and 'A2: (static member Version: string)
-        and 'A3: (static member Version: string)
-        and 'A1: (static member Lock: obj)
-        and 'A2: (static member Lock: obj)
-        and 'A3: (static member Lock: obj)
-        and 'E1 :> Event<'A1>
-        and 'E2 :> Event<'A2> 
-        and 'E3 :> Event<'A3>
-        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> string)
-        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> string)
-        and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
-        and 'E3: (member Serialize: ISerializer -> string)
-        > 
-            (storage: IStorage)
-            (command1: Command<'A1, 'E1>) 
-            (command2: Command<'A2, 'E2>) 
-            (command3: Command<'A3, 'E3>) =
-            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
-            lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! (_, state3) = getState<'A3, 'E3> storage
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
-                            let! events3 =
-                                state3
-                                |> command3.Execute
-
-                            let events1' =
-                                events1 
-                                |>> (fun x -> x.Serialize serializer)
-                            let events2' =
-                                events2 
-                                |>> (fun x -> x.Serialize serializer)
-                            let events3' =
-                                events3 
-                                |>> (fun x -> x.Serialize serializer)
-
-                            return! 
-                                storage.MultiAddEvents 
-                                    [
-                                        (events1', 'A1.Version, 'A1.StorageName)
-                                        (events2', 'A2.Version, 'A2.StorageName)
-                                        (events3', 'A3.Version, 'A2.StorageName)
-                                    ]
-                        } 
-                }
-                |> Async.RunSynchronously
-
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mksnapshot<'A, 'E
@@ -347,6 +187,194 @@ module CommandHandler =
                         }
             }    
             |> Async.RunSynchronously   
+    let inline runCommand<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >
+        (storage: IStorage) (command: Command<'A, 'E>) =
+            log.Debug (sprintf "runCommand %A" command)
+            let result =
+                lock 'A.Lock <| fun () ->
+                    async {
+                        return
+                            result {
+                                let! (_, state) = getState<'A, 'E> storage
+                                let! events =
+                                    state
+                                    |> command.Execute
+                                let events' =
+                                    events 
+                                    |>> (fun x -> x.Serialize serializer)
+                                return! 
+                                    events' |> storage.AddEvents 'A.Version 'A.StorageName 
+                            }
+                    }
+                    |> Async.RunSynchronously 
+            let _ = 
+                match result with
+                | Ok _ -> mkSnapshotIfIntervalPassed<'A, 'E> storage
+                | Error e -> Error e
+            result
+                        
+    let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2: (static member Lock: obj)
+        and 'A2: (static member SnapshotsInterval : int)
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2> 
+        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> string)
+        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> string)
+        >
+            (storage: IStorage)
+
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) =
+            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+
+            let result =
+                lock ('A1.Lock, 'A2.Lock) <| fun () ->
+                    async {
+                        return
+                            result {
+                                let! (_, state1) = getState<'A1, 'E1> storage
+                                let! (_, state2) = getState<'A2, 'E2> storage
+                                let! events1 =
+                                    state1
+                                    |> command1.Execute
+                                let! events2 =
+                                    state2
+                                    |> command2.Execute
+
+                                let events1' =
+                                    events1 
+                                    |>> (fun x -> x.Serialize serializer)
+                                let events2' =
+                                    events2 
+                                    |>> (fun x -> x.Serialize serializer)
+
+                                return! 
+                                    storage.MultiAddEvents 
+                                        [
+                                            (events1', 'A1.Version, 'A1.StorageName)
+                                            (events2', 'A2.Version, 'A2.StorageName)
+                                        ]
+                            } 
+                    }
+                    |> Async.RunSynchronously
+            let _ =
+                match result with
+                | Ok _ -> 
+                    mkSnapshotIfIntervalPassed<'A1, 'E1> storage |> ignore
+                    mkSnapshotIfIntervalPassed<'A2, 'E2> storage |> ignore
+                    Ok ()
+                | Error e -> Error e
+            result
+
+    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
+        when 'A1: (static member Zero: 'A1)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A2: (static member Zero: 'A2)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'A3: (static member Zero: 'A3)
+        and 'A3: (static member StorageName: string)
+        and 'A3: (member Serialize: ISerializer -> string)
+        and 'A3: (static member Deserialize: ISerializer -> Json -> Result<'A3, string>)
+        and 'A1: (static member Version: string)
+        and 'A2: (static member Version: string)
+        and 'A3: (static member Version: string)
+        and 'A1: (static member Lock: obj)
+        and 'A2: (static member Lock: obj)
+        and 'A3: (static member Lock: obj)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2: (static member SnapshotsInterval : int)
+        and 'A3: (static member SnapshotsInterval : int)
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2> 
+        and 'E3 :> Event<'A3>
+        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> string)
+        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> string)
+        and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
+        and 'E3: (member Serialize: ISerializer -> string)
+        > 
+            (storage: IStorage)
+            (command1: Command<'A1, 'E1>) 
+            (command2: Command<'A2, 'E2>) 
+            (command3: Command<'A3, 'E3>) =
+            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            let result =
+                lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
+                    async {
+                        return
+                            result {
+                                let! (_, state1) = getState<'A1, 'E1> storage
+                                let! (_, state2) = getState<'A2, 'E2> storage
+                                let! (_, state3) = getState<'A3, 'E3> storage
+                                let! events1 =
+                                    state1
+                                    |> command1.Execute
+                                let! events2 =
+                                    state2
+                                    |> command2.Execute
+                                let! events3 =
+                                    state3
+                                    |> command3.Execute
+
+                                let events1' =
+                                    events1 
+                                    |>> (fun x -> x.Serialize serializer)
+                                let events2' =
+                                    events2 
+                                    |>> (fun x -> x.Serialize serializer)
+                                let events3' =
+                                    events3 
+                                    |>> (fun x -> x.Serialize serializer)
+
+                                return! 
+                                    storage.MultiAddEvents 
+                                        [
+                                            (events1', 'A1.Version, 'A1.StorageName)
+                                            (events2', 'A2.Version, 'A2.StorageName)
+                                            (events3', 'A3.Version, 'A2.StorageName)
+                                        ]
+                            } 
+                    }
+                    |> Async.RunSynchronously
+            let _ =
+                match result with
+                | Ok _ -> 
+                    mkSnapshotIfIntervalPassed<'A1, 'E1> storage |> ignore
+                    mkSnapshotIfIntervalPassed<'A2, 'E2> storage |> ignore
+                    mkSnapshotIfIntervalPassed<'A3, 'E3> storage |> ignore
+                    Ok ()
+                | Error e -> Error e
+            result
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
