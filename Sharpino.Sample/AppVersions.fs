@@ -40,7 +40,7 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
-    let storage = PgStorage.PgStorage(connection)
+    let pgStorage = PgStorage.PgStorage(connection)
 
     let doNothingBroker = 
         {
@@ -50,11 +50,11 @@ module AppVersions =
     let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
-    let currentPgApp = App.CurrentVersionApp(storage, doNothingBroker)
+    let currentPgApp = App.CurrentVersionApp(pgStorage, doNothingBroker)
 
-    let currentPgAppWithKafka = App.CurrentVersionApp(storage, localHostbroker)
+    let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
 
-    let upgradedPgApp = App.UpgradedApp(storage, doNothingBroker)
+    let upgradedPgApp = App.UpgradedApp(pgStorage, doNothingBroker)
     let currentMemApp = App.CurrentVersionApp(memoryStorage, doNothingBroker)
     let upgradedMemApp = App.UpgradedApp(memoryStorage, doNothingBroker)
 
@@ -114,10 +114,10 @@ module AppVersions =
         {
             _migrator  =        currentPgApp.Migrate |> Some
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _reset =            fun () -> resetDb storage
+            _reset =            fun () -> resetDb pgStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (storage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -135,10 +135,10 @@ module AppVersions =
     let upgradedPostgresApp =
         {
             _migrator  =        None
-            _reset =            fun () -> resetDb storage
+            _reset =            fun () -> resetDb pgStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (storage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -178,10 +178,10 @@ module AppVersions =
     let currentVersionPgWithKafkaApp =
         {
             _migrator =         None
-            _reset =            fun () -> resetDb storage
+            _reset =            fun () -> resetDb pgStorage
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (storage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
             getAllTodos =       currentPgAppWithKafka.GetAllTodos
             addTodo =           currentPgAppWithKafka.AddTodo
             add2Todos =         currentPgAppWithKafka.Add2Todos

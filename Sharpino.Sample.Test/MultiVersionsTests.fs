@@ -23,6 +23,7 @@ open Sharpino.KafkaReceiver
 open System.Threading
 open FsToolkit.ErrorHandling
 open Sharpino.KafkaBroker
+open Sharpino.Storage
 
 let allVersions =
     [
@@ -649,6 +650,9 @@ let kafkaReceiverTests =
                 foundAppId <- deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
 
             Expect.isTrue foundAppId "should be true"
+            let lastEventId = (pgStorage :> IStorage).TryGetLastEventId TodosAggregate.Version TodosAggregate.StorageName
+            Expect.isSome lastEventId  "should be some" 
+            Expect.equal deserializedVal.EventId lastEventId.Value "should be equal"
     ]
 
 [<Tests>]
