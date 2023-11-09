@@ -17,12 +17,14 @@ module Definitions =
 
 module ApplicationInstance =
     type ApplicationInstance() =
-        let ApplicationGuid = Guid.NewGuid()
+        let mutable ApplicationGuid = Guid.NewGuid()
         static let instance = ApplicationInstance()
         static member Instance = instance
 
         member this.GetGuid() =
             ApplicationGuid
+        member this.ResetGuid() =
+            ApplicationGuid <- Guid.NewGuid()
 
 module Utils =
     open Definitions

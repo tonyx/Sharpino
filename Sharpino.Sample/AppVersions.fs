@@ -16,13 +16,8 @@ open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample
 open Newtonsoft.Json
-
 open System
-
-// todo: this is duplicated code 
-type Json = string
-type Name = string
-type version = string
+open Sharpino.Definitions
 
 module AppVersions =
     // beware that this is the test db and so we can reset it for testing
@@ -61,6 +56,9 @@ module AppVersions =
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
 
+    let resetAppId() =
+        ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
+
     let resetDb (db: IStorage) =
         db.Reset TodosAggregate.Version TodosAggregate.StorageName
         SnapCache<TodosAggregate>.Instance.Clear()
@@ -91,9 +89,10 @@ module AppVersions =
 
     type IApplication =
         {
+            _notify:            Option<Version -> Name -> List<int * Json> -> Result< unit, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
-            _addEvents:         version * List<Json> * Name -> unit
+            _addEvents:         Version * List<Json> * Name -> unit
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result<unit, string>
             add2Todos:          Todo * Todo -> Result<unit, string>
@@ -112,12 +111,15 @@ module AppVersions =
     [<CurrentVersion>]
     let currentPostgresApp =
         {
+            _notify =           currentPgApp._eventBroker.notify
             _migrator  =        currentPgApp.Migrate |> Some
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _reset =            fun () -> resetDb pgStorage
-            _addEvents =        fun (version, e: List<string>, name ) -> 
+            _reset =            fun () -> 
+                                    resetDb pgStorage
+                                    resetAppId()
+            _addEvents =        fun (vers: Version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IStorage).AddEvents vers name deser |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -134,8 +136,11 @@ module AppVersions =
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
+            _notify =           upgradedPgApp._eventBroker.notify
             _migrator  =        None
-            _reset =            fun () -> resetDb pgStorage
+            _reset =            fun () -> 
+                                    resetDb pgStorage
+                                    resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IStorage).AddEvents version name deser |> ignore
@@ -156,8 +161,11 @@ module AppVersions =
     [<CurrentVersion>]
     let currentMemoryApp =
         {
+            _notify =           currentMemApp._eventBroker.notify
             _migrator  =        currentMemApp.Migrate |> Some
-            _reset =            fun () -> resetDb memoryStorage
+            _reset =            fun () -> 
+                                    resetDb memoryStorage
+                                    resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
@@ -177,8 +185,11 @@ module AppVersions =
     [<CurrentVersion>]
     let currentVersionPgWithKafkaApp =
         {
+            _notify =           currentPgAppWithKafka._eventBroker.notify
             _migrator =         None
-            _reset =            fun () -> resetDb pgStorage
+            _reset =            fun () -> 
+                                    resetDb pgStorage
+                                    resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IStorage).AddEvents version name deser |> ignore
@@ -198,8 +209,11 @@ module AppVersions =
     [<UpgradedVersion>]
     let upgradedMemoryApp =
         {
+            _notify =           upgradedMemApp._eventBroker.notify
             _migrator =         None
-            _reset =            fun () -> resetDb memoryStorage
+            _reset =            fun () -> 
+                                    resetDb memoryStorage
+                                    resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
                                     (memoryStorage :> IStorage).AddEvents version name deser |> ignore
@@ -219,8 +233,11 @@ module AppVersions =
     [<CurrentVersion>]
     let evSApp =
         {
+            _notify =           None
             _migrator =         None
-            _reset =            fun () -> resetEventStore()
+            _reset =            fun () -> 
+                                    resetEventStore()
+                                    resetAppId()
             _addEvents =        fun (version, e: List<string>, name) -> 
                                     let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
                                     let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)

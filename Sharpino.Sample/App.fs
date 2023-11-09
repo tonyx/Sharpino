@@ -27,9 +27,9 @@ open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 module App =
-
     [<CurrentVersion>]
     type CurrentVersionApp(storage: IStorage, eventBroker: IEventBroker) =
+        member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result  {
                 let! (_, state) = storage |> getState<TodosAggregate, TodoEvent>
@@ -78,7 +78,6 @@ module App =
                     return ()
                 }
             )
-            
 
         member this.RemoveTodo id =
             result {
@@ -161,6 +160,7 @@ module App =
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IStorage, eventBroker: IEventBroker) =
+        member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result {
                 let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>

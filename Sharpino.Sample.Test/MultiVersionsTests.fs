@@ -8,10 +8,13 @@ open FSharp.Core
 open Sharpino
 open Sharpino.Sample
 open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.TagsAggregate
 open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Sample.Tags
+open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 open Sharpino.EventSourcing.Sample.AppVersions
@@ -42,6 +45,9 @@ let allVersions =
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
+
+        // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
+        // note that the by testing kafka you may experience some laggings.
         // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
@@ -143,8 +149,27 @@ let testCoreEvolve =
 
 [<Tests>]
 let multiVersionsTests =
-    testList "App with coordinator test - Ok" [
+    let serializer = JsonSerializer(serSettings) :> ISerializer
+    let todoReceiver = KafkaSubscriber("localhost:9092", TodosAggregate.Version, TodosAggregate.StorageName, "sharpinoTestClinet")
+    let categoriesReceiver = KafkaSubscriber("localhost:9092", CategoriesAggregate.CategoriesAggregate.Version, CategoriesAggregate.CategoriesAggregate.StorageName, "sharpinoTestClinet")
+    let tagsReceiver = KafkaSubscriber("localhost:9092", TagsAggregate.TagsAggregate.Version, TagsAggregate.TagsAggregate.StorageName, "sharpinoTestClinet")
 
+    let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
+        result {
+            let received = receiver.Consume()
+            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+            let mutable deserialized' = deserialized
+            let mutable found = deserialized'.ApplicationId = appId
+
+            while (not found) do
+                let received = receiver.Consume()
+                let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+                deserialized' <- deserialized
+                found <- deserialized'.ApplicationId = appId
+            return deserialized'.Event
+        }
+
+    ftestList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
@@ -152,18 +177,36 @@ let multiVersionsTests =
             Expect.isOk added "should be ok"
             let result = ap.addTodo todo
             Expect.isError result "should be error"
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo
+                Expect.equal expected received' "should be equal"
 
         multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo
+                Expect.equal expected received' "should be equal"
 
         multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "sould be ok"
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo
+                Expect.equal expected received' "should be equal"
 
         multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
@@ -174,6 +217,18 @@ let multiVersionsTests =
             Expect.isOk result "should be ok"
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo1
+                Expect.equal expected received' "should be equal"
+
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo2
+                Expect.equal expected received' "should be equal"
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
@@ -208,9 +263,22 @@ let multiVersionsTests =
             let tag = mkTag id2 "test" Color.Blue
             let result = ap.addTag tag
             Expect.isOk result "should be ok"
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), tagsReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TagsEvents.TagEvent> |> Result.get
+                let expected = TagEvent.TagAdded tag
+                Expect.equal expected received' "should be equal"
 
             let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
+            if ap._notify.IsSome then
+                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                Expect.isOk received "should be ok"
+                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let expected = TodoEvents.TodoAdded todo
+                Expect.equal expected received' "should be equal"
+
             Expect.isOk result "should be ok"
 
             let migrated = migrator()
@@ -623,7 +691,7 @@ let multiVersionsTests =
 [<Tests>]
 let kafkaReceiverTests =
     let serializer = JsonSerializer(serSettings) :> ISerializer
-    ptestList "kafka receiver test" [
+    testList "kafka receiver test" [
         testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
             currentVersionPgWithKafkaApp._reset()
 
@@ -633,7 +701,9 @@ let kafkaReceiverTests =
             let added = currentVersionPgWithKafkaApp.addTodo todo
             Expect.isOk added "should be ok"
 
+            printf "here\n"
             let received = receiver.Consume()
+            printf "here2\n"
 
             let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
             let mutable deserializedVal = deserialized.OkValue
@@ -653,6 +723,9 @@ let kafkaReceiverTests =
             let lastEventId = (pgStorage :> IStorage).TryGetLastEventId TodosAggregate.Version TodosAggregate.StorageName
             Expect.isSome lastEventId  "should be some" 
             Expect.equal deserializedVal.EventId lastEventId.Value "should be equal"
+            let extractedEvent = deserializedVal.Event |> serializer.Deserialize<TodoEvent>
+            Expect.isOk extractedEvent "should be ok"
+            Expect.equal extractedEvent.OkValue (TodoEvent.TodoAdded todo) "should be equal"
     ]
 
 [<Tests>]
