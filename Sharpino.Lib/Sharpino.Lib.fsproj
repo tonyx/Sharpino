@@ -7,7 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <DefineConstants>EVENTS_CACHE_IS_DISABLED</DefineConstants> 
     <PackageId>Sharpino</PackageId>
-    <Version>1.2.8</Version>
+    <Version>1.3.0-beta</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -15,7 +15,7 @@
 
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Library</Description>
-    <ReleaseNotes>This release supports In-memory, Postgres and EventStoreDB to store and retrieve events and snapshots</ReleaseNotes> 
+    <ReleaseNotes>This release supports In-memory, Postgres, minimal EventStoreDb and Kafka publishing using outbox pattern.</ReleaseNotes> 
     <Copyright>Copyright ©2023 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#, Fsharp, eventstoredb, postgres</PackageTags>
 

@@ -19,8 +19,10 @@ open Sharpino.Sample.Todos.TodoEvents
 open Tests.Sharpino.Shared
 
 open Sharpino.TestUtils
+open Sharpino.KafkaReceiver
 open System.Threading
 open FsToolkit.ErrorHandling
+open Sharpino.KafkaBroker
 
 let allVersions =
     [
@@ -32,21 +34,14 @@ let allVersions =
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
 
-        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemorykkApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
-
-        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -623,6 +618,38 @@ let multiVersionsTests =
             Expect.equal actualEvents expcted "should be equal"
     ] 
     |> testSequenced
+
+[<Tests>]
+let kafkaReceiverTests =
+    let serializer = JsonSerializer(serSettings) :> ISerializer
+    ptestList "kafka receiver test" [
+        testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
+            currentVersionPgWithKafkaApp._reset()
+
+            let receiver = KafkaSubscriber("localhost:9092", TodosAggregate.Version, TodosAggregate.StorageName, "sharpinoTestClinet")
+
+            let todo = mkTodo (Guid.NewGuid()) "testTodo" [] []
+            let added = currentVersionPgWithKafkaApp.addTodo todo
+            Expect.isOk added "should be ok"
+
+            let received = receiver.Consume()
+
+            let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
+            let mutable deserializedVal = deserialized.OkValue
+            Expect.isOk added "should be ok"
+
+            let mutable foundAppId = 
+                deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+
+            while (not foundAppId) do
+                let received = receiver.Consume()
+                let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
+                Expect.isOk deserialized "should be ok"
+                deserializedVal <- deserialized.OkValue
+                foundAppId <- deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+
+            Expect.isTrue foundAppId "should be true"
+    ]
 
 [<Tests>]
 let multiCallTests =

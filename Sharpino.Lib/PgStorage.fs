@@ -84,24 +84,22 @@ module PgStorage =
             member this.TryGetEvent version id name =
                 log.Debug (sprintf "TryGetEvent %s %s" version name)
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query 
-                    |> Sql.parameters ["id", Sql.int id]
-                    |> Sql.executeAsync
-                        (
-                            fun read ->
-                            {
-                                Id = read.int "id"
-                                JsonEvent = read.string "event"
-                                Timestamp = read.dateTime "timestamp"
-                            }
-                        )
-                        |> Async.AwaitTask
-                        |> Async.RunSynchronously
-                        |> Seq.tryHead
-                res
+                connection
+                |> Sql.connect
+                |> Sql.query query 
+                |> Sql.parameters ["id", Sql.int id]
+                |> Sql.executeAsync
+                    (
+                        fun read ->
+                        {
+                            Id = read.int "id"
+                            JsonEvent = read.string "event"
+                            Timestamp = read.dateTime "timestamp"
+                        }
+                    )
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.tryHead
             member this.AddEvents version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
@@ -126,14 +124,10 @@ module PgStorage =
                                     )
                             transaction.Commit()
                             conn.Close()
-
-                            printf "XXXX. added: %A\n" ids
-                            // log.Debug "exiting from add events"
                             ids |> Ok
                         with
                             | _ as ex -> 
-                                // printf "XXXX. an error occurred: %A\n" ex.Message
-                                log.Debug (sprintf "an error occurred: %A" ex.Message)
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
                 }
                 |> Async.RunSynchronously
@@ -166,11 +160,10 @@ module PgStorage =
                             )
                     transaction.Commit()    
                     conn.Close()
-                    printf "XXXX. added: %A\n" cmdList
                     cmdList |> Ok
                 with
                     | _ as ex -> 
-                        printf "QQQ. an error occurred: %A\n" ex.Message
+                        log.Error (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
 
             member this.GetEventsAfterId version id name =

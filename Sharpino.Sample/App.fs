@@ -78,6 +78,7 @@ module App =
                     return ()
                 }
             )
+            
 
         member this.RemoveTodo id =
             result {

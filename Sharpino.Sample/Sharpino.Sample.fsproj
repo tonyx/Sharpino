@@ -30,6 +30,7 @@
   <!-- uncomment this while developing the library -->
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\Sharpino.Kafka\Sharpino.Kafka.fsproj" />
   </ItemGroup>
 
   <ItemGroup>

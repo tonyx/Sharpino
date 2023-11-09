@@ -29,7 +29,7 @@ module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
 
-    let tryPublish eventBroker version name idAndEvents =
+    let inline private tryPublish eventBroker version name idAndEvents =
         let sent =
             async {
                 return
@@ -43,7 +43,7 @@ module CommandHandler =
         | Error e -> 
             log.Error (sprintf "trySendKafka: %s" e)
             ()
-    let inline tryGetSnapshotByIdAndDeserialize<'A
+    let inline private tryGetSnapshotByIdAndDeserialize<'A
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -96,7 +96,7 @@ module CommandHandler =
             }
             |> Async.RunSynchronously
 
-    let inline snapEventIdStateAndEvents<'A, 'E
+    let inline private snapEventIdStateAndEvents<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)

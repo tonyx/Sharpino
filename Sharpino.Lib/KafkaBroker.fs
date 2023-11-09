@@ -26,7 +26,9 @@ module KafkaBroker =
         Event: string
     }
 
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // uncomment following for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
         let config = ProducerConfig()
