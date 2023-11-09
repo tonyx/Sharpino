@@ -11,14 +11,18 @@
 
 ## What is it?
 
-
 A library about a simple event-sourcing framework in F#.
-The example app I provided is more related to the Property-Sourcing (see [here](https://event-driven.io/en/property-sourcing/) for a nice explanation of the difference between event-sourcing and property-sourcing).
-However, that is a limitation of my example, and not a limitation of the library (and more examples will come later)
-The events are stored in append mode and cannot be deleted or updated, so the solution at the moment it is not suitable for sensitive data (see GDPR).
+Note: events cannot store sensible data (that are regulated by GDPR) because there is no automated way to let users delete them.
 
-## Projects:
+## Features
+- Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
+- Support publishing events to Kafka.
+- Example application with tests including Kafka subscriber.
+- Simple way to refactor aggregates
+- Aggregates are defined as a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
+- The examples consist in aggregates with no root.
 
+## Projects
 
 __Sharpino.Lib__:
 
@@ -30,7 +34,7 @@ __Sharpino.Lib__:
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
 
 
-__Sharpino.Sample__:
+__Sharpino.Sample__
 You need a user called 'safe' with password 'safe' in your postgres (if you want to use postgres as event store).
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the aggregates. There is a strategy to test the migration between versions (aggregate refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
@@ -44,12 +48,14 @@ It is an example of a library for managing todos with tags and categories. There
 - __aggregates__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/aggregates/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
 __Commands__ defines also _undoers_ that are functions that can undo the commands to reverse action in a multiple-stream operation for storage that don't support multiple-stream transactions (see _LightCommandHandler_).
 - A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves __aggregates__, _events_ and _snapshots_.
-- The [Repository](Sharpino.Lib/Repository.fs) can build and retrieve snapshots, run the __commands__ and store the related __events__.
 - The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more aggregates by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
 __Sharpino.Sample.tests__
 - tests for the sample application
+
+__Sharpino.Sample.Kafka__
+- scripts to setup a Kafka topics corresponding to aggregates of the sample application
 
 ## How to use it
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:

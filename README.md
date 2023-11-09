@@ -17,7 +17,7 @@ Note: events cannot store sensible data (that are regulated by GDPR) because the
 ## Features
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
 - Support publishing events to Kafka.
-- Example application with tests including Kafka tests.
+- Example application with tests including Kafka subscriber.
 - Simple way to refactor aggregates
 - Aggregates are defined as a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
 - The examples consist in aggregates with no root.
