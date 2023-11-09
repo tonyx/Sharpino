@@ -15,14 +15,14 @@ A library about a simple event-sourcing framework in F#.
 Note: events cannot store sensible data (that are regulated by GDPR) because there is no automated way to let users delete them.
 
 ## Features
-Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
-Support publishing events to Kafka.
-Example application with tests including Kafka tests.
-Simple way to refactor aggregates
-Aggregates are defined as a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
-The examples consist in aggregates with no root.
+- Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
+- Support publishing events to Kafka.
+- Example application with tests including Kafka tests.
+- Simple way to refactor aggregates
+- Aggregates are defined as a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
+- The examples consist in aggregates with no root.
 
-## Projects:
+## Projects
 
 __Sharpino.Lib__:
 
@@ -34,7 +34,7 @@ __Sharpino.Lib__:
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
 
 
-__Sharpino.Sample__:
+__Sharpino.Sample__
 You need a user called 'safe' with password 'safe' in your postgres (if you want to use postgres as event store).
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the aggregates. There is a strategy to test the migration between versions (aggregate refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
@@ -53,6 +53,9 @@ __Commands__ defines also _undoers_ that are functions that can undo the command
 
 __Sharpino.Sample.tests__
 - tests for the sample application
+
+__Sharpino.Sample.Kafka__
+- scripts to setup a Kafka topics corresponding to aggregates of the sample application
 
 ## How to use it
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
