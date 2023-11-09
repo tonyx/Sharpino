@@ -11,14 +11,18 @@
 
 ## What is it?
 
-
 A library about a simple event-sourcing framework in F#.
-The example app I provided is more related to the Property-Sourcing (see [here](https://event-driven.io/en/property-sourcing/) for a nice explanation of the difference between event-sourcing and property-sourcing).
-However, that is a limitation of my example, and not a limitation of the library (and more examples will come later)
-The events are stored in append mode and cannot be deleted or updated, so the solution at the moment it is not suitable for sensitive data (see GDPR).
+Note: events cannot store sensible data (that are regulated by GDPR) because there is no automated way to let users delete them.
+
+## Features
+Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
+Support publishing events to Kafka.
+Example application with tests including Kafka tests.
+Simple way to refactor aggregates
+Aggregates are defined as a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
+The examples consist in aggregates with no root.
 
 ## Projects:
-
 
 __Sharpino.Lib__:
 
