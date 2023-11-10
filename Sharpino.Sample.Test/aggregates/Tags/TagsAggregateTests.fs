@@ -5,7 +5,7 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.TagsCluster
 open Sharpino.Sample.Entities.Tags
 
 open Sharpino.Utils
@@ -15,14 +15,14 @@ let tagsAggregateTests =
     testList "tags aggregate tests" [
         testCase "add a tag - Ok" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsAggregate.Zero.AddTag tag
+            let aggregate = TagsCluster.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
 
         testCase "add and remove a tag - Ok" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsAggregate.Zero.AddTag tag
+            let aggregate = TagsCluster.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
@@ -32,7 +32,7 @@ let tagsAggregateTests =
 
         testCase "try removing an unexisting tag - Ko" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsAggregate.Zero.AddTag tag
+            let aggregate = TagsCluster.Zero.AddTag tag
             Expect.isOk aggregate "should be ok"
             let result = aggregate |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"

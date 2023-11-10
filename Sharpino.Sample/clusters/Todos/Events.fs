@@ -3,7 +3,7 @@ namespace Sharpino.Sample.Todos
 open System
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.TodosCluster
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Utils
@@ -15,8 +15,8 @@ module TodoEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
-            interface Event<TodosAggregate> with
-                member this.Process (x: TodosAggregate) =
+            interface Event<TodosCluster> with
+                member this.Process (x: TodosCluster) =
                     match this with
                     | TodoAdded (t: Todo) ->
                         t |> x.AddTodo

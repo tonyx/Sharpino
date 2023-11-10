@@ -9,9 +9,9 @@ open Sharpino.Definitions
 open Sharpino.Sample.Entities.Categories
 open System
 
-module CategoriesAggregate =
+module CategoriesCluster =
 
-    type CategoriesAggregate =
+    type CategoriesCluster =
         {
             Categories: Categories
         }
@@ -60,4 +60,4 @@ module CategoriesAggregate =
             this
             |> serializer.Serialize
         static member Deserialize (serializer: ISerializer, json: Json)=
-            serializer.Deserialize<CategoriesAggregate> json
+            serializer.Deserialize<CategoriesCluster> json

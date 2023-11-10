@@ -5,7 +5,7 @@ open System
 open Sharpino.Core
 
 open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesEvents
 
 module CategoriesCommands =
@@ -14,8 +14,8 @@ module CategoriesCommands =
         | RemoveCategory of Guid
         | AddCategories of List<Category>
 
-        interface Command<CategoriesAggregate, CategoryEvent> with
-            member this.Execute (x: CategoriesAggregate) = 
+        interface Command<CategoriesCluster, CategoryEvent> with
+            member this.Execute (x: CategoriesCluster) = 
                 match this with
                 | AddCategory c ->
                     x.AddCategory c

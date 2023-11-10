@@ -8,19 +8,19 @@ open Sharpino.LightCommandHandler
 open Sharpino.Sample
 open Sharpino.Storage
 open Sharpino.Sample.Todos
-open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.TodosCluster
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Todos.TodoCommands
 open Sharpino.Sample.Entities.Todos
 
-open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.TagsCluster
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Tags.TagCommands
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample.Categories
-open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesCommands
 open Sharpino.Sample.Categories.CategoriesEvents
 open System
@@ -37,12 +37,12 @@ module EventStoreApp =
                 return!
                     tag
                     |> TagCommand.AddTag
-                    |> runCommand<TagsAggregate, TagEvent> storage
+                    |> runCommand<TagsCluster, TagEvent> storage
             }
                 
         member this.GetAllTags() =
             result {
-                let! (_, stateX ) = storage |> getState<TagsAggregate, TagEvent >
+                let! (_, stateX ) = storage |> getState<TagsCluster, TagEvent >
 
                 let tags = stateX.GetTags()
                 return tags
@@ -50,14 +50,14 @@ module EventStoreApp =
 
         member this.GetAllTodos() =
             result {
-                let! (_, state') = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
+                let! (_, state') = storage |> getState<TodosCluster, TodoEvents.TodoEvent>
                 let todos = state'.GetTodos()
                 return todos
             }
 
         member this.AddTodo todo =
             result {
-                let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
+                let! (_, tagState' ) = storage |> getState<TagsCluster, TagEvent>
                 let tagIds = tagState'.GetTags() |>> fun x -> x.Id
                     
                 let! tagIdIsValid = 
@@ -68,10 +68,10 @@ module EventStoreApp =
                 let! _ =
                     todo
                     |> TodoCommand.AddTodo
-                    |> runCommand<TodosAggregate, TodoEvent> storage
+                    |> runCommand<TodosCluster, TodoEvent> storage
 
                 let _ =
-                    storage |> mkSnapshotIfIntervalPassed<TodosAggregate, TodoEvent> 
+                    storage |> mkSnapshotIfIntervalPassed<TodosCluster, TodoEvent> 
                 return ()
             }
 
@@ -81,7 +81,7 @@ module EventStoreApp =
                     return!
                         id
                         |> TodoCommand.RemoveTodo
-                        |> runCommand<TodosAggregate, TodoEvent> storage
+                        |> runCommand<TodosCluster, TodoEvent> storage
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -94,7 +94,7 @@ module EventStoreApp =
                     return!
                         category
                         |> TodoCommand.AddCategory
-                        |> runCommand<TodosAggregate, TodoEvent> storage
+                        |> runCommand<TodosCluster, TodoEvent> storage
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -103,7 +103,7 @@ module EventStoreApp =
 
         member this.GetAllCategories() =
             result {
-                let! (_, state' ) = storage |> getState<TodosAggregate, TodoEvents.TodoEvent>
+                let! (_, state' ) = storage |> getState<TodosCluster, TodoEvents.TodoEvent>
                 let categories = state'.GetCategories()
                 return categories
             }
@@ -114,7 +114,7 @@ module EventStoreApp =
                     return! 
                         id
                         |> TodoCommand.RemoveCategory
-                        |> runCommand<TodosAggregate, TodoEvent> storage
+                        |> runCommand<TodosCluster, TodoEvent> storage
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -126,7 +126,7 @@ module EventStoreApp =
                 result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
-                    return! runTwoCommands<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                    return! runTwoCommands<TagsCluster, TodosCluster, TagEvent, TodoEvent> storage removeTag removeTagRef
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -137,7 +137,7 @@ module EventStoreApp =
                 result {
                     let removeTag = TagCommand.RemoveTag id
                     let removeTagRef = TodoCommand.RemoveTagRef id
-                    return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsAggregate, TodosAggregate, TagEvent, TodoEvent> storage removeTag removeTagRef
+                    return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsCluster, TodosCluster, TagEvent, TodoEvent> storage removeTag removeTagRef
                 }
             async { 
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -147,7 +147,7 @@ module EventStoreApp =
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->
                 result {
-                    let! (_, tagState' ) = storage |> getState<TagsAggregate, TagEvent>
+                    let! (_, tagState' ) = storage |> getState<TagsCluster, TagEvent>
                     let tagIds = 
                         tagState'.GetTags() 
                         |> List.map (fun x -> x.Id)
@@ -163,7 +163,7 @@ module EventStoreApp =
                     return! 
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
-                        |> runCommand<TodosAggregate, TodoEvent> storage
+                        |> runCommand<TodosCluster, TodoEvent> storage
                 }
             async {
                 return lightProcessor.PostAndReply (fun rc -> f, rc)
@@ -172,7 +172,7 @@ module EventStoreApp =
 
         member this.TodoReport (dateFrom: DateTime) (dateTo: DateTime) =
             try
-                let events = storage.ConsumeEventsInATimeInterval TodosAggregate.Version TodosAggregate.StorageName dateFrom dateTo |>> snd
+                let events = storage.ConsumeEventsInATimeInterval TodosCluster.Version TodosCluster.StorageName dateFrom dateTo |>> snd
                 let result = {InitTime = dateFrom; EndTime = dateTo; TodoEvents = events}
                 result
             with _ as ex ->

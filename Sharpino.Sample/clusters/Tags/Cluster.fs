@@ -7,8 +7,8 @@ open Sharpino.Definitions
 open System
 open FsToolkit.ErrorHandling
 
-module TagsAggregate =
-    type TagsAggregate =
+module TagsCluster =
+    type TagsCluster =
         {
             Tags: Tags
         }
@@ -52,4 +52,4 @@ module TagsAggregate =
             |> serializer.Serialize
 
         static member Deserialize (serializer: ISerializer, json: Json) =
-            serializer.Deserialize<TagsAggregate> json
+            serializer.Deserialize<TagsCluster> json

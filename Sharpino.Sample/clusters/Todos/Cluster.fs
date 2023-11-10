@@ -9,8 +9,8 @@ open Sharpino.Definitions
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
-module TodosAggregate =
-    type TodosAggregate =
+module TodosCluster =
+    type TodosCluster =
         {
             todos: Todos
             categories: Categories
@@ -28,8 +28,8 @@ module TodosAggregate =
             15 
         static member Lock =
             new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosAggregate, string>  =
-            serializer.Deserialize<TodosAggregate> json
+        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosCluster, string>  =
+            serializer.Deserialize<TodosCluster> json
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

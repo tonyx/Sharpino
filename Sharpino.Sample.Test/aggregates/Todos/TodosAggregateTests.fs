@@ -8,7 +8,7 @@ open FSharp.Core
 
 open Tests.Sharpino.Shared
 
-open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.TodosCluster
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Utils
@@ -20,14 +20,14 @@ let todosAggregateTests =
 
         testCase "add todo - Ok" <| fun _ ->
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
-            let aggregate = TodosAggregate.Zero.AddTodo todo
+            let aggregate = TodosCluster.Zero.AddTodo todo
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
             Expect.equal (result.GetTodos() |> List.length) 1 "should be equal"
 
         testCase "add category - Ok" <| fun _ ->
             let category = mkCategory (Guid.NewGuid()) "test"
-            let aggregate = TodosAggregate.Zero.AddCategory category
+            let aggregate = TodosCluster.Zero.AddCategory category
             Expect.isOk aggregate "should be ok"
             let result = aggregate.OkValue
             Expect.equal (result.GetCategories() |> List.length) 1 "should be equal"
@@ -35,7 +35,7 @@ let todosAggregateTests =
         testCase "add a todo rererencing an unexisting category - Ko" <| fun _ ->
             let guid = Guid.NewGuid()
             let category = mkCategory guid "test"
-            let aggregate = TodosAggregate.Zero.AddCategory category |> Result.get
+            let aggregate = TodosCluster.Zero.AddCategory category |> Result.get
             let anotherGuid = Guid.NewGuid()
             let todo = mkTodo (Guid.NewGuid()) "test" [anotherGuid] []
             let aggregate' = aggregate.AddTodo todo
@@ -45,7 +45,7 @@ let todosAggregateTests =
 
         testCase "add a todo referencing an existing category - Ok" <| fun _ ->
             let category = mkCategory (Guid.NewGuid()) "test"
-            let aggregate = TodosAggregate.Zero.AddCategory category |> Result.get
+            let aggregate = TodosCluster.Zero.AddCategory category |> Result.get
             let todo = mkTodo (Guid.NewGuid()) "test" [category.Id] []
             let result = aggregate.AddTodo todo |> Result.get
             Expect.equal (result.GetTodos()) [todo] "should be equal"
@@ -53,13 +53,13 @@ let todosAggregateTests =
         testCase "add a todo referencing an existing category 2 - Ok" <| fun _ ->
             let category1 = mkCategory (Guid.NewGuid()) "test1"
             let category2 = mkCategory (Guid.NewGuid()) "test2"
-            let aggregate = TodosAggregate.Zero.AddCategory category1
+            let aggregate = TodosCluster.Zero.AddCategory category1
             Expect.isOk aggregate "should be ok"
 
             let aggregateWithCategories =
                 (
                     ResultCE.result {
-                        let! aggregate = TodosAggregate.Zero.AddCategory category1 
+                        let! aggregate = TodosCluster.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result
                     }
@@ -78,7 +78,7 @@ let todosAggregateTests =
             let aggregateWithCategories =
                 (
                     ResultCE.result {
-                        let! aggregate = TodosAggregate.Zero.AddCategory category1 
+                        let! aggregate = TodosCluster.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result
                     }
@@ -97,7 +97,7 @@ let todosAggregateTests =
             let aggregateWithCategories =
                 (
                     ResultCE.result {
-                        let! aggregate = TodosAggregate.Zero.AddCategory category1 
+                        let! aggregate = TodosCluster.Zero.AddCategory category1 
                         let! result = aggregate.AddCategory category2
                         return result
                     }
@@ -114,7 +114,7 @@ let todosAggregateTests =
         testCase "when remove a category, all references to it should be removed from todos - Ok" <| fun _ ->
             let categoryId = Guid.NewGuid()
             let category = mkCategory categoryId "test"
-            let aggregate = (TodosAggregate.Zero.AddCategory category) |> Result.get
+            let aggregate = (TodosCluster.Zero.AddCategory category) |> Result.get
             let todo = mkTodo (Guid.NewGuid()) "test" [categoryId] []
             let aggregate' = aggregate.AddTodo todo  |> Result.get
 
@@ -129,7 +129,7 @@ let todosAggregateTests =
             let categoryId2 = Guid.NewGuid()
             let category = mkCategory categoryId "test"
             let category2 = mkCategory categoryId2 "test2"
-            let aggregate = (TodosAggregate.Zero.AddCategory category) |> Result.get
+            let aggregate = (TodosCluster.Zero.AddCategory category) |> Result.get
             let aggregate2 = (aggregate.AddCategory category2) |> Result.get
             let todo = mkTodo (Guid.NewGuid()) "test" [categoryId; categoryId2] []
             let aggregate' = aggregate2.AddTodo todo  |> Result.get
@@ -147,7 +147,7 @@ let todosAggregateTests =
 
             let category2 = mkCategory categoryId2 "test2"
 
-            let aggregate1 = (TodosAggregate.Zero.AddCategory category1).OkValue 
+            let aggregate1 = (TodosCluster.Zero.AddCategory category1).OkValue 
             let aggregate2 = (aggregate1.AddCategory category2).OkValue 
 
             let todo1 = mkTodo (Guid.NewGuid()) "test" [categoryId1; categoryId2] []

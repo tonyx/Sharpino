@@ -1,11 +1,11 @@
 namespace Sharpino.Sample
 open Sharpino.Utils
-open Sharpino.Sample.TodosAggregate
+open Sharpino.Sample.TodosCluster
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
-open Sharpino.Sample.TagsAggregate
+open Sharpino.Sample.TagsCluster
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
@@ -38,15 +38,15 @@ module Converters =
             this |> serializer.Serialize
 
     // aggregates
-    type TodosAggregate with
+    type TodosCluster with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
     type TodosAggregate' with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-    type CategoriesAggregate with
+    type CategoriesCluster with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-    type TagsAggregate with
+    type TagsCluster with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize

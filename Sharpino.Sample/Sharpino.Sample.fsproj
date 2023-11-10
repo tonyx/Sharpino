@@ -9,16 +9,16 @@
     <Compile Include="entities/Tags.fs" />
     <Compile Include="entities/Categories.fs" />
     <Compile Include="entities/Todos.fs" />
-    <Compile Include="aggregates/Todos/Aggregate.fs" />
-    <Compile Include="aggregates/Todos/Events.fs" />
-    <Compile Include="aggregates/Todos/Commands.fs" />
-    <Compile Include="aggregates/Tags/Aggregate.fs" />
-    <Compile Include="aggregates/Tags/Events.fs" />
-    <Compile Include="aggregates/Tags/Commands.fs" />
+    <Compile Include="clusters/Todos/Cluster.fs" />
+    <Compile Include="clusters/Todos/Events.fs" />
+    <Compile Include="clusters/Todos/Commands.fs" />
+    <Compile Include="clusters/Tags/Cluster.fs" />
+    <Compile Include="clusters/Tags/Events.fs" />
+    <Compile Include="clusters/Tags/Commands.fs" />
 
-    <Compile Include="aggregates/Categories/Aggregate.fs" />
-    <Compile Include="aggregates/Categories/Events.fs" />
-    <Compile Include="aggregates/Categories/Commands.fs" />
+    <Compile Include="clusters/Categories/Cluster.fs" />
+    <Compile Include="clusters/Categories/Events.fs" />
+    <Compile Include="clusters/Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />
 
     <Compile Include="JSON/Converters.fs" />

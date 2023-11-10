@@ -8,9 +8,9 @@ open Sharpino.Utils
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.TodosAggregate
-open Sharpino.Sample.TagsAggregate
-open Sharpino.Sample.CategoriesAggregate
+open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Entities.TodosReport
 
@@ -60,21 +60,21 @@ module AppVersions =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
 
     let resetDb (db: IStorage) =
-        db.Reset TodosAggregate.Version TodosAggregate.StorageName
-        SnapCache<TodosAggregate>.Instance.Clear()
-        StateCache<TodosAggregate>.Instance.Clear()
+        db.Reset TodosCluster.Version TodosCluster.StorageName
+        SnapCache<TodosCluster>.Instance.Clear()
+        StateCache<TodosCluster>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        SnapCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
-        StateCache<TodosAggregate.TodosAggregate'>.Instance.Clear()
+        SnapCache<TodosCluster.TodosAggregate'>.Instance.Clear()
+        StateCache<TodosCluster.TodosAggregate'>.Instance.Clear()
 
-        db.Reset TagsAggregate.Version TagsAggregate.StorageName
-        SnapCache<TagsAggregate>.Instance.Clear()
-        StateCache<TagsAggregate>.Instance.Clear()
+        db.Reset TagsCluster.Version TagsCluster.StorageName
+        SnapCache<TagsCluster>.Instance.Clear()
+        StateCache<TagsCluster>.Instance.Clear()
 
-        db.Reset CategoriesAggregate.Version CategoriesAggregate.StorageName
-        SnapCache<CategoriesAggregate>.Instance.Clear()
-        StateCache<CategoriesAggregate>.Instance.Clear()
+        db.Reset CategoriesCluster.Version CategoriesCluster.StorageName
+        SnapCache<CategoriesCluster>.Instance.Clear()
+        StateCache<CategoriesCluster>.Instance.Clear()
 
     let resetEventStore() =
 
