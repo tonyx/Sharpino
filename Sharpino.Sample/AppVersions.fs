@@ -37,21 +37,16 @@ module AppVersions =
 
     let pgStorage = PgStorage.PgStorage(connection)
 
-    let doNothingBroker = 
-        {
-            notify = None
-        }
-
     let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
-    let currentPgApp = App.CurrentVersionApp(pgStorage, doNothingBroker)
+    let currentPgApp = App.CurrentVersionApp(pgStorage)
 
     let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
 
-    let upgradedPgApp = App.UpgradedApp(pgStorage, doNothingBroker)
-    let currentMemApp = App.CurrentVersionApp(memoryStorage, doNothingBroker)
-    let upgradedMemApp = App.UpgradedApp(memoryStorage, doNothingBroker)
+    let upgradedPgApp = App.UpgradedApp(pgStorage)
+    let currentMemApp = App.CurrentVersionApp(memoryStorage)
+    let upgradedMemApp = App.UpgradedApp(memoryStorage)
 
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
     let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))

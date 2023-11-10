@@ -27,8 +27,13 @@ open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
 module App =
+    let doNothingBroker = 
+        {
+            notify = None
+        }
     [<CurrentVersion>]
     type CurrentVersionApp(storage: IStorage, eventBroker: IEventBroker) =
+        new(storage: IStorage) = CurrentVersionApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result  {
@@ -160,6 +165,7 @@ module App =
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IStorage, eventBroker: IEventBroker) =
+        new(storage: IStorage) = UpgradedApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result {
