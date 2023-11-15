@@ -85,13 +85,16 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<EventId * 'A, string>) (arg: SnapId) =
-            let (b, res) = dic.TryGetValue arg
-            if b then
-                res
-            else
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
+            f()
+
+            // I deided to skip the cache for the snapshot. No needed if there is state cache!
+            // let (b, res) = dic.TryGetValue arg
+            // if b then
+            //     res
+            // else
+            //     let res = f()
+            //     this.TryAddToDictionary(arg, res)
+            //     res
         member this.Clear() =
             dic.Clear()
             queue.Clear()

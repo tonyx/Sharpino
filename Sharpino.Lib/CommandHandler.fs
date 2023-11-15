@@ -236,8 +236,8 @@ module CommandHandler =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
                             let _ =
                                 match result with
-                                | Ok idList -> 
-                                    let idAndEvents = List.zip idList events'
+                                | Ok ids -> 
+                                    let idAndEvents = List.zip ids events'
                                     tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
                                 | Error e ->
                                     log.Error (sprintf "runCommand: %s" e)
