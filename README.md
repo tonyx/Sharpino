@@ -57,6 +57,11 @@ __Sharpino.Sample.Kafka__
 - scripts to setup a Kafka topics corresponding to clusters of the sample application
 
 ## How to use it
+- You can run the sample application as a rest service by running the following command from the Sharpino.Sample folder:
+```bash
+dotnet run
+```
+
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
 ```bash
 dotnet test 

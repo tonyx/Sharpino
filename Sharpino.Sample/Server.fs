@@ -15,7 +15,6 @@ module Route =
 module Server =
     let app = currentMemoryApp
 
-
     // put this in a  project called "Shared"
     type ITodosApi =
         {
@@ -30,7 +29,6 @@ module Server =
             RemoveTag: Guid -> Async<Result<unit, string>>
             GetAllTags: unit -> Async<Result<List<Tag>, string>>
         }
-
 
     let todosApi: ITodosApi =
         {

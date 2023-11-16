@@ -7,12 +7,6 @@
     <GenerateProgramFile>false</GenerateProgramFile> 
   </PropertyGroup>
     
-
-  <!-- <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup> -->
-
   <ItemGroup>
     <Compile Include="entities/Tags.fs" />
     <Compile Include="entities/Categories.fs" />
@@ -47,7 +41,6 @@
     <PackageReference Include="Fable.Remoting.Giraffe" Version="5.17.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.11.0" />
     <PackageReference Include="Saturn" Version="0.16.1" />
-    <!-- <PackageReference Include="FsToolkit.ErrorHandling" Version="4.11.0" /> -->
 
     <!-- comment this while developing the library -->
     <PackageReference Include="Sharpino" Version="1.3.2" />
