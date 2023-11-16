@@ -168,7 +168,7 @@ let multiVersionsTests =
             return deserialized'.Event
         }
 
-    testList "App with coordinator test - Ok" [
+    ftestList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []

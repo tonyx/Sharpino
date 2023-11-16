@@ -28,16 +28,18 @@
   </ItemGroup>
 
   <!-- uncomment this while developing the library -->
+
   <!-- <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
   </ItemGroup> -->
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.10.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.11.0" />
+    <!-- <PackageReference Include="FsToolkit.ErrorHandling" Version="4.11.0" /> -->
 
     <!-- comment this while developing the library -->
-    <PackageReference Include="Sharpino" Version="1.3.1" />
+    <PackageReference Include="Sharpino" Version="1.3.2" />
     <!-- comment this while developing the library -->
   </ItemGroup>
 
