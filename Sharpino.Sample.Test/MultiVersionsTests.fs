@@ -6,6 +6,7 @@ open System
 open FSharp.Core
 
 open Sharpino
+open Sharpino.ApplicationInstance
 open Sharpino.Sample
 open Sharpino.Sample.TodosCluster
 open Sharpino.Sample.TagsCluster
@@ -167,7 +168,7 @@ let multiVersionsTests =
             return deserialized'.Event
         }
 
-    ftestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
@@ -182,17 +183,17 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected received' "should be equal"
 
-        multipleTestCase "add a todo - ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                let received = listenForEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver)
                 Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let receivedOk = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
                 let expected = TodoEvents.TodoAdded todo
-                Expect.equal expected received' "should be equal"
+                Expect.equal expected receivedOk "should be equal"
 
         multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
@@ -689,7 +690,7 @@ let multiVersionsTests =
 [<Tests>]
 let kafkaReceiverTests =
     let serializer = JsonSerializer(serSettings) :> ISerializer
-    testList "kafka receiver test" [
+    ptestList "kafka receiver test" [
         testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
             currentVersionPgWithKafkaApp._reset()
 
@@ -699,9 +700,7 @@ let kafkaReceiverTests =
             let added = currentVersionPgWithKafkaApp.addTodo todo
             Expect.isOk added "should be ok"
 
-            printf "here\n"
             let received = receiver.Consume()
-            printf "here2\n"
 
             let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
             let mutable deserializedVal = deserialized.OkValue
