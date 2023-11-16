@@ -15,6 +15,8 @@ module Route =
 module Server =
     let app = currentMemoryApp
 
+
+    // put this in a  project called "Shared"
     type ITodosApi =
         {
             AddTodo: Todo -> Async<Result<unit, string>>
