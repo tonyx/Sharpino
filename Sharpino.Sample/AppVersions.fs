@@ -39,11 +39,15 @@ module AppVersions =
 
     let pgStorage = PgStorage.PgStorage(connection)
 
+
+
+    // I had to comment this out because it gives annoying messages when kafka is not enabled
     // let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(pgStorage)
 
+    // I had to comment this out because it gives annoying messages when kafka is not enabled
     // let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
 
     let upgradedPgApp = App.UpgradedApp(pgStorage)
@@ -179,6 +183,7 @@ module AppVersions =
             todoReport =        currentMemApp.TodoReport
         }
 
+    // I had to comment this out because it gives annoying messages when kafka is not enabled
     // [<CurrentVersion>]
     // let currentVersionPgWithKafkaApp =
     //     {
