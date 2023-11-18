@@ -62,6 +62,13 @@ __Sharpino.Sample.Kafka__
 dotnet run
 ```
 
+- You can run the client Fable/Elmish sample application by running the following command from the Sharpino.Sample.Client folder:
+```bash
+npm install
+npm start
+```
+
+
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
 ```bash
 dotnet test 
