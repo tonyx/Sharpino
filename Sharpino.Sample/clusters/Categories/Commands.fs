@@ -7,6 +7,7 @@ open Sharpino.Core
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesEvents
+open Sharpino.Sample.Shared.Entities
 
 module CategoriesCommands =
     type CategoryCommand =

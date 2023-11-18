@@ -3,42 +3,34 @@ open Sharpino.EventSourcing.Sample.AppVersions
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Shared.Entities
+open Sharpino.Sample.Shared.Service
+open Sharpino.Sample.Shared
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Saturn
 open System
-
-module Route =
-    let builder typeName methodName =
-        sprintf "/api/%s/%s" typeName methodName
+open log4net
 
 module Server =
+    // let app = currentMemoryApp // currentPostgresApp
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
+    log.Debug "starting server"
+    // let app = currentPostgresApp
     let app = currentMemoryApp
-
-    // put this in a  project called "Shared"
-    type ITodosApi =
-        {
-            AddTodo: Todo -> Async<Result<unit, string>>
-            GetAllTodos: unit -> Async<Result<List<Todo>, string>>
-            Add2Todos: Todo * Todo -> Async<Result<unit, string>>
-            RemoveTodo: Guid -> Async<Result<unit, string>>
-            GetAllCategories: unit -> Async<Result<List<Category>, string>>
-            AddCategory: Category -> Async<Result<unit, string>>
-            RemoveCategory: Guid -> Async<Result<unit, string>>
-            AddTag: Tag -> Async<Result<unit, string>>
-            RemoveTag: Guid -> Async<Result<unit, string>>
-            GetAllTags: unit -> Async<Result<List<Tag>, string>>
-        }
 
     let todosApi: ITodosApi =
         {
             AddTodo =
                 fun (t: Todo) ->
+                    log.Debug (sprintf "adding todo %A" t)
                     async {
                             return app.addTodo t
                     }
             GetAllTodos = 
                 fun () ->
+                    log.Debug "getting all todos"
                     async {
                         return app.getAllTodos ()
                     }

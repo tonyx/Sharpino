@@ -2,6 +2,7 @@
 module Tests.Sharpino.Sample.Tags.Models.TagsTests
 
 open Tests.Sharpino.Shared
+open Sharpino.Sample.Shared.Entities
 
 open Expecto
 open System

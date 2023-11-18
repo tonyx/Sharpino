@@ -6,6 +6,7 @@ open Sharpino.Core
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.Shared.Entities
 
 module TagCommands =
     open FsToolkit.ErrorHandling

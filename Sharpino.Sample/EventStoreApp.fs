@@ -18,6 +18,7 @@ open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Tags.TagCommands
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Entities.TodosReport
+open Sharpino.Sample.Shared.Entities
 
 open Sharpino.Sample.Categories
 open Sharpino.Sample.CategoriesCluster

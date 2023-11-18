@@ -4,6 +4,8 @@ open Sharpino.Sample.Entities.Tags
 open Sharpino.Utils
 open Sharpino.Definitions
 
+open Sharpino.Sample.Shared.Entities
+
 open System
 open FsToolkit.ErrorHandling
 

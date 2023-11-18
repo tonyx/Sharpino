@@ -14,8 +14,11 @@ output/
 packages/
 *.orig
 *.DotSettings.user
-*.trx
-Sharpino.Lib/Sharpino.Lib.1.0.0.nupkg
+*.trx 
+**/.bin/
+**/.vite/
+**/node_modules/**
+Sharpino.Lib/Sharpino.Lib.*.nupkg
 __azurite_db_blob__.json
 __azurite_db_blob_extent__.json
 __azurite_db_queue__.json

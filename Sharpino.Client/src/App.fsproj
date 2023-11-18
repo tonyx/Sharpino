@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Include="index.html" />
+        <Compile Include="Index.fs" />
+        <Compile Include="Main.fs" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Fable.Core" Version="4.2.0" />
+        <PackageReference Include="Fable.Elmish" Version="4.1.0" />
+        <PackageReference Include="Fable.Elmish.Debugger" Version="4.0.0" />
+        <PackageReference Include="Fable.Elmish.React" Version="4.0.0" />
+        <PackageReference Include="Fable.Mocha" Version="2.17.0" />
+        <PackageReference Include="Fable.React" Version="9.3.0" />
+        <PackageReference Include="Fable.Remoting.Client" Version="7.29.0" />
+        <PackageReference Include="Feliz" Version="2.6.0" />
+        <PackageReference Include="Feliz.Bulma" Version="3.0.0" />
+        <PackageReference Include="Feliz.Bulma.Checkradio" Version="3.0.0" />
+        <PackageReference Include="Feliz.Router" Version="4.0.0" />
+        <PackageReference Include="Fulma" Version="3.0.0" />
+        <PackageReference Update="FSharp.Core" Version="7.*" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />
+    </ItemGroup>
+</Project>

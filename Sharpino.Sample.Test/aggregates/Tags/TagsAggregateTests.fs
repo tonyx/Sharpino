@@ -7,6 +7,7 @@ open FSharp.Core
 
 open Sharpino.Sample.TagsCluster
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Sample.Shared.Entities
 
 open Sharpino.Utils
 

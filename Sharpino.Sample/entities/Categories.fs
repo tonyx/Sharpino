@@ -6,15 +6,9 @@ open FsToolkit.ErrorHandling
 open Sharpino.Core
 open Sharpino.Utils
 
+open Sharpino.Sample.Shared.Entities
 
 module Categories =
-    type Category =
-        {
-            Id: Guid
-            Name: string
-        }
-        interface Entity with
-            member this.Id = this.Id
     type Categories = 
         {
             categories: List<Category>
@@ -39,7 +33,7 @@ module Categories =
                 }
 
             member this.AddCategories (cs: List<Category>) =
-                let checkNotExists c =
+                let checkNotExists (c: Category) =
                     this.categories
                     |> List.exists (fun x -> x.Name = c.Name)
                     |> not

@@ -9,6 +9,7 @@ open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
+open Sharpino.Sample.Shared.Entities
 
 // this is to remind you that you wanto to extend entities behavior
 // for json in a separate file like this but it does not work yet.

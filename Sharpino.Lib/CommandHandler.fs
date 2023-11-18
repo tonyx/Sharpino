@@ -149,8 +149,11 @@ module CommandHandler =
             let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
-            | Ok state -> (lastEventId, state) |> Ok
-            | Error e -> Error e
+            | Ok state -> 
+                (lastEventId, state) |> Ok
+            | Error e -> 
+                log.Error (sprintf "getState: %s" e)
+                Error e
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mksnapshot<'A, 'E
@@ -220,7 +223,7 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
-            log.Debug (sprintf "runCommand %A" command)
+            log.Debug (sprintf "runCommand  %A" command)
             lock 'A.Lock <| fun () ->
                 async {
                     return

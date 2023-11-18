@@ -8,6 +8,7 @@ open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesCluster
+open Sharpino.Sample.Shared.Entities
 
 module CategoriesEvents =
     type CategoryEvent =

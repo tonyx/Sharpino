@@ -7,6 +7,7 @@ open Sharpino.Storage
 open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Shared.Entities
 open System
 
 module CategoriesCluster =

@@ -3,8 +3,10 @@ open System
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
+open Sharpino.Sample.Shared.Entities
 open Sharpino.Utils
 open Sharpino.Definitions
+
 
 open FSharpPlus
 open FsToolkit.ErrorHandling

@@ -2,20 +2,11 @@ namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
-open Sharpino.Core
 open FsToolkit.ErrorHandling
+open Sharpino.Sample.Shared.Entities
 
 module Todos =
 
-    type Todo =
-        {
-            Id: Guid
-            CategoryIds : List<Guid>
-            TagIds: List<Guid>
-            Description: string
-        }
-        interface Entity with
-            member this.Id = this.Id
     type Todos =
         {
             todos: List<Todo>

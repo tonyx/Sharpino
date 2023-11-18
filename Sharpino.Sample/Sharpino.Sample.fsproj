@@ -47,4 +47,8 @@
     <!-- comment this while developing the library -->
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />
+  </ItemGroup>
+
 </Project>

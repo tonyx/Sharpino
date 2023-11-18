@@ -16,6 +16,7 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags
 open Sharpino.Sample.Tags.TagsEvents
+open Sharpino.Sample.Shared.Entities
 open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 open Sharpino.EventSourcing.Sample.AppVersions

@@ -7,6 +7,7 @@ open System
 open FSharp.Core
 
 open Sharpino.Sample.Entities.Categories
+open Sharpino.Sample.Shared.Entities
 open Sharpino.Utils
 
 [<Tests>]

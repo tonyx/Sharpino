@@ -5,6 +5,7 @@ open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.Sample.TagsCluster
 open Sharpino.Sample.Entities.Tags
+open Sharpino.Sample.Shared.Entities
 
 open System
 

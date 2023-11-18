@@ -22,11 +22,15 @@ open Sharpino.Sample.CategoriesCluster
 open Sharpino.Sample.Categories.CategoriesCommands
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Entities.TodosReport
+open Sharpino.Sample.Shared.Entities
 open Sharpino.Sample.Converters
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
+open log4net
 module App =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     let doNothingBroker = 
         {
             notify = None
@@ -42,6 +46,7 @@ module App =
             }
 
         member this.AddTodo todo =
+            printf "add todo \n"
             lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
