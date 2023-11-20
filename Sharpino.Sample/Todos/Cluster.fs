@@ -7,11 +7,12 @@ open Sharpino.Sample.Shared.Entities
 open Sharpino.Utils
 open Sharpino.Definitions
 
-
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
 module TodosCluster =
+
+    [<CurrentVersion>]
     type TodosCluster =
         {
             todos: Todos
