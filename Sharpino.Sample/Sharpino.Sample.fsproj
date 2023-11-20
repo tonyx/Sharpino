@@ -8,12 +8,12 @@
   </PropertyGroup>
     
   <ItemGroup>
-    <Compile Include="entities/Tags.fs" />
-    <Compile Include="entities/Categories.fs" />
-    <Compile Include="entities/Todos.fs" />
+    <Compile Include="Categories/Categories.fs" />
+    <Compile Include="Todos/Todos.fs" />
     <Compile Include="Todos/Cluster.fs" />
     <Compile Include="Todos/Events.fs" />
     <Compile Include="Todos/Commands.fs" />
+    <Compile Include="Tags/Tags.fs" />
     <Compile Include="Tags/Cluster.fs" />
     <Compile Include="Tags/Events.fs" />
     <Compile Include="Tags/Commands.fs" />
