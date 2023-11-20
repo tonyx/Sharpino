@@ -11,16 +11,16 @@
     <Compile Include="entities/Tags.fs" />
     <Compile Include="entities/Categories.fs" />
     <Compile Include="entities/Todos.fs" />
-    <Compile Include="clusters/Todos/Cluster.fs" />
-    <Compile Include="clusters/Todos/Events.fs" />
-    <Compile Include="clusters/Todos/Commands.fs" />
-    <Compile Include="clusters/Tags/Cluster.fs" />
-    <Compile Include="clusters/Tags/Events.fs" />
-    <Compile Include="clusters/Tags/Commands.fs" />
+    <Compile Include="Todos/Cluster.fs" />
+    <Compile Include="Todos/Events.fs" />
+    <Compile Include="Todos/Commands.fs" />
+    <Compile Include="Tags/Cluster.fs" />
+    <Compile Include="Tags/Events.fs" />
+    <Compile Include="Tags/Commands.fs" />
 
-    <Compile Include="clusters/Categories/Cluster.fs" />
-    <Compile Include="clusters/Categories/Events.fs" />
-    <Compile Include="clusters/Categories/Commands.fs" />
+    <Compile Include="Categories/Cluster.fs" />
+    <Compile Include="Categories/Events.fs" />
+    <Compile Include="Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />
 
     <Compile Include="JSON/Converters.fs" />
