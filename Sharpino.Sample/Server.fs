@@ -79,6 +79,7 @@ module Server =
 
     let webApp =
         Remoting.createApi ()
+        |> Remoting.withErrorHandler (fun ex routeInfo -> Propagate ex.Message)
         |> Remoting.withRouteBuilder Route.builder
         |> Remoting.fromValue todosApi
         |> Remoting.buildHttpHandler
