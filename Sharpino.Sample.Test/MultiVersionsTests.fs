@@ -1,4 +1,3 @@
-
 module Tests.Sharpino.Sample.MultiVersionsTests
 
 open Expecto
@@ -688,43 +687,44 @@ let multiVersionsTests =
     ] 
     |> testSequenced
 
-[<Tests>]
-let kafkaReceiverTests =
-    let serializer = JsonSerializer(serSettings) :> ISerializer
-    ptestList "kafka receiver test" [
-        testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
-            currentVersionPgWithKafkaApp._reset()
 
-            let receiver = KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClinet")
+// [<Tests>]
+// let kafkaReceiverTests =
+//     let serializer = JsonSerializer(serSettings) :> ISerializer
+//     ptestList "kafka receiver test" [
+//         testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
+//             currentVersionPgWithKafkaApp._reset()
 
-            let todo = mkTodo (Guid.NewGuid()) "testTodo" [] []
-            let added = currentVersionPgWithKafkaApp.addTodo todo
-            Expect.isOk added "should be ok"
+//             let receiver = KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClinet")
 
-            let received = receiver.Consume()
+//             let todo = mkTodo (Guid.NewGuid()) "testTodo" [] []
+//             let added = currentVersionPgWithKafkaApp.addTodo todo
+//             Expect.isOk added "should be ok"
 
-            let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-            let mutable deserializedVal = deserialized.OkValue
-            Expect.isOk added "should be ok"
+//             let received = receiver.Consume()
 
-            let mutable foundAppId = 
-                deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+//             let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
+//             let mutable deserializedVal = deserialized.OkValue
+//             Expect.isOk added "should be ok"
 
-            while (not foundAppId) do
-                let received = receiver.Consume()
-                let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-                Expect.isOk deserialized "should be ok"
-                deserializedVal <- deserialized.OkValue
-                foundAppId <- deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+//             let mutable foundAppId = 
+//                 deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
 
-            Expect.isTrue foundAppId "should be true"
-            let lastEventId = (pgStorage :> IStorage).TryGetLastEventId TodosCluster.Version TodosCluster.StorageName
-            Expect.isSome lastEventId  "should be some" 
-            Expect.equal deserializedVal.EventId lastEventId.Value "should be equal"
-            let extractedEvent = deserializedVal.Event |> serializer.Deserialize<TodoEvent>
-            Expect.isOk extractedEvent "should be ok"
-            Expect.equal extractedEvent.OkValue (TodoEvent.TodoAdded todo) "should be equal"
-    ]
+//             while (not foundAppId) do
+//                 let received = receiver.Consume()
+//                 let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
+//                 Expect.isOk deserialized "should be ok"
+//                 deserializedVal <- deserialized.OkValue
+//                 foundAppId <- deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+
+//             Expect.isTrue foundAppId "should be true"
+//             let lastEventId = (pgStorage :> IStorage).TryGetLastEventId TodosCluster.Version TodosCluster.StorageName
+//             Expect.isSome lastEventId  "should be some" 
+//             Expect.equal deserializedVal.EventId lastEventId.Value "should be equal"
+//             let extractedEvent = deserializedVal.Event |> serializer.Deserialize<TodoEvent>
+//             Expect.isOk extractedEvent "should be ok"
+//             Expect.equal extractedEvent.OkValue (TodoEvent.TodoAdded todo) "should be equal"
+//     ]
 
 [<Tests>]
 let multiCallTests =

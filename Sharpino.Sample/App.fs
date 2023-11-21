@@ -46,7 +46,6 @@ module App =
             }
 
         member this.AddTodo todo =
-            printf "add todo \n"
             lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
@@ -66,7 +65,7 @@ module App =
             )
 
         member this.Add2Todos (todo1, todo2) =
-            lock (TodosCluster.Lock) (fun () -> 
+            lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
