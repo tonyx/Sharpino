@@ -57,6 +57,18 @@ __Sharpino.Sample.Kafka__
 - scripts to setup a Kafka topics corresponding to clusters of the sample application
 
 ## How to use it
+- You can run the sample application as a rest service by running the following command from the Sharpino.Sample folder:
+```bash
+dotnet run
+```
+
+- You can run the client Fable/Elmish sample application by running the following command from the Sharpino.Sample.Client folder:
+```bash
+npm install
+npm start
+```
+
+
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
 ```bash
 dotnet test 
@@ -102,4 +114,13 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
+News: From version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
+```json
+{
+    "SharpinoConfig": {
+        "PessimisticLock": false // or true
+    }
+}
+``` 
+
 More documentation [(Sharpino gitbook)](https://tonyx.github.io)

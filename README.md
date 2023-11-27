@@ -114,4 +114,13 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
+News: From version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
+```json
+{
+    "SharpinoConfig": {
+        "PessimisticLock": false // or true
+    }
+}
+``` 
+
 More documentation [(Sharpino gitbook)](https://tonyx.github.io)

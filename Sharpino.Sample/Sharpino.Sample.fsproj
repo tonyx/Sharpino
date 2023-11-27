@@ -8,6 +8,7 @@
   </PropertyGroup>
     
   <ItemGroup>
+    <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Categories/Categories.fs" />
     <Compile Include="Todos/Todos.fs" />
     <Compile Include="Todos/Cluster.fs" />

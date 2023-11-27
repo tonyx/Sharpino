@@ -13,13 +13,24 @@ open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.KafkaBroker
+open System.Runtime
 
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
 
+
 module CommandHandler =
+    let config = 
+        try
+            Conf.config ()
+        with
+        | :? _ as ex -> 
+            // if appSettings.json is missing
+            log.Error (sprintf "appSettings.json file not foun using defult!!! %A\n" ex)
+            Conf.defaultConf
+
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
@@ -92,8 +103,9 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
-            log.Debug (sprintf "runCommand  %A" command)
-            lock 'A.Lock <| fun () ->
+            log.Debug (sprintf "runCommand %A" command)
+
+            let command = fun () ->
                 async {
                     return
                         result {
@@ -119,6 +131,13 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously 
+
+            match config.PessimisticLock with
+            | true ->
+                lock 'A.Lock <| fun () ->
+                    command()
+            | false ->
+                command()
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -149,7 +168,7 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            lock ('A1.Lock, 'A2.Lock) <| fun () ->
+            let command = fun () ->
                 async {
                     return
                         result {
@@ -191,7 +210,13 @@ module CommandHandler =
                         } 
                     }
                 |> Async.RunSynchronously
-            // result
+
+            match config.PessimisticLock with
+            | true ->
+                lock ('A1.Lock, 'A2.Lock) <| fun () ->
+                    command()
+            | false ->
+                command()
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
@@ -231,64 +256,70 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
-            let result =
+
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (_, state1) = getState<'A1, 'E1> storage
+                            let! (_, state2) = getState<'A2, 'E2> storage
+                            let! (_, state3) = getState<'A3, 'E3> storage
+                            let! events1 =
+                                state1
+                                |> command1.Execute
+                            let! events2 =
+                                state2
+                                |> command2.Execute
+                            let! events3 =
+                                state3
+                                |> command3.Execute
+
+                            let events1' =
+                                events1 
+                                |>> (fun x -> x.Serialize serializer)
+                            let events2' =
+                                events2 
+                                |>> (fun x -> x.Serialize serializer)
+                            let events3' =
+                                events3 
+                                |>> (fun x -> x.Serialize serializer)
+
+                            let result =
+                                storage.MultiAddEvents 
+                                    [
+                                        (events1', 'A1.Version, 'A1.StorageName)
+                                        (events2', 'A2.Version, 'A2.StorageName)
+                                        (events3', 'A3.Version, 'A2.StorageName)
+                                    ]
+                            let _ =
+                                match result with
+                                | Ok idLists -> 
+                                    let idAndEvents1 = List.zip idLists.[0] events1'
+                                    let idAndEvents2 = List.zip idLists.[1] events2'
+                                    let idAndEvents3 = List.zip idLists.[2] events3'
+
+                                    tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
+                                    tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                    tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
+                                | Error e -> 
+                                    log.Error (sprintf "runThreeCommands: %s" e)
+                                    ()
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
+
+                            return! result
+                        } 
+                }
+                
+                |> Async.RunSynchronously
+
+            match config.PessimisticLock with
+            | true ->
                 lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
-                    async {
-                        return
-                            result {
-                                let! (_, state1) = getState<'A1, 'E1> storage
-                                let! (_, state2) = getState<'A2, 'E2> storage
-                                let! (_, state3) = getState<'A3, 'E3> storage
-                                let! events1 =
-                                    state1
-                                    |> command1.Execute
-                                let! events2 =
-                                    state2
-                                    |> command2.Execute
-                                let! events3 =
-                                    state3
-                                    |> command3.Execute
-
-                                let events1' =
-                                    events1 
-                                    |>> (fun x -> x.Serialize serializer)
-                                let events2' =
-                                    events2 
-                                    |>> (fun x -> x.Serialize serializer)
-                                let events3' =
-                                    events3 
-                                    |>> (fun x -> x.Serialize serializer)
-
-                                let result =
-                                    storage.MultiAddEvents 
-                                        [
-                                            (events1', 'A1.Version, 'A1.StorageName)
-                                            (events2', 'A2.Version, 'A2.StorageName)
-                                            (events3', 'A3.Version, 'A2.StorageName)
-                                        ]
-                                let _ =
-                                    match result with
-                                    | Ok idLists -> 
-                                        let idAndEvents1 = List.zip idLists.[0] events1'
-                                        let idAndEvents2 = List.zip idLists.[1] events2'
-                                        let idAndEvents3 = List.zip idLists.[2] events3'
-
-                                        tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                        tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                        tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
-                                    | Error e -> 
-                                        log.Error (sprintf "runThreeCommands: %s" e)
-                                        ()
-                                let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
-                                let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
-                                let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
-
-                                return! result
-                            } 
-                    }
-                    |> Async.RunSynchronously
-            result
-
+                    command()
+            | false ->
+                command()
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
 
