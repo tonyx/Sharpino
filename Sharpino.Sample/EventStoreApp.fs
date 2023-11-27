@@ -43,6 +43,7 @@ module EventStoreApp =
                 
         member this.GetAllTags() =
             result {
+                
                 let! (_, stateX ) = storage |> getState<TagsCluster, TagEvent >
 
                 let tags = stateX.GetTags()

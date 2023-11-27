@@ -16,13 +16,6 @@ open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
-open Sharpino.Utils
-open Sharpino.Definitions
-
-open Newtonsoft.Json.Linq
-
-open System.Collections.Generic;
-open System.Linq;
 
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
@@ -245,6 +238,7 @@ module CommandHandler =
                                 | Error e ->
                                     log.Error (sprintf "runCommand: %s" e)
                                     ()
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return! result
                         }
                 }
@@ -315,6 +309,8 @@ module CommandHandler =
                                 | Error e -> 
                                     log.Error (sprintf "runTwoCommands: %s" e)
                                     ()
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
                             return! result
                         } 
                     }
@@ -407,6 +403,9 @@ module CommandHandler =
                                     | Error e -> 
                                         log.Error (sprintf "runThreeCommands: %s" e)
                                         ()
+                                let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
+                                let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
+                                let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
 
                                 return! result
                             } 

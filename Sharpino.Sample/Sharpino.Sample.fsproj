@@ -32,9 +32,9 @@
 
   <!-- uncomment this while developing the library -->
 
-  <!-- <ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> -->
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
@@ -43,7 +43,7 @@
     <PackageReference Include="Saturn" Version="0.16.1" />
 
     <!-- comment this while developing the library -->
-    <PackageReference Include="Sharpino" Version="1.3.2" />
+    <!-- <PackageReference Include="Sharpino" Version="1.3.2" /> -->
     <!-- comment this while developing the library -->
   </ItemGroup>
 
