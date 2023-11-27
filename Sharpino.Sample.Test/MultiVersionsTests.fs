@@ -28,6 +28,7 @@ open System.Threading
 open FsToolkit.ErrorHandling
 open Sharpino.KafkaBroker
 open Sharpino.Storage
+open log4net
 
 let allVersions =
     [
@@ -35,18 +36,19 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
+
         // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
@@ -168,7 +170,7 @@ let multiVersionsTests =
             return deserialized'.Event
         }
 
-    ftestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
@@ -728,6 +730,9 @@ let multiVersionsTests =
 
 [<Tests>]
 let multiCallTests =
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // enable for quick debugging
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     let doAddNewTodo() =
         let ap = AppVersions.currentPostgresApp
         for i = 0 to 9 do
@@ -737,7 +742,8 @@ let multiCallTests =
 
     ptestList "massive sequence adding - Ok" [
         testCase "add many todos" <| fun _ ->
-            Expect.isTrue true "should be true"
+            Expect.isTrue false "sdaf"
+
             let ap = AppVersions.currentPostgresApp
             // let ap = currentVersionPgWithKafkaApp
             let _ = ap._reset()
