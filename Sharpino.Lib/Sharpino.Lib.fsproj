@@ -33,6 +33,7 @@
     <Compile Include="EventStoreStorage.fs" />
 
     <Compile Include="Cache.fs" />
+    <Compile Include="StateView.fs" />
     <Compile Include="CommandHandler.fs" />
     <Compile Include="LightCommandHandler.fs" />
     <None Include="LICENSE" Pack="true" PackagePath="" />

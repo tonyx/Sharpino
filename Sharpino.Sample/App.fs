@@ -3,6 +3,7 @@ namespace Sharpino.Sample
 open Sharpino
 open Sharpino.Utils
 open Sharpino.CommandHandler
+open Sharpino.StateView
 
 open Sharpino.Sample
 open Sharpino.Storage

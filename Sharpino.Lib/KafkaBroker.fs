@@ -120,3 +120,17 @@ module KafkaBroker =
             log.Info "No broker configured"
             Ok ()
 
+    let  tryPublish eventBroker version name idAndEvents =
+        let sent =
+            async {
+                return
+                    notify eventBroker version name idAndEvents
+            }
+            |> Async.StartAsTask
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+        match sent with
+        | Ok _ -> ()
+        | Error e -> 
+            log.Error (sprintf "trySendKafka: %s" e)
+            ()
