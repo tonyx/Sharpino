@@ -6,6 +6,7 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Shared.Entities
 open Sharpino.Utils
 open Sharpino.Definitions
+open Sharpino.Repositories
 
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -39,8 +40,8 @@ module TodosCluster =
 
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
-                this.categories.GetCategories() 
-                |> List.exists (fun x -> x.Id = c) 
+                this.categories.GetCategories().Exists (fun x -> x.Id = c)
+                // |> List.exists (fun x -> x.Id = c) 
                 |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
             result
@@ -76,7 +77,7 @@ module TodosCluster =
                 }
         member this.RemoveCategory (id: Guid) = 
             let removeReferenceOfCategoryToTodos (id: Guid) =
-                this.todos.todos 
+                this.todos.todos.GetAll()
                 |>>
                 (fun x -> 
                     { x with 
@@ -95,13 +96,15 @@ module TodosCluster =
                                 todos = 
                                     {
                                         this.todos 
-                                            with todos = removeReferenceOfCategoryToTodos id
+                                            with todos = 
+                                                (removeReferenceOfCategoryToTodos id)
+                                                |> Repository<Todo>.Create
                                     }
                         }
                 }   
         member this.RemoveTagReference (id: Guid) =
             let removeReferenceOfTagToAllTodos (id: Guid) =
-                this.todos.todos 
+                this.todos.todos.GetAll()
                 |>> 
                 (fun x -> 
                     { x with 
@@ -117,11 +120,13 @@ module TodosCluster =
                                 todos = 
                                     {
                                         this.todos 
-                                            with todos = removeReferenceOfTagToAllTodos id
+                                            with todos = 
+                                                (removeReferenceOfTagToAllTodos id)
+                                                |> Repository<Todo>.Create
                                     }
                         }
                 }
-        member this.GetCategories() = this.categories.GetCategories()
+        member this.GetCategories() = this.categories.GetCategories().GetAll()
 
         // assume this should me moved but atm doesn't work in a separate module
 
@@ -183,7 +188,7 @@ module TodosCluster =
 
         member this.RemoveCategoryReference (id: Guid) =
             let removeReferenceOfCategoryToTodos (id: Guid) =
-                this.todos.todos 
+                this.todos.todos.GetAll()
                 |>>
                 (fun x -> 
                     { x with 
@@ -200,14 +205,16 @@ module TodosCluster =
                                 todos = 
                                     {
                                         this.todos 
-                                            with todos = removeReferenceOfCategoryToTodos id
+                                            with todos = 
+                                                (removeReferenceOfCategoryToTodos id)
+                                                |> Repository<Todo>.Create
                                     }
                         }
                 }
 
         member this.RemoveTagReference (id: Guid) =
             let removeReferenceOfTagToAllTodos (id: Guid) =
-                this.todos.todos 
+                this.todos.todos.GetAll() 
                 |>> 
                 (fun x -> 
                     { x with 
@@ -223,7 +230,9 @@ module TodosCluster =
                                 todos = 
                                     {
                                         this.todos 
-                                            with todos = removeReferenceOfTagToAllTodos id
+                                            with todos = 
+                                                (removeReferenceOfTagToAllTodos id)
+                                                |> Repository<Todo>.Create
                                     }
                         }
                 }

@@ -55,7 +55,7 @@ module CategoriesCluster =
                             Categories = categories
                     }
             }
-        member this.GetCategories() = this.Categories.GetCategories()
+        member this.GetCategories() = this.Categories.GetCategories().GetAll()
 
         member this.Serialize(serializer: ISerializer) =
             this

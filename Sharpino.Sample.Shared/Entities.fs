@@ -1,5 +1,6 @@
 ﻿namespace Sharpino.Sample.Shared
 open System
+open Sharpino.Lib.Shared.Commons
 
 module Route =
     let builder typeName methodName =
@@ -11,6 +12,9 @@ module Entities =
             Id: Guid
             Name: string
         }
+        interface Entity with
+            member this.Id: Guid = 
+                this.Id
 
     type Color =
         | Red
@@ -23,6 +27,9 @@ module Entities =
             Name: string
             Color: Color
         }
+        interface Entity with
+            member this.Id: Guid = 
+                this.Id
 
     type Todo =
         {
@@ -39,6 +46,9 @@ module Entities =
                 TagIds = []
                 Description = name
             }
+        interface Entity with
+            member this.Id: Guid = 
+                this.Id
 
 module Service =
     open Entities

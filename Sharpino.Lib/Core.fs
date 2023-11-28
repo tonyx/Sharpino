@@ -7,8 +7,8 @@ open log4net.Config
 open System
 
 module Core =
-    type Entity =
-        abstract member Id: Guid
+    // type Entity =
+    //     abstract member Id: Guid
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging

@@ -1,7 +1,9 @@
 namespace Sharpino
 open System
 open Sharpino.Utils
+open Sharpino.Core
 open Sharpino.Definitions
+open Sharpino.Lib.Shared.Commons
 
 module Storage =
 
@@ -53,3 +55,34 @@ module Storage =
         {
             notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
         }
+
+module Repositories =
+    type Repository<'A when 'A : equality and 'A:> Entity> =
+        {
+            Items: List<'A>
+        }
+        with 
+            static member Create (items: List<'A>) =
+                { Items = items }
+            static member Zero = { Items = [] :> List<'A> }
+            member this.Add (x: 'A) =
+                { this with Items = x::this.Items }
+            member this.AddMany (xs: List<'A>) =
+                { this with Items = xs @ this.Items }
+            member this.Remove (x: 'A) =
+                { this with Items = this.Items |> List.filter (fun y -> y <> x) }
+
+            member this.Remove (f: 'A -> bool) =
+                { this with Items = this.Items |> List.filter (fun y -> not (f y)) }
+            member this.Update (x: 'A) =
+                { this with Items = this.Items |> List.map (fun y -> if y = x then x else y) }
+            member this.Get (f: 'A -> bool) =
+                this.Items |> List.tryFind f
+            member this.Exists (f: 'A -> bool) =
+                this.Items |> List.exists f
+            member this.IsEmpty () =
+                this.Items |> List.isEmpty
+            member this.GetAll () =
+                this.Items
+
+        

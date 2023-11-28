@@ -3,6 +3,7 @@ namespace Sharpino.Sample
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Utils
 open Sharpino.Definitions
+open Sharpino.Repositories
 
 open Sharpino.Sample.Shared.Entities
 

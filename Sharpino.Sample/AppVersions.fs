@@ -42,13 +42,14 @@ module AppVersions =
 
 
     // I had to comment this out because it gives annoying messages when kafka is not enabled
-    // let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
+
+    let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(pgStorage)
 
     // I had to comment this out because it gives annoying messages when kafka is not enabled
-    // let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
+    let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
 
     let upgradedPgApp = App.UpgradedApp(pgStorage)
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
@@ -62,19 +63,15 @@ module AppVersions =
 
     let resetDb (db: IStorage) =
         db.Reset TodosCluster.Version TodosCluster.StorageName
-        SnapCache<TodosCluster>.Instance.Clear()
         StateCache<TodosCluster>.Instance.Clear()
 
         db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        SnapCache<TodosCluster.TodosAggregate'>.Instance.Clear()
         StateCache<TodosCluster.TodosAggregate'>.Instance.Clear()
 
         db.Reset TagsCluster.Version TagsCluster.StorageName
-        SnapCache<TagsCluster>.Instance.Clear()
         StateCache<TagsCluster>.Instance.Clear()
 
         db.Reset CategoriesCluster.Version CategoriesCluster.StorageName
-        SnapCache<CategoriesCluster>.Instance.Clear()
         StateCache<CategoriesCluster>.Instance.Clear()
 
     let resetEventStore() =
@@ -184,29 +181,29 @@ module AppVersions =
         }
 
     // I had to comment this out because it gives annoying messages when kafka is not enabled
-    // [<CurrentVersion>]
-    // let currentVersionPgWithKafkaApp =
-    //     {
-    //         _notify =           currentPgAppWithKafka._eventBroker.notify
-    //         _migrator =         None
-    //         _reset =            fun () -> 
-    //                                 resetDb pgStorage
-    //                                 resetAppId()
-    //         _addEvents =        fun (version, e: List<string>, name ) -> 
-    //                                 let deser = e
-    //                                 (pgStorage :> IStorage).AddEvents version name deser |> ignore
-    //         getAllTodos =       currentPgAppWithKafka.GetAllTodos
-    //         addTodo =           currentPgAppWithKafka.AddTodo
-    //         add2Todos =         currentPgAppWithKafka.Add2Todos
-    //         removeTodo =        currentPgAppWithKafka.RemoveTodo
-    //         getAllCategories =  currentPgAppWithKafka.GetAllCategories
-    //         addCategory =       currentPgAppWithKafka.AddCategory
-    //         removeCategory =    currentPgAppWithKafka.RemoveCategory
-    //         addTag =            currentPgAppWithKafka.AddTag
-    //         removeTag =         currentPgAppWithKafka.RemoveTag
-    //         getAllTags =        currentPgAppWithKafka.GetAllTags
-    //         todoReport =        currentPgAppWithKafka.TodoReport
-    //     }
+    [<CurrentVersion>]
+    let currentVersionPgWithKafkaApp =
+        {
+            _notify =           currentPgAppWithKafka._eventBroker.notify
+            _migrator =         None
+            _reset =            fun () -> 
+                                    resetDb pgStorage
+                                    resetAppId()
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e
+                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
+            getAllTodos =       currentPgAppWithKafka.GetAllTodos
+            addTodo =           currentPgAppWithKafka.AddTodo
+            add2Todos =         currentPgAppWithKafka.Add2Todos
+            removeTodo =        currentPgAppWithKafka.RemoveTodo
+            getAllCategories =  currentPgAppWithKafka.GetAllCategories
+            addCategory =       currentPgAppWithKafka.AddCategory
+            removeCategory =    currentPgAppWithKafka.RemoveCategory
+            addTag =            currentPgAppWithKafka.AddTag
+            removeTag =         currentPgAppWithKafka.RemoveTag
+            getAllTags =        currentPgAppWithKafka.GetAllTags
+            todoReport =        currentPgAppWithKafka.TodoReport
+        }
 
     [<UpgradedVersion>]
     let upgradedMemoryApp =

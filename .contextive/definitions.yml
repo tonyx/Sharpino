@@ -24,7 +24,7 @@ contexts:
 
     - name: Tag
       definition: 
-        Some entities consist of a definition and of a color that we can attach to any Todo. 
+        Some entities consist of a definition and a color that we can attach to any Todo. 
       examples:
         - _Todo_ u.i. will be tagged as "red"
     - name: Category
@@ -41,7 +41,7 @@ contexts:
     - name: Sharpino
       definition: Event souring library for F#
       examples:
-        - define entities, aggregates, events, commands and an application service layer to expose your business logic. You will need a storage like Postgres or EventStoreDB.
+        - define entities, "clusters", events, commands and an application service layer to expose your business logic. You will need a storage like Postgres or EventStoreDB.
 
     - name: Entity
       definition: An entity is a thing that has a unique identity, and a lifecycle that spans multiple events.
@@ -65,11 +65,7 @@ contexts:
       definition: A collection of entities treated as a single unit.
       examples:
         - A shopping cart (which includes order and order-item entities)
-    - name: Repository
-      definition: Utility functions to process commands, read and save aggregates and events.
-      examples:
-        - Repository lets you save and load aggregates using the storage, and process commands.
     - name: Storage
-      definition: A storage is a place where you can save and load events.
+      definition: A storage is a place where you can save and load events and snapshots
     - name: Application layer
       definition: The application layer is where you expose logic that consists of building your commands and sending them to the repository.

@@ -2,74 +2,63 @@ namespace Sharpino.Sample.Entities
 open FSharpPlus
 open System
 open Sharpino.Utils
+open Sharpino.Repositories
 open FsToolkit.ErrorHandling
 open Sharpino.Sample.Shared.Entities
+
 
 module Todos =
 
     type Todos =
         {
-            todos: List<Todo>
+            todos: Repository<Todo>
         }
         with
             static member Zero =
                 {
-                    todos = []
+                    todos = Repository<Todo>.Zero
                 }
 
             member this.AddTodo (t: Todo) =
                 result {
-                    let! idAndDescriptionsNotAlreadyExists =
-                        this.todos 
-                        |> List.forall
-                            ( fun 
-                                x -> 
-                                    x.Description <> t.Description 
-                                    || x.Id <> t.Id 
-                            )
-                        |> boolToResult (sprintf "A todo with the description %A already exists" t.Description)
-
+                    let! notExists = 
+                        this.todos.Exists (fun x -> 
+                                x.Description = t.Description 
+                                || x.Id = t.Id 
+                        )
+                        |> not
+                        |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
                     return
                         {
                             this with
-                                todos = t::this.todos
+                                todos = this.todos.Add t
                         }
                 }
             member this.AddTodos (ts: List<Todo>) =
-                let descriptionNotAlreadyExists t =
-                    this.todos
-                    |> List.exists (fun x -> x.Description = t.Description || x.Id = t.Id)
+                let descriptionOrIdNotAlreadyExists t =
+                    this.todos.Exists (fun x -> x.Description = t.Description || x.Id = t.Id)
                     |> not
                     |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
 
-                let idNotAlreadyExists t =
-                    this.todos
-                    |> List.exists (fun x -> x.Id = t.Id)
-                    |> not
-                    |> boolToResult (sprintf "A todo with the id %A already exists" t.Id)
-
                 result {
                     let! descMustNotExist =
-                        ts |> catchErrors descriptionNotAlreadyExists
-                    let! idMustNotExist =
-                        ts |> catchErrors idNotAlreadyExists
+                        ts |> catchErrors descriptionOrIdNotAlreadyExists
 
                     return
                         {
                             this with
-                                todos = ts @ this.todos
+                                todos = this.todos.AddMany ts
                         }
                 }
             member this.RemoveTodo (id: Guid) =
                 result {
                     let! id_must_exist =
-                        this.todos
-                        |> List.exists (fun x -> x.Id = id)
+                        this.todos.Exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A Todo with id '%A' does not exist" id)
                     return
                         {
                             this with
-                                todos = this.todos |> List.filter (fun x -> x.Id <> id)
+                                todos = this.todos.Remove (fun x -> x.Id = id)
                         }
                 }
-            member this.GetTodos() = this.todos
+            member this.GetTodos() = this.todos.GetAll()

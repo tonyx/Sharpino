@@ -18,6 +18,9 @@
         <dependency id="FsCheck" version="2.16.6" />
         <dependency id="FsToolkit.ErrorHandling" version="4.11.0" />
         <dependency id="Log4net" version="2.0.15" />
+        <Dependency id="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <Dependency id="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
+        <Dependency id="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 

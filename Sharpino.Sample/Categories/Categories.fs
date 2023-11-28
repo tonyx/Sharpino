@@ -5,39 +5,52 @@ open FsToolkit.ErrorHandling
 
 open Sharpino.Core
 open Sharpino.Utils
+open Sharpino.Repositories
 
 open Sharpino.Sample.Shared.Entities
 
 module Categories =
     type Categories = 
         {
-            categories: List<Category>
+            categories: Repository<Category>
         }
         with
             static member Zero =
                 {
-                    categories = []
+                    categories = Repository<Category>.Zero
                 }
             member this.AddCategory (c: Category) =
                 result {
                     let! mustNotExist =
-                        this.categories
-                        |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
+                        this.categories.Exists (fun x -> x.Name = c.Name || x.Id = c.Id)
                         |> not
                         |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
+
+
+                    // let! mustNotExist =
+                    //     this.categories
+                    //     |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
+                    //     |> not
+                    //     |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
+
                     return
                         {
                             this with
-                                categories = c::this.categories
+                                categories = this.categories.Add c
+                                // categories = c::this.categories
                         }
                 }
 
             member this.AddCategories (cs: List<Category>) =
                 let checkNotExists (c: Category) =
-                    this.categories
-                    |> List.exists (fun x -> x.Name = c.Name)
+                    this.categories.Exists (fun x -> x.Name = c.Name)
                     |> not
                     |> boolToResult (sprintf "There is already another Category named %s " c.Name)
+
+                    // this.categories
+                    // |> List.exists (fun x -> x.Name = c.Name)
+                    // |> not
+                    // |> boolToResult (sprintf "There is already another Category named %s " c.Name)
 
                 result {
                     let! mustNotExist =
@@ -45,20 +58,26 @@ module Categories =
                     return
                         {
                             this with
-                                categories = cs @ this.categories
+                                // categories = cs @ this.categories
+                                categories = this.categories.AddMany cs
                         }
                 }
 
             member this.RemoveCategory (id: Guid) =
                 result {
                     let! mustExist =
-                        this.categories
-                        |> List.exists (fun x -> x.Id = id)
+                        this.categories.Exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A category with id '%A' does not exist" id)
+                    // let! mustExist =
+                    //     this.categories
+                    //     |> List.exists (fun x -> x.Id = id)
+                    //     |> boolToResult (sprintf "A category with id '%A' does not exist" id)
                     return
                         {
                             this with
-                                categories = this.categories |> List.filter (fun x -> x.Id <> id)
+                                categories = this.categories.Remove (fun x -> x.Id = id)
+                                // categories = this.categories |> List.filter (fun x -> x.Id <> id)
+
                         }
                 }
             member this.GetCategories() = this.categories

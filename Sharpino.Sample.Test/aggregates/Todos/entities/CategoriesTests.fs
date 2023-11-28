@@ -18,7 +18,7 @@ let categoryModelTests =
             let categories = Categories.Zero.AddCategory category
             Expect.isOk categories "should be ok"
             let categories' = categories.OkValue
-            Expect.equal (categories'.categories |> List.length) 1 "should be equal"
+            Expect.equal (categories'.categories.GetAll() |> List.length) 1 "should be equal"
 
         testCase "add and remove a category - Ok" <| fun _ ->
             let category = mkCategory (Guid.NewGuid()) "test"
@@ -28,7 +28,7 @@ let categoryModelTests =
             let categories'' = categories'.RemoveCategory category.Id
             Expect.isOk categories'' "should be ok"
             let result = categories''.OkValue
-            Expect.equal (result.categories |> List.length) 0 "should be equal"
+            Expect.equal (result.categories.GetAll() |> List.length) 0 "should be equal"
 
         testCase "try removing an unexisting category - Ko" <| fun _ ->
             let category = mkCategory (Guid.NewGuid()) "test"
