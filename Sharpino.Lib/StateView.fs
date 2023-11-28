@@ -13,14 +13,6 @@ open Sharpino.Definitions
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
-open System.Runtime.CompilerServices
-open Sharpino.Utils
-open Sharpino.Definitions
-
-open Newtonsoft.Json.Linq
-
-open System.Collections.Generic;
-open System.Linq;
 
 module StateView =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer

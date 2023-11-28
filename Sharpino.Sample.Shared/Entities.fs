@@ -1,6 +1,6 @@
 ﻿namespace Sharpino.Sample.Shared
 open System
-open Sharpino.Lib.Shared.Commons
+open Sharpino.Lib.Core.Commons
 
 module Route =
     let builder typeName methodName =

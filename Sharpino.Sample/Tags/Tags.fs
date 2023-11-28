@@ -21,15 +21,12 @@ module Tags =
                 result {
                     let! mustNotExist =
                         this.tags.Exists (fun x -> x.Name = t.Name)
-                        // |> List.exists (fun x -> x.Name = t.Name)
                         |> not
                         |> boolToResult (sprintf "A tag named %s already exists" t.Name)
                     return
                         {
                             this with
                                 tags = this.tags.Add t
-                                // tags = t::this.tags
-
                         }
                 }
             member this.RemoveTag (id: Guid) =
@@ -41,14 +38,12 @@ module Tags =
                         {
                             this with
                                 tags = this.tags.Remove (fun x -> x.Id = id)
-                                // tags = this.tags |> List.filter (fun x -> x.Id <> id)
                         }
                 }
             member this.GetTag(id: Guid) =
                 result {
                     return! 
                         this.tags.Get (fun x -> x.Id = id)
-                        // |> List.tryFind (fun x -> x.Id = id)
                         |> Result.ofOption (sprintf "A tag with id '%A' does not exist" id)
                 }
 

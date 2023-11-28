@@ -1,4 +1,4 @@
-﻿namespace Sharpino.Lib.Shared
+﻿namespace Sharpino.Lib.Core
 open System
 
 module Commons =

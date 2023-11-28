@@ -26,18 +26,10 @@ module Categories =
                         |> not
                         |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
 
-
-                    // let! mustNotExist =
-                    //     this.categories
-                    //     |> List.exists (fun x -> x.Name = c.Name  || x.Id = c.Id)
-                    //     |> not
-                    //     |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
-
                     return
                         {
                             this with
                                 categories = this.categories.Add c
-                                // categories = c::this.categories
                         }
                 }
 
@@ -47,18 +39,12 @@ module Categories =
                     |> not
                     |> boolToResult (sprintf "There is already another Category named %s " c.Name)
 
-                    // this.categories
-                    // |> List.exists (fun x -> x.Name = c.Name)
-                    // |> not
-                    // |> boolToResult (sprintf "There is already another Category named %s " c.Name)
-
                 result {
                     let! mustNotExist =
                         cs |> catchErrors checkNotExists
                     return
                         {
                             this with
-                                // categories = cs @ this.categories
                                 categories = this.categories.AddMany cs
                         }
                 }
@@ -68,16 +54,10 @@ module Categories =
                     let! mustExist =
                         this.categories.Exists (fun x -> x.Id = id)
                         |> boolToResult (sprintf "A category with id '%A' does not exist" id)
-                    // let! mustExist =
-                    //     this.categories
-                    //     |> List.exists (fun x -> x.Id = id)
-                    //     |> boolToResult (sprintf "A category with id '%A' does not exist" id)
                     return
                         {
                             this with
                                 categories = this.categories.Remove (fun x -> x.Id = id)
-                                // categories = this.categories |> List.filter (fun x -> x.Id <> id)
-
                         }
                 }
             member this.GetCategories() = this.categories

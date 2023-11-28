@@ -28,7 +28,7 @@ module CommandHandler =
         with
         | :? _ as ex -> 
             // if appSettings.json is missing
-            log.Error (sprintf "appSettings.json file not foun using defult!!! %A\n" ex)
+            log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
 
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer

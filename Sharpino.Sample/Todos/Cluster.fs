@@ -41,7 +41,6 @@ module TodosCluster =
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories().Exists (fun x -> x.Id = c)
-                // |> List.exists (fun x -> x.Id = c) 
                 |> boolToResult (sprintf "A category with id '%A' does not exist" c)
 
             result
@@ -95,9 +94,9 @@ module TodosCluster =
                                 categories = categories
                                 todos = 
                                     {
-                                        this.todos 
-                                            with todos = 
-                                                (removeReferenceOfCategoryToTodos id)
+                                        this.todos with 
+                                            todos = 
+                                                removeReferenceOfCategoryToTodos id
                                                 |> Repository<Todo>.Create
                                     }
                         }
@@ -119,9 +118,9 @@ module TodosCluster =
                             this with
                                 todos = 
                                     {
-                                        this.todos 
-                                            with todos = 
-                                                (removeReferenceOfTagToAllTodos id)
+                                        this.todos with
+                                            todos = 
+                                                removeReferenceOfTagToAllTodos id
                                                 |> Repository<Todo>.Create
                                     }
                         }
@@ -204,9 +203,9 @@ module TodosCluster =
                             this with
                                 todos = 
                                     {
-                                        this.todos 
-                                            with todos = 
-                                                (removeReferenceOfCategoryToTodos id)
+                                        this.todos with
+                                            todos = 
+                                                removeReferenceOfCategoryToTodos id
                                                 |> Repository<Todo>.Create
                                     }
                         }
@@ -229,9 +228,9 @@ module TodosCluster =
                             this with
                                 todos = 
                                     {
-                                        this.todos 
-                                            with todos = 
-                                                (removeReferenceOfTagToAllTodos id)
+                                        this.todos with
+                                            todos = 
+                                                removeReferenceOfTagToAllTodos id
                                                 |> Repository<Todo>.Create
                                     }
                         }
