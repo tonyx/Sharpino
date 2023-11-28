@@ -334,7 +334,7 @@ let multiVersionsTests =
             let removed = ap.removeTodo newGuid
             Expect.isError removed "should be error"
             let result = removed |> getError
-            Expect.equal result (sprintf "A Todo with id '%A' does not exist" newGuid) "should be equal"
+            Expect.equal result (sprintf "Item with id '%A' does not exist" newGuid) "should be equal"
 
         multipleTestCase "add category" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()

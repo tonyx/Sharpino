@@ -31,13 +31,11 @@ module Tags =
                 }
             member this.RemoveTag (id: Guid) =
                 result {
-                    let! mustExist =
-                        this.tags.Exists (fun x -> x.Id = id)
-                        |> boolToResult (sprintf "A tag with id '%A' does not exist" id)
-                    return
+                    let! newTags = this.tags.Remove id
+                    return 
                         {
                             this with
-                                tags = this.tags.Remove (fun x -> x.Id = id)
+                                tags = newTags
                         }
                 }
             member this.GetTag(id: Guid) =

@@ -6,7 +6,6 @@ open Sharpino.Repositories
 open FsToolkit.ErrorHandling
 open Sharpino.Sample.Shared.Entities
 
-
 module Todos =
 
     type Todos =
@@ -52,13 +51,12 @@ module Todos =
                 }
             member this.RemoveTodo (id: Guid) =
                 result {
-                    let! id_must_exist =
-                        this.todos.Exists (fun x -> x.Id = id)
-                        |> boolToResult (sprintf "A Todo with id '%A' does not exist" id)
-                    return
+                    let! newTodos = this.todos.Remove id
+                    return 
                         {
                             this with
-                                todos = this.todos.Remove (fun x -> x.Id = id)
+                                todos = newTodos
                         }
+
                 }
             member this.GetTodos() = this.todos.GetAll()

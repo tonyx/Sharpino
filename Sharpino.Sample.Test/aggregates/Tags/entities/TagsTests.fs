@@ -38,6 +38,6 @@ let tagModelTests =
             let result = tags'.RemoveTag wrongId
             Expect.isError result "should be error"
             let actualMsg = result |> getError
-            Expect.equal (sprintf "A tag with id '%A' does not exist" wrongId) actualMsg "should be equal"
+            Expect.equal (sprintf "Item with id '%A' does not exist" wrongId) actualMsg "should be equal"
     ]
 

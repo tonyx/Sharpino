@@ -41,5 +41,5 @@ let tagsAggregateTests =
             let result' = result.RemoveTag newGuid
             Expect.isError result' "should be error"
             let errMsg = result' |> getError
-            Expect.equal errMsg (sprintf "A tag with id '%A' does not exist" newGuid) "should be equal"
+            Expect.equal errMsg (sprintf "Item with id '%A' does not exist" newGuid) "should be equal"
     ]
