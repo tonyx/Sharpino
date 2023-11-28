@@ -20,7 +20,6 @@ open log4net
 open log4net.Config
 open System.Runtime.CompilerServices
 
-
 module CommandHandler =
     let config = 
         try
@@ -73,7 +72,7 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (storage: IStorage) =
-            log.Debug "mkSnapshotIfInterval"
+            log.Debug "mkSnapshotIfIntervalPassed"
             async {
                 return
                     result

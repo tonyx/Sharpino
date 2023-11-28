@@ -2,6 +2,7 @@
 
 ## The Core of Sharpino: A little F# event-sourcing library
 
+
 [![NuGet version (Sharpino.Core)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino.Core/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
