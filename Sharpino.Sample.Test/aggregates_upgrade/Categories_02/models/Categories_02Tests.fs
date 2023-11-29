@@ -38,5 +38,5 @@ let categoryModelTests =
             let result = categories.RemoveCategory wrongId
             Expect.isError result "should be error"
             let actualMsg = result |> getError
-            Expect.equal (sprintf "Item with id '%A' does not exist" wrongId) actualMsg "should be equal"
+            Expect.equal (sprintf "A category with id '%A' does not exist" wrongId) actualMsg "should be equal"
     ]

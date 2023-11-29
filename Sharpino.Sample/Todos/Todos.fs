@@ -50,27 +50,14 @@ module Todos =
                         }
                 }
             member this.RemoveTodo (id: Guid) =
-                printf "QQQQ. remove todo %A" id
-                printf "QQQQX. remove todo %A" id
-                {
-                    this with
-                        todos = this.todos.Remove id |> Result.get
-                } |> Result.Ok
-                // let newTodos' = this.todos.Remove id
-                // printf "QQQQ2. remove todo %A" newTodos'
-                // let res =
-                //     ResultCE.result {
-                //         printf "ZZZZZ. remove todo %A" id
-                //         let newTodos = this.todos.Remove id
-                //         printf "RRRRR. removing %A" newTodos
-                //         let! newTodos = newTodos
-                //         return 
-                //             {
-                //                 this with
-                //                     todos = newTodos
-                //             }
-
-                //     }
-                // printf "GGGGG this is res %A" res
-                // res
+                ResultCE.result
+                    {
+                        let! mustExists =
+                            this.todos.Exists (fun x -> x.Id = id)
+                            |> boolToResult (sprintf "A todo with id '%A' does not exist" id)
+                        return {
+                            this with
+                                todos = this.todos.Remove id 
+                        }
+                    }
             member this.GetTodos() = this.todos.GetAll()

@@ -51,11 +51,13 @@ module Categories =
 
             member this.RemoveCategory (id: Guid) =
                 result {
-                    let! newCategories = this.categories.Remove id
+                    let! mustExists =
+                        this.categories.Exists (fun x -> x.Id = id)
+                        |> boolToResult (sprintf "A category with id '%A' does not exist" id)
                     return
                         {
                             this with
-                                categories = newCategories
+                                categories = this.categories.Remove id
                         }
                 }
             member this.GetCategories() = this.categories

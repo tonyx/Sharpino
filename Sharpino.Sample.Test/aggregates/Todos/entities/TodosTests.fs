@@ -38,11 +38,12 @@ let todosModelTests =
             Expect.isOk todos "should be ok"
             let todos' = todos.OkValue
             Expect.equal (todos'.GetTodos() |> List.length) 1 "should be equal"
-            let unexistingId = Guid.NewGuid()
 
+            let unexistingId = Guid.NewGuid()
             let result = todos'.RemoveTodo unexistingId
+
             Expect.isError result "should be error"
             let errMsg = result |> getError
             printf "%s" errMsg
-            Expect.equal errMsg (sprintf "Item with id '%A' does not exist" unexistingId) "should be equal"
+            Expect.equal errMsg (sprintf "A todo with id '%A' does not exist" unexistingId) "should be equal"
     ]

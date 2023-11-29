@@ -3,12 +3,12 @@ module Tests.Sharpino.Sample.Tags.Models.TagsTests
 
 open Tests.Sharpino.Shared
 open Sharpino.Sample.Shared.Entities
+open Sharpino.Sample.Entities.Tags
 
 open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample.Entities.Tags
 open Sharpino.Utils
 
 [<Tests>]
@@ -38,6 +38,6 @@ let tagModelTests =
             let result = tags'.RemoveTag wrongId
             Expect.isError result "should be error"
             let actualMsg = result |> getError
-            Expect.equal (sprintf "Item with id '%A' does not exist" wrongId) actualMsg "should be equal"
+            Expect.equal (sprintf "A tag with id '%A' does not exist" wrongId) actualMsg "should be equal"
     ]
 

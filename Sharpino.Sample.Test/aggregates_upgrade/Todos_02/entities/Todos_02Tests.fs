@@ -44,5 +44,5 @@ let todosModelTests =
             let result = todos'.RemoveTodo unexistingId
             Expect.isError result "should be error"
             let errMsg = result |> getError
-            Expect.equal errMsg (sprintf "Item with id '%A' does not exist" unexistingId) "should be equal"
+            Expect.equal errMsg (sprintf "A todo with id '%A' does not exist" unexistingId) "should be equal"
     ]

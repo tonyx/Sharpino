@@ -82,11 +82,8 @@ module Repositories =
 
             // warning: if using ResultCE.result computation expression for the same following function it ends up in 
             // a runtime error, I don't know why
-            member this.Remove (id: Guid): Result<Repository<'A>, string> =
-                if this.Items |> List.exists (fun x -> x.Id = id) then
-                    this.Items |> List.filter (fun x -> x.Id <> id) |> Repository<'A>.Create |> Result.Ok
-                else
-                    Error (sprintf "Item with id '%A' does not exist" id)
+            member this.Remove (id: Guid) =
+                this.Items |> List.filter (fun x -> x.Id <> id) |> Repository<'A>.Create 
             member this.Update (x: 'A) =
                 { this with Items = this.Items |> List.map (fun y -> if y.Id = x.Id then x else y) }
             member this.Get (f: 'A -> bool) =

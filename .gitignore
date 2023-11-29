@@ -18,6 +18,7 @@ packages/
 **/.bin/
 **/.vite/
 **/node_modules/**
+**/*.nupkg
 Sharpino.Lib/Sharpino.Lib.*.nupkg
 __azurite_db_blob__.json
 __azurite_db_blob_extent__.json
