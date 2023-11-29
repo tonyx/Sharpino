@@ -26,7 +26,7 @@ module StateView =
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
         (id: int)
-        (storage: IStorage) =
+        (storage: IEventStore) =
             let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
             match snapshot |>> snd with
             | Some snapshot' ->
@@ -49,7 +49,7 @@ module StateView =
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (storage: IStorage) =
+        (storage: IEventStore) =
             log.Debug "getLastSnapshot"
             async {
                 return
@@ -82,7 +82,7 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage) = 
+        (storage: IEventStore) = 
         log.Debug "snapIdStateAndEvents"
         async {
             return
@@ -107,7 +107,7 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage): Result<EventId * 'A, string> = 
+        (storage: IEventStore): Result<EventId * 'A, string> = 
             log.Debug "getState"
             let computeNewState =
                 fun () ->

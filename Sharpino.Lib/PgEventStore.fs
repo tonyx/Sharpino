@@ -16,8 +16,8 @@ module PgStorage =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
-    type PgStorage(connection: string) =
-        interface IStorage with
+    type PgEventStore(connection: string) =
+        interface IEventStore with
 
             // only test db should be able to reset
             member this.Reset(version: Version) (name: Name): unit = 
@@ -188,7 +188,7 @@ module PgStorage =
                 log.Debug "entered in setSnapshot"
 
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IStorage).TryGetEvent version id name)
+                let tryEvent = ((this :> IEventStore).TryGetEvent version id name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" id)
                 | Some event -> 

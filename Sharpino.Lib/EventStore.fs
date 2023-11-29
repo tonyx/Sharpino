@@ -5,6 +5,7 @@ open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Lib.Core.Commons
 open FsToolkit.ErrorHandling
+open log4net
 
 module Storage =
 
@@ -37,7 +38,7 @@ module Storage =
         abstract member TryGetLastSnapshot: Version -> Name -> Option<UInt64 * 'A>
         abstract member ConsumeEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<uint64 * 'E>
 
-    type IStorage =
+    type IEventStore =
         abstract member Reset: Version -> Name -> unit
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
@@ -59,18 +60,10 @@ module Storage =
 
 module Repositories =
 
-    // todo: repository should implement this
-    type IRepository<'A when 'A : equality and 'A :> Entity> =
-        abstract member Add: 'A -> 'A
-        abstract member AddMany: List<'A> -> 'A
-        abstract member Remove: ('A -> bool) -> 'A
-        abstract member Remove: Guid -> Result<'A, string>
-        abstract member Update: 'A -> 'A
-        abstract member Get: ('A -> bool) -> 'A option
-        abstract member Get: Guid -> 'A option
-        abstract member Exists: ('A -> bool) -> bool
-        abstract member IsEmpty: unit -> bool
-        abstract member GetAll: unit -> List<'A>
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    log4net.Config.BasicConfigurator.Configure() |> ignore
+
+    // todo: create an abstraction. See if it worth using an implementation that uses a permanent storage
 
     type Repository<'A when 'A : equality and 'A :> Entity> =
         {
@@ -87,16 +80,13 @@ module Repositories =
             member this.Remove (f: 'A -> bool) =
                 { this with Items = this.Items |> List.filter (fun y -> not (f y)) }
 
-                // Preferred way: Use Result
-            member this.Remove (id: Guid) =
-                ResultCE.result {
-                    let! itemExist = 
-                        this.Items 
-                        |> List.tryFind (fun x -> x.Id = id)
-                        |> Result.ofOption (sprintf "Item with id '%A' does not exist" id)
-                    return
-                        { this with Items = this.Items |> List.filter (fun x -> x.Id <> id)}
-                }
+            // warning: if using ResultCE.result computation expression for the same following function it ends up in 
+            // a runtime error, I don't know why
+            member this.Remove (id: Guid): Result<Repository<'A>, string> =
+                if this.Items |> List.exists (fun x -> x.Id = id) then
+                    this.Items |> List.filter (fun x -> x.Id <> id) |> Repository<'A>.Create |> Result.Ok
+                else
+                    Error (sprintf "Item with id '%A' does not exist" id)
             member this.Update (x: 'A) =
                 { this with Items = this.Items |> List.map (fun y -> if y.Id = x.Id then x else y) }
             member this.Get (f: 'A -> bool) =
@@ -111,5 +101,3 @@ module Repositories =
                 this.Items |> List.isEmpty
             member this.GetAll () =
                 this.Items
-
-        

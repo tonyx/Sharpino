@@ -37,7 +37,7 @@ module AppVersions =
 
     let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
-    let pgStorage = PgStorage.PgStorage(connection)
+    let pgStorage = PgStorage.PgEventStore(connection)
 
 
 
@@ -61,7 +61,7 @@ module AppVersions =
     let resetAppId() =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
 
-    let resetDb (db: IStorage) =
+    let resetDb (db: IEventStore) =
         db.Reset TodosCluster.Version TodosCluster.StorageName
         StateCache<TodosCluster>.Instance.Clear()
 
@@ -117,7 +117,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (vers: Version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (pgStorage :> IStorage).AddEvents vers name deser |> ignore
+                                    (pgStorage :> IEventStore).AddEvents vers name deser |> ignore
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -141,7 +141,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IEventStore).AddEvents version name deser |> ignore
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -166,7 +166,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (memoryStorage :> IStorage).AddEvents version name deser |> ignore
+                                    (memoryStorage :> IEventStore).AddEvents version name deser |> ignore
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -191,7 +191,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
-                                    (pgStorage :> IStorage).AddEvents version name deser |> ignore
+                                    (pgStorage :> IEventStore).AddEvents version name deser |> ignore
             getAllTodos =       currentPgAppWithKafka.GetAllTodos
             addTodo =           currentPgAppWithKafka.AddTodo
             add2Todos =         currentPgAppWithKafka.Add2Todos
@@ -215,7 +215,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
-                                    (memoryStorage :> IStorage).AddEvents version name deser |> ignore
+                                    (memoryStorage :> IEventStore).AddEvents version name deser |> ignore
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos

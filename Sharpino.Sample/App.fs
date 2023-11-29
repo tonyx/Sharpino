@@ -37,8 +37,8 @@ module App =
             notify = None
         }
     [<CurrentVersion>]
-    type CurrentVersionApp(storage: IStorage, eventBroker: IEventBroker) =
-        new(storage: IStorage) = CurrentVersionApp(storage, doNothingBroker)
+    type CurrentVersionApp(storage: IEventStore, eventBroker: IEventBroker) =
+        new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result  {
@@ -169,8 +169,8 @@ module App =
             { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
 
     [<UpgradedVersion>]
-    type UpgradedApp(storage: IStorage, eventBroker: IEventBroker) =
-        new(storage: IStorage) = UpgradedApp(storage, doNothingBroker)
+    type UpgradedApp(storage: IEventStore, eventBroker: IEventBroker) =
+        new(storage: IEventStore) = UpgradedApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
         member this.GetAllTodos() =
             result {

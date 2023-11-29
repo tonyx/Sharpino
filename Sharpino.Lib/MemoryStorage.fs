@@ -150,7 +150,7 @@ module MemoryStorage =
             else
                 events_dic.[version].[name]
 
-        interface IStorage with
+        interface IEventStore with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.Reset version name =
                 log.Debug (sprintf "Reset %s %s" version name)
@@ -190,7 +190,7 @@ module MemoryStorage =
                     arg 
                     |> List.map 
                         (fun (xs, version, name) ->
-                            (this :> IStorage).AddEvents version name xs |> Result.get
+                            (this :> IEventStore).AddEvents version name xs |> Result.get
                         ) 
                 cmds |> Ok
 

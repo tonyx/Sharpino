@@ -54,9 +54,12 @@ module TodosCluster =
                         }
                 }
         member this.RemoveTodo (id: Guid) =
+            printf "TTTT. removing todo\n"
             result
                 {
-                    let! todos = this.todos.RemoveTodo id
+                    let todos = this.todos.RemoveTodo id
+                    printf "TTTT. removed todo %A\n" todos
+                    let! todos = todos
                     return
                         {
                             this with

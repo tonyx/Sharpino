@@ -46,7 +46,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         > 
-        (storage: IStorage) =
+        (storage: IEventStore) =
             async {
                 return
                     ResultCE.result
@@ -71,7 +71,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage) =
+        (storage: IEventStore) =
             log.Debug "mkSnapshotIfIntervalPassed"
             async {
                 return
@@ -101,7 +101,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IStorage) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
+        (storage: IEventStore) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A" command)
 
             let command = fun () ->
@@ -160,7 +160,7 @@ module CommandHandler =
         and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
         and 'E2: (member Serialize: ISerializer -> string)
         >
-            (storage: IStorage)
+            (storage: IEventStore)
             (eventBroker: IEventBroker) 
 
             (command1: Command<'A1, 'E1>) 
@@ -249,7 +249,7 @@ module CommandHandler =
         and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
         and 'E3: (member Serialize: ISerializer -> string)
         > 
-            (storage: IStorage)
+            (storage: IEventStore)
             (eventBroker: IEventBroker) 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 

@@ -50,13 +50,27 @@ module Todos =
                         }
                 }
             member this.RemoveTodo (id: Guid) =
-                result {
-                    let! newTodos = this.todos.Remove id
-                    return 
-                        {
-                            this with
-                                todos = newTodos
-                        }
+                printf "QQQQ. remove todo %A" id
+                printf "QQQQX. remove todo %A" id
+                {
+                    this with
+                        todos = this.todos.Remove id |> Result.get
+                } |> Result.Ok
+                // let newTodos' = this.todos.Remove id
+                // printf "QQQQ2. remove todo %A" newTodos'
+                // let res =
+                //     ResultCE.result {
+                //         printf "ZZZZZ. remove todo %A" id
+                //         let newTodos = this.todos.Remove id
+                //         printf "RRRRR. removing %A" newTodos
+                //         let! newTodos = newTodos
+                //         return 
+                //             {
+                //                 this with
+                //                     todos = newTodos
+                //             }
 
-                }
+                //     }
+                // printf "GGGGG this is res %A" res
+                // res
             member this.GetTodos() = this.todos.GetAll()
