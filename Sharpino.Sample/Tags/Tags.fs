@@ -10,40 +10,38 @@ open FsToolkit.ErrorHandling
 module Tags =
     type Tags = 
         {
-            tags: Repository<Tag>
+            tags: Repository2<Tag>
         }
         with
             static member Zero =
                 {
-                    tags = Repository<Tag>.Zero 
+                    tags = Repository2<Tag>.Zero 
                 }
             member this.AddTag (t: Tag) =
                 result {
-                    let! mustNotExist =
-                        this.tags.Exists (fun x -> x.Name = t.Name)
-                        |> not
-                        |> boolToResult (sprintf "A tag named %s already exists" t.Name)
-                    return
-                        {
-                            this with
-                                tags = this.tags.Add t
-                        }
+                    let! added = 
+                        this.tags.AddWithPredicate (t, (fun x -> x.Name = t.Name), sprintf "A tag with name '%s' or id '%A' already exists" t.Name t.Id)
+                    return {
+                        this with
+                            tags = added
+                    }
                 }
             member this.RemoveTag (id: Guid) =
                 result {
-                    let! mustExist =
-                        this.tags.Exists (fun x -> x.Id = id)
-                        |> boolToResult (sprintf "A tag with id '%A' does not exist" id)
+                    let! removed =
+                        sprintf "A tag with id '%A' does not exist" id
+                        |> this.tags.Remove id
+
                     return 
                         {
                             this with
-                                tags = this.tags.Remove id
+                                tags = removed //this.tags.Remove id
                         }
                 }
             member this.GetTag(id: Guid) =
                 result {
                     return! 
-                        this.tags.Get (fun x -> x.Id = id)
+                        this.tags.Get id 
                         |> Result.ofOption (sprintf "A tag with id '%A' does not exist" id)
                 }
 

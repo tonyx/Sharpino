@@ -10,54 +10,48 @@ module Todos =
 
     type Todos =
         {
-            todos: Repository<Todo>
+            todos: Repository2<Todo>
         }
         with
             static member Zero =
                 {
-                    todos = Repository<Todo>.Zero
+                    todos = Repository2<Todo>.Zero
                 }
 
             member this.AddTodo (t: Todo) =
                 result {
-                    let! notExists = 
-                        this.todos.Exists (fun x -> 
-                                x.Description = t.Description 
-                                || x.Id = t.Id 
-                        )
-                        |> not
-                        |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
+                    let! added = this.todos.AddWithPredicate (t, (fun x -> x.Description = t.Description), sprintf "An item with id '%A' already exists" t.Id)
                     return
                         {
                             this with
-                                todos = this.todos.Add t
+                                todos = added
                         }
                 }
             member this.AddTodos (ts: List<Todo>) =
-                let descriptionOrIdNotAlreadyExists t =
-                    this.todos.Exists (fun x -> x.Description = t.Description || x.Id = t.Id)
-                    |> not
-                    |> boolToResult (sprintf "A todo with the description %A already exists, or having the same id" t.Description)
-
                 result {
-                    let! descMustNotExist =
-                        ts |> catchErrors descriptionOrIdNotAlreadyExists
-
-                    return
+                    let! added = 
+                        this.todos.AddManyWithPredicate
+                            (   
+                                ts, 
+                                (fun (t: Todo) -> sprintf  "a todo with id %A or description %A already exists" t.Id t.Description),
+                                (fun (x: Todo, t: Todo) -> x.Description = t.Description)
+                            )
+                    return 
                         {
                             this with
-                                todos = this.todos.AddMany ts
+                                todos = added
                         }
                 }
+                
             member this.RemoveTodo (id: Guid) =
                 ResultCE.result
                     {
-                        let! mustExists =
-                            this.todos.Exists (fun x -> x.Id = id)
-                            |> boolToResult (sprintf "A todo with id '%A' does not exist" id)
+                        let! removed = 
+                            sprintf "A todo with id '%A' does not exist" id 
+                            |> this.todos.Remove id
                         return {
                             this with
-                                todos = this.todos.Remove id 
+                                todos = removed
                         }
                     }
             member this.GetTodos() = this.todos.GetAll()

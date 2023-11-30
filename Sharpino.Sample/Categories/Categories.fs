@@ -12,52 +12,48 @@ open Sharpino.Sample.Shared.Entities
 module Categories =
     type Categories = 
         {
-            categories: Repository<Category>
+            categories: Repository2<Category>
         }
         with
             static member Zero =
                 {
-                    categories = Repository<Category>.Zero
+                    categories = Repository2<Category>.Zero
                 }
             member this.AddCategory (c: Category) =
                 result {
-                    let! mustNotExist =
-                        this.categories.Exists (fun x -> x.Name = c.Name || x.Id = c.Id)
-                        |> not
-                        |> boolToResult (sprintf "There is already another Category with name = '%s' or id = '%A'" c.Name c.Id)
-
-                    return
-                        {
-                            this with
-                                categories = this.categories.Add c
-                        }
+                    let! added = 
+                        this.categories.AddWithPredicate (c, (fun x -> x.Name = c.Name), sprintf "A category with name '%s' or id '%A' already exists" c.Name c.Id)
+                    return {
+                        this with
+                            categories = added
+                    }
                 }
 
             member this.AddCategories (cs: List<Category>) =
-                let checkNotExists (c: Category) =
-                    this.categories.Exists (fun x -> x.Name = c.Name)
-                    |> not
-                    |> boolToResult (sprintf "There is already another Category named %s " c.Name)
-
                 result {
-                    let! mustNotExist =
-                        cs |> catchErrors checkNotExists
-                    return
+                    let! added = 
+                        this.categories.AddManyWithPredicate 
+                            (   
+                                cs, 
+                                (fun (c: Category) -> sprintf  "a category with id %A or name %s already exists" c.Id c.Name),
+                                (fun (x: Category, c: Category) -> x.Name = c.Name)
+                            )
+                    return 
                         {
                             this with
-                                categories = this.categories.AddMany cs
+                                categories = added
                         }
                 }
 
             member this.RemoveCategory (id: Guid) =
                 result {
-                    let! mustExists =
-                        this.categories.Exists (fun x -> x.Id = id)
-                        |> boolToResult (sprintf "A category with id '%A' does not exist" id)
+                    let! removed =
+                        sprintf "A category with id '%A' does not exist" id
+                        |> this.categories.Remove id
                     return
                         {
                             this with
-                                categories = this.categories.Remove id
+                                categories = removed 
                         }
                 }
             member this.GetCategories() = this.categories

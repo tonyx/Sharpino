@@ -23,6 +23,7 @@
   <ItemGroup>
     <Compile Include="Conf.fs" />
     <Compile Include="EventStore.fs" />
+    <Compile Include="ListRepository.fs" />
     <Compile Include="PgEventStore.fs" />
     <Compile Include="KafkaBroker.fs" />
     <Compile Include="KafkaReceiver.fs" />

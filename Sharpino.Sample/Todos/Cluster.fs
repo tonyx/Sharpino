@@ -98,7 +98,7 @@ module TodosCluster =
                                         this.todos with 
                                             todos = 
                                                 removeReferenceOfCategoryToTodos id
-                                                |> Repository<Todo>.Create
+                                                |> Repository2<Todo>.Create
                                     }
                         }
                 }   
@@ -122,7 +122,7 @@ module TodosCluster =
                                         this.todos with
                                             todos = 
                                                 removeReferenceOfTagToAllTodos id
-                                                |> Repository<Todo>.Create
+                                                |> Repository2<Todo>.Create
                                     }
                         }
                 }
@@ -207,7 +207,7 @@ module TodosCluster =
                                         this.todos with
                                             todos = 
                                                 removeReferenceOfCategoryToTodos id
-                                                |> Repository<Todo>.Create
+                                                |> Repository2<Todo>.Create
                                     }
                         }
                 }
@@ -232,7 +232,7 @@ module TodosCluster =
                                         this.todos with
                                             todos = 
                                                 removeReferenceOfTagToAllTodos id
-                                                |> Repository<Todo>.Create
+                                                |> Repository2<Todo>.Create
                                     }
                         }
                 }
