@@ -46,9 +46,9 @@ let allVersions =
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
+
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
-
         // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
