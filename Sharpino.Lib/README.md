@@ -115,6 +115,7 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
+- Version 1.3.9: Repository interface changed (using Result type when it is needed).
 - Version 1.3.8: can use a new Repository type instead of list (even though they are still implemented as plain lists at the moment) to handle collections of entities.
 - Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not list anymore byt using Repository data type (which at the moment uses plain lists anyway). 
 
