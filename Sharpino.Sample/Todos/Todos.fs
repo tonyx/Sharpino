@@ -24,7 +24,9 @@ module Todos =
 
             member this.AddTodo (t: Todo) =
                 result {
-                    let! added = this.todos.AddWithPredicate (t, (fun x -> x.Description = t.Description), sprintf "An item with id '%A' already exists" t.Id)
+                    // this predicate is skipped for now
+                    // let! added = this.todos.AddWithPredicate (t, (fun x -> x.Description = t.Description), sprintf "An item with id '%A' already exists" t.Id)
+                    let! added = this.todos.AddWithPredicate (t, (fun _ -> false), sprintf "An item with id '%A' already exists" t.Id)
                     return
                         {
                             this with
