@@ -10,12 +10,12 @@ open FsToolkit.ErrorHandling
 module Tags =
     type Tags = 
         {
-            tags: Repository2<Tag>
+            tags: IRepository<Tag>
         }
         with
             static member Zero =
                 {
-                    tags = Repository2<Tag>.Zero 
+                    tags = ListRepository<Tag>.Zero 
                 }
             member this.AddTag (t: Tag) =
                 result {

@@ -94,12 +94,7 @@ module TodosCluster =
                             this with
                                 categories = categories
                                 todos = 
-                                    {
-                                        this.todos with 
-                                            todos = 
-                                                removeReferenceOfCategoryToTodos id
-                                                |> Repository2<Todo>.Create
-                                    }
+                                    (removeReferenceOfCategoryToTodos id) |> Todos.FromList
                         }
                 }   
         member this.RemoveTagReference (id: Guid) =
@@ -118,12 +113,9 @@ module TodosCluster =
                         {
                             this with
                                 todos = 
-                                    {
-                                        this.todos with
-                                            todos = 
-                                                removeReferenceOfTagToAllTodos id
-                                                |> Repository2<Todo>.Create
-                                    }
+                                    (removeReferenceOfTagToAllTodos id) |> Todos.FromList
+
+
                         }
                 }
         member this.GetCategories() = this.categories.GetCategories().GetAll()
@@ -203,12 +195,7 @@ module TodosCluster =
                         {
                             this with
                                 todos = 
-                                    {
-                                        this.todos with
-                                            todos = 
-                                                removeReferenceOfCategoryToTodos id
-                                                |> Repository2<Todo>.Create
-                                    }
+                                    (removeReferenceOfCategoryToTodos id) |> Todos.FromList
                         }
                 }
 
@@ -228,12 +215,7 @@ module TodosCluster =
                         {
                             this with
                                 todos = 
-                                    {
-                                        this.todos with
-                                            todos = 
-                                                removeReferenceOfTagToAllTodos id
-                                                |> Repository2<Todo>.Create
-                                    }
+                                    (removeReferenceOfTagToAllTodos id) |> Todos.FromList
                         }
                 }
         member this.Serialize(serializer: ISerializer) =

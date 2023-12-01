@@ -8,8 +8,19 @@ open System
 open FsToolkit.ErrorHandling
 
 module Repositories =    
+    type IRepository<'A when 'A: equality and 'A :> Entity> =
+        abstract member Add: 'A * string -> Result<IRepository<'A>, string>
+        abstract member AddWithPredicate: 'A * ('A -> bool) * string -> Result<IRepository<'A>, string>
+        abstract member AddMany: List<'A> * ('A -> string) -> Result<IRepository<'A>, string>
+        abstract member AddManyWithPredicate: List<'A> * ('A -> string) * ('A * 'A -> bool) -> Result<IRepository<'A>, string>
+        abstract member Remove: Guid -> string -> Result<IRepository<'A>, string>
+        abstract member Find: ('A -> bool) -> 'A option
+        abstract member Get: Guid -> 'A option
+        abstract member Exists: ('A -> bool) -> bool
+        abstract member IsEmpty: unit -> bool
+        abstract member GetAll: unit -> List<'A>
 
-    type Repository2<'A when 'A: equality and 'A :> Entity> =
+    type ListRepository<'A when 'A: equality and  'A:> Entity> =
         {
             Items: List<'A>
         }
@@ -20,6 +31,7 @@ module Repositories =
                 }
             static member Zero = { Items = [] :> List<'A>}
 
+            interface IRepository<'A> with
                 member this.Add (x: 'A, msg: string) = 
                     ResultCE.result {
                         let! notAlreadyExists = 

@@ -12,12 +12,12 @@ open Sharpino.Sample.Shared.Entities
 module Categories =
     type Categories = 
         {
-            categories: Repository2<Category>
+            categories: IRepository<Category>
         }
         with
             static member Zero =
                 {
-                    categories = Repository2<Category>.Zero
+                    categories = ListRepository<Category>.Zero
                 }
             member this.AddCategory (c: Category) =
                 result {

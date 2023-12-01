@@ -10,12 +10,16 @@ module Todos =
 
     type Todos =
         {
-            todos: Repository2<Todo>
+            todos: IRepository<Todo>
         }
         with
             static member Zero =
                 {
-                    todos = Repository2<Todo>.Zero
+                    todos = ListRepository<Todo>.Zero
+                }
+            static member FromList (xs: List<Todo>) =
+                {
+                    todos = ListRepository<Todo>.Create xs
                 }
 
             member this.AddTodo (t: Todo) =
