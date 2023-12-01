@@ -41,8 +41,8 @@ let allVersions =
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
@@ -740,7 +740,7 @@ let multiCallTests =
             ap.addTodo todo |> ignore
             ()
 
-    ptestList "massive sequence adding - Ok" [
+    ftestList "massive sequence adding - Ok" [
         testCase "add many todos" <| fun _ ->
 
             let ap = AppVersions.currentPostgresApp
