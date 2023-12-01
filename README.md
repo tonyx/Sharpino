@@ -18,23 +18,23 @@ Note: events cannot store sensible data (that are regulated by GDPR) because the
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
 - Support publishing events to Kafka.
 - Example application with tests including Kafka subscriber.
-- There are no proper aggregates but rather clusters:a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
-- A specifi practice to refactor clusters and test cluster refactoring
+- There are no proper aggregates but rather clusters: collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary. 
+- A specific practice to refactor clusters and test cluster refactoring
 
 ## Projects
 
 __Sharpino.Lib__:
 
-- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former rises an error if there are some events that cannot be applied to the current state of the cluster. The latter just skip those events.
+- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the cluster. The latter just skip those events.
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using the __storage__.
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __storage__.
 - [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
 - [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
 
 
 __Sharpino.Sample__
-You need a user called 'safe' with password 'safe' in your postgres (if you want to use postgres as event store).
+You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the clusters. There is a strategy to test the migration between versions (cluster refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
 .
@@ -45,9 +45,9 @@ It is an example of a library for managing todos with tags and categories. There
 - __clusters__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
 - __clusters__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/clusters/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
-__Commands__ defines also _undoers_ that are functions that can undo the commands to reverse action in a multiple-stream operation for storage that don't support multiple-stream transactions (see _LightCommandHandler_).
+__Commands__ defines also _undoers_ that are functions that can undo the commands to reverse action in a multiple-stream operation for storage that doesn't support multiple-stream transactions (see _LightCommandHandler_).
 - A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves _events_ and _snapshots_.
-- The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more cluster by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
+- The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more clusters by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
 __Sharpino.Sample.tests__
@@ -57,7 +57,7 @@ __Sharpino.Sample.Kafka__
 - scripts to setup a Kafka topics corresponding to clusters of the sample application
 
 ## How to use it
-- You can run the sample application as a rest service by running the following command from the Sharpino.Sample folder:
+- You can run the sample application as a rest service by running the following command from Sharpino.Sample folder:
 ```bash
 dotnet run
 ```
@@ -79,8 +79,8 @@ dotnet run
 ```
 In the latter case, you get the output from _Expecto_ test runner (in this case the console shows eventual standard output/printf).
 
-By default, the tests run only the in-memory implementation of the storage. You can set up the postgres tables and db by using dbmate.
-In the Sharpino.Sample folder you can run the following command to setup the Postgres database:
+By default, the tests run only the in-memory implementation of the storage. You can set up the Postgres tables and db by using dbmate.
+In the Sharpino.Sample folder you can run the following command to set up the Postgres database:
 ```bash
 dbmate -e up
 ```
@@ -88,14 +88,12 @@ dbmate -e up
 If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).
 
 ## Tests on eventstoredb
-If eventstore is running on docker you may want to run tests on it as follow:
+If eventstore is running on docker you may want to run tests on it as follows:
 by making the eventstore tests not pending (search for "eventstore tests" and change ptestList to ftestList)
 or by uncommenting the following line on the file [MultiversionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs):
 ```Fsharp
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 ```
-__Warning__: on testing eventstoredb you may experience some random test falures: I added some force update and some little delays to avoid, even though they can arise sometimes anyway in a non reproducible way.
-The cure is adding more delay if needed.
 
 __Faq__: 
 - Why "Sharpino"? 
@@ -110,14 +108,14 @@ __Faq__:
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project (current version 1.0.1)
-    - note: on my side, when I added Sharpino as a library into a web app then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
+    - note: on my side, when I added Sharpino as a library into a web app, then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
-- Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: new Repository is __not compatible__ with the one with the one introduced in Version 1.3.8!
-- Version 1.3.8: can use a new Repository type instead of list (even though they are still implemented as plain lists at the moment) to handle collections of entities.
-- Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not list anymore but using Repository data type (which at the moment uses plain lists anyway). 
+- Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: the new Repository interface (and implementation) is __not compatible__ with the one introduced in Version 1.3.8!
+- Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities.
+- Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not lists anymore but use Repository data type (which at the moment uses plain lists anyway). 
 
 - Version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
 Needed a configuration file named appSettings.json in the root of the project with the following content:
