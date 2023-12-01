@@ -689,59 +689,14 @@ let multiVersionsTests =
     ] 
     |> testSequenced
 
-
-// [<Tests>]
-// let kafkaReceiverTests =
-//     let serializer = JsonSerializer(serSettings) :> ISerializer
-//     ptestList "kafka receiver test" [
-//         testCase "produce a todo and receive it from event broker - Ok" <| fun _ ->
-//             currentVersionPgWithKafkaApp._reset()
-
-//             let receiver = KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClinet")
-
-//             let todo = mkTodo (Guid.NewGuid()) "testTodo" [] []
-//             let added = currentVersionPgWithKafkaApp.addTodo todo
-//             Expect.isOk added "should be ok"
-
-//             let received = receiver.Consume()
-
-//             let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-//             let mutable deserializedVal = deserialized.OkValue
-//             Expect.isOk added "should be ok"
-
-//             let mutable foundAppId = 
-//                 deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
-
-//             while (not foundAppId) do
-//                 let received = receiver.Consume()
-//                 let deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-//                 Expect.isOk deserialized "should be ok"
-//                 deserializedVal <- deserialized.OkValue
-//                 foundAppId <- deserializedVal.ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
-
-//             Expect.isTrue foundAppId "should be true"
-//             let lastEventId = (pgStorage :> IStorage).TryGetLastEventId TodosCluster.Version TodosCluster.StorageName
-//             Expect.isSome lastEventId  "should be some" 
-//             Expect.equal deserializedVal.EventId lastEventId.Value "should be equal"
-//             let extractedEvent = deserializedVal.Event |> serializer.Deserialize<TodoEvent>
-//             Expect.isOk extractedEvent "should be ok"
-//             Expect.equal extractedEvent.OkValue (TodoEvent.TodoAdded todo) "should be equal"
-//     ]
-
 [<Tests>]
 let multiCallTests =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
-    let doAddNewTodo() =
-        let ap = AppVersions.currentPostgresApp
-        for i = 0 to 9 do
-            let todo = mkTodo (Guid.NewGuid()) ("todo" + (i.ToString())) [] []
-            ap.addTodo todo |> ignore
-            ()
 
-    ptestList "massive sequence adding - Ok" [
-        testCase "add many todos" <| fun _ ->
+    testList "massive sequence adding - Ok" [
+        ptestCase "add many todos" <| fun _ ->
 
             let ap = AppVersions.currentPostgresApp
             // let ap = currentVersionPgWithKafkaApp
@@ -753,20 +708,6 @@ let multiCallTests =
                 ()
 
             let actualTodos = ap.getAllTodos().OkValue
-
             Expect.equal actualTodos.Length 1000 "should be equal"
 
-        testCase "add many todos in parallel" <| fun _ ->
-            let ap = AppVersions.currentPostgresApp
-            // let ap = currentVersionPgWithKafkaApp
-            let _ = ap._reset()
-
-            for i = 0 to 99 do   
-                let thread = new Thread(doAddNewTodo)
-                thread.Start()
-                thread.Join()
-
-            let actualTodos = ap.getAllTodos().OkValue
-
-            Expect.equal actualTodos.Length 1000 "should be equal"
     ] |> testSequenced
