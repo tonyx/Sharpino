@@ -699,7 +699,6 @@ let multiCallTests =
         ptestCase "add many todos" <| fun _ ->
 
             let ap = AppVersions.currentPostgresApp
-            // let ap = currentVersionPgWithKafkaApp
             let _ = ap._reset()
 
             for i = 0 to 999 do
