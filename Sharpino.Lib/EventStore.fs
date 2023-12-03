@@ -7,8 +7,8 @@ open Sharpino.Lib.Core.Commons
 open FsToolkit.ErrorHandling
 open log4net
 
-module Storage =
 
+module Storage =
     type StorageEventJson =
         {
             JsonEvent: Json

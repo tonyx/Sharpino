@@ -32,10 +32,10 @@
   </ItemGroup>
 
   <!-- uncomment this while developing the library -->
-<!-- 
+
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> -->
+  </ItemGroup>
 
 
   <ItemGroup>
@@ -45,7 +45,7 @@
     <PackageReference Include="Saturn" Version="0.16.1" />
 
     <!-- comment this while developing the library -->
-    <PackageReference Include="Sharpino" Version="1.3.9" />
+    <!-- <PackageReference Include="Sharpino" Version="1.3.9" /> -->
     <!-- comment this while developing the library -->
   </ItemGroup>
 

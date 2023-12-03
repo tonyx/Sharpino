@@ -21,6 +21,34 @@ open log4net.Config
 open System.Runtime.CompilerServices
 
 module CommandHandler =
+
+    // let inline funGetState<'A, 'E
+    //     when 'A: (static member Zero: 'A)
+    //     and 'A: (static member StorageName: string)
+    //     and 'A: (static member Version: string)
+    //     and 'A: (member Serialize: ISerializer -> string)
+    //     and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+    //     and 'A: (static member Lock: obj)
+    //     and 'E :> Event<'A>
+    //     and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+    //     and 'E: (member Serialize: ISerializer -> string)
+    //     > 
+    //     = fun (storage: IEventStore) -> getState<'A, 'E> storage
+
+    // let inline funGetStateRef<'A, 'E
+    //     when 'A: (static member Zero: 'A)
+    //     and 'A: (static member StorageName: string)
+    //     and 'A: (static member Version: string)
+    //     and 'A: (member Serialize: ISerializer -> string)
+    //     and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+    //     and 'A: (static member Lock: obj)
+    //     and 'E :> Event<'A>
+    //     and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+    //     and 'E: (member Serialize: ISerializer -> string)
+    //     > 
+    //     = fun (storage: IEventStore) -> fun () -> getState<'A, 'E> storage
+
+
     let config = 
         try
             Conf.config ()
@@ -29,7 +57,6 @@ module CommandHandler =
             // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
-
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
@@ -47,6 +74,7 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IEventStore) =
+            // let funGetState = funGetStateRef<'A, 'E> storage
             async {
                 return
                     ResultCE.result
@@ -109,6 +137,7 @@ module CommandHandler =
                     return
                         result {
                             let! (_, state) = getState<'A, 'E> storage
+                            // let! (_, state) = funGetState<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -173,6 +202,8 @@ module CommandHandler =
                         result {
                             let! (_, state1) = getState<'A1, 'E1> storage
                             let! (_, state2) = getState<'A2, 'E2> storage
+                            // let! (_, state1) = funGetState<'A1, 'E1> storage
+                            // let! (_, state2) = funGetState<'A2, 'E2> storage
                             let! events1 =
                                 state1
                                 |> command1.Execute
@@ -263,6 +294,9 @@ module CommandHandler =
                             let! (_, state1) = getState<'A1, 'E1> storage
                             let! (_, state2) = getState<'A2, 'E2> storage
                             let! (_, state3) = getState<'A3, 'E3> storage
+                            // let! (_, state1) = funGetState<'A1, 'E1> storage
+                            // let! (_, state2) = funGetState<'A2, 'E2> storage
+                            // let! (_, state3) = funGetState<'A3, 'E3> storage
                             let! events1 =
                                 state1
                                 |> command1.Execute

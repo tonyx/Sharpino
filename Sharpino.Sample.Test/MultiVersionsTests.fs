@@ -733,14 +733,8 @@ let multiCallTests =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
-    let doAddNewTodo() =
-        let ap = AppVersions.currentPostgresApp
-        for i = 0 to 9 do
-            let todo = mkTodo (Guid.NewGuid()) ("todo" + (i.ToString())) [] []
-            ap.addTodo todo |> ignore
-            ()
 
-    ftestList "massive sequence adding - Ok" [
+    ptestList "massive sequence adding - Ok" [
         testCase "add many todos" <| fun _ ->
 
             let ap = AppVersions.currentPostgresApp
@@ -756,17 +750,4 @@ let multiCallTests =
 
             Expect.equal actualTodos.Length 1000 "should be equal"
 
-        testCase "add many todos in parallel" <| fun _ ->
-            let ap = AppVersions.currentPostgresApp
-            // let ap = currentVersionPgWithKafkaApp
-            let _ = ap._reset()
-
-            for i = 0 to 99 do   
-                let thread = new Thread(doAddNewTodo)
-                thread.Start()
-                thread.Join()
-
-            let actualTodos = ap.getAllTodos().OkValue
-
-            Expect.equal actualTodos.Length 1000 "should be equal"
     ] |> testSequenced

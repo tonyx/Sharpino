@@ -30,6 +30,7 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open log4net
 module App =
+
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     let doNothingBroker = 
