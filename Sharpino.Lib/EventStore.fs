@@ -7,8 +7,8 @@ open Sharpino.Lib.Core.Commons
 open FsToolkit.ErrorHandling
 open log4net
 
-module Storage =
 
+module Storage =
     type StorageEventJson =
         {
             JsonEvent: Json
@@ -57,3 +57,8 @@ module Storage =
         {
             notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
         }
+
+    type IStateGetter =
+        {
+            getState: Version -> Name -> Result<Json, string>
+        } 
