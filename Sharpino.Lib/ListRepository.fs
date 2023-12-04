@@ -51,7 +51,7 @@ module Repositories =
                     let notExists (t: 'A) =
                         this.Items |> List.exists (fun x -> x.Id = t.Id)
                         |> not
-                        |> boolToResult (msg t) // (sprintf "an item with id %A already exists" t.Id)
+                        |> boolToResult (msg t) 
 
                     ResultCE.result {
                         let! doesNotExist =

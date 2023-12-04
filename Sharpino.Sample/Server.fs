@@ -19,6 +19,7 @@ module Server =
     log.Debug "starting server"
     // let app = currentPostgresApp
     let app = currentMemoryApp
+    // let app = currentVersionPgWithKafkaApp 
 
     let todosApi: ITodosApi =
         {
