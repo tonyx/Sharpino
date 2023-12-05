@@ -58,6 +58,7 @@ module KafkaReceiver =
         let subscriber = new KafkaSubscriber(bootstrapServer, version, storageName, clientId)
 
         // todo verify that you can filter against something to get only the latest events (see application id)
+        // use application id (see listenforevent in multitests)
         member this.GetState() =  
             let newState =
                 ResultCE.result {
