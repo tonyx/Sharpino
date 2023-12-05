@@ -11,8 +11,8 @@
 
 ## What is it?
 
-A library about a simple event-sourcing framework in F#.
-Note: events cannot store sensible data (that are regulated by GDPR) because there is no automated way to let users delete them.
+Support for Event-sourcing in F#.
+No sensible data (GDPR) support.
 
 ## Features
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
