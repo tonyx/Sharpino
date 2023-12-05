@@ -61,14 +61,20 @@ let eventBrokerStateBuildingTests =
             let events = listenForEventwithTimeout (ApplicationInstance.Instance.GetGuid(), todoReceiver)
             Expect.isTrue true "true"
 
-        // ftestCase "given a context, create a state getter and having no events will return the initial state - Ok" <| fun _ ->
-        //     let todoEventBrokerState = new EventBrokerState(TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClient")
+        ftestCase "given a context, create a state getter and having no events will return the initial state - Ok" <| fun _ ->
+            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
+            let state = todoEventBrokerState.GetState() // |> Result.get
+            Expect.equal state (TodosCluster.Zero) "true"
 
-
-            // let todoReceiver = new KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClient")
-            // let sut = currentVersionPgWithKafkaApp
-            // let events = listenForEventwithTimeout (ApplicationInstance.Instance.GetGuid(), todoReceiver)
-            Expect.isTrue true "true"
+        testCase "raise an event so the eventBrokerState will be able to build the state accordingly - Ok " <| fun _ ->
+            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
+            let sut = currentVersionPgWithKafkaApp
+            let todo = mkTodo (Guid.NewGuid()) "test" [] []
+            let added = sut.addTodo todo
+            Expect.isOk added "should be ok"
+            let state = todoEventBrokerState.GetState()
+            let todos = state.GetTodos()
+            Expect.equal todos [todo] "true"
 
     ]
     |> testSequenced

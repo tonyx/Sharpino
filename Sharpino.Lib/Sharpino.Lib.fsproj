@@ -26,12 +26,12 @@
     <Compile Include="ListRepository.fs" />
     <Compile Include="PgEventStore.fs" />
     <Compile Include="KafkaBroker.fs" />
-    <Compile Include="KafkaReceiver.fs" />
     <Compile Include="MemoryStorage.fs" />
     <Compile Include="EventStoreStorage.fs" />
 
     <Compile Include="Cache.fs" />
     <Compile Include="StateView.fs" />
+    <Compile Include="KafkaReceiver.fs" />
     <Compile Include="CommandHandler.fs" />
     <Compile Include="LightCommandHandler.fs" />
     <None Include="LICENSE" Pack="true" PackagePath="" />
