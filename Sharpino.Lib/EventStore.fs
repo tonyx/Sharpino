@@ -58,7 +58,3 @@ module Storage =
             notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
         }
 
-    type IStateGetter =
-        {
-            getState: Version -> Name -> Result<Json, string>
-        } 

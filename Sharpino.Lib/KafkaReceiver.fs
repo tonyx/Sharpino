@@ -27,3 +27,26 @@ module KafkaReceiver =
         member this.Consume () =
             let result = cons.Consume()
             result
+
+        member this.consumeWithTimeOut(): Result<ConsumeResult<Null, string>, string> =
+            ResultCE.result {
+                try
+                    printf "entered in consumewithtimeout"
+                    let timeoutMilliseconds = 10000; 
+                    let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
+
+                    let result = cons.Consume(cancellationTokenSource.Token)
+                    return result
+                with 
+                | _ -> 
+                    printf "Timeout! "
+                    return! "timeout" |> Result.Error
+            }
+
+
+
+    // type EventBrokerState()
+    //     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    //     let subscriber = new KafkaSubscriber(bootstrapServer, context.Version, context.StorageName, "sharpinoTestClient")
+    //     member this.GetState(): 'A = context
+

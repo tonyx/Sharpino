@@ -22,32 +22,37 @@ open System.Runtime.CompilerServices
 
 module CommandHandler =
 
-    // let inline funGetState<'A, 'E
-    //     when 'A: (static member Zero: 'A)
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)
-    //     and 'A: (member Serialize: ISerializer -> string)
-    //     and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-    //     and 'A: (static member Lock: obj)
-    //     and 'E :> Event<'A>
-    //     and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-    //     and 'E: (member Serialize: ISerializer -> string)
-    //     > 
-    //     = fun (storage: IEventStore) -> getState<'A, 'E> storage
+    // type StateBuilderType =
+    //     StorageBased | BrokerBased 
 
-    // let inline funGetStateRef<'A, 'E
-    //     when 'A: (static member Zero: 'A)
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)
-    //     and 'A: (member Serialize: ISerializer -> string)
-    //     and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-    //     and 'A: (static member Lock: obj)
-    //     and 'E :> Event<'A>
-    //     and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-    //     and 'E: (member Serialize: ISerializer -> string)
-    //     > 
-    //     = fun (storage: IEventStore) -> fun () -> getState<'A, 'E> storage
+    let inline getStorageStateViewer<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Lock: obj)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >(eventStore: IEventStore) =
+            let result = fun () -> getState<'A, 'E> eventStore
+            result
 
+    let inline getBrokerStateViewer<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Lock: obj)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >(eventBroker: IEventBroker) =
+            ()
+            // let result = fun () -> getBrokerState<'A, 'E> eventBroker
+            // result
 
     let config = 
         try
@@ -74,12 +79,13 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IEventStore) =
-            // let funGetState = funGetStateRef<'A, 'E> storage
+            let stateViewer = getStorageStateViewer<'A, 'E> storage
             async {
                 return
                     ResultCE.result
                         {
-                            let! (id, state) = getState<'A, 'E> storage
+                            // let! (id, state) = getState<'A, 'E> storage 
+                            let! (id, state) = stateViewer () //getState<'A, 'E> storage 
                             let serState = state.Serialize serializer
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
@@ -129,15 +135,19 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
+        (storage: IEventStore) 
+        (eventBroker: IEventBroker) 
+        (stateViewer': unit -> Result<EventId * 'A, string>) 
+        (command: Command<'A, 'E>) =
+        
             log.Debug (sprintf "runCommand %A" command)
-
+            // let stateViewer = getStateViewer<'A, 'E> storage
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state) = getState<'A, 'E> storage
-                            // let! (_, state) = funGetState<'A, 'E> storage
+                            // let! (_, state) = getState<'A, 'E> storage
+                            let! (_, state) = stateViewer'() //<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -196,14 +206,19 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
+            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
+            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
+
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            // let! (_, state1) = funGetState<'A1, 'E1> storage
-                            // let! (_, state2) = funGetState<'A2, 'E2> storage
+                            // let! (_, state1) = getState<'A1, 'E1> storage
+                            // let! (_, state2) = getState<'A2, 'E2> storage
+
+                            let! (_, state1) = stateViewerA1 ()
+                            let! (_, state2) = stateViewerA2 ()
+
                             let! events1 =
                                 state1
                                 |> command1.Execute
@@ -286,17 +301,22 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
+            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
+            let stateViewerA3 = getStorageStateViewer<'A3, 'E3> storage
 
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! (_, state3) = getState<'A3, 'E3> storage
-                            // let! (_, state1) = funGetState<'A1, 'E1> storage
-                            // let! (_, state2) = funGetState<'A2, 'E2> storage
-                            // let! (_, state3) = funGetState<'A3, 'E3> storage
+                            // let! (_, state1) = getState<'A1, 'E1> storage
+                            // let! (_, state2) = getState<'A2, 'E2> storage
+                            // let! (_, state3) = getState<'A3, 'E3> storage
+
+                            let! (_, state1) = stateViewerA1 ()
+                            let! (_, state2) = stateViewerA2 ()
+                            let! (_, state3) = stateViewerA3 ()
+
                             let! events1 =
                                 state1
                                 |> command1.Execute

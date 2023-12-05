@@ -1,9 +1,11 @@
 namespace Sharpino.Sample
 
 open Sharpino
+open Sharpino.Core
 open Sharpino.Utils
 open Sharpino.CommandHandler
 open Sharpino.StateView
+open Sharpino.Definitions
 
 open Sharpino.Sample
 open Sharpino.Storage
@@ -25,6 +27,7 @@ open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Entities.TodosReport
 open Sharpino.Sample.Shared.Entities
 open Sharpino.Sample.Converters
+open Sharpino.StateView
 open System
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -38,19 +41,29 @@ module App =
             notify = None
         }
     [<CurrentVersion>]
-    type CurrentVersionApp(storage: IEventStore, eventBroker: IEventBroker) =
+    type CurrentVersionApp
+        (storage: IEventStore, eventBroker: IEventBroker) =
+        let todosStateViewer =
+            getStorageStateViewer<TodosCluster, TodoEvent> storage
+        let tagsStateViewer =
+            getStorageStateViewer<TagsCluster, TagEvent> storage
+
         new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
+        // new(storage: IEventStore, eventBroker: IEventBroker) = CurrentVersionApp(storage, eventBroker, getStateViewer storage)
         member this._eventBroker = eventBroker
+
         member this.GetAllTodos() =
             result  {
-                let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
+                // let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
+                let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
             lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
-                    let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                    // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                    let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagIdIsValid =    
@@ -61,7 +74,7 @@ module App =
                     let! _ =
                         todo
                         |> TodoCommand.AddTodo
-                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker
+                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
                     return ()
                 }
             )
@@ -69,7 +82,8 @@ module App =
         member this.Add2Todos (todo1, todo2) =
             lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
-                    let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                    // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                    let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagId1IsValid =  
@@ -85,7 +99,7 @@ module App =
                     let! _ =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
-                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker
+                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
                     return ()
                 }
             )
@@ -95,13 +109,14 @@ module App =
                 let! _ =
                     id
                     |> TodoCommand.RemoveTodo
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker
+                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
                 return ()
             }
 
         member this.GetAllCategories() =
             result {
-                let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
+                // let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
+                let! (_, state) = todosStateViewer ()
                 return  state.GetCategories()
             }
 
@@ -110,7 +125,7 @@ module App =
                 let! _ =
                     category
                     |> TodoCommand.AddCategory
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker
+                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
                 return ()
             }
 
@@ -119,7 +134,7 @@ module App =
                 let! _ =
                     id
                     |> TodoCommand.RemoveCategory
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker
+                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
                 return ()
             }
 
@@ -128,7 +143,7 @@ module App =
                 let! _ =
                     tag
                     |> AddTag
-                    |> runCommand<TagsCluster, TagEvent> storage eventBroker
+                    |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
                 return ()
             }
 
@@ -142,7 +157,8 @@ module App =
 
         member this.GetAllTags () =
             result {
-                let! (_, state) = storage |> getState<TagsCluster, TagEvent>
+                // let! (_, state) = storage |> getState<TagsCluster, TagEvent>
+                let! (_, state) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
                 return state.GetTags()
             }
 
@@ -171,20 +187,33 @@ module App =
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IEventStore, eventBroker: IEventBroker) =
+        let todosStateViewer =
+            getStorageStateViewer<TodosAggregate', TodoEvent'> storage
+        let tagsStateViewer =
+            getStorageStateViewer<TagsCluster, TagEvent> storage
+
+        let categoryStateViewer =
+            getStorageStateViewer<CategoriesCluster, CategoryEvent> storage
+
         new(storage: IEventStore) = UpgradedApp(storage, doNothingBroker)
+
         member this._eventBroker = eventBroker
+
         member this.GetAllTodos() =
             result {
-                let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>
+                // let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>
+                let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
             result {
-                let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
+                let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState) = storage |>  getState<CategoriesCluster, CategoryEvent>
+                // let! (_, categoriesState) = storage |>  getState<CategoriesCluster, CategoryEvent>
+                let! (_, categoriesState) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! tagIdIsValid =    
@@ -200,16 +229,18 @@ module App =
                 let! _ =
                     todo
                     |> TodoCommand'.AddTodo
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker
+                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
                 return ()
             }
 
         member this.Add2Todos (todo1, todo2) =
             result {
-                let! (_, tagState) = storage |> getState<TagsCluster, TagEvent>
+                // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent>
+                let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState) = storage |> getState<CategoriesCluster, CategoryEvent>
+                // let! (_, categoriesState) = storage |> getState<CategoriesCluster, CategoryEvent>
+                let! (_, categoriesState) =  categoryStateViewer ()
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! categoryId1IsValid =    
@@ -235,7 +266,7 @@ module App =
                 let! _ =
                     (todo1, todo2)
                     |> TodoCommand'.Add2Todos
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker
+                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
                 return () 
             }
 
@@ -244,13 +275,14 @@ module App =
                 let! _ =
                     id
                     |> TodoCommand'.RemoveTodo
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker
+                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
                 return ()
             }
 
         member this.GetAllCategories() =
             result {
-                let! (_, state) = storage |> getState<CategoriesCluster, CategoryEvent>
+                // let! (_, state) = storage |> getState<CategoriesCluster, CategoryEvent>
+                let! (_, state) = categoryStateViewer ()
                 return state.GetCategories()
             }
 
@@ -259,7 +291,7 @@ module App =
                 let! _ =
                     category
                     |> CategoryCommand.AddCategory
-                    |> runCommand<CategoriesCluster, CategoryEvent> storage eventBroker
+                    |> runCommand<CategoriesCluster, CategoryEvent> storage eventBroker categoryStateViewer
                 return ()
             }
 
@@ -282,7 +314,7 @@ module App =
                 let! _ =
                     tag
                     |> AddTag
-                    |> runCommand<TagsCluster, TagEvent> storage eventBroker
+                    |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
                 return ()
             }
 
@@ -297,7 +329,8 @@ module App =
         member this.GetAllTags () =
             result {
                 let! (_, state) = 
-                    storage |> getState<TagsCluster, TagEvent>
+                    // storage |> getState<TagsCluster, TagEvent>
+                    tagsStateViewer ()
                 let tags = state.GetTags()
                 return tags
             }
