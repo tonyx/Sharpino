@@ -36,13 +36,13 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
@@ -53,6 +53,21 @@ let allVersions =
     ]
 
 let currentTestConfs = allVersions
+
+let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
+    result {
+        let received = receiver.Consume()
+        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+        let mutable deserialized' = deserialized
+        let mutable found = deserialized'.ApplicationId = appId
+
+        while (not found) do
+            let received = receiver.Consume()
+            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+            deserialized' <- deserialized
+            found <- deserialized'.ApplicationId = appId
+        return deserialized'.Event
+    }
 
 [<Tests>]
 let utilsTests =
@@ -154,21 +169,6 @@ let multiVersionsTests =
     let todoReceiver = KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClinet")
     let categoriesReceiver = KafkaSubscriber("localhost:9092", CategoriesCluster.CategoriesCluster.Version, CategoriesCluster.CategoriesCluster.StorageName, "sharpinoTestClinet")
     let tagsReceiver = KafkaSubscriber("localhost:9092", TagsCluster.TagsCluster.Version, TagsCluster.TagsCluster.StorageName, "sharpinoTestClinet")
-
-    let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
-        result {
-            let received = receiver.Consume()
-            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-            let mutable deserialized' = deserialized
-            let mutable found = deserialized'.ApplicationId = appId
-
-            while (not found) do
-                let received = receiver.Consume()
-                let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-                deserialized' <- deserialized
-                found <- deserialized'.ApplicationId = appId
-            return deserialized'.Event
-        }
 
     testList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
