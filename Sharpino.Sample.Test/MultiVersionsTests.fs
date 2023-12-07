@@ -171,7 +171,7 @@ let multiVersionsTests =
     let tagsReceiver = KafkaSubscriber("localhost:9092", TagsCluster.TagsCluster.Version, TagsCluster.TagsCluster.StorageName, "sharpinoTestClinet")
 
     testList "App with coordinator test - Ok" [
-        multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo

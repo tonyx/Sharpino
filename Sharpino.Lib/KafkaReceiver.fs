@@ -36,6 +36,11 @@ module KafkaReceiver =
             let result = cons.Consume()
             result
 
+        member this.ConsumeFrom () =
+            let result = cons.Consume()
+            result
+
+
         member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try
@@ -48,6 +53,17 @@ module KafkaReceiver =
                     printf "Timeout! "
                     return! "timeout" |> Result.Error
             }
+
+        // member this.Refresh(timeoutMs: int) =
+        //     let result = this.consumeWithTimeOut(timeoutMs)
+        //     match result with
+        //     | Ok result -> 
+        //         let message = result.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
+        //         let event = message.Event |> serializer.Deserialize<BrokerMessage> |> Result.get
+        //         result
+        //     | Error err -> 
+        //         printf "error: %A\n" err
+        //         failwith "error"
 
         member this.ConsumeTillEnd() =
             printf "entered in consumetillend\n"
@@ -80,8 +96,19 @@ module KafkaReceiver =
         let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
         let subscriber = new KafkaSubscriber(bootstrapServer, version, storageName, clientId)
 
+        member this.Refresh(milliseconds: int) =
+            let result = subscriber.consumeWithTimeOut(milliseconds)
+            match result with
+                | Ok res ->
+                    let message = res |> fun r -> r.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
+                    let event = message.Event |> serializer.Deserialize<'E> |> Result.get
+                    let state' = evolve<'A, 'E> state [event] |> Result.get
+                    state <- state'
+                    ()
+                | Error err ->
+                    ()
 
-        member this.UpdateState(appId: Guid, timeout: int) =  
+        member this.UpdateState (appId: Guid, timeout: int) =  
             let newState =
                 ResultCE.result {
                     let receivedMany = subscriber.ConsumeTillEndWithTimeOut timeout

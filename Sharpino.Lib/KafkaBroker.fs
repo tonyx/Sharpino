@@ -54,6 +54,7 @@ module KafkaBroker =
                     |> Async.AwaitTask 
                     |> Async.RunSynchronously
 
+                printf "XXX. sent %A\n" (sent.Offset.ToString())
                 if sent.Status = PersistenceStatus.Persisted then
                     let streamName = version + name
                     let updateQuery = sprintf "UPDATE events%s SET published = true WHERE id = '%d'" streamName (msg |> fst)
@@ -62,7 +63,8 @@ module KafkaBroker =
                     |> Sql.query updateQuery
                     |> Sql.executeNonQuery
                     |> ignore
-                    |> Ok
+                    sent |> Ok
+                    // |> Ok
                 else
                     Error("Not persisted")
             with
