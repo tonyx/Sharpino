@@ -36,13 +36,11 @@ module KafkaReceiver =
             let result = cons.Consume()
             result
 
-        member this.consumeWithTimeOut(): Result<ConsumeResult<Null, string>, string> =
+        member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try
                     printf "entered in consumewithtimeout"
-                    let timeoutMilliseconds = 10000; 
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
-
                     let result = cons.Consume(cancellationTokenSource.Token)
                     return result
                 with 
@@ -51,49 +49,60 @@ module KafkaReceiver =
                     return! "timeout" |> Result.Error
             }
 
+        member this.ConsumeTillEnd() =
+            printf "entered in consumetillend\n"
+            let rec consumeTillEndWithTimeOut (acc: List<ConsumeResult<Null, string>>) =
+                // printf "entered in consumetillendwithtimeout 1.\n"
+                let result = this.Consume() |> Ok
+                // printf "entered in consumetillendwithtimeout 2.\n"
+                match result with
+                | Ok result -> 
+                    consumeTillEndWithTimeOut (result::acc)
+                | Error err -> 
+                    acc
+            consumeTillEndWithTimeOut []
+
+        member this.ConsumeTillEndWithTimeOut(timeout: int) =
+            let rec consumeTillEndWithTimeOut (acc: List<ConsumeResult<Null, string>>) =
+                printf "ola\n"
+                let result = this.consumeWithTimeOut(timeout)
+                match result with
+                | Ok result -> 
+                    consumeTillEndWithTimeOut (result::acc)
+                | Error err -> 
+                    acc
+            consumeTillEndWithTimeOut []
+
     type EventBrokerState<'A, 'E when 'E:> Event<'A> >
-        (version: string, storageName: string, bootstrapServer: string, clientId: string, zero: 'A) =
+        (version: string, storageName: string, bootstrapServer: string, clientId: string, zero: 'A, applId: Guid) =
         let mutable state:'A = zero
+        let mutable applicationId: Guid = applId
         let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
         let subscriber = new KafkaSubscriber(bootstrapServer, version, storageName, clientId)
 
-        // todo verify that you can filter against something to get only the latest events (see application id)
-        // use application id (see listenforevent in multitests)
-        member this.GetState() =  
+
+        member this.UpdateState(appId: Guid, timeout: int) =  
             let newState =
                 ResultCE.result {
-                    let! received = subscriber.consumeWithTimeOut()
-                    let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-                    let! deserialized' = deserialized.Event |> serializer.Deserialize<'E>
-                    let! state' =  evolveUNforgivingErrors<'A,'E> state [deserialized']
+                    let receivedMany = subscriber.ConsumeTillEndWithTimeOut timeout
+                    let! deserializedMany = receivedMany |> catchErrors (fun r -> r.Message.Value |> serializer.Deserialize<BrokerMessage>)
+                    let filtered = deserializedMany |> List.filter (fun r -> r.ApplicationId = appId)
+                    let! deserializedMany' = filtered |> catchErrors (fun r -> r.Event |> serializer.Deserialize<'E>)
+                    let! state' =  evolve<'A,'E> state deserializedMany'
                     return state'
                 }
-
             // todo verify that you can filter against something to get only the latest events (see application id)
-            // match newState with
-            // | Ok state' -> 
-            //     state <- state'
-            //     state' 
-            // | Error err ->
-            //     state 
+            match newState with
+            | Ok state' -> 
+                state <- state'
+                state' 
+            | Error err ->
+                state 
+        member this.GetState() =
+            state
 
-            state 
-        
-            // state
-            // try
-            //     ResultCE.result {
-            //         let! received = subscriber.consumeWithTimeOut()
-            //         let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage>
-            //         let! deserialized' = deserialized.Event |> serializer.Deserialize<'A>
-            //         let! state' = state |> evolve [deserialized']
-            //         // let! state'' = state' |> Result.mapError (fun err -> err + " " + deserialized.EventId.ToString())
-            //         // state <- state'
-            //         return state'
-            //         // return deserialized
-            //     }
-            // with
-            // | _ -> state |> Ok
-
+        member this.SetAppId(appId: Guid) =
+            applicationId <- appId
 
     let inline mkEventBrokerStateKeeper<'A , 'E
         when 'A: (static member Zero: 'A)
@@ -103,6 +112,6 @@ module KafkaReceiver =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E:> Event<'A>
         > 
-        (bootstrapServer: string) (clientId: string) =
-        EventBrokerState<'A, 'E>('A.Version, 'A.StorageName, bootstrapServer, clientId, 'A.Zero)
+        (bootstrapServer: string) (clientId: string) (applicationId: Guid)=
+        EventBrokerState<'A, 'E>('A.Version, 'A.StorageName, bootstrapServer, clientId, 'A.Zero, applicationId)
 

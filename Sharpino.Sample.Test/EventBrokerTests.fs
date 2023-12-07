@@ -35,46 +35,51 @@ open log4net
 
 [<Tests>]
 let eventBrokerStateBuildingTests =
-    let listenForEventwithTimeout (appId: Guid, receiver: KafkaSubscriber) =
-        result {
-            let! received = receiver.consumeWithTimeOut()
-            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-            let mutable deserialized' = deserialized
-            let mutable found = deserialized'.ApplicationId = appId
-
-            while (not found) do
-                let! received = receiver.consumeWithTimeOut()
-                let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-                deserialized' <- deserialized
-                found <- deserialized'.ApplicationId = appId
-            return deserialized'.Event
-        }
 
     testList "build state by querying the event broker" [
-        testCase "asdfa" <| fun _ ->   
-            printf "hereXXX\n"
-            Expect.isTrue true "true"
-        
-        testCase "there are no events, wait for the timeout" <| fun _ ->
-            let todoReceiver = new KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClient")
-            let sut = currentVersionPgWithKafkaApp
-            let events = listenForEventwithTimeout (ApplicationInstance.Instance.GetGuid(), todoReceiver)
-            Expect.isTrue true "true"
+        // let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
 
-        ftestCase "given a context, create a state getter and having no events will return the initial state - Ok" <| fun _ ->
-            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
-            let state = todoEventBrokerState.GetState() // |> Result.get
-            Expect.equal state (TodosCluster.Zero) "true"
-
-        testCase "raise an event so the eventBrokerState will be able to build the state accordingly - Ok " <| fun _ ->
-            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
+        ftestCase "raise an event so the eventBrokerState will be able to build the state accordingly - Ok " <| fun _ ->
+            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient" (ApplicationInstance.Instance.GetGuid())
             let sut = currentVersionPgWithKafkaApp
-            let todo = mkTodo (Guid.NewGuid()) "test" [] []
+            sut._reset()
+            let todo = mkTodo (Guid.NewGuid()) "testasdfQ" [] []
             let added = sut.addTodo todo
             Expect.isOk added "should be ok"
-            let state = todoEventBrokerState.GetState()
-            let todos = state.GetTodos()
+            let state = todoEventBrokerState.UpdateState(ApplicationInstance.Instance.GetGuid(), 10000)
+            let newState = todoEventBrokerState.GetState()
+            // let state = todoEventBrokerState.GetState (ApplicationInstance.Instance.GetGuid())
+            let todos = newState.GetTodos()
             Expect.equal todos [todo] "true"
+
+
+
+
+
+        // ftestCase "add a todo and read the state from the event broker view - Ok" <| fun _ ->
+        //     let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient"
+        //     let sut = currentVersionPgWithKafkaApp
+        //     sut._reset()
+        //     let todo = mkTodo (Guid.NewGuid()) "testasdfQ" [] []
+        //     let added = sut.addTodo todo
+        //     Expect.isOk added "should be ok"
+        //     let state = todoEventBrokerState.GetState(ApplicationInstance.Instance.GetGuid(), 10000)
+        //     let todos = state.GetTodos()
+        //     Expect.equal todos [todo] "true"
+
+        testCase "add many todos and read the state from the event broker view - Ok" <| fun _ ->
+            let todoEventBrokerState = mkEventBrokerStateKeeper<TodosCluster, TodoEvents.TodoEvent> "localhost:9092" "sharpinoTestClient" (ApplicationInstance.Instance.GetGuid())
+            let sut = currentVersionPgWithKafkaApp
+            sut._reset()
+            let todo = mkTodo (Guid.NewGuid()) "testasdfQg" [] []
+            let todo2 = mkTodo (Guid.NewGuid()) "testasdfQQ" [] []
+            let added = sut.addTodo todo
+            Expect.isOk added "should be ok"
+            let added2 = sut.addTodo todo2
+            Expect.isOk added2 "should be ok"
+            let state = todoEventBrokerState.UpdateState(ApplicationInstance.Instance.GetGuid(), 10000)
+            let todos = state.GetTodos()
+            Expect.equal (todos |> Set.ofList) ([todo; todo2] |> Set.ofList) "should be equal"
 
     ]
     |> testSequenced
