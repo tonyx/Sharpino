@@ -40,19 +40,34 @@ let allVersions =
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
+
+let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
+    result {
+        let received = receiver.Consume()
+        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+        let mutable deserialized' = deserialized
+        let mutable found = deserialized'.ApplicationId = appId
+
+        while (not found) do
+            let received = receiver.Consume()
+            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+            deserialized' <- deserialized
+            found <- deserialized'.ApplicationId = appId
+        return deserialized'.Event
+    }
 
 [<Tests>]
 let utilsTests =
@@ -88,7 +103,7 @@ let testCoreEvolve =
     let serializer = JsonSerializer(serSettings) :> ISerializer
 
     testList "evolve test" [
-        multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
@@ -155,22 +170,7 @@ let multiVersionsTests =
     let categoriesReceiver = KafkaSubscriber("localhost:9092", CategoriesCluster.CategoriesCluster.Version, CategoriesCluster.CategoriesCluster.StorageName, "sharpinoTestClinet")
     let tagsReceiver = KafkaSubscriber("localhost:9092", TagsCluster.TagsCluster.Version, TagsCluster.TagsCluster.StorageName, "sharpinoTestClinet")
 
-    let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
-        result {
-            let received = receiver.Consume()
-            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-            let mutable deserialized' = deserialized
-            let mutable found = deserialized'.ApplicationId = appId
-
-            while (not found) do
-                let received = receiver.Consume()
-                let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-                deserialized' <- deserialized
-                found <- deserialized'.ApplicationId = appId
-            return deserialized'.Event
-        }
-
-    testList "App with coordinator test - Ok" [
+    ftestList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
@@ -197,7 +197,7 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected receivedOk "should be equal"
 
-        fmultipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo

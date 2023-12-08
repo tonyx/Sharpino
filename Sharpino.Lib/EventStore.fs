@@ -55,10 +55,7 @@ module Storage =
 
     type IEventBroker =
         {
-            notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
+            // notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
+            notify: Option<Version -> Name -> List<int * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
         }
 
-    type IStateGetter =
-        {
-            getState: Version -> Name -> Result<Json, string>
-        } 

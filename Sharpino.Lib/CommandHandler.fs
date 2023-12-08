@@ -21,6 +21,39 @@ open log4net.Config
 open System.Runtime.CompilerServices
 
 module CommandHandler =
+
+    // type StateBuilderType =
+    //     StorageBased | BrokerBased 
+
+    let inline getStorageStateViewer<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Lock: obj)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >(eventStore: IEventStore) =
+            let result = fun () -> getState<'A, 'E> eventStore
+            result
+
+    let inline getBrokerStateViewer<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Lock: obj)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >(eventBroker: IEventBroker) =
+            ()
+            // let result = fun () -> getBrokerState<'A, 'E> eventBroker
+            // result
+
     let config = 
         try
             Conf.config ()
@@ -29,7 +62,6 @@ module CommandHandler =
             // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
-
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)
@@ -47,11 +79,13 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IEventStore) =
+            let stateViewer = getStorageStateViewer<'A, 'E> storage
             async {
                 return
                     ResultCE.result
                         {
-                            let! (id, state) = getState<'A, 'E> storage
+                            // let! (id, state) = getState<'A, 'E> storage 
+                            let! (id, state) = stateViewer () //getState<'A, 'E> storage 
                             let serState = state.Serialize serializer
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
@@ -101,14 +135,19 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore) (eventBroker: IEventBroker) (command: Command<'A, 'E>) =
+        (storage: IEventStore) 
+        (eventBroker: IEventBroker) 
+        (stateViewer': unit -> Result<EventId * 'A, string>) 
+        (command: Command<'A, 'E>) =
+        
             log.Debug (sprintf "runCommand %A" command)
-
+            // let stateViewer = getStateViewer<'A, 'E> storage
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state) = getState<'A, 'E> storage
+                            // let! (_, state) = getState<'A, 'E> storage
+                            let! (_, state) = stateViewer'() //<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -117,16 +156,23 @@ module CommandHandler =
                                 |>> (fun x -> x.Serialize serializer)
                             let result =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
-                            let _ =
+                            let sent =
                                 match result with
                                 | Ok ids -> 
                                     let idAndEvents = List.zip ids events'
-                                    tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
+                                    let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents // |> ignore
+                                    sent |> Result.toOption
                                 | Error e ->
                                     log.Error (sprintf "runCommand: %s" e)
-                                    ()
+                                    None
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
-                            return! result
+                            let newResult = 
+                                match result with
+                                | Ok ids -> 
+                                    Ok ([ids], [sent])
+                                | Error e -> 
+                                    Error e
+                            return! newResult
                         }
                 }
                 |> Async.RunSynchronously 
@@ -167,12 +213,17 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
+            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
+            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
+
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
+
+                            let! (_, state1) = stateViewerA1 ()
+                            let! (_, state2) = stateViewerA2 ()
+
                             let! events1 =
                                 state1
                                 |> command1.Execute
@@ -193,19 +244,29 @@ module CommandHandler =
                                         (events1', 'A1.Version, 'A1.StorageName)
                                         (events2', 'A2.Version, 'A2.StorageName)
                                     ]
-                            let _ =
+                            let sent =
                                 match result with
                                 | Ok idLists -> 
                                     let idAndEvents1 = List.zip idLists.[0] events1'
                                     let idAndEvents2 = List.zip idLists.[1] events2'
-                                    tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                    tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
+                                    let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
+                                    let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
+
+                                    [ sent1; sent2 ]
                                 | Error e -> 
                                     log.Error (sprintf "runTwoCommands: %s" e)
-                                    ()
+                                    []
+                                    // None
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
-                            return! result
+
+                            let newResult =
+                                match result with
+                                | Ok idLists -> 
+                                    Ok (idLists, sent)
+                                | Error e -> 
+                                    Error e
+                            return! newResult
                         } 
                     }
                 |> Async.RunSynchronously
@@ -256,13 +317,22 @@ module CommandHandler =
             (command3: Command<'A3, 'E3>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
+            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
+            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
+            let stateViewerA3 = getStorageStateViewer<'A3, 'E3> storage
+
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state1) = getState<'A1, 'E1> storage
-                            let! (_, state2) = getState<'A2, 'E2> storage
-                            let! (_, state3) = getState<'A3, 'E3> storage
+                            // let! (_, state1) = getState<'A1, 'E1> storage
+                            // let! (_, state2) = getState<'A2, 'E2> storage
+                            // let! (_, state3) = getState<'A3, 'E3> storage
+
+                            let! (_, state1) = stateViewerA1 ()
+                            let! (_, state2) = stateViewerA2 ()
+                            let! (_, state3) = stateViewerA3 ()
+
                             let! events1 =
                                 state1
                                 |> command1.Execute
@@ -290,24 +360,32 @@ module CommandHandler =
                                         (events2', 'A2.Version, 'A2.StorageName)
                                         (events3', 'A3.Version, 'A2.StorageName)
                                     ]
-                            let _ =
+                            let sent =
                                 match result with
                                 | Ok idLists -> 
                                     let idAndEvents1 = List.zip idLists.[0] events1'
                                     let idAndEvents2 = List.zip idLists.[1] events2'
                                     let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                    tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1
-                                    tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2
-                                    tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3
+                                    let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
+                                    let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
+                                    let sent3 = tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> Result.toOption
+                                    [ sent1, sent2, sent3 ]
                                 | Error e -> 
                                     log.Error (sprintf "runThreeCommands: %s" e)
-                                    ()
+                                    []
+                                    // None
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
                             let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
 
-                            return! result
+                            let newResult =
+                                match result with
+                                | Ok idLists -> 
+                                    Ok (idLists, sent)
+                                | Error e -> 
+                                    Error e
+                            return! newResult
                         } 
                 }
                 
