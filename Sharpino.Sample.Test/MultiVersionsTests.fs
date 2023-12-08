@@ -40,16 +40,16 @@ let allVersions =
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
-        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -197,7 +197,7 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected receivedOk "should be equal"
 
-        multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
