@@ -18,8 +18,8 @@ Note: events cannot store sensible data (that are regulated by GDPR) because the
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
 - Support publishing events to Kafka.
 - Example application with tests including Kafka subscriber.
-- There are no proper aggregates but rather clusters:a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
-- A specifi practice to refactor clusters and test cluster refactoring
+- There are no proper aggregates but rather clusters: a collection of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary.
+- A specific technique to refactor clusters and test cluster refactoring
 
 ## Projects
 
@@ -115,6 +115,7 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
+- Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
 - Version 1.3.9: Repository interface changed (using Result type when it is needed).
 - Version 1.3.8: can use a new Repository type instead of list (even though they are still implemented as plain lists at the moment) to handle collections of entities.
 - Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not list anymore byt using Repository data type (which at the moment uses plain lists anyway). 

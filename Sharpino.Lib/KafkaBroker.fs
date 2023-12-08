@@ -54,7 +54,6 @@ module KafkaBroker =
                     |> Async.AwaitTask 
                     |> Async.RunSynchronously
 
-                printf "XXX. sent %A\n" (sent.Offset.ToString())
                 if sent.Status = PersistenceStatus.Persisted then
                     let streamName = version + name
                     let updateQuery = sprintf "UPDATE events%s SET published = true WHERE id = '%d'" streamName (msg |> fst)
@@ -106,9 +105,6 @@ module KafkaBroker =
                                     log.Error (sprintf "retry send n. 4 %s" e)
                                     events |> catchErrors (fun x -> notifyMessage version name x)
 
-                            // let! result = notified5 |> Result.map (fun _ -> Ok())
-                            // return! result
-
                             return! notified5
                         }
                     |> Some
@@ -120,10 +116,8 @@ module KafkaBroker =
         | Some notify ->
             notify version name idAndEvents
         | None ->
+            log.Info "no broker configured"
             [] |> Ok
-            // failwith "No broker configured"
-            // log.Info "No broker configured"
-            // Ok ()
 
     let  tryPublish eventBroker version name idAndEvents =
         async {

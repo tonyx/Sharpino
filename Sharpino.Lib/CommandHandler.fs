@@ -22,8 +22,7 @@ open System.Runtime.CompilerServices
 
 module CommandHandler =
 
-    // type StateBuilderType =
-    //     StorageBased | BrokerBased 
+    // type StateBuilderType erBased 
 
     let inline getStorageStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -38,21 +37,6 @@ module CommandHandler =
         >(eventStore: IEventStore) =
             let result = fun () -> getState<'A, 'E> eventStore
             result
-
-    let inline getBrokerStateViewer<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-        and 'A: (static member Lock: obj)
-        and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        >(eventBroker: IEventBroker) =
-            ()
-            // let result = fun () -> getBrokerState<'A, 'E> eventBroker
-            // result
 
     let config = 
         try
@@ -141,7 +125,6 @@ module CommandHandler =
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
-            // let stateViewer = getStateViewer<'A, 'E> storage
             let command = fun () ->
                 async {
                     return
@@ -160,7 +143,7 @@ module CommandHandler =
                                 match result with
                                 | Ok ids -> 
                                     let idAndEvents = List.zip ids events'
-                                    let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents // |> ignore
+                                    let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
                                     sent |> Result.toOption
                                 | Error e ->
                                     log.Error (sprintf "runCommand: %s" e)
@@ -317,6 +300,7 @@ module CommandHandler =
             (command3: Command<'A3, 'E3>) =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
+            // todo: will be able to get event broker based viewers
             let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
             let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
             let stateViewerA3 = getStorageStateViewer<'A3, 'E3> storage
@@ -325,9 +309,6 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            // let! (_, state1) = getState<'A1, 'E1> storage
-                            // let! (_, state2) = getState<'A2, 'E2> storage
-                            // let! (_, state3) = getState<'A3, 'E3> storage
 
                             let! (_, state1) = stateViewerA1 ()
                             let! (_, state2) = stateViewerA2 ()
@@ -374,7 +355,6 @@ module CommandHandler =
                                 | Error e -> 
                                     log.Error (sprintf "runThreeCommands: %s" e)
                                     []
-                                    // None
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
                             let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
