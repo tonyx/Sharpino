@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino.Core</id>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <title>Sharpino.Core</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library (Core)</description>
@@ -14,9 +14,9 @@
       <group targetFramework=".NETFramework7.0">
         <dependency id="Expecto" version="10.1.0" />
         <dependency id="Fable.Core" version="4.2.0" />
-        <dependency id="Farmer" version="1.8.1" />
+        <dependency id="Farmer" version="1.8.2" />
         <dependency id="FSharpPlus" version="1.5.0" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.11.0" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.12.0" />
         <dependency id="Log4net" version="2.0.15" />
         <dependency id="Newtonsoft.Json" version="13.0.3" />
 

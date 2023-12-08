@@ -4,7 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -12,7 +12,7 @@
 
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Library (Core)</Description>
-    <ReleaseNotes>Minimal core that can be separately invoked by Fable</ReleaseNotes> 
+    <ReleaseNotes>Minimal core for Sharpino, that can stay in the shared Client/Server folder in Fable Remoting style of application</ReleaseNotes> 
     <Copyright>Copyright ©2023 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#</PackageTags>
   </PropertyGroup>
@@ -26,7 +26,7 @@
   <ItemGroup>
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Fable.Core" Version="4.2.0" />
-    <PackageReference Include="Farmer" Version="1.8.1" />
+    <PackageReference Include="Farmer" Version="1.8.2" />
     <PackageReference Include="FSharpPlus" Version="1.5.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.12.0" />
     <PackageReference Include="Log4net" Version="2.0.15" />

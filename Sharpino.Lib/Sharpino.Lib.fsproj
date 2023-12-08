@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>1.3.9</Version>
+    <Version>1.4.0</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -44,22 +44,25 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.11.0" />
+
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.12.0" />
+
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
 
 <!-- when developing the core comment out this reference:-->
-    <PackageReference Include="Sharpino.Core" Version="1.0.0" />
+
+    <PackageReference Include="Sharpino.Core" Version="1.0.1" />
+
 <!-- . -->
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
-    <!-- <PackageReference Include="Thoth.json" Version="10.2.0" /> -->
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.8.1" />
+    <PackageReference Include="Farmer" Version="1.8.2" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.3.0" />
     <PackageReference Include="FSharpPlus" Version="1.5.0" />
@@ -71,6 +74,7 @@
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
+
   <!-- <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
   </ItemGroup> -->
