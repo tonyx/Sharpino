@@ -27,7 +27,10 @@ module Server =
                 fun (t: Todo) ->
                     log.Debug (sprintf "adding todo %A" t)
                     async {
-                            return app.addTodo t
+                        let added = app.addTodo t
+                        match added with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
                     }
             GetAllTodos = 
                 fun () ->
@@ -35,16 +38,22 @@ module Server =
                     async {
                         return app.getAllTodos ()
                     }
-
             Add2Todos = 
                 fun (t1, t2) ->
                     async {
-                        return app.add2Todos (t1, t2)
+                        let added = app.add2Todos (t1, t2)
+                        match added with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
                     }
             RemoveTodo = 
                 fun (id: Guid) ->
                     async {
-                        return app.removeTodo id
+                        let removed = app.removeTodo id
+                        match removed with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
+                        // return app.removeTodo id
                     }
             GetAllCategories = 
                 fun () ->
@@ -54,22 +63,34 @@ module Server =
             AddCategory = 
                 fun (c: Category) ->
                     async {
-                        return app.addCategory c
+                        let added = app.addCategory c
+                        match added with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
                     }
             RemoveCategory = 
                 fun (id: Guid) ->
                     async {
-                        return app.removeCategory id
+                        let removed =  app.removeCategory id
+                        match removed with
+                        | Ok _ -> return Ok ()
+                        | Error x -> return Error x
                     }
             AddTag = 
                 fun (t: Tag) ->
                     async {
-                        return app.addTag t
+                        let added = app.addTag t
+                        match added with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
                     }
             RemoveTag = 
                 fun (id: Guid) ->
                     async {
-                        return app.removeTag id
+                        let removed = app.removeTag id
+                        match removed with
+                        | Ok _ -> return Ok ()
+                        | Error x ->  return Error x
                     }
             GetAllTags = 
                 fun () ->

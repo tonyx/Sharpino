@@ -21,6 +21,8 @@ open Newtonsoft.Json
 open System
 open Sharpino.Definitions
 
+open Confluent.Kafka
+
 module AppVersions =
     // beware that this is the test db and so we can reset it for testing
     // this should never be done in production
@@ -85,23 +87,21 @@ module AppVersions =
 
     type IApplication =
         {
-            _notify:            Option<Version -> Name -> List<int * Json> -> Result< unit, string >>    
+            _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         Version * List<Json> * Name -> unit
             getAllTodos:        unit -> Result<List<Todo>, string>
-            addTodo:            Todo -> Result<unit, string>
-            add2Todos:          Todo * Todo -> Result<unit, string>
-            removeTodo:         Guid -> Result<unit, string>
-
+            addTodo:            Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            add2Todos:          Todo * Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            removeTodo:         Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             getAllCategories:   unit -> Result<List<Category>, string> 
-            addCategory:        Category -> Result<unit, string>
-            removeCategory:     Guid -> Result<unit, string>
-            addTag:             Tag -> Result<unit, string>
-            removeTag:          Guid -> Result<unit, string>
+            addCategory:        Category -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            removeCategory:     Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            addTag:             Tag -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            removeTag:          Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             getAllTags:         unit -> Result<List<Tag>, string>
             todoReport:         DateTime -> DateTime -> TodosEvents
-
         }
 
     [<CurrentVersion>]
@@ -227,33 +227,33 @@ module AppVersions =
             todoReport =        upgradedMemApp.TodoReport
         }
 
-    [<CurrentVersion>]
-    let evSApp =
-        {
-            _notify =           None
-            _migrator =         None
-            _reset =            fun () -> 
-                                    resetEventStore()
-                                    resetAppId()
-            _addEvents =        fun (version, e: List<string>, name) -> 
-                                    let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-                                    let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)
-                                    async {
-                                        // todo: refactor here remember that addevents returns a result now
-                                        let result = eventStore.AddEvents version deser name
-                                        return result
-                                    }
-                                    |> Async.RunSynchronously
-                                    |> ignore
-            getAllTodos =       evStoreApp.GetAllTodos
-            addTodo =           evStoreApp.AddTodo
-            add2Todos =         evStoreApp.Add2Todos
-            removeTodo =        evStoreApp.RemoveTodo
-            getAllCategories =  evStoreApp.GetAllCategories
-            addCategory =       evStoreApp.AddCategory
-            removeCategory =    evStoreApp.RemoveCategory
-            addTag =            evStoreApp.AddTag
-            removeTag =         evStoreApp.RemoveTag
-            getAllTags =        evStoreApp.GetAllTags
-            todoReport =        evStoreApp.TodoReport
-        }
+    // [<CurrentVersion>]
+    // are we going to remove totally eventstoredb support? 
+    // let evSApp =
+    //     {
+    //         _notify =           None
+    //         _migrator =         None
+    //         _reset =            fun () -> 
+    //                                 resetEventStore()
+    //                                 resetAppId()
+    //         _addEvents =        fun (version, e: List<string>, name) -> 
+    //                                 let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
+    //                                 let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)
+    //                                 async {
+    //                                     let result = eventStore.AddEvents version deser name
+    //                                     return result
+    //                                 }
+    //                                 |> Async.RunSynchronously
+    //                                 |> ignore
+    //         getAllTodos =       evStoreApp.GetAllTodos
+    //         addTodo =           evStoreApp.AddTodo
+    //         add2Todos =         evStoreApp.Add2Todos
+    //         removeTodo =        evStoreApp.RemoveTodo
+    //         getAllCategories =  evStoreApp.GetAllCategories
+    //         addCategory =       evStoreApp.AddCategory
+    //         removeCategory =    evStoreApp.RemoveCategory
+    //         addTag =            evStoreApp.AddTag
+    //         removeTag =         evStoreApp.RemoveTag
+    //         getAllTags =        evStoreApp.GetAllTags
+    //         todoReport =        evStoreApp.TodoReport
+    //     }

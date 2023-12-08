@@ -62,7 +62,6 @@ module App =
         member this.AddTodo todo =
             lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
                 result {
-                    // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
                     let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -71,11 +70,11 @@ module App =
                         todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                         |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                    let! _ =
+                    let! result =
                         todo
                         |> TodoCommand.AddTodo
                         |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
-                    return ()
+                    return result
                 }
             )
 
@@ -96,63 +95,62 @@ module App =
                         todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                         |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                    let! _ =
+                    let! result =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
                         |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
-                    return ()
+                    return result
                 }
             )
 
         member this.RemoveTodo id =
             result {
-                let! _ =
+                let! result =
                     id
                     |> TodoCommand.RemoveTodo
                     |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
-                return ()
+                return result 
             }
-
         member this.GetAllCategories() =
             result {
-                // let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
+                // let! (_, state) = stoemoveCa getState<TodosCluster, TodoEvent>
                 let! (_, state) = todosStateViewer ()
                 return  state.GetCategories()
             }
 
         member this.AddCategory category =
             result {
-                let! _ =
+                let! result =
                     category
                     |> TodoCommand.AddCategory
                     |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
-                return ()
+                return result
             }
 
         member this.RemoveCategory id = 
             result {
-                let! _ =
+                let! result =
                     id
                     |> TodoCommand.RemoveCategory
                     |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
-                return ()
+                return result 
             }
 
         member this.AddTag tag =
             result {
-                let! _ =
+                let! result =
                     tag
                     |> AddTag
                     |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
-                return ()
+                return result 
             }
 
         member this.RemoveTag id =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
-                let! _ = runTwoCommands<TagsCluster, TodosCluster, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
-                return ()
+                let! result = runTwoCommands<TagsCluster, TodosCluster, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
+                return result
             }
 
         member this.GetAllTags () =
@@ -226,11 +224,11 @@ module App =
                     todo.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
                     |> boolToResult "A category reference contained in the todo is related to a category that does not exist"
 
-                let! _ =
+                let! result =
                     todo
                     |> TodoCommand'.AddTodo
                     |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
-                return ()
+                return result
             }
 
         member this.Add2Todos (todo1, todo2) =
@@ -263,67 +261,67 @@ module App =
                     todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
                     |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
 
-                let! _ =
+                let! result =
                     (todo1, todo2)
                     |> TodoCommand'.Add2Todos
                     |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
-                return () 
+                return result
+                // return () 
             }
 
         member this.RemoveTodo id =
             result {
-                let! _ =
+                let! result =
                     id
                     |> TodoCommand'.RemoveTodo
                     |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
-                return ()
+                return result
             }
 
         member this.GetAllCategories() =
             result {
-                // let! (_, state) = storage |> getState<CategoriesCluster, CategoryEvent>
                 let! (_, state) = categoryStateViewer ()
                 return state.GetCategories()
             }
 
         member this.AddCategory category =
             result {
-                let! _ =
+                let! result =
                     category
                     |> CategoryCommand.AddCategory
                     |> runCommand<CategoriesCluster, CategoryEvent> storage eventBroker categoryStateViewer
-                return ()
+                return result 
             }
 
         member this.RemoveCategory id =
             result {
                 let removeCategory = CategoryCommand.RemoveCategory id
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
-                let! _ =
+                let! result =
                     runTwoCommands<
                         CategoriesCluster, 
                         TodosAggregate', 
                         CategoryEvent, 
                         TodoEvent'> 
                         storage eventBroker removeCategory removeCategoryRef
-                return ()
+                return result 
             }
 
         member this.AddTag tag =
             result {
-                let! _ =
+                let! result =
                     tag
                     |> AddTag
                     |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
-                return ()
+                return result 
             }
 
         member this.removeTag id =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
-                let! _ = runTwoCommands<TagsCluster, TodosAggregate', TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
-                return ()
+                let! result = runTwoCommands<TagsCluster, TodosAggregate', TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
+                return result
             }
 
         member this.GetAllTags () =

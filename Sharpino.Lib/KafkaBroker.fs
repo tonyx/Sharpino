@@ -64,7 +64,6 @@ module KafkaBroker =
                     |> Sql.executeNonQuery
                     |> ignore
                     sent |> Ok
-                    // |> Ok
                 else
                     Error("Not persisted")
             with
@@ -107,8 +106,10 @@ module KafkaBroker =
                                     log.Error (sprintf "retry send n. 4 %s" e)
                                     events |> catchErrors (fun x -> notifyMessage version name x)
 
-                            let! result = notified5 |> Result.map (fun _ -> Ok())
-                            return! result
+                            // let! result = notified5 |> Result.map (fun _ -> Ok())
+                            // return! result
+
+                            return! notified5
                         }
                     |> Some
             }
@@ -119,20 +120,16 @@ module KafkaBroker =
         | Some notify ->
             notify version name idAndEvents
         | None ->
-            log.Info "No broker configured"
-            Ok ()
+            [] |> Ok
+            // failwith "No broker configured"
+            // log.Info "No broker configured"
+            // Ok ()
 
     let  tryPublish eventBroker version name idAndEvents =
-        let sent =
-            async {
-                return
-                    notify eventBroker version name idAndEvents
-            }
-            |> Async.StartAsTask
-            |> Async.AwaitTask
-            |> Async.RunSynchronously
-        match sent with
-        | Ok _ -> ()
-        | Error e -> 
-            log.Error (sprintf "trySendKafka: %s" e)
-            ()
+        async {
+            return
+                notify eventBroker version name idAndEvents
+        }
+        |> Async.StartAsTask
+        |> Async.AwaitTask
+        |> Async.RunSynchronously

@@ -32,14 +32,24 @@ module KafkaReceiver =
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
 
+        let _ = printf "assignments count: %A\n" cons.Assignment.Count
+
+
+        member this.Seek(position: int64) =
+            let _ = this.Consume()
+            let _ = printf "!!!!. assign count: XXX %A" (cons.Assignment.Count.ToString())
+            let partition = cons.Assignment |> Seq.head |> fun a -> a.Partition
+            cons.Seek(new TopicPartitionOffset(topic, partition, position))
+            // cons.Assignment.Item
+            ()
         member this.Consume () =
+            printf "consuming\n"
             let result = cons.Consume()
             result
 
         member this.ConsumeFrom () =
             let result = cons.Consume()
             result
-
 
         member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {

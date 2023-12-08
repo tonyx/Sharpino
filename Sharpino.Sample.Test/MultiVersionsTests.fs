@@ -69,6 +69,21 @@ let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
         return deserialized'.Event
     }
 
+let listenForEventL (appId: Guid, receiver: KafkaSubscriber, position: int64) =
+    result {
+        let received = receiver.Consume()
+        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+        let mutable deserialized' = deserialized
+        let mutable found = deserialized'.ApplicationId = appId
+
+        while (not found) do
+            let received = receiver.Consume()
+            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+            deserialized' <- deserialized
+            found <- deserialized'.ApplicationId = appId
+        return deserialized'.Event
+    }
+
 [<Tests>]
 let utilsTests =
     testList "catch errors test" [
@@ -171,7 +186,7 @@ let multiVersionsTests =
     let tagsReceiver = KafkaSubscriber("localhost:9092", TagsCluster.TagsCluster.Version, TagsCluster.TagsCluster.StorageName, "sharpinoTestClinet")
 
     testList "App with coordinator test - Ok" [
-        fmultipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
@@ -185,12 +200,21 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected received' "should be equal"
 
-        multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
+            printf "result: %A\n" result
             Expect.isOk result "should be ok"
+            printf "First: %A\n" (result.OkValue |> fst) 
+            let kafkaMessage = (result.OkValue |> snd) 
+            let kMessage = kafkaMessage.Head.Value.Head
+            // :> Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null, string>
+            printf "kafkaMessage offset: %A\n" kMessage.Offset.Value
+            // printf "Second: %A\n" (result.OkValue |> snd) 
             if ap._notify.IsSome then
+                // let received = listenForEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver).
+                todoReceiver.Seek (kMessage.Offset.Value)
                 let received = listenForEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver)
                 Expect.isOk received "should be ok"
                 let receivedOk = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
