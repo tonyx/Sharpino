@@ -9,8 +9,8 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.TodosCluster
-open Sharpino.Sample.TagsCluster
-open Sharpino.Sample.CategoriesCluster
+open Sharpino.Sample.TagsContext
+open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.EventStoreApp
 open Sharpino.Sample.Entities.TodosReport
 
@@ -62,17 +62,17 @@ module AppVersions =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
 
     let resetDb (db: IEventStore) =
-        db.Reset TodosCluster.Version TodosCluster.StorageName
-        StateCache<TodosCluster>.Instance.Clear()
+        db.Reset TodosContext.Version TodosContext.StorageName
+        StateCache<TodosContext>.Instance.Clear()
 
-        db.Reset TodosAggregate'.Version TodosAggregate'.StorageName 
-        StateCache<TodosCluster.TodosAggregate'>.Instance.Clear()
+        db.Reset TodosContextUpgraded.Version TodosContextUpgraded.StorageName 
+        StateCache<TodosCluster.TodosContextUpgraded>.Instance.Clear()
 
-        db.Reset TagsCluster.Version TagsCluster.StorageName
-        StateCache<TagsCluster>.Instance.Clear()
+        db.Reset TagsContext.Version TagsContext.StorageName
+        StateCache<TagsContext>.Instance.Clear()
 
-        db.Reset CategoriesCluster.Version CategoriesCluster.StorageName
-        StateCache<CategoriesCluster>.Instance.Clear()
+        db.Reset CategoriesContext.Version CategoriesContext.StorageName
+        StateCache<CategoriesContext>.Instance.Clear()
 
     let resetEventStore() =
 
@@ -178,7 +178,6 @@ module AppVersions =
             todoReport =        currentMemApp.TodoReport
         }
 
-    // I had to comment this out because it gives annoying messages when kafka is not enabled
     [<CurrentVersion>]
     let currentVersionPgWithKafkaApp =
         {

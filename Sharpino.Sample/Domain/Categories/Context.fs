@@ -10,9 +10,9 @@ open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Shared.Entities
 open System
 
-module CategoriesCluster =
+module CategoriesContext =
 
-    type CategoriesCluster =
+    type CategoriesContext =
         {
             Categories: Categories
         }
@@ -61,4 +61,4 @@ module CategoriesCluster =
             this
             |> serializer.Serialize
         static member Deserialize (serializer: ISerializer, json: Json)=
-            serializer.Deserialize<CategoriesCluster> json
+            serializer.Deserialize<CategoriesContext> json

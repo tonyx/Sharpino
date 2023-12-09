@@ -11,6 +11,7 @@ open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 
+// will be dismissed or unmaintained
 module LightCommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)

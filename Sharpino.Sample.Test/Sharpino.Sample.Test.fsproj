@@ -10,15 +10,14 @@
   <ItemGroup>
     <compile Include="Shared.fs" />
     <Compile Include="contexts/Tags/entities/TagsTests.fs" />
-    <Compile Include="contexts/Tags/TagsAggregateTests.fs" />
-    <Compile Include="contexts/Todos/TodosAggregateTests.fs" />
+    <Compile Include="contexts/Tags/TagsContextTests.fs" />
+    <Compile Include="contexts/Todos/TodosContextTests.fs" />
     <Compile Include="contexts/Todos/entities/TodosTests.fs" />
     <Compile Include="contexts/Todos/entities/CategoriesTests.fs" />
     <Compile Include="contexts_upgrade/Todos_02/entities/Todos_02Tests.fs" />
     <Compile Include="contexts_upgrade/Categories_02/models/Categories_02Tests.fs" />
-    <Compile Include="contexts_upgrade/Todos_02/TodosAggregateTests.fs" />
+    <Compile Include="contexts_upgrade/Todos_02/TodosContextTests.fs" />
     <Compile Include="MultiVersionsTests.fs" />
-    <Compile Include="EventBrokerTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 
@@ -28,7 +27,6 @@
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.12.0" />
-    <!-- <PackageReference Include="Sharpino" Version="1.4.0" /> -->
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="7.*" />

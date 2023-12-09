@@ -17,6 +17,10 @@ module Server =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     log.Debug "starting server"
+
+
+    // those are the three options for the app to be used in the server
+
     // let app = currentPostgresApp
     let app = currentMemoryApp
     // let app = currentVersionPgWithKafkaApp 
@@ -27,10 +31,7 @@ module Server =
                 fun (t: Todo) ->
                     log.Debug (sprintf "adding todo %A" t)
                     async {
-                        let added = app.addTodo t
-                        match added with
-                        | Ok _ -> return Ok ()
-                        | Error x ->  return Error x
+                        return app.addTodo t |> Result.map (fun _ -> ())
                     }
             GetAllTodos = 
                 fun () ->
@@ -53,7 +54,6 @@ module Server =
                         match removed with
                         | Ok _ -> return Ok ()
                         | Error x ->  return Error x
-                        // return app.removeTodo id
                     }
             GetAllCategories = 
                 fun () ->

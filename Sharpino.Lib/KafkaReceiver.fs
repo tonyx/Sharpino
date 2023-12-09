@@ -18,7 +18,6 @@ open Sharpino.KafkaBroker
 open System
 
 module KafkaReceiver =
-    // this is a basic version of consumer, it does not handle errors, and it does not commit offsets
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =

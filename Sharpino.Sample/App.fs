@@ -1,5 +1,4 @@
 namespace Sharpino.Sample
-
 open Sharpino
 open Sharpino.Core
 open Sharpino.Utils
@@ -15,13 +14,13 @@ open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Todos.TodoCommands
 open Sharpino.Sample.Entities.Todos
 
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Tags.TagsEvents
 open Sharpino.Sample.Tags.TagCommands
 open Sharpino.Sample.Entities.Tags
 
 open Sharpino.Sample.Categories
-open Sharpino.Sample.CategoriesCluster
+open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.Categories.CategoriesCommands
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Entities.TodosReport
@@ -44,23 +43,21 @@ module App =
     type CurrentVersionApp
         (storage: IEventStore, eventBroker: IEventBroker) =
         let todosStateViewer =
-            getStorageStateViewer<TodosCluster, TodoEvent> storage
+            getStorageStateViewer<TodosContext, TodoEvent> storage
         let tagsStateViewer =
-            getStorageStateViewer<TagsCluster, TagEvent> storage
+            getStorageStateViewer<TagsContext, TagEvent> storage
 
         new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
-        // new(storage: IEventStore, eventBroker: IEventBroker) = CurrentVersionApp(storage, eventBroker, getStateViewer storage)
         member this._eventBroker = eventBroker
 
         member this.GetAllTodos() =
             result  {
-                // let! (_, state) = storage |> getState<TodosCluster, TodoEvent>
                 let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
-            lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
+            lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -73,15 +70,14 @@ module App =
                     let! result =
                         todo
                         |> TodoCommand.AddTodo
-                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
+                        |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                     return result
                 }
             )
 
         member this.Add2Todos (todo1, todo2) =
-            lock (TodosCluster.Lock, TagsCluster.Lock) (fun () -> 
+            lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
-                    // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
                     let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
@@ -98,7 +94,7 @@ module App =
                     let! result =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
-                        |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
+                        |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                     return result
                 }
             )
@@ -108,7 +104,7 @@ module App =
                 let! result =
                     id
                     |> TodoCommand.RemoveTodo
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result 
             }
         member this.GetAllCategories() =
@@ -123,7 +119,7 @@ module App =
                 let! result =
                     category
                     |> TodoCommand.AddCategory
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result
             }
 
@@ -132,7 +128,7 @@ module App =
                 let! result =
                     id
                     |> TodoCommand.RemoveCategory
-                    |> runCommand<TodosCluster, TodoEvent> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result 
             }
 
@@ -141,7 +137,7 @@ module App =
                 let! result =
                     tag
                     |> AddTag
-                    |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker tagsStateViewer
                 return result 
             }
 
@@ -149,7 +145,7 @@ module App =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
-                let! result = runTwoCommands<TagsCluster, TodosCluster, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
+                let! result = runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
                 return result
             }
 
@@ -168,8 +164,8 @@ module App =
                 let command2 = TodoCommand'.AddTodos todosFrom
                 let! _ =
                     runTwoCommands<
-                        CategoriesCluster, 
-                        TodosAggregate', 
+                        CategoriesContext, 
+                        TodosContextUpgraded, 
                         CategoryEvent, 
                         TodoEvent'> 
                             storage
@@ -179,19 +175,19 @@ module App =
                 return ()
             }
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            let events = storage.GetEventsInATimeInterval TodosCluster.Version TodosCluster.StorageName dateFrom dateTo |>> snd
+            let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             let deserEvents = events |>> (serializer.Deserialize >> Result.get)
             { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
 
     [<UpgradedVersion>]
     type UpgradedApp(storage: IEventStore, eventBroker: IEventBroker) =
         let todosStateViewer =
-            getStorageStateViewer<TodosAggregate', TodoEvent'> storage
+            getStorageStateViewer<TodosContextUpgraded, TodoEvent'> storage
         let tagsStateViewer =
-            getStorageStateViewer<TagsCluster, TagEvent> storage
+            getStorageStateViewer<TagsContext, TagEvent> storage
 
         let categoryStateViewer =
-            getStorageStateViewer<CategoriesCluster, CategoryEvent> storage
+            getStorageStateViewer<CategoriesContext, CategoryEvent> storage
 
         new(storage: IEventStore) = UpgradedApp(storage, doNothingBroker)
 
@@ -199,18 +195,15 @@ module App =
 
         member this.GetAllTodos() =
             result {
-                // let! (_, state) = storage |> getState<TodosAggregate', TodoEvent'>
                 let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
             result {
-                // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent> 
                 let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                // let! (_, categoriesState) = storage |>  getState<CategoriesCluster, CategoryEvent>
                 let! (_, categoriesState) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
@@ -227,17 +220,15 @@ module App =
                 let! result =
                     todo
                     |> TodoCommand'.AddTodo
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker todosStateViewer
                 return result
             }
 
         member this.Add2Todos (todo1, todo2) =
             result {
-                // let! (_, tagState) = storage |> getState<TagsCluster, TagEvent>
                 let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                // let! (_, categoriesState) = storage |> getState<CategoriesCluster, CategoryEvent>
                 let! (_, categoriesState) =  categoryStateViewer ()
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
@@ -264,9 +255,8 @@ module App =
                 let! result =
                     (todo1, todo2)
                     |> TodoCommand'.Add2Todos
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker todosStateViewer
                 return result
-                // return () 
             }
 
         member this.RemoveTodo id =
@@ -274,7 +264,7 @@ module App =
                 let! result =
                     id
                     |> TodoCommand'.RemoveTodo
-                    |> runCommand<TodosAggregate', TodoEvent'> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker todosStateViewer
                 return result
             }
 
@@ -289,7 +279,7 @@ module App =
                 let! result =
                     category
                     |> CategoryCommand.AddCategory
-                    |> runCommand<CategoriesCluster, CategoryEvent> storage eventBroker categoryStateViewer
+                    |> runCommand<CategoriesContext, CategoryEvent> storage eventBroker categoryStateViewer
                 return result 
             }
 
@@ -299,8 +289,8 @@ module App =
                 let removeCategoryRef = TodoCommand'.RemoveCategoryRef id
                 let! result =
                     runTwoCommands<
-                        CategoriesCluster, 
-                        TodosAggregate', 
+                        CategoriesContext, 
+                        TodosContextUpgraded, 
                         CategoryEvent, 
                         TodoEvent'> 
                         storage eventBroker removeCategory removeCategoryRef
@@ -312,7 +302,7 @@ module App =
                 let! result =
                     tag
                     |> AddTag
-                    |> runCommand<TagsCluster, TagEvent> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker tagsStateViewer
                 return result 
             }
 
@@ -320,21 +310,20 @@ module App =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
-                let! result = runTwoCommands<TagsCluster, TodosAggregate', TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
+                let! result = runTwoCommands<TagsContext, TodosContextUpgraded, TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
                 return result
             }
 
         member this.GetAllTags () =
             result {
                 let! (_, state) = 
-                    // storage |> getState<TagsCluster, TagEvent>
                     tagsStateViewer ()
                 let tags = state.GetTags()
                 return tags
             }
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            let events = storage.GetEventsInATimeInterval TodosAggregate'.Version TodosAggregate'.StorageName dateFrom dateTo |>> snd
+            let events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo |>> snd
             let deserEvents = events |>> (serializer.Deserialize >> Result.get)
             { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
 

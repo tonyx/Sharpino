@@ -10,8 +10,8 @@ open Sharpino.Sample.Shared.Entities
 open System
 open FsToolkit.ErrorHandling
 
-module TagsCluster =
-    type TagsCluster =
+module TagsContext =
+    type TagsContext =
         {
             Tags: Tags
         }
@@ -55,4 +55,4 @@ module TagsCluster =
             |> serializer.Serialize
 
         static member Deserialize (serializer: ISerializer, json: Json) =
-            serializer.Deserialize<TagsCluster> json
+            serializer.Deserialize<TagsContext> json

@@ -7,7 +7,7 @@ open Sharpino.Utils
 open Sharpino.Definitions
 
 open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.CategoriesCluster
+open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.Shared.Entities
 
 module CategoriesEvents =
@@ -15,8 +15,8 @@ module CategoriesEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | CategoriesAdded of List<Category>
-            interface Event<CategoriesCluster> with
-                member this.Process (x: CategoriesCluster) =
+            interface Event<CategoriesContext> with
+                member this.Process (x: CategoriesContext) =
                     match this with
                     | CategoryAdded (c: Category) ->
                         x.AddCategory c

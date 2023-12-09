@@ -18,8 +18,9 @@ No sensible data (GDPR) support.
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
 - Support publishing events to Kafka.
 - Example application with tests including Kafka subscriber.
-- There are no proper aggregates but rather clusters: collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary. 
+- There are contexts that represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary. 
 - A specific practice to refactor clusters and test cluster refactoring
+- Partial support for Apache Kafka 
 
 ## Projects
 

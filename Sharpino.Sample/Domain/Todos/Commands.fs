@@ -19,8 +19,8 @@ module TodoCommands =
         | RemoveTagRef of Guid
         | Add2Todos of Todo * Todo
 
-        interface Command<TodosCluster, TodoEvent> with
-            member this.Execute (x: TodosCluster) =
+        interface Command<TodosContext, TodoEvent> with
+            member this.Execute (x: TodosContext) =
                 match this with
                 | AddTodo t -> 
                     x.AddTodo t
@@ -52,8 +52,8 @@ module TodoCommands =
         | Add2Todos of Todo * Todo
         | AddTodos of List<Todo>
 
-        interface Command<TodosAggregate', TodoEvent'> with
-            member this.Execute (x: TodosAggregate') =
+        interface Command<TodosContextUpgraded, TodoEvent'> with
+            member this.Execute (x: TodosContextUpgraded) =
                 match this with
                 | AddTodo t ->
                     x.AddTodo t

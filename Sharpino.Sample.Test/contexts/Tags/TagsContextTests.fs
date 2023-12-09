@@ -5,27 +5,27 @@ open Expecto
 open System
 open FSharp.Core
 
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Shared.Entities
 
 open Sharpino.Utils
 
 [<Tests>]
-let tagsAggregateTests =
+let tagsContextTests =
     testList "tags aggregate tests" [
         testCase "add a tag - Ok" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsCluster.Zero.AddTag tag
-            Expect.isOk aggregate "should be ok"
-            let result = aggregate |> Result.get
+            let context = TagsContext.Zero.AddTag tag
+            Expect.isOk context "should be ok"
+            let result = context |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
 
         testCase "add and remove a tag - Ok" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsCluster.Zero.AddTag tag
-            Expect.isOk aggregate "should be ok"
-            let result = aggregate |> Result.get
+            let context = TagsContext.Zero.AddTag tag
+            Expect.isOk context "should be ok"
+            let result = context |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
 
             let result' = result.RemoveTag tag.Id |> Result.get
@@ -33,9 +33,9 @@ let tagsAggregateTests =
 
         testCase "try removing an unexisting tag - Ko" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
-            let aggregate = TagsCluster.Zero.AddTag tag
-            Expect.isOk aggregate "should be ok"
-            let result = aggregate |> Result.get
+            let context = TagsContext.Zero.AddTag tag
+            Expect.isOk context "should be ok"
+            let result = context |> Result.get
             Expect.equal (result.GetTags() |> List.length) 1 "should be equal"
             let newGuid = Guid.NewGuid()
             let result' = result.RemoveTag newGuid

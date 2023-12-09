@@ -5,7 +5,7 @@ open Sharpino.Core
 
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Tags.TagsEvents
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Shared.Entities
 
 module TagCommands =
@@ -14,8 +14,8 @@ module TagCommands =
         | AddTag of Tag
         | RemoveTag of Guid
 
-        interface Command<TagsCluster, TagEvent> with
-            member this.Execute (x: TagsCluster) =
+        interface Command<TagsContext, TagEvent> with
+            member this.Execute (x: TagsContext) =
                 match this with
                 | AddTag t ->
                     x.AddTag t
@@ -26,19 +26,19 @@ module TagCommands =
             member this.Undoer = 
                 match this with
                 | AddTag t ->
-                    (fun (_: TagsCluster) ->
-                        fun (x': TagsCluster) ->
+                    (fun (_: TagsContext) ->
+                        fun (x': TagsContext) ->
                             x'.RemoveTag t.Id 
                             |> Result.map (fun _ -> [TagAdded t])
                         |> Ok
                     )
                     |> Some
                 | RemoveTag g -> 
-                    (fun (x: TagsCluster) ->
+                    (fun (x: TagsContext) ->
                         ResultCE.result {
                             let! tag = x.GetTag g
                             let result =
-                                fun (x': TagsCluster) ->
+                                fun (x': TagsContext) ->
                                     x'.AddTag tag 
                                     |> Result.map (fun _ -> [TagAdded tag])
                             return result

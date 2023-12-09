@@ -14,7 +14,7 @@ open FsToolkit.ErrorHandling
 module TodosCluster =
 
     [<CurrentVersion>]
-    type TodosCluster =
+    type TodosContext =
         {
             todos: Todos
             categories: Categories
@@ -32,8 +32,8 @@ module TodosCluster =
             15 
         static member Lock =
             new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosCluster, string>  =
-            serializer.Deserialize<TodosCluster> json
+        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosContext, string>  =
+            serializer.Deserialize<TodosContext> json
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
@@ -123,10 +123,10 @@ module TodosCluster =
         // assume this should me moved but atm doesn't work in a separate module
 
 
-// what follows is the same code as above, but with the new version of the aggregate
+// what follows is the same code as above, but with the new version of the context
     [<UpgradedVersion>]
 
-    type TodosAggregate' =
+    type TodosContextUpgraded =
         {
             todos: Todos
         }
@@ -134,7 +134,7 @@ module TodosCluster =
             {
                 todos = Todos.Zero
             }
-        // storagename _MUST_ be unique for each aggregate and the relative lock object 
+        // storagename _MUST_ be unique for each context and the relative lock object 
         // must be added in syncobjects map in Conf.fs
         static member StorageName =
             "_todo"
@@ -222,4 +222,4 @@ module TodosCluster =
             this |> serializer.Serialize
 
         static member Deserialize (serializer: ISerializer, json: Json)=
-            serializer.Deserialize<TodosAggregate'> json
+            serializer.Deserialize<TodosContextUpgraded> json

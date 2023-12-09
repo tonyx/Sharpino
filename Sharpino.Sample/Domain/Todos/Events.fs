@@ -16,8 +16,8 @@ module TodoEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
-            interface Event<TodosCluster> with
-                member this.Process (x: TodosCluster) =
+            interface Event<TodosContext> with
+                member this.Process (x: TodosContext) =
                     match this with
                     | TodoAdded (t: Todo) ->
                         t |> x.AddTodo
@@ -43,8 +43,8 @@ module TodoEvents =
         | TagRefRemoved of Guid
         | CategoryRefRemoved of Guid
         | TodosAdded of List<Todo>
-            interface Event<TodosAggregate'> with
-                member this.Process (x: TodosAggregate') =
+            interface Event<TodosContextUpgraded> with
+                member this.Process (x: TodosContextUpgraded) =
                     match this with
                     | TodoAdded (t: Todo) ->
                         x.AddTodo t

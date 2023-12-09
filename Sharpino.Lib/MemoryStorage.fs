@@ -12,6 +12,7 @@ open Sharpino.Definitions
 open log4net
 open log4net.Config
 
+// should be called like InMemoryEventStore 
 module MemoryStorage =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
@@ -120,7 +121,6 @@ module MemoryStorage =
                 []
             else
                 events_dic.[version].[name]
-
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =

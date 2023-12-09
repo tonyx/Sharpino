@@ -14,15 +14,16 @@ open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.KafkaBroker
 open System.Runtime
+open System.Runtime.CompilerServices
 
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
-open System.Runtime.CompilerServices
 
 module CommandHandler =
+    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
-    // type StateBuilderType erBased 
 
     let inline getStorageStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -46,9 +47,6 @@ module CommandHandler =
             // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
-    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // you can configure log here, or in the main program (see tests)
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mksnapshot<'A, 'E
@@ -121,7 +119,7 @@ module CommandHandler =
         >
         (storage: IEventStore) 
         (eventBroker: IEventBroker) 
-        (stateViewer': unit -> Result<EventId * 'A, string>) 
+        (stateViewer: unit -> Result<EventId * 'A, string>) 
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
@@ -129,8 +127,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            // let! (_, state) = getState<'A, 'E> storage
-                            let! (_, state) = stateViewer'() //<'A, 'E> storage
+                            let! (_, state) = stateViewer() //<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -368,7 +365,6 @@ module CommandHandler =
                             return! newResult
                         } 
                 }
-                
                 |> Async.RunSynchronously
 
             match config.PessimisticLock with

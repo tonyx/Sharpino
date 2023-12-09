@@ -11,15 +11,15 @@
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Domain/Categories/Categories.fs" />
     <Compile Include="Domain/Todos/Todos.fs" />
-    <Compile Include="Domain/Todos/Cluster.fs" />
+    <Compile Include="Domain/Todos/Context.fs" />
     <Compile Include="Domain/Todos/Events.fs" />
     <Compile Include="Domain/Todos/Commands.fs" />
     <Compile Include="Domain/Tags/Tags.fs" />
-    <Compile Include="Domain/Tags/Cluster.fs" />
+    <Compile Include="Domain/Tags/Context.fs" />
     <Compile Include="Domain/Tags/Events.fs" />
     <Compile Include="Domain/Tags/Commands.fs" />
 
-    <Compile Include="Domain/Categories/Cluster.fs" />
+    <Compile Include="Domain/Categories/Context.fs" />
     <Compile Include="Domain/Categories/Events.fs" />
     <Compile Include="Domain/Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />

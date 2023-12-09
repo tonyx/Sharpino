@@ -8,7 +8,7 @@ open Sharpino
 open Sharpino.ApplicationInstance
 open Sharpino.Sample
 open Sharpino.Sample.TodosCluster
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
@@ -36,9 +36,9 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -125,9 +125,9 @@ let testCoreEvolve =
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
             // I am adding the same event twice and the "evolve" will ignore it
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize serializer], TodosCluster.StorageName )
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize serializer], TodosCluster.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName )
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
 
             let todos = ap.getAllTodos()
 
@@ -138,11 +138,11 @@ let testCoreEvolve =
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize  serializer], TodosCluster.StorageName)
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize  serializer], TodosCluster.StorageName)
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName)
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName)
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
 
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
@@ -155,14 +155,14 @@ let testCoreEvolve =
             let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
             let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
 
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize serializer ],  TodosCluster.StorageName) 
-            let _ = ap._addEvents (TodosCluster.Version, [ event.Serialize serializer ],  TodosCluster.StorageName) 
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ],  TodosContext.StorageName) 
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ],  TodosContext.StorageName) 
 
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event.Serialize serializer ],  TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ],  TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ],  TodosContextUpgraded.StorageName)
 
-            let _ = ap._addEvents (TodosCluster.Version,  [ event2.Serialize serializer ], TodosCluster.StorageName)
-            let _ = ap._addEvents (TodosAggregate'.Version, [ event2.Serialize serializer ], TodosAggregate'.StorageName)
+            let _ = ap._addEvents (TodosContext.Version,  [ event2.Serialize serializer ], TodosContext.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event2.Serialize serializer ], TodosContextUpgraded.StorageName)
 
             let todos = ap.getAllTodos()
 
@@ -182,9 +182,9 @@ let testCoreEvolve =
 [<Tests>]
 let multiVersionsTests =
     let serializer = JsonSerializer(serSettings) :> ISerializer
-    let todoReceiver = KafkaSubscriber("localhost:9092", TodosCluster.Version, TodosCluster.StorageName, "sharpinoTestClinet")
-    let categoriesReceiver = KafkaSubscriber("localhost:9092", CategoriesCluster.CategoriesCluster.Version, CategoriesCluster.CategoriesCluster.StorageName, "sharpinoTestClinet")
-    let tagsReceiver = KafkaSubscriber("localhost:9092", TagsCluster.TagsCluster.Version, TagsCluster.TagsCluster.StorageName, "sharpinoTestClinet")
+    let todoReceiver = KafkaSubscriber("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClinet")
+    let categoriesReceiver = KafkaSubscriber("localhost:9092", CategoriesContext.CategoriesContext.Version, CategoriesContext.CategoriesContext.StorageName, "sharpinoTestClinet")
+    let tagsReceiver = KafkaSubscriber("localhost:9092", TagsContext.TagsContext.Version, TagsContext.TagsContext.StorageName, "sharpinoTestClinet")
 
     ftestList "App with coordinator test - Ok" [
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
@@ -210,9 +210,9 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
             let okResult = result.OkValue
-
+            let deliveryResults = okResult |> snd
             if ap._notify.IsSome then
-                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver, (okResult |> snd))
+                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver, deliveryResults)
                 Expect.isOk received "should be ok"
                 let receivedOk = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
                 let expected = TodoEvents.TodoAdded todo

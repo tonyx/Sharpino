@@ -3,7 +3,7 @@ namespace Sharpino.Sample.Tags
 open Sharpino.Core
 open Sharpino.Utils
 open Sharpino.Definitions
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Shared.Entities
 
@@ -13,8 +13,8 @@ module TagsEvents =
     type TagEvent =
         | TagAdded of Tag
         | TagRemoved of Guid
-            interface Event<TagsCluster> with
-                member this.Process (x: TagsCluster) =
+            interface Event<TagsContext> with
+                member this.Process (x: TagsContext) =
                     match this with
                     | TagAdded (t: Tag) ->
                         x.AddTag t

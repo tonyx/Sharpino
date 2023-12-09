@@ -3,9 +3,9 @@ open Sharpino.Utils
 open Sharpino.Sample.TodosCluster
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
-open Sharpino.Sample.TagsCluster
+open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.CategoriesCluster
+open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.Categories.CategoriesEvents
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Tags.TagsEvents
@@ -38,16 +38,16 @@ module Converters =
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
 
-    // aggregates
-    type TodosCluster with
+    // contexts
+    type TodosContext with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-    type TodosAggregate' with
+    type TodosContextUpgraded with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-    type CategoriesCluster with
+    type CategoriesContext with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize
-    type TagsCluster with
+    type TagsContext with
         member this.Serialize (serializer: ISerializer) =
             this |> serializer.Serialize

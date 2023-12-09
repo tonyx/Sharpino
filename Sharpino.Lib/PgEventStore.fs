@@ -165,7 +165,6 @@ module PgStorage =
                     | _ as ex -> 
                         log.Error (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
-
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
@@ -183,10 +182,8 @@ module PgStorage =
                 |> Async.RunSynchronously
                 |> Seq.toList
                 |> Ok
-
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
-
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
                 let tryEvent = ((this :> IEventStore).TryGetEvent version id name)
                 match tryEvent with
