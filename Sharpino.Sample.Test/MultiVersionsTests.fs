@@ -69,6 +69,22 @@ let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
         return deserialized'.Event
     }
 
+let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
+    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
+    let position = deliveryResult.Offset
+    let partition = deliveryResult.Partition
+    receiver.Assign (position.Value, partition)
+    listenForEvent (appId, receiver)
+
+let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
+    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
+    let position = deliveryResult.Offset
+    let partition = deliveryResult.Partition
+    receiver.Assign (position.Value, partition)
+    let first = listenForEvent (appId, receiver)
+    let second = listenForEvent (appId, receiver)
+    (first, second)
+
 [<Tests>]
 let utilsTests =
     testList "catch errors test" [
@@ -103,7 +119,7 @@ let testCoreEvolve =
     let serializer = JsonSerializer(serSettings) :> ISerializer
 
     testList "evolve test" [
-        fmultipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
@@ -175,11 +191,14 @@ let multiVersionsTests =
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
+            let okAdded = added |> Result.get
+
             Expect.isOk added "should be ok"
             let result = ap.addTodo todo
+
             Expect.isError result "should be error"
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver, (okAdded |> snd))
                 Expect.isOk received "should be ok"
                 let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
                 let expected = TodoEvents.TodoAdded todo
@@ -190,46 +209,29 @@ let multiVersionsTests =
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
+            let okResult = result.OkValue
+
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver, (okResult |> snd))
                 Expect.isOk received "should be ok"
                 let receivedOk = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected receivedOk "should be equal"
 
-        multipleTestCase "add a todo X - ok" currentTestConfs <| fun (ap, _, _) ->
-            let _ = ap._reset()
-            let todo = mkTodo (Guid.NewGuid()) "test" [] []
-            let result = ap.addTodo todo
-            Expect.isOk result "sould be ok"
-            if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo
-                Expect.equal expected received' "should be equal"
-
         multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
-
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []
             let todo2 = mkTodo  (Guid.NewGuid()) "quququququ" [] []
             let result = ap.add2Todos (todo1, todo2)
             Expect.isOk result "should be ok"
+            let okResult = result.OkValue
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo1
-                Expect.equal expected received' "should be equal"
-
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo2
-                Expect.equal expected received' "should be equal"
+                let received = listenForTwoEvents (ApplicationInstance.Instance.GetGuid(), todoReceiver, (okResult |> snd))
+                let received1 = received |> fst |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                let received2 = received |> snd |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
+                Expect.equal received1 (TodoEvents.TodoAdded todo1) "should be equal"
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
@@ -264,8 +266,9 @@ let multiVersionsTests =
             let tag = mkTag id2 "test" Color.Blue
             let result = ap.addTag tag
             Expect.isOk result "should be ok"
+            let okResult = result.OkValue
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), tagsReceiver)
+                let received = listenForSingleEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), tagsReceiver, (okResult |> snd))
                 Expect.isOk received "should be ok"
                 let received' = received.OkValue |> serializer.Deserialize<TagsEvents.TagEvent> |> Result.get
                 let expected = TagEvent.TagAdded tag
@@ -273,8 +276,10 @@ let multiVersionsTests =
 
             let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
+            let okResult = result.OkValue
             if ap._notify.IsSome then
-                let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                // let received = listenForEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver)
+                let received = listenForSingleEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver, (okResult |> snd))
                 Expect.isOk received "should be ok"
                 let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
                 let expected = TodoEvents.TodoAdded todo

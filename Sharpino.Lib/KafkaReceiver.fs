@@ -14,7 +14,6 @@ open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Utils
 open Sharpino.Definitions
-// open Sharpino.StateView
 open Sharpino.KafkaBroker
 open System
 
@@ -24,13 +23,19 @@ module KafkaReceiver =
 
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
-        let config = ConsumerConfig() // "sharpino", brokers)
+        let config = ConsumerConfig()
         let _ = config.GroupId <- groupId
         let _ = config.BootstrapServers <- bootStrapServer
         let _ = config.AutoOffsetReset <- AutoOffsetReset.Earliest
+        let _ = config.EnableAutoCommit <- false
+
         let consumer = new ConsumerBuilder<Null, string>(config)
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
+
+        member this.Assign(position: int64, partition: Partition) =
+            cons.Assign([new TopicPartitionOffset(topic, partition, position)])
+            ()
 
         member this.Consume () =
             let result = cons.Consume()
