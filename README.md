@@ -25,9 +25,12 @@ No sensible data (GDPR) support.
 
 ## Projects
 
-__Sharpino.Lib__:
+
+__Sharpino.Lib.Core__:
 
 - [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the context. The latter just skip those events.
+
+__Sharpino.Lib__:
 
 - [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __storage__.
 - [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).

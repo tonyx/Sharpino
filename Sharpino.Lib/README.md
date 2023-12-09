@@ -18,35 +18,36 @@ No sensible data (GDPR) support.
 - Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
 - Support publishing events to Kafka.
 - Example application with tests including Kafka subscriber.
-- There are contexts that represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) forming a transactional boundary. 
-- A specific practice to refactor clusters and test cluster refactoring
-- Partial support for Apache Kafka 
+- Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events
+- A specific practice to refactor context and test context refactoring
+- Send events to Apache Kafka 
+
 
 ## Projects
 
 __Sharpino.Lib__:
 
-- [Core.fs](Sharpino.Lib/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the cluster. The latter just skip those events.
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the context. The latter just skip those events.
 
 - [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __storage__.
 - [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
-- [DbStorage.fs](Sharpino.Lib/DbStorage.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in memory. 
-- [Cache.fs](Sharpino.Lib/Cache.fs). Cache events, snapshots and state
+- [DbStorage.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory. 
+- [Cache.fs](Sharpino.Lib/Cache.fs). Cache current state.
 
 
 __Sharpino.Sample__
 You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
 
-It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the clusters. There is a strategy to test the migration between versions (cluster refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs))
+It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs)
 .
 
--  __entities__ (e.g. [Entities](Sharpino.Sample/models/TodosModel.fs)) manage entities.
--  __clusters__ (e.g. [TodosCluster](Micro_ES_FSharp_Lib.Sample/clusters/Todos/Cluster.fs)) own a partition of the models and provide members to handle them. 
+-  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) own a partition of the models and provide members to handle them. 
 
-- __clusters__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
+- __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
-- __clusters__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/clusters/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
-__Commands__ defines also _undoers_ that are functions that can undo the commands to reverse action in a multiple-stream operation for storage that doesn't support multiple-stream transactions (see _LightCommandHandler_).
+- __contexts__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/clusters/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
+
+__Commands__ defines also _undoers_ are functions that can undo the commands to reverse action in a multiple-stream operation for storage that doesn't support multiple-stream transactions (see _LightCommandHandler_).
 - A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves _events_ and _snapshots_.
 - The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more clusters by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
@@ -55,7 +56,7 @@ __Sharpino.Sample.tests__
 - tests for the sample application
 
 __Sharpino.Sample.Kafka__
-- scripts to setup a Kafka topics corresponding to clusters of the sample application
+- scripts to setup a Kafka topics corresponding to the contexts of the sample application
 
 ## How to use it
 - You can run the sample application as a rest service by running the following command from Sharpino.Sample folder:
@@ -103,7 +104,7 @@ __Faq__:
     - I wanted to study the subject and it ended up in a tiny little framework.
 - Why F#?  
     - Any functional language from the ML family language in my opinion is a good fit for the following reasons:
-        - Events are immutable, building the state of the cluster is a function of those events.
+        - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
         - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
