@@ -7,7 +7,6 @@ open Sharpino.Lib.Core.Commons
 open FsToolkit.ErrorHandling
 open log4net
 
-
 module Storage =
     type StorageEventJson =
         {
@@ -55,7 +54,6 @@ module Storage =
 
     type IEventBroker =
         {
-            // notify: Option<Version -> Name -> List<int * Json> -> Result< unit, string >>
             notify: Option<Version -> Name -> List<int * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
         }
 
