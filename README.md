@@ -118,6 +118,8 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
+- [new blog pos](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
+- Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
 - Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: the new Repository interface (and implementation) is __not compatible__ with the one introduced in Version 1.3.8!
 - Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities.
