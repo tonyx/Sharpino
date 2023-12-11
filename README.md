@@ -43,7 +43,7 @@ You need a user called 'safe' with password 'safe' in your Postgres (if you want
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
 .
 
--  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) own a partition of the models and provide members to handle them. 
+-  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provide members to handle them. 
 
 - __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
