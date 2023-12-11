@@ -112,7 +112,7 @@ __Faq__:
         - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
-    - add the nuget package Sharpino to your project (current version 1.0.1)
+    - add the nuget package Sharpino to your project (current version 1.4.1)
     - note: on my side, when I added Sharpino as a library into a web app, then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
@@ -134,4 +134,4 @@ __Faq__:
 }
 ``` 
 
-More documentation [(Sharpino gitbook)](https://tonyx.github.io)
+More documentation (a little bit  out of date. Will fix it soon) [(Sharpino gitbook)](https://tonyx.github.io)
