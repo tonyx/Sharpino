@@ -20,7 +20,6 @@ No sensible data (GDPR) support.
 - Example application with tests including Kafka subscriber.
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events
 - A specific practice to refactor context and test context refactoring
-- Send events to Apache Kafka 
 
 
 ## Projects
