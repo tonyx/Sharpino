@@ -132,7 +132,7 @@ __Faq__:
     "SharpinoConfig": {
         "PessimisticLock": false // or true
     }
-}
+
 ``` 
 
 More documentation (a little bit  out of date. Will fix it soon) [(Sharpino gitbook)](https://tonyx.github.io)
