@@ -134,25 +134,14 @@ module CommandHandler =
                             let events' =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)
-                            let result =
+                            let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
                             let sent =
-                                match result with
-                                | Ok ids -> 
-                                    let idAndEvents = List.zip ids events'
-                                    let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
-                                    sent |> Result.toOption
-                                | Error e ->
-                                    log.Error (sprintf "runCommand: %s" e)
-                                    None
+                                let idAndEvents = List.zip ids events'
+                                let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
+                                sent |> Result.toOption
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
-                            let newResult = 
-                                match result with
-                                | Ok ids -> 
-                                    Ok ([ids], [sent])
-                                | Error e -> 
-                                    Error e
-                            return! newResult
+                            return ([ids], [sent])
                         }
                 }
                 |> Async.RunSynchronously 
@@ -218,35 +207,21 @@ module CommandHandler =
                                 events2 
                                 |>> (fun x -> x.Serialize serializer)
 
-                            let result =
+                            let! idLists =
                                 storage.MultiAddEvents 
                                     [
                                         (events1', 'A1.Version, 'A1.StorageName)
                                         (events2', 'A2.Version, 'A2.StorageName)
                                     ]
                             let sent =
-                                match result with
-                                | Ok idLists -> 
-                                    let idAndEvents1 = List.zip idLists.[0] events1'
-                                    let idAndEvents2 = List.zip idLists.[1] events2'
-                                    let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                    let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
-
-                                    [ sent1; sent2 ]
-                                | Error e -> 
-                                    log.Error (sprintf "runTwoCommands: %s" e)
-                                    []
-                                    // None
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
+                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
+                                [ sent1; sent2 ]
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
-
-                            let newResult =
-                                match result with
-                                | Ok idLists -> 
-                                    Ok (idLists, sent)
-                                | Error e -> 
-                                    Error e
-                            return! newResult
+                            return (idLists, sent)
                         } 
                     }
                 |> Async.RunSynchronously
@@ -331,38 +306,28 @@ module CommandHandler =
                                 events3 
                                 |>> (fun x -> x.Serialize serializer)
 
-                            let result =
+                            let! idLists =
                                 storage.MultiAddEvents 
                                     [
                                         (events1', 'A1.Version, 'A1.StorageName)
                                         (events2', 'A2.Version, 'A2.StorageName)
                                         (events3', 'A3.Version, 'A2.StorageName)
                                     ]
+                            
                             let sent =
-                                match result with
-                                | Ok idLists -> 
-                                    let idAndEvents1 = List.zip idLists.[0] events1'
-                                    let idAndEvents2 = List.zip idLists.[1] events2'
-                                    let idAndEvents3 = List.zip idLists.[2] events3'
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                    let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                    let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
-                                    let sent3 = tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> Result.toOption
-                                    [ sent1, sent2, sent3 ]
-                                | Error e -> 
-                                    log.Error (sprintf "runThreeCommands: %s" e)
-                                    []
+                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
+                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
+                                let sent3 = tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> Result.toOption
+                                [ sent1, sent2, sent3 ]
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
                             let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
 
-                            let newResult =
-                                match result with
-                                | Ok idLists -> 
-                                    Ok (idLists, sent)
-                                | Error e -> 
-                                    Error e
-                            return! newResult
+                            return (idLists, sent)
                         } 
                 }
                 |> Async.RunSynchronously
