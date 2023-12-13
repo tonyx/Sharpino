@@ -136,3 +136,5 @@ __Faq__:
 ``` 
 
 More documentation (a little bit  out of date. Will fix it soon) [(Sharpino gitbook)](https://tonyx.github.io)
+
+[Buy me a beer](https://www.buymeacoffee.com/now7pmk92m)
