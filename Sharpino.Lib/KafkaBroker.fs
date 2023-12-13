@@ -30,86 +30,97 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
+    // this impleentation cannot avoid the messages that proudcer.Build give when kafka is not running
     let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
-        let config = ProducerConfig()
-        config.BootstrapServers <- bootStrapServer
-        let producer = ProducerBuilder<Null, string>(config)
-        let p = producer.Build()
-        let message = Message<Null, string>()
+        try 
+            let config = ProducerConfig()
+            config.BootstrapServers <- bootStrapServer
+            let producer = ProducerBuilder<Null, string>(config)
+            let p = producer.Build()
+            let message = Message<Null, string>()
 
-        let notifyMessage (version: string) (name: string)  (msg: int * string) =
-            let topic = name + "-" + version |> String.replace "_" ""
+            let notifyMessage (version: string) (name: string)  (msg: int * string) =
+                let topic = name + "-" + version |> String.replace "_" ""
 
-            let brokerMessage = {
-                ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
-                EventId = msg |> fst
-                Event = msg |> snd
-            }
+                let brokerMessage = {
+                    ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
+                    EventId = msg |> fst
+                    Event = msg |> snd
+                }
 
-            try
-                let sent =
-                    message.Key <- null
-                    message.Value <- brokerMessage |> serializer.Serialize
-                    p.ProduceAsync(topic, message)
-                    |> Async.AwaitTask 
-                    |> Async.RunSynchronously
+                try
+                    let sent =
+                        message.Key <- null
+                        message.Value <- brokerMessage |> serializer.Serialize
+                        p.ProduceAsync(topic, message)
+                        |> Async.AwaitTask 
+                        |> Async.RunSynchronously
 
-                if sent.Status = PersistenceStatus.Persisted then
-                    let streamName = version + name
-                    let updateQuery = sprintf "UPDATE events%s SET published = true WHERE id = '%d'" streamName (msg |> fst)
-                    pgConnection 
-                    |> Sql.connect
-                    |> Sql.query updateQuery
-                    |> Sql.executeNonQuery
-                    |> ignore
-                    sent |> Ok
-                else
-                    Error("Not persisted")
-            with
-                | _ as e -> 
-                    log.Error e.Message
-                    Error(e.Message.ToString())
+                    if sent.Status = PersistenceStatus.Persisted then
+                        let streamName = version + name
+                        let updateQuery = sprintf "UPDATE events%s SET published = true WHERE id = '%d'" streamName (msg |> fst)
+                        pgConnection 
+                        |> Sql.connect
+                        |> Sql.query updateQuery
+                        |> Sql.executeNonQuery
+                        |> ignore
+                        sent |> Ok
+                    else
+                        Error("Not persisted")
+                with
+                    | _ as e -> 
+                        log.Error e.Message
+                        Error(e.Message.ToString())
 
-        let notifier: IEventBroker =
+            let notifier: IEventBroker =
+                {
+                    notify = 
+                        fun version name events ->
+                            result {    
+                                try 
+                                    let notified = events |> catchErrors (fun x -> notifyMessage version name x) 
+                                    let notified2 =
+                                        match notified with
+                                        | Ok x -> Ok x 
+                                        | Error e -> 
+                                            log.Error (sprintf "retry send n. 1 %s" e)
+                                            events |> catchErrors (fun x -> notifyMessage version name x)
+
+                                    let notified3 =
+                                        match notified2 with
+                                        | Ok x -> Ok x 
+                                        | Error e -> 
+                                            log.Error (sprintf "retry send n. 2 %s" e)
+                                            events |> catchErrors (fun x -> notifyMessage version name x)
+
+                                    let notified4 =
+                                        match notified3 with
+                                        | Ok x -> Ok x 
+                                        | Error e -> 
+                                            log.Error (sprintf "retry send n. 3 %s" e)
+                                            events |> catchErrors (fun x -> notifyMessage version name x)
+
+                                    let notified5 =
+                                        match notified4 with
+                                        | Ok x -> Ok x 
+                                        | Error e -> 
+                                            log.Error (sprintf "retry send n. 4 %s" e)
+                                            events |> catchErrors (fun x -> notifyMessage version name x)
+                                    return! notified5
+                                with
+                                | _ as e -> 
+                                    log.Error e.Message
+                                    return! Result.Error (e.Message.ToString())
+                            }
+                        |> Some
+                }
+            notifier
+        with
+        | _ as e -> 
+            log.Error e.Message
             {
-                notify = 
-                    fun version name events ->
-                        result {    
-                            let notified = events |> catchErrors (fun x -> notifyMessage version name x) 
-
-                            let notified2 =
-                                match notified with
-                                | Ok x -> Ok x 
-                                | Error e -> 
-                                    log.Error (sprintf "retry send n. 1 %s" e)
-                                    events |> catchErrors (fun x -> notifyMessage version name x)
-
-                            let notified3 =
-                                match notified2 with
-                                | Ok x -> Ok x 
-                                | Error e -> 
-                                    log.Error (sprintf "retry send n. 2 %s" e)
-                                    events |> catchErrors (fun x -> notifyMessage version name x)
-
-                            let notified4 =
-                                match notified3 with
-                                | Ok x -> Ok x 
-                                | Error e -> 
-                                    log.Error (sprintf "retry send n. 3 %s" e)
-                                    events |> catchErrors (fun x -> notifyMessage version name x)
-
-                            let notified5 =
-                                match notified4 with
-                                | Ok x -> Ok x 
-                                | Error e -> 
-                                    log.Error (sprintf "retry send n. 4 %s" e)
-                                    events |> catchErrors (fun x -> notifyMessage version name x)
-
-                            return! notified5
-                        }
-                    |> Some
+                notify = None
             }
-        notifier
 
     let notify (broker: IEventBroker) (version: string) (name: string) (idAndEvents: List<int * string>) =
         match broker.notify with

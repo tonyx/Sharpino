@@ -45,7 +45,7 @@
 
     <!-- commend this when develp the lib-->
 
-    <PackageReference Include="Sharpino" Version="1.4.1" />
+    <PackageReference Include="Sharpino" Version="1.4.2" />
 
     <!-- commend this when you develp the lib-->
 

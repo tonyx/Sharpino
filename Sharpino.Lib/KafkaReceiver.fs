@@ -22,6 +22,7 @@ module KafkaReceiver =
 
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
+
         let config = ConsumerConfig()
         let _ = config.GroupId <- groupId
         let _ = config.BootstrapServers <- bootStrapServer
@@ -39,6 +40,12 @@ module KafkaReceiver =
         member this.Consume () =
             let result = cons.Consume()
             result
+        static member Create(bootStrapServer: string, version: string, name: string, groupId: string) =
+            try
+                KafkaSubscriber(bootStrapServer, version, name, groupId) |> Ok
+            with 
+            | _ as e -> Result.Error (e.Message)
+
 
 
 

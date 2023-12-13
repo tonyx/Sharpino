@@ -41,8 +41,8 @@ module AppVersions =
 
     let pgStorage = PgStorage.PgEventStore(connection)
 
-    // I had to comment this out because it gives annoying messages when kafka is not enabled
 
+    // if kafka doesn't run this will give some annoying messages
     let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
