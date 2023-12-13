@@ -20,7 +20,6 @@ No sensible data (GDPR) support.
 - Example application with tests including Kafka subscriber.
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events
 - A specific practice to refactor context and test context refactoring
-- Send events to Apache Kafka 
 
 
 ## Projects
@@ -32,8 +31,8 @@ __Sharpino.Lib.Core__:
 
 __Sharpino.Lib__:
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __storage__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __event store__.
+- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using an event store that supports pub/sub model ( Eventstoredb ).
 - [DbStorage.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache current state.
 
@@ -41,10 +40,10 @@ __Sharpino.Lib__:
 __Sharpino.Sample__
 You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
 
-It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs)
+It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
 .
 
--  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) own a partition of the models and provide members to handle them. 
+-  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provide members to handle them. 
 
 - __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
