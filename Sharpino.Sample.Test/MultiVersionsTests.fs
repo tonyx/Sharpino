@@ -7,7 +7,7 @@ open FSharp.Core
 open Sharpino
 open Sharpino.ApplicationInstance
 open Sharpino.Sample
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Todos
 open Sharpino.Sample.Entities.Categories

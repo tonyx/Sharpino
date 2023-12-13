@@ -11,7 +11,7 @@ open Sharpino.Repositories
 open FSharpPlus
 open FsToolkit.ErrorHandling
 
-module TodosCluster =
+module TodosContext =
 
     [<CurrentVersion>]
     type TodosContext =

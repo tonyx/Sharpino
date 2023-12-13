@@ -1,6 +1,6 @@
 namespace Sharpino.Sample
 open Sharpino.Utils
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.TagsContext

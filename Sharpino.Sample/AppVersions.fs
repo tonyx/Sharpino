@@ -8,7 +8,7 @@ open Sharpino.Utils
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Tags
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.TagsContext
 open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.EventStoreApp
@@ -66,7 +66,7 @@ module AppVersions =
         StateCache<TodosContext>.Instance.Clear()
 
         db.Reset TodosContextUpgraded.Version TodosContextUpgraded.StorageName 
-        StateCache<TodosCluster.TodosContextUpgraded>.Instance.Clear()
+        StateCache<TodosContext.TodosContextUpgraded>.Instance.Clear()
 
         db.Reset TagsContext.Version TagsContext.StorageName
         StateCache<TagsContext>.Instance.Clear()

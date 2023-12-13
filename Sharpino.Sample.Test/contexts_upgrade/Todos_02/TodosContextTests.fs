@@ -6,7 +6,7 @@ open FSharp.Core
 
 open Tests.Sharpino.Shared
 
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Entities.Todos
 open FsToolkit.ErrorHandling
 

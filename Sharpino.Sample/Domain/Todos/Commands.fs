@@ -7,7 +7,7 @@ open Sharpino.Utils
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Shared.Entities
 
 module TodoCommands =

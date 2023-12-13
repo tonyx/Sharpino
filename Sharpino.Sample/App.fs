@@ -9,7 +9,7 @@ open Sharpino.Definitions
 open Sharpino.Sample
 open Sharpino.Storage
 open Sharpino.Sample.Todos
-open Sharpino.Sample.TodosCluster
+open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Todos.TodoEvents
 open Sharpino.Sample.Todos.TodoCommands
 open Sharpino.Sample.Entities.Todos
