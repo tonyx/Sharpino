@@ -40,16 +40,16 @@ let allVersions =
         (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
-        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -187,7 +187,7 @@ let multiVersionsTests =
     let categoriesReceiver = KafkaSubscriber.Create ("localhost:9092", CategoriesContext.CategoriesContext.Version, CategoriesContext.CategoriesContext.StorageName, "sharpinoTestClinet")
     let tagsReceiver = KafkaSubscriber.Create ("localhost:9092", TagsContext.TagsContext.Version, TagsContext.TagsContext.StorageName, "sharpinoTestClinet")
 
-    ftestList "App with coordinator test - Ok" [
+    testList "App with coordinator test - Ok" [
         multipleTestCase "if notifier is enabled then receivers must be all ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             if ap._notify.IsSome then

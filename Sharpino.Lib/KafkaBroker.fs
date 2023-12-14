@@ -30,7 +30,7 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    // this impleentation cannot avoid the messages that proudcer.Build give when kafka is not running
+    // this impleentation cannot avoid the annoying messages that proudcer.Build prints when kafka is not running
     let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
         try 
             let config = ProducerConfig()
