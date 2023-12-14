@@ -66,7 +66,6 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            // let! (id, state) = getState<'A, 'E> storage 
                             let! (id, state) = stateViewer () //getState<'A, 'E> storage 
                             let serState = state.Serialize serializer
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
