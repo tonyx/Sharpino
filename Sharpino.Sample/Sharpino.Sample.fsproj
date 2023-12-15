@@ -33,9 +33,9 @@
 
   <!-- uncomment this while developing the library -->
 
-  <!-- <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> -->
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup> -->
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
