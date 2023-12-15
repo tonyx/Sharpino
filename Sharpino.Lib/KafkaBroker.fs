@@ -57,8 +57,9 @@ module KafkaBroker =
                         |> Async.RunSynchronously
 
                     if sent.Status = PersistenceStatus.Persisted then
+                        let offset = sent.Offset.Value
                         let streamName = version + name
-                        let updateQuery = sprintf "UPDATE events%s SET published = true WHERE id = '%d'" streamName (msg |> fst)
+                        let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d' WHERE id = '%d'"  streamName offset (msg |> fst)
                         pgConnection 
                         |> Sql.connect
                         |> Sql.query updateQuery
