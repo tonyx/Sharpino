@@ -121,7 +121,9 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+            // let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+            let (lastEventId, kafkaOffSet) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None)
+            printf "kafkaoffset %A\n" kafkaOffSet
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state -> 

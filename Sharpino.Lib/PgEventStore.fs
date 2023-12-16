@@ -94,6 +94,7 @@ module PgStorage =
                         {
                             Id = read.int "id"
                             JsonEvent = read.string "event"
+                            KafkaOffset = read.int64OrNone "kafkaoffset"
                             Timestamp = read.dateTime "timestamp"
                         }
                     )
@@ -260,3 +261,35 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                 res
+            member this.SetPublished version name id kafkaOffset =
+                try
+                    let streamName = version + name
+                    let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d' WHERE id = '%d'"  streamName kafkaOffset id
+                    connection 
+                    |> Sql.connect
+                    |> Sql.query updateQuery
+                    |> Sql.executeNonQueryAsync
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> ignore
+                    |> Ok
+                with
+                | _ ->
+                    Error("Not persisted")
+
+            member this.TryGetLastEventIdWithKafkaOffSet version name =
+                log.Debug (sprintf "TryGetLastEventId %s %s" version name)
+                let query = sprintf "SELECT id, kafkaoffset FROM events%s%s ORDER BY id DESC LIMIT 1" version name
+                connection
+                |> Sql.connect
+                |> Sql.query query 
+                |> Sql.executeAsync  (fun read ->
+                        (
+                            read.int "id",
+                            read.int64OrNone "kafkaoffset"
+                        )     
+                    )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.tryHead
+                // |> Option.map (fun (id, kafkaOffset) -> (id, if kafkaOffset.IsNone  then None else kafkaOffset.Value |> int64 |> Some ))

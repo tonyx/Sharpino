@@ -114,7 +114,7 @@ CREATE TABLE public.events_01_tags (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint
+    kafkaoffset integer DEFAULT 0 NOT NULL
 );
 
 
@@ -141,7 +141,7 @@ CREATE TABLE public.events_01_todo (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint
+    kafkaoffset integer DEFAULT 0 NOT NULL
 );
 
 
@@ -168,7 +168,7 @@ CREATE TABLE public.events_02_categories (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint
+    kafkaoffset integer DEFAULT 0 NOT NULL
 );
 
 
@@ -195,7 +195,7 @@ CREATE TABLE public.events_02_todo (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint
+    kafkaoffset integer DEFAULT 0 NOT NULL
 );
 
 
@@ -448,4 +448,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20231214160437'),
     ('20231214160632'),
     ('20231214162357'),
-    ('20231214162513');
+    ('20231214162513'),
+    ('20231216070623'),
+    ('20231216070924'),
+    ('20231216071037'),
+    ('20231216071515');

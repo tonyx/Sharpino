@@ -30,8 +30,9 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    // this impleentation cannot avoid the annoying messages that proudcer.Build prints when kafka is not running
-    let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
+    // this implementation cannot avoid the annoying messages that producer.Build prints when kafka is not running
+    // let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
+    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore) =
         try 
             let config = ProducerConfig()
             config.BootstrapServers <- bootStrapServer
@@ -58,16 +59,12 @@ module KafkaBroker =
 
                     if sent.Status = PersistenceStatus.Persisted then
                         let offset = sent.Offset.Value
-                        let streamName = version + name
-                        let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d' WHERE id = '%d'"  streamName offset (msg |> fst)
-                        pgConnection 
-                        |> Sql.connect
-                        |> Sql.query updateQuery
-                        |> Sql.executeNonQuery
-                        |> ignore
-                        sent |> Ok
-                    else
-                        Error("Not persisted")
+                        let isPublished = eventStore.SetPublished version name (msg |> fst) offset
+                        match isPublished with
+                        | Ok _  -> sent |> Ok
+                        | Error e -> Error e
+                    else        
+                        Error("Not persisted in Kafka")
                 with
                     | _ as e -> 
                         log.Error e.Message
@@ -131,7 +128,7 @@ module KafkaBroker =
             log.Info "no broker configured"
             [] |> Ok
 
-    let  tryPublish eventBroker version name idAndEvents =
+    let tryPublish eventBroker version name idAndEvents =
         async {
             return
                 notify eventBroker version name idAndEvents

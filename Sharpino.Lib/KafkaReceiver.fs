@@ -17,8 +17,6 @@ open Sharpino.Definitions
 open Sharpino.CommandHandler
 open Sharpino.KafkaBroker
 open System
-
-
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
@@ -42,15 +40,27 @@ module KafkaReceiver =
         member this.Consume () =
             let result = cons.Consume()
             result
+            
+        member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
+            ResultCE.result {
+                try
+                    printf "entered in consumewithtimeout"
+                    let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
+                    let result = cons.Consume(cancellationTokenSource.Token)
+                    return result
+                with 
+                | _ -> 
+                    printf "Timeout! "
+                    return! "timeout" |> Result.Error
+            }            
         static member Create(bootStrapServer: string, version: string, name: string, groupId: string) =
             try
                 KafkaSubscriber(bootStrapServer, version, name, groupId) |> Ok
             with 
             | _ as e -> Result.Error (e.Message)
 
-
     type KafkaViewer<'A> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A, string>) =
-        let mutable state = currentState
+        let mutable state = sourceOfTruthStateViewer() |> Result.get
         member this.State = state
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {

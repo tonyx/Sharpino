@@ -195,10 +195,9 @@ let multiVersionsTests =
                 Expect.isOk categoriesReceiver "should be ok"
                 Expect.isOk tagsReceiver "should be ok"
             else
-                // Expect.isTrue false "should be true"
                 Expect.isTrue true "should be true"
 
-        multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+        fmultipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
