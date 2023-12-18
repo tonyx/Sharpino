@@ -65,26 +65,24 @@ module KafkaReceiver =
             with 
             | _ as e -> Result.Error (e.Message)
 
-    type KafkaViewer<'A> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) =
+    type KafkaViewer<'A, 'E when 'E :> Event<'A>> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) =
         let mutable state = sourceOfTruthStateViewer() |> Result.get
         member this.State = state
         member this.Refresh() =
+            printf "entered in refresh\n"
             let result = subscriber.consumeWithTimeOut(10)
-            
-            printf "XXX. Result okValue %A\n" result.OkValue
-            let consResult = result.OkValue
-            printf "XXXX. message value %A\n" (consResult.Message.Value)
-            
-            // Result.bind (fun result ->
-            //     let result = result |> Result.get
-            //     let eventId = result.Offset |> EventId
-            //     let event = result.Value |> Json
-            //     let event = event |> 'A.Deserialize eventStore.Serializer |> Result.get
-            //     let newState = CommandHandler.applyEventToState event state
-            //     state <- newState
-            //     Ok (eventId, newState)
-            // )
-            
+            match result with
+            | Error e -> 
+                printf "ErrorX %A\n" e
+                ()
+            | Ok msg ->
+                let newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
+                let newEvent = newMessage.Event |> serializer.Deserialize<'E> |> Result.get
+                let eventId = newMessage.EventId 
+                let (_, currentState, _) = this.State
+                let newState = evolve currentState [newEvent] |> Result.get
+                state <- (eventId, newState, None)
+                ()
             ()
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {
@@ -108,4 +106,4 @@ module KafkaReceiver =
         (subscriber: KafkaSubscriber) 
         (eventStore: IEventStore) =
         let sourceOfTruthStateViewer = CommandHandler.getStorageFreshStateViewer<'A, 'E> eventStore
-        KafkaViewer<'A>(subscriber, (0, 'A.Zero), eventStore, sourceOfTruthStateViewer)
+        KafkaViewer<'A, 'E>(subscriber, (0, 'A.Zero), eventStore, sourceOfTruthStateViewer)
