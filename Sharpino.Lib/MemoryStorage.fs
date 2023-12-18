@@ -168,6 +168,7 @@ module MemoryStorage =
                             Id = next_event_id version name
                             JsonEvent = e
                             KafkaOffset = None
+                            KafkaPartition = None 
                             Timestamp = DateTime.Now
                         }
                     ]
@@ -277,7 +278,7 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |>> (fun (id, event) -> id, event)
 
-            member this.SetPublished version name id kafkaOffset = 
+            member this.SetPublished version name id kafkaOffset partition = 
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     Error (sprintf "not found stream " + version + " " + name)
                 else
@@ -290,8 +291,12 @@ module MemoryStorage =
                         events_dic.[version].[name]
                             <- events_dic.[version].[name]
                                |> List.filter (fun x -> x.Id <> id)
-                               // |> List.append [{ x with KafkaOffset = Some (kafkaOffset |> int) }]
-                               |> List.append [{ x with KafkaOffset = kafkaOffset |> Some }]
+                               |> List.append
+                                      [
+                                          { x with
+                                                KafkaOffset = kafkaOffset |> Some
+                                                KafkaPartition = partition |> Some }
+                                      ]
                         Ok ()
 
             member this.TryGetLastEventIdWithKafkaOffSet version name  = 

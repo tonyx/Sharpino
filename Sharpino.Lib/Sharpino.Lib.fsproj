@@ -67,7 +67,6 @@
     <PackageReference Include="FSharp.Data" Version="6.3.0" />
     <PackageReference Include="FSharpPlus" Version="1.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-<!--    <PackageReference Include="Npgsql" Version="7.0.6" />-->
     <PackageReference Include="Npgsql" Version="8.0.1" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />

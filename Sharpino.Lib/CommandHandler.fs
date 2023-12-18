@@ -1,6 +1,7 @@
 
 namespace Sharpino
 
+open System
 open FSharpPlus.Data
 
 open FSharp.Core
@@ -25,6 +26,8 @@ module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
 
+    // deprecated use getStorageFreshStateViewer instead
+    [<Obsolete "use getStorageFreshStateViewer instead">]
     let inline getStorageStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -37,6 +40,20 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         >(eventStore: IEventStore) =
             let result = fun () -> getState<'A, 'E> eventStore
+            result
+            
+    let inline getStorageFreshStateViewer<'A, 'E
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Lock: obj)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >(eventStore: IEventStore) =
+            let result = fun () -> getFreshState<'A, 'E> eventStore
             result
 
     let config = 
@@ -118,7 +135,7 @@ module CommandHandler =
         >
         (storage: IEventStore) 
         (eventBroker: IEventBroker) 
-        (stateViewer: unit -> Result<EventId * 'A, string>) 
+        (stateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) 
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
@@ -126,7 +143,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state) = stateViewer() //<'A, 'E> storage
+                            let! (_, state, _) = stateViewer() //<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute

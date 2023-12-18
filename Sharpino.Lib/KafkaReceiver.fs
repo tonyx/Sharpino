@@ -32,10 +32,15 @@ module KafkaReceiver =
         let consumer = new ConsumerBuilder<Null, string>(config)
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
-
+        
         member this.Assign(position: int64, partition: Partition) =
             cons.Assign([new TopicPartitionOffset(topic, partition, position)])
             ()
+            
+        member this.Assign2(position: int64, partition: int) =
+            let partition = new Partition(partition) 
+            cons.Assign ([new TopicPartitionOffset(topic, partition, position)])
+            () 
 
         member this.Consume () =
             let result = cons.Consume()
@@ -44,9 +49,10 @@ module KafkaReceiver =
         member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try
-                    printf "entered in consumewithtimeout"
+                    printf "entered in consumewithtimeout\n"
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
                     let result = cons.Consume(cancellationTokenSource.Token)
+                    printf "exited in consumewithtimeout\n"
                     return result
                 with 
                 | _ -> 
@@ -59,9 +65,27 @@ module KafkaReceiver =
             with 
             | _ as e -> Result.Error (e.Message)
 
-    type KafkaViewer<'A> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A, string>) =
+    type KafkaViewer<'A> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) =
         let mutable state = sourceOfTruthStateViewer() |> Result.get
         member this.State = state
+        member this.Refresh() =
+            let result = subscriber.consumeWithTimeOut(10)
+            
+            printf "XXX. Result okValue %A\n" result.OkValue
+            let consResult = result.OkValue
+            printf "XXXX. message value %A\n" (consResult.Message.Value)
+            
+            // Result.bind (fun result ->
+            //     let result = result |> Result.get
+            //     let eventId = result.Offset |> EventId
+            //     let event = result.Value |> Json
+            //     let event = event |> 'A.Deserialize eventStore.Serializer |> Result.get
+            //     let newState = CommandHandler.applyEventToState event state
+            //     state <- newState
+            //     Ok (eventId, newState)
+            // )
+            
+            ()
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
@@ -83,5 +107,5 @@ module KafkaReceiver =
         >
         (subscriber: KafkaSubscriber) 
         (eventStore: IEventStore) =
-        let sourceOfTruthStateViewer = CommandHandler.getStorageStateViewer<'A, 'E> eventStore
+        let sourceOfTruthStateViewer = CommandHandler.getStorageFreshStateViewer<'A, 'E> eventStore
         KafkaViewer<'A>(subscriber, (0, 'A.Zero), eventStore, sourceOfTruthStateViewer)

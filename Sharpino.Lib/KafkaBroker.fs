@@ -59,7 +59,8 @@ module KafkaBroker =
 
                     if sent.Status = PersistenceStatus.Persisted then
                         let offset = sent.Offset.Value
-                        let isPublished = eventStore.SetPublished version name (msg |> fst) offset
+                        let partition = sent.Partition.Value
+                        let isPublished = eventStore.SetPublished version name (msg |> fst) offset partition
                         match isPublished with
                         | Ok _  -> sent |> Ok
                         | Error e -> Error e

@@ -13,6 +13,7 @@ module Storage =
             JsonEvent: Json
             Id: int
             KafkaOffset: Option<int64>
+            KafkaPartition: Option<int>
             Timestamp: System.DateTime
         }
     type StorageSnapshot = {
@@ -47,13 +48,13 @@ module Storage =
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
-        abstract member TryGetEvent: Version -> int -> Name -> Option<StorageEventJson>
+        abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> int * Json -> Name -> Result<unit, string>
         abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
-        abstract member GetEventsAfterId: Version -> int -> Name -> Result< List< EventId * Json >, string >
+        abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >
-        abstract member SetPublished: Version -> Name -> int -> int64 ->  Result<unit, string>
+        abstract member SetPublished: Version -> Name -> EventId -> int64 -> int ->  Result<unit, string>
 
     type IEventBroker =
         {

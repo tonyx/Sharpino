@@ -36,9 +36,9 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -49,6 +49,7 @@ let allVersions =
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
+        
         (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
@@ -68,6 +69,34 @@ let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
             found <- deserialized'.ApplicationId = appId
         return deserialized'.Event
     }
+    
+let listenForEventWithRetries (appId: Guid, receiver: KafkaSubscriber, timeout: int) =
+    result {
+        let received = receiver.Consume()
+        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+        let mutable deserialized' = deserialized
+        let mutable found = deserialized'.ApplicationId = appId
+
+        let mutable counter = 0
+        while (not found) && (counter < timeout) do
+            let received = receiver.Consume()
+            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+            deserialized' <- deserialized
+            found <- deserialized'.ApplicationId = appId
+            counter <- counter + 1
+        return deserialized'.Event
+    }
+    
+let listenForEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, timeout: int) =
+    result {
+        let! received = receiver.consumeWithTimeOut(timeout) 
+        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
+        let mutable deserialized' = deserialized
+        let mutable found = deserialized'.ApplicationId = appId
+        if (not found) then
+            return! Error "not found"
+        return deserialized'.Event
+    }    
 
 let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
@@ -84,6 +113,22 @@ let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults:
     let first = listenForEvent (appId, receiver)
     let second = listenForEvent (appId, receiver)
     (first, second)
+
+let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
+    printf "XXX. listen with retries\n"
+    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
+    let position = deliveryResult.Offset
+    let partition = deliveryResult.Partition
+    receiver.Assign (position.Value, partition)
+    listenForEventWithRetries (appId, receiver, timeout)
+    
+let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
+    printf "XXX. listen with retries\n"
+    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
+    let position = deliveryResult.Offset
+    let partition = deliveryResult.Partition
+    receiver.Assign (position.Value, partition)
+    listenForEventWithTimeout (appId, receiver, timeout)
 
 [<Tests>]
 let utilsTests =
@@ -197,7 +242,7 @@ let multiVersionsTests =
             else
                 Expect.isTrue true "should be true"
 
-        fmultipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo

@@ -95,6 +95,7 @@ module PgStorage =
                             Id = read.int "id"
                             JsonEvent = read.string "event"
                             KafkaOffset = read.int64OrNone "kafkaoffset"
+                            KafkaPartition = read.intOrNone "kafkapartition"
                             Timestamp = read.dateTime "timestamp"
                         }
                     )
@@ -261,10 +262,10 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                 res
-            member this.SetPublished version name id kafkaOffset =
+            member this.SetPublished version name id kafkaOffset partition =
                 try
                     let streamName = version + name
-                    let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d' WHERE id = '%d'"  streamName kafkaOffset id
+                    let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d', kafkapartition = '%d' WHERE id = '%d'"  streamName kafkaOffset partition id
                     connection 
                     |> Sql.connect
                     |> Sql.query updateQuery

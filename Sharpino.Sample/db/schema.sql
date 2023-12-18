@@ -114,7 +114,8 @@ CREATE TABLE public.events_01_tags (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset integer DEFAULT 0 NOT NULL
+    kafkaoffset bigint,
+    kafkapartition integer
 );
 
 
@@ -141,7 +142,8 @@ CREATE TABLE public.events_01_todo (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset integer DEFAULT 0 NOT NULL
+    kafkaoffset bigint,
+    kafkapartition integer
 );
 
 
@@ -168,7 +170,8 @@ CREATE TABLE public.events_02_categories (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset integer DEFAULT 0 NOT NULL
+    kafkaoffset bigint,
+    kafkapartition integer
 );
 
 
@@ -195,7 +198,8 @@ CREATE TABLE public.events_02_todo (
     event json NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset integer DEFAULT 0 NOT NULL
+    kafkaoffset bigint,
+    kafkapartition integer
 );
 
 
