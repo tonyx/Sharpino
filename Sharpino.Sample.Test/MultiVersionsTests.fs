@@ -283,7 +283,6 @@ let multiVersionsTests =
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue |> List.length) 2 "should be equal"
-            // Expect.equal (todos.OkValue |> Set.ofList) (([todo1; todo2]) |> Set.ofList) "should be equal"
             if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
                 let received = listenForTwoEvents (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okResult |> snd))
                 let received1 = received |> fst |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
