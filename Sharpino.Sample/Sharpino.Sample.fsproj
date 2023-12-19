@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GenerateProgramFile>false</GenerateProgramFile> 
   </PropertyGroup>
@@ -45,7 +45,7 @@
 
     <!-- commend this when develp the lib-->
 
-<!--    <PackageReference Include="Sharpino" Version="1.4.4" />-->
+    <!-- <PackageReference Include="Sharpino" Version="1.4.5" /> -->
 
     <!-- commend this when you develp the lib-->
 

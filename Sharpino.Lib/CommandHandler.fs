@@ -147,6 +147,7 @@ module CommandHandler =
                             let! events =
                                 state
                                 |> command.Execute
+                            printf "XXX. events %A\n" events
                             let events' =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)

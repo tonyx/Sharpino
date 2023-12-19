@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
@@ -28,9 +28,10 @@
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.13.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-    <PackageReference Update="FSharp.Core" Version="7.*" />
+    <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
   <ItemGroup>

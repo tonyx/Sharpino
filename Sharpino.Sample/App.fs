@@ -78,6 +78,7 @@ module App =
 
         member this.Add2Todos (todo1, todo2) =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
+                printf "XXX. adding two todos %A - %A\n" todo1 todo2
                 result {
                     let! (_, tagState, _) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)

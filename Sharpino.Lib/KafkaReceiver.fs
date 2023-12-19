@@ -17,6 +17,8 @@ open Sharpino.Definitions
 open Sharpino.CommandHandler
 open Sharpino.KafkaBroker
 open System
+open System.Threading.Tasks
+open Microsoft.Extensions.Hosting
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
@@ -76,6 +78,7 @@ module KafkaReceiver =
                 printf "ErrorX %A\n" e
                 ()
             | Ok msg ->
+                printf "Message %A\n" msg
                 let newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
                 let newEvent = newMessage.Event |> serializer.Deserialize<'E> |> Result.get
                 let eventId = newMessage.EventId 
@@ -84,12 +87,36 @@ module KafkaReceiver =
                 state <- (eventId, newState, None)
                 ()
             ()
+        // member this.RefreshEveryNSeconds(n: int) =
+        //     let rec loop() =
+        //         this.Refresh()
+        //         System.Threading.Thread.Sleep(n * 1000)
+        //         loop()
+        //     loop()
+        
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
                 state <- newState 
                 return ()
             }
+        interface IHostedService with
+            member this.StartAsync(cancellationToken: Threading.CancellationToken): Task = 
+                // Task.Run(fun () ->
+                //     printf "XXXX. Entered in task\n"
+                //     this.Refresh()
+                // )
+                Task.Run(fun () ->
+                    let rec loop () =
+                        printf "XXXX. Entered in task\n"
+                        this.Refresh()
+                        System.Threading.Thread.Sleep(1000)
+                    loop()
+                    
+                )
+
+            member this.StopAsync(cancellationToken: Threading.CancellationToken): Task = 
+                failwith "Not Implemented" 
 
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)

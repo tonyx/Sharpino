@@ -21,7 +21,7 @@ open Sharpino.Utils
 open Sharpino.EventSourcing.Sample
 open Sharpino.EventSourcing.Sample.AppVersions
 open Sharpino.Sample.Todos.TodoEvents
-open Tests.Sharpino.Shared
+open Tests.Sharpino.Shared 
 
 open Sharpino.TestUtils
 open Sharpino.KafkaReceiver
@@ -32,6 +32,7 @@ open Sharpino.KafkaBroker
 open Sharpino.Storage
 open Farmer
 open log4net
+open Microsoft.Extensions.Hosting
 
 [<Tests>]
     let kafkaTests =
@@ -135,7 +136,7 @@ open log4net
                 // let (_ , kafkaViewerTodosState, _) = kafkaViewer.State
                 // Expect.equal kafkaViewerTodosState currentState "should be equal"
                 
-            ftestCase "kafka state keeper will be able to evolve for a new events after refresh. use listenwithTimeout -  Ok" <| fun _ ->
+            testCase "kafka state keeper will be able to evolve for a new events after refresh. use listenwithTimeout -  Ok" <| fun _ ->
                 let app = currentVersionPgWithKafkaApp
                 app._reset()
                 let todoSubscriber = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient")  |> Result.get
@@ -220,7 +221,7 @@ open log4net
                 Expect.equal kafkaState currentState "should be equal"
                 Expect.isTrue true "true"
                 
-            ftestCase "kafka state keeper see what's happen when refresh more than needed -  Ok" <| fun _ ->
+            testCase "kafka state keeper see what's happen when refresh more than needed -  Ok" <| fun _ ->
                 // expect that there will be just a timeout and then who cares
                 
                 let app = currentVersionPgWithKafkaApp
@@ -247,6 +248,119 @@ open log4net
                 let (_, kafkaState, _) = kafkaViewer.State
                 
                 Expect.equal kafkaState currentState "should be equal"
+                
+            testCase "check that the statekeeper is able to refresh itself periodically (polling) consuming messages - Ok" <| fun _ ->
+                let app = currentVersionPgWithKafkaApp
+                app._reset()
+                let todoSubscriber = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient")  |> Result.get
+                let kafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber pgStorage
+                let todo = mkTodo (Guid.NewGuid()) "test" [] []
+                let added = app.addTodo todo
+                let added' = added.OkValue
+               
+                let (_, deliveryResults) = added'
+                let deliveryResult = deliveryResults.Head.Value.Head
+                let offset = deliveryResult.Offset
+                let partition =  deliveryResult.Partition.Value
+                
+                todoSubscriber.Assign2 (offset, partition)
+                
+                let storageStateViewer = CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage
+                let (_, currentState, _) = storageStateViewer() |> Result.get
+                let todos = currentState.todos.todos.GetAll()
+                Expect.equal 1 todos.Length "should be equal"
+                let cancellationToken = CancellationToken()
+
+                let task = (kafkaViewer :> IHostedService).StartAsync(cancellationToken)
+                async {
+                    do! task |> Async.AwaitTask
+                } |> Async.RunSynchronously
+                
+                let (_, kafkaState, _) = kafkaViewer.State
+                
+                Expect.equal kafkaState currentState "should be equal"
+
+            testCase "check that the statekeeper is able to refresh itself periodically (polling) consuming messages in a loop - Ok" <| fun _ ->
+                let app = currentVersionPgWithKafkaApp
+                app._reset()
+                let todoSubscriber = 
+                    KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient") 
+                    |> Result.get
+
+                let kafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber pgStorage
+                let todo = mkTodo (Guid.NewGuid()) "test" [] []
+                let added = app.addTodo todo
+                let added' = added.OkValue
+               
+                let (_, deliveryResults) = added'
+                let deliveryResult = deliveryResults.Head.Value.Head
+                let offset = deliveryResult.Offset
+                let partition =  deliveryResult.Partition.Value
+                
+                todoSubscriber.Assign2 (offset, partition)
+                
+                let storageStateViewer = CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage
+                let (_, currentState, _) = storageStateViewer() |> Result.get
+                let todos = currentState.todos.todos.GetAll()
+                Expect.equal 1 todos.Length "should be equal"
+                let cancellationToken = CancellationToken()
+
+                let task = (kafkaViewer :> IHostedService).StartAsync(cancellationToken)
+                async {
+                    do! task |> Async.AwaitTask
+                } |> Async.RunSynchronously
+                
+                let (_, kafkaState, _) = kafkaViewer.State
+                
+                Expect.equal kafkaState currentState "should be equal"
+                
+            testCase "check that the statekeeper is able to refresh itself periodically (polling) consuming two messages in the loop - Ok" <| fun _ ->
+                let app = currentVersionPgWithKafkaApp
+                app._reset()
+                let todoSubscriber = 
+                    KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient") 
+                    |> Result.get
+
+                let kafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber pgStorage
+                let todo = mkTodo (Guid.NewGuid()) "test" [] []
+                let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
+                let added = app.add2Todos (todo, todo2)
+
+                let added' = added.OkValue
+               
+                let (_, deliveryResults) = added'
+                let deliveryResult = deliveryResults.Head.Value.Head
+                let offset = deliveryResult.Offset
+                let partition =  deliveryResult.Partition.Value
+                
+                todoSubscriber.Assign2 (offset, partition)
+                
+                let storageStateViewer = CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage
+                let (_, currentState, _) = storageStateViewer() |> Result.get
+                let todos = currentState.todos.todos.GetAll()
+                printf "todos %A\n\n" todos
+
+                let appGotTodos = app.getAllTodos()
+                printf "appGotTodos %A\n\n" appGotTodos
+
+                // Expect.equal 2 todos.Length "should be equal"
+                // let cancellationToken = CancellationToken()
+
+                // let task = (kafkaViewer :> IHostedService).StartAsync(cancellationToken)
+                // async {
+                //     do! task |> Async.AwaitTask
+                // } |> Async.RunSynchronously
+
+                // async {
+                //     do! Async.Sleep 2000
+                // }
+                // |> Async.RunSynchronously
+                
+                // let (_, kafkaState, _) = kafkaViewer.State
+                
+                // Expect.equal kafkaState currentState "should be equal"
+                
+                
                 
         ]
         |> testSequenced

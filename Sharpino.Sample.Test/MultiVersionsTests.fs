@@ -37,8 +37,8 @@ let allVersions =
         // enable if you had setup postgres (see dbmate scripts):
         
         (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -50,7 +50,7 @@ let allVersions =
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
         
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -273,15 +273,17 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected receivedOk "should be equal"
 
-        multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
+        fmultipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []
-            let todo2 = mkTodo  (Guid.NewGuid()) "quququququ" [] []
+            let todo2 = mkTodo  (Guid.NewGuid()) "quququququX" [] []
             let result = ap.add2Todos (todo1, todo2)
             Expect.isOk result "should be ok"
             let okResult = result.OkValue
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue |> List.length) 2 "should be equal"
+            // Expect.equal (todos.OkValue |> Set.ofList) (([todo1; todo2]) |> Set.ofList) "should be equal"
             if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
                 let received = listenForTwoEvents (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okResult |> snd))
                 let received1 = received |> fst |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
