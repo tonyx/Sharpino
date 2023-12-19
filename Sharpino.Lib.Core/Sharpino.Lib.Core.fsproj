@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -28,7 +28,7 @@
     <PackageReference Include="Fable.Core" Version="4.2.0" />
     <PackageReference Include="Farmer" Version="1.8.2" />
     <PackageReference Include="FSharpPlus" Version="1.5.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.12.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.13.0" />
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>

@@ -26,7 +26,7 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.12.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.13.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="8.*" />

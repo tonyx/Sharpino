@@ -106,7 +106,6 @@ module PgStorage =
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
-                let command = new NpgsqlCommand(command, conn)
                 async {
                     return
                         try
@@ -116,10 +115,11 @@ module PgStorage =
                                 |> List.map 
                                     (
                                         fun x -> 
+                                            let command' = new NpgsqlCommand(command, conn)
                                             let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
                                             param.Value <- x
-                                            command.Parameters.AddWithValue("event", x ) |> ignore
-                                            let result = command.ExecuteScalar() 
+                                            command'.Parameters.AddWithValue("event", x ) |> ignore
+                                            let result = command'.ExecuteScalar() 
                                             result :?> int
                                     )
                             transaction.Commit()

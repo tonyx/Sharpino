@@ -229,7 +229,7 @@ let multiVersionsTests =
                 let expected = TodoEvents.TodoAdded todo
                 Expect.equal expected receivedOk "should be equal"
 
-        multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
+        fmultipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []
             let todo2 = mkTodo  (Guid.NewGuid()) "quququququ" [] []
@@ -238,6 +238,7 @@ let multiVersionsTests =
             let okResult = result.OkValue
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue |> List.length) 2 "should be equal"
             if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
                 let received = listenForTwoEvents (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okResult |> snd))
                 let received1 = received |> fst |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
