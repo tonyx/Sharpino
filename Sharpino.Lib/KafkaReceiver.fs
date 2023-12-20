@@ -22,6 +22,9 @@ open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let resultToBool = function
+        | Ok _ -> true
+        | Error _ -> false
 
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
@@ -70,6 +73,21 @@ module KafkaReceiver =
 
     type KafkaViewer<'A, 'E when 'E :> Event<'A>> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) =
         let mutable state = sourceOfTruthStateViewer() |> Result.get
+        let _ = printf "XXXX entered in kafka viewer constructor\n"
+
+        // shit:
+        // let _ =
+        //     let (_, _, kafkaOffset) = state
+        //     printf "this is kafka offset %A\n" kafkaOffset
+        //     match kafkaOffset with
+        //     | Some offset -> 
+        //         printf "entered in kafka offset\n"
+        //         subscriber.Assign(offset, Partition.Any)
+        //     | None -> 
+        //         printf "entered in none\n"
+        //         ()
+        
+
         member this.State = state
         member this.Refresh() =
             printf "entered in refresh\n"
@@ -88,26 +106,25 @@ module KafkaReceiver =
                 let newState = evolve currentState [newEvent] |> Result.get
                 state <- (eventId, newState, None)
                 () |> Result.Ok
-            // ()
-        // member this.RefreshEveryNSeconds(n: int) =
-        //     let rec loop() =
-        //         this.Refresh()
-        //         System.Threading.Thread.Sleep(n * 1000)
-        //         loop()
-        //     loop()
-        
+
+        member this.RefreshLoop() =
+            let mutable refreshed = 
+                this.Refresh() |> resultToBool
+            while refreshed do
+                refreshed <-  
+                    this.Refresh() |> resultToBool
+
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
+                printf "xxxx. this is newstate: %A\n" newState
                 state <- newState 
                 return ()
             }
+
+        // doe it work??
         interface IHostedService with
             member this.StartAsync(cancellationToken: Threading.CancellationToken): Task = 
-                // Task.Run(fun () ->
-                //     printf "XXXX. Entered in task\n"
-                //     this.Refresh()
-                // )
                 Task.Run(fun () ->
                     printf "first entry\n"
                     // let rec loop () =

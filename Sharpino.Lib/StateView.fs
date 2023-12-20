@@ -143,7 +143,6 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        // int64 will be defined as KafkaOffset type
         (storage: IEventStore): Result<EventId * 'A * Option<int64>, string> = 
             log.Debug "getState"
             let computeNewState =
@@ -158,7 +157,6 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            // let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
             let (lastEventId, kafkaOffSet) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None)
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
