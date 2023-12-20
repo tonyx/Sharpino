@@ -18,7 +18,6 @@ module PgStorage =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgEventStore(connection: string) =
         interface IEventStore with
-
             // only test db should be able to reset
             member this.Reset(version: Version) (name: Name): unit = 
                 if (Conf.isTestEnv) then
@@ -103,13 +102,11 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
             member this.AddEvents version name events =
-                printf "Storage: entered in AddEvents %A\n" events
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
-                // let command' = new NpgsqlCommand(command, conn)
                 async {
                     return
                         try
@@ -119,7 +116,6 @@ module PgStorage =
                                 |> List.map 
                                     (
                                         fun x -> 
-                                            printf "Storage: entered in AddEvents XX:  %A\n" x
                                             let command' = new NpgsqlCommand(command, conn)
                                             let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
                                             param.Value <- x

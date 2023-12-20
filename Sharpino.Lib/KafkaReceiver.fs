@@ -17,6 +17,7 @@ open Sharpino.Definitions
 open Sharpino.CommandHandler
 open Sharpino.KafkaBroker
 open System
+open Farmer
 open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 module KafkaReceiver =
@@ -72,21 +73,22 @@ module KafkaReceiver =
         member this.State = state
         member this.Refresh() =
             printf "entered in refresh\n"
-            let result = subscriber.consumeWithTimeOut(10)
+            let result = subscriber.consumeWithTimeOut(100)
             match result with
             | Error e -> 
                 printf "ErrorX %A\n" e
-                ()
+                Result.Error e // "error"
             | Ok msg ->
                 printf "Message %A\n" msg
                 let newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
                 let newEvent = newMessage.Event |> serializer.Deserialize<'E> |> Result.get
+                printf "XXX. this is the event %A\n" newEvent
                 let eventId = newMessage.EventId 
                 let (_, currentState, _) = this.State
                 let newState = evolve currentState [newEvent] |> Result.get
                 state <- (eventId, newState, None)
-                ()
-            ()
+                () |> Result.Ok
+            // ()
         // member this.RefreshEveryNSeconds(n: int) =
         //     let rec loop() =
         //         this.Refresh()
@@ -107,11 +109,22 @@ module KafkaReceiver =
                 //     this.Refresh()
                 // )
                 Task.Run(fun () ->
-                    let rec loop () =
+                    printf "first entry\n"
+                    // let rec loop () =
+                    let mutable refreshed = 
+                        match this.Refresh() with
+                        | Ok _ -> true
+                        | Error _ -> false
+                    while refreshed do
                         printf "XXXX. Entered in task\n"
-                        this.Refresh()
+                        let refreshed = 
+                            match this.Refresh() with
+                            | Ok _ -> true
+                            | Error _ -> false
                         System.Threading.Thread.Sleep(1000)
-                    loop()
+                        printf "XXXX. exiting from loop\n"
+                        printf "STATE: %A\n" this.State |> ignore
+                    // loop()
                     
                 )
 
