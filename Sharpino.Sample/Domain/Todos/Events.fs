@@ -16,6 +16,7 @@ module TodoEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | TagRefRemoved of Guid
+        | PingDone of unit
             interface Event<TodosContext> with
                 member this.Process (x: TodosContext) =
                     match this with
@@ -29,6 +30,8 @@ module TodoEvents =
                         g |> x.RemoveCategory
                     | TagRefRemoved (g: Guid) ->            
                         g |> x.RemoveTagReference
+                    | PingDone () ->
+                        x.Ping()
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
@@ -43,6 +46,7 @@ module TodoEvents =
         | TagRefRemoved of Guid
         | CategoryRefRemoved of Guid
         | TodosAdded of List<Todo>
+        | PingDone of unit
             interface Event<TodosContextUpgraded> with
                 member this.Process (x: TodosContextUpgraded) =
                     match this with
@@ -56,6 +60,8 @@ module TodoEvents =
                         x.RemoveCategoryReference g
                     | TodosAdded (ts: List<Todo>) ->
                         x.AddTodos ts
+                    | PingDone () ->
+                        x.Ping()
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

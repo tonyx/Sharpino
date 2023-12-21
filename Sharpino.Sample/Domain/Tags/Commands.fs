@@ -13,6 +13,7 @@ module TagCommands =
     type TagCommand =
         | AddTag of Tag
         | RemoveTag of Guid
+        | Ping of unit
 
         interface Command<TagsContext, TagEvent> with
             member this.Execute (x: TagsContext) =
@@ -23,6 +24,9 @@ module TagCommands =
                 | RemoveTag g ->
                     x.RemoveTag g
                     |> Result.map (fun _ -> [TagRemoved g])
+                | Ping () ->
+                    x.Ping()
+                    |> Result.map (fun _ -> [PingDone ()])
             member this.Undoer = 
                 match this with
                 | AddTag t ->
@@ -45,3 +49,5 @@ module TagCommands =
                         }
                     )
                     |> Some
+                | Ping () ->
+                    None

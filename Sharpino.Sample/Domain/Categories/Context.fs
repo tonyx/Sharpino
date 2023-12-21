@@ -28,6 +28,12 @@ module CategoriesContext =
             15
         static member Lock =
             new Object()
+        member this.Ping(): Result<CategoriesContext, string> =
+            result
+                {
+                    return
+                        this
+                }
         member this.AddCategory (c: Category) =
             result {
                 let! categories = this.Categories.AddCategory c 

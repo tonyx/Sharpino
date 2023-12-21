@@ -51,6 +51,34 @@ module App =
         new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
 
+
+        // must be storage based
+        member this.PingTodo() =
+            let storageBasedTodoViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
+            result {
+                let! result =
+                    TodoCommand.Ping()
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker storageBasedTodoViewer
+                return result
+            }
+        member this.PingTag() =
+            let storageBasedTagViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
+            result {
+                let! result =
+                    TagCommand.Ping()
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker storageBasedTagViewer
+                return result
+            }
+        member this.PingCategory() =
+            // same as todo ping
+            let storageBasedTodoViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
+            result {
+                let! result =
+                    TodoCommand.Ping()
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker storageBasedTodoViewer
+                return result
+            }
+
         member this.GetAllTodos() =
             result  {
                 let! (_, state, _) = todosStateViewer ()
@@ -78,7 +106,6 @@ module App =
 
         member this.Add2Todos (todo1, todo2) =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
-                printf "XXX. adding two todos %A - %A\n" todo1 todo2
                 result {
                     let! (_, tagState, _) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -198,6 +225,33 @@ module App =
             result {
                 let! (_, state, _) = todosStateViewer ()
                 return state.GetTodos()
+            }
+
+        member this.PingTodo() =
+            let storageBasedTodoViewer = getStorageFreshStateViewer<TodosContextUpgraded, TodoEvent'> storage
+            result {
+                let! result =
+                    TodoCommand'.Ping()
+                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker storageBasedTodoViewer
+                return result
+            }
+
+        member this.PingTag() =
+            let storageBasedTagViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
+            result {
+                let! result =
+                    TagCommand.Ping()
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker storageBasedTagViewer
+                return result
+            }
+        member this.PingCategory() =
+            // same as todo ping
+            let storageBasedCategoryViewer = getStorageFreshStateViewer<CategoriesContext, CategoryEvent> storage
+            result {
+                let! result =
+                    CategoryCommand.Ping()
+                    |> runCommand<CategoriesContext, CategoryEvent> storage eventBroker storageBasedCategoryViewer
+                return result
             }
 
         member this.AddTodo todo =

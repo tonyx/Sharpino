@@ -39,10 +39,11 @@ module KafkaReceiver =
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
         
-        member this.Assign(position: int64, partition: Partition) =
-            cons.Assign([new TopicPartitionOffset(topic, partition, position)])
-            ()
+        // member this.Assign(position: int64, partition: Partition) =
+        //     cons.Assign([new TopicPartitionOffset(topic, partition, position)])
+        //     ()
             
+        // at the moment I rely on this to make the subscriber start from the right position
         member this.Assign2(position: int64, partition: int) =
             let partition = new Partition(partition) 
             cons.Assign ([new TopicPartitionOffset(topic, partition, position)])
@@ -55,14 +56,12 @@ module KafkaReceiver =
         member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try
-                    printf "entered in consumewithtimeout\n"
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
                     let result = cons.Consume(cancellationTokenSource.Token)
-                    printf "exited in consumewithtimeout\n"
                     return result
                 with 
                 | _ -> 
-                    printf "Timeout! "
+                    // printf "Timeout! "
                     return! "timeout" |> Result.Error
             }            
         static member Create(bootStrapServer: string, version: string, name: string, groupId: string) =
@@ -71,41 +70,52 @@ module KafkaReceiver =
             with 
             | _ as e -> Result.Error (e.Message)
 
-    type KafkaViewer<'A, 'E when 'E :> Event<'A>> (subscriber: KafkaSubscriber, currentState: EventId*'A, eventStore: IEventStore, sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) =
-        let mutable state = sourceOfTruthStateViewer() |> Result.get
-        let _ = printf "XXXX entered in kafka viewer constructor\n"
+    type KafkaViewer<'A, 'E when 'E :> Event<'A>> 
+        (subscriber: KafkaSubscriber, 
+        sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>,
+        appId: Guid)
+        =
 
-        // shit:
+        let mutable state = 
+            try
+                sourceOfTruthStateViewer() |> Result.get
+            with
+            | _ -> 
+                log.Error "cannot get the state from the source of truth\n"
+                failwith "error" 
+
         // let _ =
-        //     let (_, _, kafkaOffset) = state
-        //     printf "this is kafka offset %A\n" kafkaOffset
-        //     match kafkaOffset with
+        //     let (eventId, _, offSet) = state
+        //     match offSet with
         //     | Some offset -> 
-        //         printf "entered in kafka offset\n"
-        //         subscriber.Assign(offset, Partition.Any)
-        //     | None -> 
-        //         printf "entered in none\n"
+        //         printf "XXXX. assigning"
+        //         subscriber.Assign2(eventId, offset |> int)
+        //     | _ -> 
+        //         printf "XXXX. not assigning"
         //         ()
-        
+
 
         member this.State = state
+
         member this.Refresh() =
-            printf "entered in refresh\n"
             let result = subscriber.consumeWithTimeOut(100)
             match result with
             | Error e -> 
-                printf "ErrorX %A\n" e
-                Result.Error e // "error"
+                Result.Error e 
             | Ok msg ->
-                printf "Message %A\n" msg
-                let newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> |> Result.get
-                let newEvent = newMessage.Event |> serializer.Deserialize<'E> |> Result.get
-                printf "XXX. this is the event %A\n" newEvent
-                let eventId = newMessage.EventId 
-                let (_, currentState, _) = this.State
-                let newState = evolve currentState [newEvent] |> Result.get
-                state <- (eventId, newState, None)
-                () |> Result.Ok
+                ResultCE.result {
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> // |> Result.get
+                    let msgAppId = newMessage.ApplicationId
+                    let! newEvent = newMessage.Event |> serializer.Deserialize<'E> // |> Result.get
+                    let eventId = newMessage.EventId 
+                    let (_, currentState, _) = this.State
+                    if appId <> msgAppId then
+                        ()
+                    else
+                        let! newState = evolve currentState [newEvent] 
+                        state <- (eventId, newState, None)
+                    return () |> Result.Ok
+                }
 
         member this.RefreshLoop() =
             let mutable refreshed = 
@@ -117,36 +127,34 @@ module KafkaReceiver =
         member this.ForceSyncWithEventStore() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
-                printf "xxxx. this is newstate: %A\n" newState
                 state <- newState 
                 return ()
             }
 
-        // doe it work??
-        interface IHostedService with
-            member this.StartAsync(cancellationToken: Threading.CancellationToken): Task = 
-                Task.Run(fun () ->
-                    printf "first entry\n"
-                    // let rec loop () =
-                    let mutable refreshed = 
-                        match this.Refresh() with
-                        | Ok _ -> true
-                        | Error _ -> false
-                    while refreshed do
-                        printf "XXXX. Entered in task\n"
-                        let refreshed = 
-                            match this.Refresh() with
-                            | Ok _ -> true
-                            | Error _ -> false
-                        System.Threading.Thread.Sleep(1000)
-                        printf "XXXX. exiting from loop\n"
-                        printf "STATE: %A\n" this.State |> ignore
-                    // loop()
+        // interface IHostedService with
+        //     member this.StartAsync(cancellationToken: Threading.CancellationToken): Task = 
+        //         Task.Run(fun () ->
+        //             printf "first entry\n"
+        //             // let rec loop () =
+        //             let mutable refreshed = 
+        //                 match this.RefreshByApplicationId() with
+        //                 | Ok _ -> true
+        //                 | Error _ -> false
+        //             while refreshed do
+        //                 // printf "XXXX. Entered in task\n"
+        //                 let refreshed = 
+        //                     match this.RefreshByApplicationId() with
+        //                     | Ok _ -> true
+        //                     | Error _ -> false
+        //                 System.Threading.Thread.Sleep(1000)
+        //                 // printf "XXXX. exiting from loop\n"
+        //                 // printf "STATE: %A\n" this.State |> ignore
+        //             // loop()
                     
-                )
+        //         )
 
-            member this.StopAsync(cancellationToken: Threading.CancellationToken): Task = 
-                failwith "Not Implemented" 
+        //     member this.StopAsync(cancellationToken: Threading.CancellationToken): Task = 
+        //         failwith "Not Implemented" 
 
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -161,6 +169,9 @@ module KafkaReceiver =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (subscriber: KafkaSubscriber) 
-        (eventStore: IEventStore) =
-        let sourceOfTruthStateViewer = CommandHandler.getStorageFreshStateViewer<'A, 'E> eventStore
-        KafkaViewer<'A, 'E>(subscriber, (0, 'A.Zero), eventStore, sourceOfTruthStateViewer)
+        (sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) 
+        (applicationId: Guid) 
+        =
+        KafkaViewer<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)
+
+

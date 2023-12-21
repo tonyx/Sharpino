@@ -15,6 +15,7 @@ module CategoriesEvents =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
         | CategoriesAdded of List<Category>
+        | PingDone of unit
             interface Event<CategoriesContext> with
                 member this.Process (x: CategoriesContext) =
                     match this with
@@ -24,6 +25,8 @@ module CategoriesEvents =
                         x.RemoveCategory g
                     | CategoriesAdded (cs: List<Category>) ->
                         x.AddCategories cs
+                    | PingDone () ->
+                        x.Ping()
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

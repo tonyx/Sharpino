@@ -14,6 +14,7 @@ module CategoriesCommands =
         | AddCategory of Category
         | RemoveCategory of Guid
         | AddCategories of List<Category>
+        | Ping of unit
 
         interface Command<CategoriesContext, CategoryEvent> with
             member this.Execute (x: CategoriesContext) = 
@@ -27,4 +28,7 @@ module CategoriesCommands =
                 | AddCategories cs ->
                     x.AddCategories cs
                     |> Result.map (fun _ -> [CategoriesAdded cs])
+                | Ping () ->
+                    x.Ping()
+                    |> Result.map (fun _ -> [PingDone ()])
             member this.Undoer = None

@@ -38,6 +38,13 @@ module TodosContext =
             this
             |> serializer.Serialize
 
+        member this.Ping(): Result<TodosContext,string> =
+            result
+                {
+                    return
+                        this
+                }
+
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories().Exists (fun x -> x.Id = c)
@@ -144,6 +151,13 @@ module TodosContext =
             15
         static member Lock = 
             new Object()
+
+        member this.Ping(): Result<TodosContextUpgraded,string> =
+            result
+                {
+                    return
+                        this
+                }
         member this.AddTodo (t: Todo) =
             result
                 {

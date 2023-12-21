@@ -18,6 +18,7 @@ module TodoCommands =
         | RemoveCategory of Guid
         | RemoveTagRef of Guid
         | Add2Todos of Todo * Todo
+        | Ping of unit
 
         interface Command<TodosContext, TodoEvent> with
             member this.Execute (x: TodosContext) =
@@ -41,6 +42,9 @@ module TodoCommands =
                     [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2]
                     |> evolveUNforgivingErrors x
                     |> Result.map (fun _ -> [TodoEvent.TodoAdded t1; TodoEvent.TodoAdded t2])
+                | Ping () ->
+                    x.Ping()
+                    |> Result.map (fun _ -> [TodoEvent.PingDone ()])
             member this.Undoer = None
 
     [<UpgradedVersion>]
@@ -51,6 +55,7 @@ module TodoCommands =
         | RemoveCategoryRef of Guid
         | Add2Todos of Todo * Todo
         | AddTodos of List<Todo>
+        | Ping of unit
 
         interface Command<TodosContextUpgraded, TodoEvent'> with
             member this.Execute (x: TodosContextUpgraded) =
@@ -77,5 +82,8 @@ module TodoCommands =
                 | AddTodos ts ->
                     x.AddTodos ts 
                     |> Result.map (fun _ -> [TodoEvent'.TodosAdded ts])
+                | Ping () ->
+                    x.Ping()
+                    |> Result.map (fun _ -> [TodoEvent'.PingDone ()])
             member this.Undoer = None
 

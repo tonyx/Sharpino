@@ -27,6 +27,12 @@ module TagsContext =
             15
         static member Lock =
             new Object()
+        member this.Ping(): Result<TagsContext,string> =
+            result
+                {
+                    return
+                        this
+                }
         member this.AddTag (t: Tag) =
             result {
                 let! tags = this.Tags.AddTag t 
@@ -50,6 +56,7 @@ module TagsContext =
                     }
             }
         member this.GetTags() = this.Tags.GetTags()
+
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

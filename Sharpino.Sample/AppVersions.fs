@@ -92,6 +92,9 @@ module AppVersions =
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         Version * List<Json> * Name -> unit
+            _pingTodo:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            _pingCategories:    unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            _pingTags:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             getAllTodos:        unit -> Result<List<Todo>, string>
             addTodo:            Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             add2Todos:          Todo * Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
@@ -117,6 +120,9 @@ module AppVersions =
             _addEvents =        fun (vers: Version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IEventStore).AddEvents vers name deser |> ignore
+            _pingTodo =         currentPgApp.PingTodo
+            _pingCategories =   currentPgApp.PingCategory
+            _pingTags =         currentPgApp.PingTag
             getAllTodos =       currentPgApp.GetAllTodos
             addTodo =           currentPgApp.AddTodo
             add2Todos =         currentPgApp.Add2Todos
@@ -141,6 +147,9 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IEventStore).AddEvents version name deser |> ignore
+            _pingTodo =         upgradedPgApp.PingTodo
+            _pingCategories =   upgradedPgApp.PingCategory
+            _pingTags =         upgradedPgApp.PingTag
             getAllTodos =       upgradedPgApp.GetAllTodos
             addTodo =           upgradedPgApp.AddTodo
             add2Todos =         upgradedPgApp.Add2Todos
@@ -166,6 +175,9 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (memoryStorage :> IEventStore).AddEvents version name deser |> ignore
+            _pingTodo =         currentMemApp.PingTodo
+            _pingCategories =   currentMemApp.PingCategory
+            _pingTags =         currentMemApp.PingTag
             getAllTodos =       currentMemApp.GetAllTodos
             addTodo =           currentMemApp.AddTodo
             add2Todos =         currentMemApp.Add2Todos
@@ -190,6 +202,9 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IEventStore).AddEvents version name deser |> ignore
+            _pingTodo =         currentPgAppWithKafka.PingTodo
+            _pingCategories =   currentPgAppWithKafka.PingCategory
+            _pingTags =         currentPgAppWithKafka.PingTag
             getAllTodos =       currentPgAppWithKafka.GetAllTodos
             addTodo =           currentPgAppWithKafka.AddTodo
             add2Todos =         currentPgAppWithKafka.Add2Todos
@@ -214,6 +229,9 @@ module AppVersions =
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e 
                                     (memoryStorage :> IEventStore).AddEvents version name deser |> ignore
+            _pingTodo =         upgradedMemApp.PingTodo
+            _pingCategories =   upgradedMemApp.PingCategory
+            _pingTags =         upgradedMemApp.PingTag    
             getAllTodos =       upgradedMemApp.GetAllTodos
             addTodo =           upgradedMemApp.AddTodo
             add2Todos =         upgradedMemApp.Add2Todos

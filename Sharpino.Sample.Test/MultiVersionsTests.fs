@@ -37,8 +37,8 @@ let allVersions =
         // enable if you had setup postgres (see dbmate scripts):
         
         (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -50,7 +50,7 @@ let allVersions =
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
         
-        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
     ]
 
 let currentTestConfs = allVersions
@@ -102,32 +102,31 @@ let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResult
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition)
+    receiver.Assign2 (position.Value, partition.Value)
     listenForEvent (appId, receiver)
 
 let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition)
+    // receiver.Assign (position.Value, partition)
+    receiver.Assign2 (position.Value, partition.Value)
     let first = listenForEvent (appId, receiver)
     let second = listenForEvent (appId, receiver)
     (first, second)
 
 let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
-    printf "XXX. listen with retries\n"
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition)
+    receiver.Assign2 (position.Value, partition.Value)
     listenForEventWithRetries (appId, receiver, timeout)
     
 let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
-    printf "XXX. listen with retries\n"
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition)
+    receiver.Assign2 (position.Value, partition.Value)
     listenForEventWithTimeout (appId, receiver, timeout)
 
 [<Tests>]

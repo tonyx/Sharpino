@@ -13,6 +13,7 @@ module TagsEvents =
     type TagEvent =
         | TagAdded of Tag
         | TagRemoved of Guid
+        | PingDone of unit
             interface Event<TagsContext> with
                 member this.Process (x: TagsContext) =
                     match this with
@@ -20,6 +21,8 @@ module TagsEvents =
                         x.AddTag t
                     | TagRemoved (g: Guid) ->
                         x.RemoveTag g
+                    | PingDone () ->
+                        x.Ping()
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
