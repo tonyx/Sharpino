@@ -137,34 +137,38 @@ module PgStorage =
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
-                try
-                    let cmdList = 
-                        arg 
-                        |> List.map 
-                            (
-                                fun (events, version,  name) -> 
-                                    let stream_name = version + name
-                                    let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
-                                    events
-                                    |>> 
+                async {
+                    return
+                        try
+                            let cmdList = 
+                                arg 
+                                |> List.map 
                                     (
-                                        fun x ->
+                                        fun (events, version,  name) -> 
+                                            let stream_name = version + name
+                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
+                                            events
+                                            |>> 
                                             (
-                                                let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
-                                                param.Value <- x
-                                                command.Parameters.AddWithValue("event", x ) |> ignore
-                                                let result = command.ExecuteScalar() 
-                                                result :?> int
+                                                fun x ->
+                                                    (
+                                                        let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
+                                                        param.Value <- x
+                                                        command.Parameters.AddWithValue("event", x ) |> ignore
+                                                        let result = command.ExecuteScalar() 
+                                                        result :?> int
+                                                    )
                                             )
                                     )
-                            )
-                    transaction.Commit()    
-                    conn.Close()
-                    cmdList |> Ok
-                with
-                    | _ as ex -> 
-                        log.Error (sprintf "an error occurred: %A" ex.Message)
-                        ex.Message |> Error
+                            transaction.Commit()    
+                            conn.Close()
+                            cmdList |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
