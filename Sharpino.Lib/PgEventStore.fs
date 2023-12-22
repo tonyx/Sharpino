@@ -279,17 +279,17 @@ module PgStorage =
 
             member this.TryGetLastEventIdWithKafkaOffSet version name =
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
-                let query = sprintf "SELECT id, kafkaoffset FROM events%s%s ORDER BY id DESC LIMIT 1" version name
+                let query = sprintf "SELECT id, kafkaoffset, kafkapartition FROM events%s%s ORDER BY id DESC LIMIT 1" version name
                 connection
                 |> Sql.connect
                 |> Sql.query query 
                 |> Sql.executeAsync  (fun read ->
                         (
                             read.int "id",
-                            read.int64OrNone "kafkaoffset"
+                            read.int64OrNone "kafkaoffset",
+                            read.intOrNone "kafkapartition"
                         )     
                     )
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
-                // |> Option.map (fun (id, kafkaOffset) -> (id, if kafkaOffset.IsNone  then None else kafkaOffset.Value |> int64 |> Some ))

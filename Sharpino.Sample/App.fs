@@ -81,14 +81,14 @@ module App =
 
         member this.GetAllTodos() =
             result  {
-                let! (_, state, _) = todosStateViewer ()
+                let! (_, state, _, _) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
-                    let! (_, tagState, _) = tagsStateViewer ()
+                    let! (_, tagState, _, _) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagIdIsValid =    
@@ -107,7 +107,7 @@ module App =
         member this.Add2Todos (todo1, todo2) =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
-                    let! (_, tagState, _) = tagsStateViewer ()
+                    let! (_, tagState, _, _) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagId1IsValid =  
@@ -138,7 +138,7 @@ module App =
             }
         member this.GetAllCategories() =
             result {
-                let! (_, state, _) = todosStateViewer ()
+                let! (_, state, _, _) = todosStateViewer ()
                 return  state.GetCategories()
             }
 
@@ -179,8 +179,7 @@ module App =
 
         member this.GetAllTags () =
             result {
-                // let! (_, state) = storage |> getState<TagsCluster, TagEvent>
-                let! (_, state, _) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
+                let! (_, state, _, _) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
                 return state.GetTags()
             }
 
@@ -223,7 +222,7 @@ module App =
 
         member this.GetAllTodos() =
             result {
-                let! (_, state, _) = todosStateViewer ()
+                let! (_, state, _, _) = todosStateViewer ()
                 return state.GetTodos()
             }
 
@@ -256,10 +255,10 @@ module App =
 
         member this.AddTodo todo =
             result {
-                let! (_, tagState, _) = tagsStateViewer ()
+                let! (_, tagState, _, _) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState, _) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
+                let! (_, categoriesState, _, _) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! tagIdIsValid =    
@@ -281,10 +280,10 @@ module App =
 
         member this.Add2Todos (todo1, todo2) =
             result {
-                let! (_, tagState, _) = tagsStateViewer ()
+                let! (_, tagState, _, _) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState, _) =  categoryStateViewer ()
+                let! (_, categoriesState, _, _) =  categoryStateViewer ()
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! categoryId1IsValid =    
@@ -325,7 +324,7 @@ module App =
 
         member this.GetAllCategories() =
             result {
-                let! (_, state, _) = categoryStateViewer ()
+                let! (_, state, _, _) = categoryStateViewer ()
                 return state.GetCategories()
             }
 
@@ -371,7 +370,7 @@ module App =
 
         member this.GetAllTags () =
             result {
-                let! (_, state, _) = 
+                let! (_, state, _, _) = 
                     tagsStateViewer ()
                 let tags = state.GetTags()
                 return tags

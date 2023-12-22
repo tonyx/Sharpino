@@ -306,6 +306,6 @@ module MemoryStorage =
                 else
                     events_dic.[version].[name]
                     |> List.tryLast
-                    |>> (fun x -> x.Id, x.KafkaOffset)
+                    |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
 
 

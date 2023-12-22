@@ -72,10 +72,9 @@ module KafkaReceiver =
 
     type KafkaViewer<'A, 'E when 'E :> Event<'A>> 
         (subscriber: KafkaSubscriber, 
-        sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>,
+        sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
-
         let mutable state = 
             try
                 sourceOfTruthStateViewer() |> Result.get
@@ -84,16 +83,16 @@ module KafkaReceiver =
                 log.Error "cannot get the state from the source of truth\n"
                 failwith "error" 
 
-        // let _ =
-        //     let (eventId, _, offSet) = state
-        //     match offSet with
-        //     | Some offset -> 
-        //         printf "XXXX. assigning"
-        //         subscriber.Assign2(eventId, offset |> int)
-        //     | _ -> 
-        //         printf "XXXX. not assigning"
-        //         ()
+        let (_, _, offset, partition) = state
 
+        let _ =
+            match offset, partition with
+            | Some off, Some part ->
+                printf "XXX. assigning partition and offset\n"
+                // subscriber.Assign2(off, part)
+                // should start from next message so: offset + 1
+                subscriber.Assign2(off + 1L, part)
+            | _ -> ()
 
         member this.State = state
 
@@ -105,19 +104,30 @@ module KafkaReceiver =
             | Ok msg ->
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> // |> Result.get
+                    let eventId = newMessage.EventId
+                    let _ =
+                        let currentStateid, _, _, _ = this.State
+                        if eventId = currentStateid + 1 then
+                            printf "as expected"
+                        else 
+                            printf "not expected!"
+
+                    printf "XXX. eventId %A\n" eventId
                     let msgAppId = newMessage.ApplicationId
                     let! newEvent = newMessage.Event |> serializer.Deserialize<'E> // |> Result.get
                     let eventId = newMessage.EventId 
-                    let (_, currentState, _) = this.State
+                    let (_, currentState, _, _) = this.State
                     if appId <> msgAppId then
                         ()
                     else
                         let! newState = evolve currentState [newEvent] 
-                        state <- (eventId, newState, None)
+                        state <- (eventId, newState, None, None)
                     return () |> Result.Ok
                 }
 
         member this.RefreshLoop() =
+            let eventId, _, _, _ = this.State
+            printf "XXX. Initial state event id %A\n" eventId
             let mutable refreshed = 
                 this.Refresh() |> resultToBool
             while refreshed do
@@ -169,7 +179,7 @@ module KafkaReceiver =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (subscriber: KafkaSubscriber) 
-        (sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) 
+        (sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (applicationId: Guid) 
         =
         KafkaViewer<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)

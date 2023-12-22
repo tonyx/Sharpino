@@ -122,7 +122,6 @@ module StateView =
                         return newState
                     }
             let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-            // let (lastEventId, kafkaOffSet) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None)
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state -> 
@@ -143,7 +142,7 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore): Result<EventId * 'A * Option<int64>, string> = 
+        (storage: IEventStore): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
             log.Debug "getState"
             let computeNewState =
                 fun () ->
@@ -157,11 +156,11 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let (lastEventId, kafkaOffSet) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None)
+            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state -> 
-                (lastEventId, state, kafkaOffSet) |> Ok
+                (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok
             | Error e -> 
                 log.Error (sprintf "getState: %s" e)
                 Error e

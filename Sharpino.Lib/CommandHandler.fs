@@ -135,7 +135,7 @@ module CommandHandler =
         >
         (storage: IEventStore) 
         (eventBroker: IEventBroker) 
-        (stateViewer: unit -> Result<EventId * 'A * Option<int64>, string>) 
+        (stateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
@@ -143,11 +143,10 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state, _) = stateViewer() //<'A, 'E> storage
+                            let! (_, state, _, _) = stateViewer() //<'A, 'E> storage
                             let! events =
                                 state
                                 |> command.Execute
-                            // printf "XXX. events %A\n" events
                             let events' =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)

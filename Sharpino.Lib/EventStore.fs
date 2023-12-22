@@ -30,6 +30,9 @@ module Storage =
             Timestamp: System.DateTime
         }
 
+    type KafkaOffset = int64
+    type KafkaPartitionId = int
+
     type ILightStorage =
         abstract member AddEvents: Version -> List<'E> -> Name -> Result<unit, string>
         abstract member ResetEvents: Version -> Name -> unit
@@ -43,7 +46,8 @@ module Storage =
         abstract member Reset: Version -> Name -> unit
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
-        abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<int64>>
+        // abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset>>
+        abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
         // toto: the following two can be unified
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
@@ -54,7 +58,7 @@ module Storage =
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >
-        abstract member SetPublished: Version -> Name -> EventId -> int64 -> int ->  Result<unit, string>
+        abstract member SetPublished: Version -> Name -> EventId -> KafkaOffset -> KafkaPartitionId ->  Result<unit, string>
 
     type IEventBroker =
         {
