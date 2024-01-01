@@ -13,9 +13,14 @@ module Conf =
     type SharpinoConfig =
         {
             PessimisticLock: bool
+            RefreshTimeout: int
         }
 
-    let defaultConf = { PessimisticLock = false }
+    let defaultConf = 
+        { 
+            PessimisticLock = false 
+            RefreshTimeout = 100
+        }
 
     let config () =
         let configuration = 

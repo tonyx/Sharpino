@@ -57,7 +57,9 @@ module AppVersions =
     let upgradedMemApp = App.UpgradedApp(memoryStorage)
 
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-    let evStoreApp = EventStoreApp(Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
+    let evStoreApp = EventStoreApp(EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
+
+    let eventBrokerBasedApp = EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
 
     let resetAppId() =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
@@ -243,6 +245,32 @@ module AppVersions =
             removeTag =         upgradedMemApp.removeTag
             getAllTags =        upgradedMemApp.GetAllTags
             todoReport =        upgradedMemApp.TodoReport
+        }
+
+    let eventBrokerStateBasedApp =
+        {
+            _notify =           eventBrokerBasedApp._eventBroker.notify
+            _migrator =         None
+            _reset =            fun () -> 
+                                    resetDb pgStorage
+                                    resetAppId()
+            _addEvents =        fun (version, e: List<string>, name ) -> 
+                                    let deser = e
+                                    (pgStorage :> IEventStore).AddEvents version name deser |> ignore
+            _pingTodo =         eventBrokerBasedApp.PingTodo
+            _pingCategories =   eventBrokerBasedApp.PingCategory
+            _pingTags =         eventBrokerBasedApp.PingTag
+            getAllTodos =       eventBrokerBasedApp.GetAllTodos
+            addTodo =           eventBrokerBasedApp.AddTodo
+            add2Todos =         eventBrokerBasedApp.Add2Todos
+            removeTodo =        eventBrokerBasedApp.RemoveTodo
+            getAllCategories =  eventBrokerBasedApp.GetAllCategories
+            addCategory =       eventBrokerBasedApp.AddCategory
+            removeCategory =    eventBrokerBasedApp.RemoveCategory
+            addTag =            eventBrokerBasedApp.AddTag
+            removeTag =         eventBrokerBasedApp.RemoveTag
+            getAllTags =        eventBrokerBasedApp.GetAllTags
+            todoReport =        eventBrokerBasedApp.TodoReport
         }
 
     // [<CurrentVersion>]

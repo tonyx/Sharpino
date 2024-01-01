@@ -26,6 +26,7 @@
 
     <Compile Include="JSON/Converters.fs" />
     <Compile Include="App.fs" />
+    <Compile Include="EventBrokerBasedApp.fs" />
     <Compile Include="EventStoreApp.fs" />
     <Compile Include="AppVersions.fs" />
     <Compile Include="Server.fs" />
@@ -43,6 +44,7 @@
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.13.0" />
     <PackageReference Include="Saturn" Version="0.16.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Sharpino.Core" Version="1.0.4" />
 
     <!-- commend this when develp the lib-->
 

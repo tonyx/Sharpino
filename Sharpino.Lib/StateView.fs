@@ -95,41 +95,6 @@ module StateView =
                 }
         }
         |> Async.RunSynchronously
-
-    let inline getState<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-        and 'A: (member Serialize: ISerializer -> Json)
-        and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        >
-        (storage: IEventStore): Result<EventId * 'A, string> = 
-            log.Debug "getState"
-            let computeNewState =
-                fun () ->
-                    result {
-                        let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E> storage
-                        let! deserEvents =
-                            events 
-                            |>> snd 
-                            |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
-                        let! newState = 
-                            deserEvents |> evolve<'A, 'E> state
-                        return newState
-                    }
-            let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-            let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
-            match state with
-            | Ok state -> 
-                (lastEventId, state) |> Ok
-            | Error e -> 
-                log.Error (sprintf "getState: %s" e)
-                Error e
-                
                 
     let inline getFreshState<'A, 'E
         when 'A: (static member Zero: 'A)

@@ -48,34 +48,36 @@ module App =
         let tagsStateViewer =
             getStorageFreshStateViewer<TagsContext, TagEvent> storage
 
+        let categoryStateViewer =
+            getStorageFreshStateViewer<CategoriesContext, CategoryEvent> storage
+
+        let upgradeTodoStateViewer =
+            getStorageFreshStateViewer<TodosContextUpgraded, TodoEvent'> storage
+
         new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
 
-
         // must be storage based
         member this.PingTodo() =
-            let storageBasedTodoViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
             result {
                 let! result =
                     TodoCommand.Ping()
-                    |> runCommand<TodosContext, TodoEvent> storage eventBroker storageBasedTodoViewer
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result
             }
         member this.PingTag() =
-            let storageBasedTagViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
             result {
                 let! result =
                     TagCommand.Ping()
-                    |> runCommand<TagsContext, TagEvent> storage eventBroker storageBasedTagViewer
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker tagsStateViewer
                 return result
             }
         member this.PingCategory() =
             // same as todo ping
-            let storageBasedTodoViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
             result {
                 let! result =
                     TodoCommand.Ping()
-                    |> runCommand<TodosContext, TodoEvent> storage eventBroker storageBasedTodoViewer
+                    |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result
             }
 
@@ -173,7 +175,7 @@ module App =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
-                let! result = runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef
+                let! result = runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent> storage eventBroker removeTag removeTagRef tagsStateViewer todosStateViewer
                 return result
             }
 
@@ -199,8 +201,12 @@ module App =
                             eventBroker
                             command 
                             command2
+                            categoryStateViewer
+                            upgradeTodoStateViewer
+                            
                 return ()
             }
+
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
             let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             let deserEvents = events |>> (serializer.Deserialize >> Result.get)
@@ -231,25 +237,23 @@ module App =
             result {
                 let! result =
                     TodoCommand'.Ping()
-                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker storageBasedTodoViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent'> storage eventBroker todosStateViewer
                 return result
             }
 
         member this.PingTag() =
-            let storageBasedTagViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
             result {
                 let! result =
                     TagCommand.Ping()
-                    |> runCommand<TagsContext, TagEvent> storage eventBroker storageBasedTagViewer
+                    |> runCommand<TagsContext, TagEvent> storage eventBroker tagsStateViewer
                 return result
             }
         member this.PingCategory() =
             // same as todo ping
-            let storageBasedCategoryViewer = getStorageFreshStateViewer<CategoriesContext, CategoryEvent> storage
             result {
                 let! result =
                     CategoryCommand.Ping()
-                    |> runCommand<CategoriesContext, CategoryEvent> storage eventBroker storageBasedCategoryViewer
+                    |> runCommand<CategoriesContext, CategoryEvent> storage eventBroker categoryStateViewer
                 return result
             }
 
@@ -347,7 +351,7 @@ module App =
                         TodosContextUpgraded, 
                         CategoryEvent, 
                         TodoEvent'> 
-                        storage eventBroker removeCategory removeCategoryRef
+                        storage eventBroker removeCategory removeCategoryRef categoryStateViewer todosStateViewer
                 return result 
             }
 
@@ -364,7 +368,9 @@ module App =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand'.RemoveTagRef id
-                let! result = runTwoCommands<TagsContext, TodosContextUpgraded, TagEvent, TodoEvent'> storage eventBroker removeTag removeTagRef
+                let! result = 
+                    runTwoCommands<TagsContext, TodosContextUpgraded, TagEvent, TodoEvent'> 
+                        storage eventBroker removeTag removeTagRef tagsStateViewer todosStateViewer
                 return result
             }
 

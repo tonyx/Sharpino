@@ -24,24 +24,8 @@ open log4net.Config
 module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
 
-
-    // deprecated use getStorageFreshStateViewer instead
-    [<Obsolete "use getStorageFreshStateViewer instead">]
-    let inline getStorageStateViewer<'A, 'E
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
-        and 'A: (static member Lock: obj)
-        and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        >(eventStore: IEventStore) =
-            let result = fun () -> getState<'A, 'E> eventStore
-            result
-            
     let inline getStorageFreshStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -78,12 +62,12 @@ module CommandHandler =
         and 'E: (member Serialize: ISerializer -> string)
         > 
         (storage: IEventStore) =
-            let stateViewer = getStorageStateViewer<'A, 'E> storage
+            let stateViewer = getStorageFreshStateViewer<'A, 'E> storage
             async {
                 return
                     ResultCE.result
                         {
-                            let! (id, state) = stateViewer () //getState<'A, 'E> storage 
+                            let! (id, state, _, _) = stateViewer () //getState<'A, 'E> storage 
                             let serState = state.Serialize serializer
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
@@ -135,7 +119,8 @@ module CommandHandler =
         >
         (storage: IEventStore) 
         (eventBroker: IEventBroker) 
-        (stateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
+        // (stateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
+        (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
@@ -195,19 +180,19 @@ module CommandHandler =
             (eventBroker: IEventBroker) 
 
             (command1: Command<'A1, 'E1>) 
-            (command2: Command<'A2, 'E2>) =
-            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            (command2: Command<'A2, 'E2>)
+            (stateViewerA1: StateViewer<'A1>)
+            (stateViewerA2: StateViewer<'A2>) =
 
-            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
-            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
+            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
             let command = fun () ->
                 async {
                     return
                         result {
 
-                            let! (_, state1) = stateViewerA1 ()
-                            let! (_, state2) = stateViewerA2 ()
+                            let! (_, state1, _, _) = stateViewerA1 ()
+                            let! (_, state2, _, _) = stateViewerA2 ()
 
                             let! events1 =
                                 state1
@@ -285,22 +270,21 @@ module CommandHandler =
             (eventBroker: IEventBroker) 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
-            (command3: Command<'A3, 'E3>) =
+            (command3: Command<'A3, 'E3>) 
+            (stateViewerA1: StateViewer<'A1>)
+            (stateViewerA2: StateViewer<'A2>)
+            (stateViewerA3: StateViewer<'A3>)
+            =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
-
-            // todo: will be able to get event broker based viewers
-            let stateViewerA1 = getStorageStateViewer<'A1, 'E1> storage
-            let stateViewerA2 = getStorageStateViewer<'A2, 'E2> storage
-            let stateViewerA3 = getStorageStateViewer<'A3, 'E3> storage
 
             let command = fun () ->
                 async {
                     return
                         result {
 
-                            let! (_, state1) = stateViewerA1 ()
-                            let! (_, state2) = stateViewerA2 ()
-                            let! (_, state3) = stateViewerA3 ()
+                            let! (_, state1, _, _) = stateViewerA1 ()
+                            let! (_, state2, _, _) = stateViewerA2 ()
+                            let! (_, state3, _, _) = stateViewerA3 ()
 
                             let! events1 =
                                 state1

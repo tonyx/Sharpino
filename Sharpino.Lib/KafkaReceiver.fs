@@ -22,6 +22,15 @@ open System.Threading.Tasks
 open Microsoft.Extensions.Hosting
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+
+    let config = 
+        try
+            Conf.config ()
+        with
+        | :? _ as ex -> 
+            // if appSettings.json is missing
+            log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
+            Conf.defaultConf
     let resultToBool = function
         | Ok _ -> true
         | Error _ -> false
@@ -39,12 +48,8 @@ module KafkaReceiver =
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
         
-        // member this.Assign(position: int64, partition: Partition) =
-        //     cons.Assign([new TopicPartitionOffset(topic, partition, position)])
-        //     ()
-            
-        // at the moment I rely on this to make the subscriber start from the right position
         member this.Assign2(position: int64, partition: int) =
+            // ()
             let partition = new Partition(partition) 
             cons.Assign ([new TopicPartitionOffset(topic, partition, position)])
             () 
@@ -53,7 +58,7 @@ module KafkaReceiver =
             let result = cons.Consume()
             result
             
-        member this.consumeWithTimeOut(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
+        member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
@@ -61,7 +66,6 @@ module KafkaReceiver =
                     return result
                 with 
                 | _ -> 
-                    // printf "Timeout! "
                     return! "timeout" |> Result.Error
             }            
         static member Create(bootStrapServer: string, version: string, name: string, groupId: string) =
@@ -83,6 +87,7 @@ module KafkaReceiver =
                 log.Error "cannot get the state from the source of truth\n"
                 failwith "error" 
 
+
         let (_, _, offset, partition) = state
 
         let _ =
@@ -94,77 +99,66 @@ module KafkaReceiver =
                 subscriber.Assign2(off + 1L, part)
             | _ -> ()
 
-        member this.State = state
+        member this.State () = 
+            state
+        // member this.State = state
+
+
+
 
         member this.Refresh() =
-            let result = subscriber.consumeWithTimeOut(100)
+            printf "refreshing\n"
+            let result = subscriber.consume(config.RefreshTimeout)
             match result with
             | Error e -> 
+                log.Error e
+                printf "error in consuming from subscriber %A\n" e
                 Result.Error e 
             | Ok msg ->
+                printf "XXX. message consumed\n"
                 ResultCE.result {
-                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage> // |> Result.get
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
                     let eventId = newMessage.EventId
-                    let _ =
-                        let currentStateid, _, _, _ = this.State
-                        if eventId = currentStateid + 1 then
-                            printf "as expected"
-                        else 
-                            printf "not expected!"
-
-                    printf "XXX. eventId %A\n" eventId
-                    let msgAppId = newMessage.ApplicationId
-                    let! newEvent = newMessage.Event |> serializer.Deserialize<'E> // |> Result.get
-                    let eventId = newMessage.EventId 
-                    let (_, currentState, _, _) = this.State
-                    if appId <> msgAppId then
-                        ()
+                    let currentStateid, _, _, _ = this.State ()
+                    if eventId = currentStateid + 1 then
+                        let msgAppId = newMessage.ApplicationId
+                        let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
+                        let (_, currentState, _, _) = this.State ()
+                        printf "XXX. appId: %A\n" (appId.ToString())
+                        printf "XXX. msgAppId: %A\n" (msgAppId.ToString())
+                        if appId <> msgAppId then
+                            ()
+                        else
+                            let! newState = evolve currentState [newEvent] 
+                            state <- (eventId, newState, None, None)
+                        return () |> Result.Ok
                     else
-                        let! newState = evolve currentState [newEvent] 
-                        state <- (eventId, newState, None, None)
-                    return () |> Result.Ok
+                        let! _ = this.ForceSyncWithSourceOfTruth()
+                        let _ =
+                            let _, _, offset, partition = this.State ()
+                            match offset, partition with
+                            | Some off, Some part ->
+                                subscriber.Assign2(off + 1L, part)
+                            | _ -> 
+                                log.Error "Cannot assign offset and partition"
+                                ()
+                        return () |> Result.Ok
                 }
 
         member this.RefreshLoop() =
-            let eventId, _, _, _ = this.State
-            printf "XXX. Initial state event id %A\n" eventId
+            printf "refresh loop\n"
             let mutable refreshed = 
                 this.Refresh() |> resultToBool
             while refreshed do
                 refreshed <-  
                     this.Refresh() |> resultToBool
 
-        member this.ForceSyncWithEventStore() = 
+        member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
                 state <- newState 
                 return ()
             }
-
-        // interface IHostedService with
-        //     member this.StartAsync(cancellationToken: Threading.CancellationToken): Task = 
-        //         Task.Run(fun () ->
-        //             printf "first entry\n"
-        //             // let rec loop () =
-        //             let mutable refreshed = 
-        //                 match this.RefreshByApplicationId() with
-        //                 | Ok _ -> true
-        //                 | Error _ -> false
-        //             while refreshed do
-        //                 // printf "XXXX. Entered in task\n"
-        //                 let refreshed = 
-        //                     match this.RefreshByApplicationId() with
-        //                     | Ok _ -> true
-        //                     | Error _ -> false
-        //                 System.Threading.Thread.Sleep(1000)
-        //                 // printf "XXXX. exiting from loop\n"
-        //                 // printf "STATE: %A\n" this.State |> ignore
-        //             // loop()
-                    
-        //         )
-
-        //     member this.StopAsync(cancellationToken: Threading.CancellationToken): Task = 
-        //         failwith "Not Implemented" 
 
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)

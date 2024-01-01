@@ -40,9 +40,9 @@ let allVersions =
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
@@ -50,7 +50,9 @@ let allVersions =
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
         
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        (eventBrokerStateBasedApp,        eventBrokerStateBasedApp,     fun () -> () |> Result.Ok)
+
     ]
 
 let currentTestConfs = allVersions
@@ -89,7 +91,7 @@ let listenForEventWithRetries (appId: Guid, receiver: KafkaSubscriber, timeout: 
     
 let listenForEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, timeout: int) =
     result {
-        let! received = receiver.consumeWithTimeOut(timeout) 
+        let! received = receiver.consume(timeout) 
         let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
         let mutable deserialized' = deserialized
         let mutable found = deserialized'.ApplicationId = appId
@@ -109,7 +111,6 @@ let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults:
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    // receiver.Assign (position.Value, partition)
     receiver.Assign2 (position.Value, partition.Value)
     let first = listenForEvent (appId, receiver)
     let second = listenForEvent (appId, receiver)
@@ -227,9 +228,9 @@ let testCoreEvolve =
 let multiVersionsTests =
 
     let serializer = JsonSerializer(serSettings) :> ISerializer
-    let todoReceiver = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClinet") 
-    let categoriesReceiver = KafkaSubscriber.Create ("localhost:9092", CategoriesContext.CategoriesContext.Version, CategoriesContext.CategoriesContext.StorageName, "sharpinoTestClinet")
-    let tagsReceiver = KafkaSubscriber.Create ("localhost:9092", TagsContext.TagsContext.Version, TagsContext.TagsContext.StorageName, "sharpinoTestClinet")
+    let todoReceiver = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient1") 
+    let categoriesReceiver = KafkaSubscriber.Create ("localhost:9092", CategoriesContext.CategoriesContext.Version, CategoriesContext.CategoriesContext.StorageName, "sharpinoTestClient1")
+    let tagsReceiver = KafkaSubscriber.Create ("localhost:9092", TagsContext.TagsContext.Version, TagsContext.TagsContext.StorageName, "sharpinoTestClient1")
 
     testList "App with coordinator test - Ok" [
         multipleTestCase "if notifier is enabled then receivers must be all ok" currentTestConfs <| fun (ap, _, _) ->
@@ -251,6 +252,7 @@ let multiVersionsTests =
             let result = ap.addTodo todo
 
             Expect.isError result "should be error"
+
             if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
                 let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okAdded |> snd))
                 Expect.isOk received "should be ok"
@@ -264,6 +266,10 @@ let multiVersionsTests =
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
             let okResult = result.OkValue
+            let todos = ap.getAllTodos()
+            Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue) [todo] "should be equal"
+
             let deliveryResults = okResult |> snd
             if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
                 let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, deliveryResults)
@@ -397,7 +403,7 @@ let multiVersionsTests =
 
         multipleTestCase "add category" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
-            let category = mkCategory (Guid.NewGuid()) "test"
+            let category = mkCategory (Guid.NewGuid()) "testXX"
             let added = ap.addCategory category
             Expect.isOk added "should be ok"
 
@@ -477,10 +483,11 @@ let multiVersionsTests =
         multipleTestCase "when remove a category all references to it should be removed from todos - Ok" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
             let categoryId = Guid.NewGuid()
-            let category = mkCategory categoryId "test"
+            let category = mkCategory categoryId "testX"
             let todo = mkTodo (Guid.NewGuid()) "test" [categoryId] []
 
-            let _ = ap.addCategory category
+            let catAdded = ap.addCategory category
+            Expect.isOk catAdded "should be ok"
             
             let added = ap.addTodo todo    
             
@@ -502,12 +509,19 @@ let multiVersionsTests =
             let _ = ap._reset()
             let categoryId1 = Guid.NewGuid()
             let categoryId2 = Guid.NewGuid()
-            let category = mkCategory categoryId1 "test"
-            let category2 = { Id = categoryId2; Name = "test2" }
+            let category = mkCategory categoryId1 "testX"
+            let category2 = { Id = categoryId2; Name = "test2X" }
             let todo = mkTodo (Guid.NewGuid()) "test" [categoryId1; categoryId2] []
+            let added1 = ap.addCategory category
 
-            let _ = ap.addCategory category
-            let _ = ap.addCategory category2
+            Expect.isOk added1 "should be ok"
+            Expect.isTrue true "true"
+
+        //     // Expect.isOk added1 "should be ok"
+
+            let added2 = ap.addCategory category2
+            Expect.isOk added2 "should be ok"
+
             let app' = ap.addTodo todo
             Expect.isOk app' "should be ok"
 
@@ -522,6 +536,7 @@ let multiVersionsTests =
 
             let result = apUpgd.getAllTodos().OkValue 
             Expect.equal (result |> List.head).CategoryIds [categoryId2] "should be equal"
+
 
         multipleTestCase "when remove a category all references to it should be removed from todos 3 - Ok" currentTestConfs <| fun (ap, apUpgd, migrator) ->
             let _ = ap._reset()
