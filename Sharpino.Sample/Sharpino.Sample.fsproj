@@ -47,7 +47,7 @@
     <PackageReference Include="Sharpino" Version="1.4.6" />
     <!-- commend this when you develp the lib-->
 
-    <PackageReference Include="Sharpino.Core" Version="1.0.4" />
+    <PackageReference Include="Sharpino.Core" Version="1.0.5" />
 
   </ItemGroup>
 

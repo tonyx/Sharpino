@@ -22,7 +22,7 @@
         <dependency id="Microsoft.Extensions.Configuration" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="1.0.1" />
+        <dependency id="Sharpino.Core" version="1.0.5" />
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
