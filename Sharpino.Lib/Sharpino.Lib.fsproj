@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>1.4.5</Version>
+    <Version>1.4.6</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -56,7 +56,7 @@
 
 <!-- when developing the core comment out this reference:-->
 
-    <PackageReference Include="Sharpino.Core" Version="1.0.3" />
+    <PackageReference Include="Sharpino.Core" Version="1.0.4" />
 
 <!-- . -->
 
@@ -76,8 +76,9 @@
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-<!-- 
- <ItemGroup>
+
+
+ <!-- <ItemGroup>
    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
  </ItemGroup> -->
 

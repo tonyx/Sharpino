@@ -52,6 +52,8 @@
 
     <!-- commend this when you develp the lib-->
 
+    <PackageReference Include="Sharpino.Core" Version="1.0.4" />
+
   </ItemGroup>
 
   <ItemGroup>
