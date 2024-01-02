@@ -59,7 +59,10 @@ module AppVersions =
     let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
     let evStoreApp = EventStoreApp(EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
 
-    let eventBrokerBasedApp = EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
+    let mutable eventBrokerBasedApp = EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
+
+    let resetEventBrokerBasedApp() =
+        eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
 
     let resetAppId() =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
@@ -252,8 +255,15 @@ module AppVersions =
             _notify =           eventBrokerBasedApp._eventBroker.notify
             _migrator =         None
             _reset =            fun () -> 
+                                    printf "doing reset\n"
                                     resetDb pgStorage
                                     resetAppId()
+                                    // eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
+                                    let broker = KafkaBroker.getKafkaBroker("localhost:9092", pgStorage)
+                                    eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, broker)
+                                    // resetEventBrokerBasedApp()
+                                    // eventBrokerBasedApp._setApplId(ApplicationInstance.ApplicationInstance.Instance.GetGuid())
+                                    // eventBrokerBasedApp._refreshStateViewers()
             _addEvents =        fun (version, e: List<string>, name ) -> 
                                     let deser = e
                                     (pgStorage :> IEventStore).AddEvents version name deser |> ignore

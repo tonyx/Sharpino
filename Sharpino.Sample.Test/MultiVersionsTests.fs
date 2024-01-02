@@ -104,14 +104,14 @@ let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResult
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign2 (position.Value, partition.Value)
+    receiver.Assign (position.Value, partition.Value)
     listenForEvent (appId, receiver)
 
 let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign2 (position.Value, partition.Value)
+    receiver.Assign (position.Value, partition.Value)
     let first = listenForEvent (appId, receiver)
     let second = listenForEvent (appId, receiver)
     (first, second)
@@ -120,14 +120,14 @@ let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, del
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign2 (position.Value, partition.Value)
+    receiver.Assign (position.Value, partition.Value)
     listenForEventWithRetries (appId, receiver, timeout)
     
 let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
-    receiver.Assign2 (position.Value, partition.Value)
+    receiver.Assign (position.Value, partition.Value)
     listenForEventWithTimeout (appId, receiver, timeout)
 
 [<Tests>]
@@ -243,7 +243,12 @@ let multiVersionsTests =
                 Expect.isTrue true "should be true"
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
+            printf "xxx. before reset\n"
             let _ = ap._reset() 
+            printf "xxx. after reset\n"
+            let actualTodos = ap.getAllTodos() |> Result.get
+            printf "actualTodos1: %A\n" actualTodos
+
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
             let okAdded = added |> Result.get
@@ -262,6 +267,8 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
+            let actualTodos = ap.getAllTodos() |> Result.get
+            printf "actualTodos2: %A\n" actualTodos
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"

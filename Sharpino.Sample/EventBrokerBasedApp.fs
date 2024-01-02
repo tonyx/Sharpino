@@ -35,14 +35,15 @@ open FsToolkit.ErrorHandling
 open log4net
 open Sharpino.KafkaReceiver
 module EventBrokerBasedApp =
-
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type EventBrokerBasedApp
         (storage: IEventStore, eventBroker: IEventBroker) =
         let todoSubscriber = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "SharpinoClient") |> Result.get
-        let storageTodoStateViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
+        let mutable storageTodoStateViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
 
+
+        // at the moment I need to "ping" and then assign the offset to the consumer
         let pinged = 
             result {
                 let! result =
@@ -55,7 +56,7 @@ module EventBrokerBasedApp =
         let partition = deliveryResult.Partition
 
         let _ = 
-            todoSubscriber.Assign2(offSet, partition) |> ignore
+            todoSubscriber.Assign(offSet, partition) |> ignore
         let todosKafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber storageTodoStateViewer (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
         let currentStateTodoKafkaViewer = 
             fun () -> 
@@ -63,8 +64,9 @@ module EventBrokerBasedApp =
                 todosKafkaViewer.State () |> Result.Ok  
 
         let tagSubscriber = KafkaSubscriber.Create ("localhost:9092", TagsContext.Version, TagsContext.StorageName, "SharpinoClient") |> Result.get 
-        let storageTagStateViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
+        let mutable storageTagStateViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
 
+        // at the moment I need to "ping" and then assign the offset to the consumer
         let pinged = 
             result {
                 let! result =
@@ -76,21 +78,19 @@ module EventBrokerBasedApp =
         let offSet = deliveryResult.Offset
         let partition = deliveryResult.Partition
         let _ =
-            tagSubscriber.Assign2(offSet, partition) |> ignore
+            tagSubscriber.Assign(offSet, partition) |> ignore
 
         let tagsKafkaViewer = mkKafkaViewer<TagsContext, TagEvent> tagSubscriber storageTagStateViewer (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
         let currentStateTagKafkaViewer = 
             fun () -> 
                 tagsKafkaViewer.Refresh() |> ignore
                 tagsKafkaViewer.State () |> Result.Ok
-
         member this._eventBroker = eventBroker
 
         member this.PingTodo() =
             result {
                 let! result =
                     TodoCommand.Ping()
-                    // |> runCommand<TodosContext, TodoEvent> storage eventBroker storageTodoStateViewer
                     |> runCommand<TodosContext, TodoEvent> storage eventBroker currentStateTodoKafkaViewer
                 return result
             }
@@ -217,9 +217,7 @@ module EventBrokerBasedApp =
                 return state.GetTags()
             }
 
-
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-
             let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             let deserEvents = events |>> (serializer.Deserialize >> Result.get)
             { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }

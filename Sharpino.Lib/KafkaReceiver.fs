@@ -31,9 +31,6 @@ module KafkaReceiver =
             // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
-    let resultToBool = function
-        | Ok _ -> true
-        | Error _ -> false
 
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
@@ -48,8 +45,7 @@ module KafkaReceiver =
         let cons = consumer.Build () 
         let _ = cons.Subscribe(topic)
         
-        member this.Assign2(position: int64, partition: int) =
-            // ()
+        member this.Assign(position: int64, partition: int) =
             let partition = new Partition(partition) 
             cons.Assign ([new TopicPartitionOffset(topic, partition, position)])
             () 
@@ -87,35 +83,24 @@ module KafkaReceiver =
                 log.Error "cannot get the state from the source of truth\n"
                 failwith "error" 
 
-
         let (_, _, offset, partition) = state
 
         let _ =
             match offset, partition with
             | Some off, Some part ->
-                printf "XXX. assigning partition and offset\n"
-                // subscriber.Assign2(off, part)
-                // should start from next message so: offset + 1
-                subscriber.Assign2(off + 1L, part)
+                subscriber.Assign(off + 1L, part)
             | _ -> ()
 
         member this.State () = 
             state
-        // member this.State = state
-
-
-
 
         member this.Refresh() =
-            printf "refreshing\n"
             let result = subscriber.consume(config.RefreshTimeout)
             match result with
             | Error e -> 
                 log.Error e
-                printf "error in consuming from subscriber %A\n" e
                 Result.Error e 
             | Ok msg ->
-                printf "XXX. message consumed\n"
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
                     let eventId = newMessage.EventId
@@ -124,8 +109,6 @@ module KafkaReceiver =
                         let msgAppId = newMessage.ApplicationId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
                         let (_, currentState, _, _) = this.State ()
-                        printf "XXX. appId: %A\n" (appId.ToString())
-                        printf "XXX. msgAppId: %A\n" (msgAppId.ToString())
                         if appId <> msgAppId then
                             ()
                         else
@@ -138,25 +121,24 @@ module KafkaReceiver =
                             let _, _, offset, partition = this.State ()
                             match offset, partition with
                             | Some off, Some part ->
-                                subscriber.Assign2(off + 1L, part)
+                                subscriber.Assign(off + 1L, part)
                             | _ -> 
                                 log.Error "Cannot assign offset and partition"
                                 ()
                         return () |> Result.Ok
                 }
 
-        member this.RefreshLoop() =
-            printf "refresh loop\n"
-            let mutable refreshed = 
-                this.Refresh() |> resultToBool
-            while refreshed do
-                refreshed <-  
-                    this.Refresh() |> resultToBool
-
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()
                 state <- newState 
+                let _, _, offset, partition = this.State ()
+                match offset, partition with
+                | Some off, Some part ->
+                    subscriber.Assign(off + 1L, part)
+                | _ ->
+                    log.Error "Cannot assign offset and partition"
+                    ()
                 return ()
             }
 
