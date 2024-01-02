@@ -36,22 +36,26 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
-        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
+        // I am sorry but I think I am going to ditch eventstoreDb in the future
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
         
-        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
-        (eventBrokerStateBasedApp,        eventBrokerStateBasedApp,     fun () -> () |> Result.Ok)
+        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+
+        // for the next eventBrokerStateBasedApp just use the tests in the file KafkaStateKeeperTest.fs
+        // so don't enable the next line
+        // (eventBrokerStateBasedApp,        eventBrokerStateBasedApp,     fun () -> () |> Result.Ok)
 
     ]
 
@@ -243,11 +247,8 @@ let multiVersionsTests =
                 Expect.isTrue true "should be true"
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
-            printf "xxx. before reset\n"
             let _ = ap._reset() 
-            printf "xxx. after reset\n"
             let actualTodos = ap.getAllTodos() |> Result.get
-            printf "actualTodos1: %A\n" actualTodos
 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
@@ -268,7 +269,6 @@ let multiVersionsTests =
         multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let actualTodos = ap.getAllTodos() |> Result.get
-            printf "actualTodos2: %A\n" actualTodos
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
