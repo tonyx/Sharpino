@@ -34,7 +34,11 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open log4net
 open Sharpino.KafkaReceiver
+
+// todo: I need to refactor this class but I leave it as it is to get insights for the future
+// basically I  need to "ping" each context/topic and then assign the offset to the consumer 
 module EventBrokerBasedApp =
+
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type EventBrokerBasedApp
@@ -43,7 +47,7 @@ module EventBrokerBasedApp =
         let mutable storageTodoStateViewer = getStorageFreshStateViewer<TodosContext, TodoEvent> storage
 
 
-        // at the moment I need to "ping" and then assign the offset to the consumer
+        // at the moment I need to "ping" and then assign the offset to the consumer for each context/topic (I am sure there must be something clever to do here)
         let pinged = 
             result {
                 let! result =
@@ -66,7 +70,7 @@ module EventBrokerBasedApp =
         let tagSubscriber = KafkaSubscriber.Create ("localhost:9092", TagsContext.Version, TagsContext.StorageName, "SharpinoClient") |> Result.get 
         let mutable storageTagStateViewer = getStorageFreshStateViewer<TagsContext, TagEvent> storage
 
-        // at the moment I need to "ping" and then assign the offset to the consumer
+        // at the moment I need to "ping" and then assign the offset to the consumer for each context/topic (I am sure there must be something clever to do here)
         let pinged = 
             result {
                 let! result =
