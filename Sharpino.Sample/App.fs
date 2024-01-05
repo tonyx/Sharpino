@@ -209,7 +209,7 @@ module App =
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
             let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
-            let deserEvents = events |>> (serializer.Deserialize >> Result.get)
+            let deserEvents = events |>> (serializer.Deserialize >> Result.get) // todo: handle error
             { InitTime = dateFrom; EndTime = dateTo; TodoEvents = deserEvents }
 
     [<UpgradedVersion>]
