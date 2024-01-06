@@ -110,7 +110,7 @@ module AppVersions =
             addTag:             Tag -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             removeTag:          Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
             getAllTags:         unit -> Result<List<Tag>, string>
-            todoReport:         DateTime -> DateTime -> TodosEvents
+            todoReport:         DateTime -> DateTime -> Result<TodosEvents, string>
         }
 
     [<CurrentVersion>]

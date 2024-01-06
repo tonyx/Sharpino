@@ -36,9 +36,9 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
-        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
         (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
@@ -51,7 +51,7 @@ let allVersions =
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
         
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
 
         // for the next eventBrokerStateBasedApp just use the tests in the file KafkaStateKeeperTest.fs
         // so don't enable the next line
@@ -681,7 +681,7 @@ let multiVersionsTests =
             let added1 = ap.addTodo todo1
             let added2 = ap.addTodo todo2
             let result = ap.todoReport now System.DateTime.Now
-            let actualEvents = result.TodoEvents |> Set.ofList
+            let actualEvents = result.OkValue.TodoEvents |> Set.ofList
             let expcted = 
                 [
                     TodoEvent.TodoAdded todo1
@@ -698,7 +698,7 @@ let multiVersionsTests =
             let todo2 = mkTodo (Guid.NewGuid()) "test two" [] []
             let added2 = ap.addTodo todo2
             let result = ap.todoReport timeBeforeAddingSecondTodo System.DateTime.Now
-            let actualEvents = result.TodoEvents |> Set.ofList
+            let actualEvents = result.OkValue.TodoEvents |> Set.ofList
             let expcted = 
                 [
                     TodoEvent.TodoAdded todo2
@@ -715,7 +715,7 @@ let multiVersionsTests =
             let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
             let added2 = ap.addTodo todo2
             let result = ap.todoReport beforeAddingFirst beforeAddingSecond 
-            let actualEvents = result.TodoEvents |> Set.ofList
+            let actualEvents = result.OkValue.TodoEvents |> Set.ofList
             let expcted = 
                 [
                     TodoEvent.TodoAdded todo1 //(mkTodo todo1.Id todo1.Description todo1.CategoryIds todo1.TagIds)

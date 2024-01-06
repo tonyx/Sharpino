@@ -79,8 +79,8 @@ module KafkaReceiver =
             try
                 sourceOfTruthStateViewer() |> Result.get
             with
-            | _ -> 
-                log.Error "cannot get the state from the source of truth\n"
+            | e  -> 
+                log.Error (sprintf "cannot get the state from the source of truth. Error: %A \n" e.Message)
                 failwith "error" 
 
         let (_, _, offset, partition) = state
@@ -89,7 +89,9 @@ module KafkaReceiver =
             match offset, partition with
             | Some off, Some part ->
                 subscriber.Assign(off + 1L, part)
-            | _ -> ()
+            | _ -> 
+                log.Error "Cannot assign offset and partition because they are None"
+                ()
 
         member this.State () = 
             state
