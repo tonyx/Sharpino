@@ -23,16 +23,14 @@ No sensible data (GDPR) support.
 
 
 ## Projects
-
-
 __Sharpino.Lib.Core__:
 
 - [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the context. The latter just skip those events.
 
 __Sharpino.Lib__:
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __event store__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using an event store that supports pub/sub model ( Eventstoredb ).
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
+- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, executes commands, produces and stores events using an event store that supports pub/sub model ( Eventstoredb ).
 - [DbStorage.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache current state.
 
@@ -43,7 +41,7 @@ You need a user called 'safe' with password 'safe' in your Postgres (if you want
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
 .
 
--  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provide members to handle them. 
+-  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provides members to handle them. 
 
 - __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
@@ -117,17 +115,17 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
-- Booking seats example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
-- Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync evnets).
+- Booking seat example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
+- Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync events).
 - Version 1.4.6: fix bug in Postgres AddEvents 
 - Version 1.4.5: Upgrade to net8.0
-- Info: in adding new features I may risk break backward compatibility. At the moment I am handling in this simple way: if I change the signature of a function I add a new function with the new signature and I deprecate the old one. I will keep the old one for a while. I will remove it only if I am sure that nobody is using it.
+- Info: in adding new features I may risk breaking backward compatibility. At the moment I am handling in this simple way: if I change the signature of a function I add a new function with the new signature and I deprecate the old one. I will keep the old one for a while. I will remove it only if I am sure that nobody is using it.
 - Version: 1.4.4 Postgres tables of events need a new column: kafkaoffset of type BigInt. It is used to store the offset/position of the event in the Kafka topic.
 See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
 (Error handling can be improved in writing/reading Kafka event info there).
 Those data will be used in the future to feed the "kafkaViewer" on initialization.
 
-- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event store based state viewer. The one for Broker based is coming soon)
+- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer. The one for Broker based is coming soon)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
