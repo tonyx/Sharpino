@@ -127,7 +127,7 @@ See the new four last alter_ Db script in Sharpino.Sample app. This feature is _
 (Error handling can be improved in writing/reading Kafka event info there).
 Those data will be used in the future to feed the "kafkaViewer" on initialization.
 
-- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for stored based state viewer. The one for Broker based is coming soon)
+- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event store based state viewer. The one for Broker based is coming soon)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
