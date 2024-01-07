@@ -117,7 +117,7 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
-- Booking seats example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some issue that will be fixed in next releases)
+- Booking seats example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
 - Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync evnets).
 - Version 1.4.6: fix bug in Postgres AddEvents 
 - Version 1.4.5: Upgrade to net8.0
