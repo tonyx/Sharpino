@@ -35,11 +35,6 @@ open log4net
 open Microsoft.Extensions.Hosting
 open Sharpino.Sample.EventBrokerBasedApp
 
-// let resultToBool x =
-//     match x with
-//     | Ok _ -> true
-//     | Error _ -> false
-
 [<Tests>]
     let kafkaTests =
         let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
