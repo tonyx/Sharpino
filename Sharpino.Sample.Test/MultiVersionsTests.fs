@@ -50,7 +50,7 @@ let allVersions =
 
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
-        
+
         // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
 
         // for the next eventBrokerStateBasedApp just use the tests in the file KafkaStateKeeperTest.fs
@@ -253,7 +253,6 @@ let multiVersionsTests =
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
             let okAdded = added |> Result.get
-
             Expect.isOk added "should be ok"
             let result = ap.addTodo todo
 

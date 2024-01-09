@@ -119,7 +119,6 @@ module CommandHandler =
         >
         (storage: IEventStore) 
         (eventBroker: IEventBroker) 
-        // (stateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>) =
         
