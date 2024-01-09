@@ -7,7 +7,6 @@ open log4net.Config
 open System
 
 module Core =
-
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
@@ -30,7 +29,7 @@ module Core =
             ) (h |> Ok)
 
     [<TailCall>]
-    let rec private evolveSkippingErrors (acc: Result<'A, string>) (events: List<Event<'A>>) (guard: 'A) =
+    let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
         match acc, events with
         // if the accumulator is an error then skip it, and use the guard instead which was the 
         // latest valid value of the accumulator
@@ -45,7 +44,7 @@ module Core =
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
         | Ok state, e::es ->
-            let newGuard = state |> e.Process
+            let newGuard = state |> (e :> Event<'A>).Process
             match newGuard with
             | Error err -> 
                 log.Info (sprintf "warning 3: %A" err)
@@ -54,5 +53,5 @@ module Core =
                 evolveSkippingErrors (h' |> Ok) es h'
         | Ok h, [] -> h |> Ok
 
-    let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<Event<'A>>): Result<'A, string> =
-        evolveSkippingErrors (h |> Ok) events h
+    let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
+        evolveSkippingErrors (h |> Ok) events h 
