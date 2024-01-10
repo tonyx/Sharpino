@@ -14,6 +14,9 @@ module Seats =
         { id: Id
           seats: List<Id>
         }
+        with member 
+                this.isEmpty() = 
+                    this.seats |> List.isEmpty
     let toRow1 (booking: Booking) =
         {
             booking with

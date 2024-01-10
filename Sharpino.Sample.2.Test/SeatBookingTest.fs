@@ -186,10 +186,7 @@ let apiTests =
 
             let app = App(storage)
             let booking = { id = 1; seats = [1;2;3;4;5] }
-            let booking1 = { id = 1; seats = [1;2;3;4;5] }
-            let booking2 = { id = 2; seats = [] }
             let booked = app.BookSeats booking
-            // let booked = app.BookSeatsTwoRows booking1 booking2 
             Expect.isOk booked "should be equal"
 
         testCase "book all seats on row1 - Ok" <| fun _ ->
@@ -252,6 +249,30 @@ let apiTests =
             Expect.equal availableSeats.Length 8 "should be equal"
             Expect.equal (availableSeats |> Set.ofList) ([1;2;3;4;5;8;9;10] |> Set.ofList) "should be equal"
 
+        testCase "book a seat that is already taken - Error " <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let booking = { id = 1; seats = [6] }
+            let booked = app.BookSeats booking 
+            Expect.isOk booked "should be equal"
+            let booking2 = { id = 2; seats = [6] }
+            let booked2 = app.BookSeats booking2
+            Expect.isError booked2 "should be equal"
+
+        testCase "try do a booking containing a seat that is already taken - Error " <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let booking = { id = 1; seats = [6] }
+            let booked = app.BookSeats booking 
+            Expect.isOk booked "should be equal"
+            let booking2 = { id = 2; seats = [6; 7] }
+            let booked2 = app.BookSeats booking2
+            Expect.isError booked2 "should be equal"
+
         testCase "reserve places related to the second row - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
@@ -267,6 +288,17 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
 
             let app = App(storage)
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 10 "should be equal"
+
+        testCase "can't leave the single seat free in the middle - Error" <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let booking  = { id = 3; seats = [6;7;9;10] }
+            let booked = app.BookSeats booking
+            Expect.isError booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
 

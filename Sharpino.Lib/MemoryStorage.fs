@@ -290,13 +290,13 @@ module MemoryStorage =
                     | Some x ->
                         events_dic.[version].[name]
                             <- events_dic.[version].[name]
-                               |> List.filter (fun x -> x.Id <> id)
-                               |> List.append
-                                      [
-                                          { x with
+                                |> List.filter (fun x -> x.Id <> id)
+                                |> List.append
+                                        [
+                                            { x with
                                                 KafkaOffset = kafkaOffset |> Some
                                                 KafkaPartition = partition |> Some }
-                                      ]
+                                        ]
                         Ok ()
 
             member this.TryGetLastEventIdWithKafkaOffSet version name  = 

@@ -30,6 +30,7 @@ module App =
                 return result
             }
 
+        // todo: this does not handle the multiple rows case in a consistent way. will fix later
         member this.BookSeats (booking: Seats.Booking) =
             let assignToRow1 = booking |> Seats.toRow1
             let assignToRow2 = booking |> Seats.toRow2
