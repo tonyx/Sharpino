@@ -44,12 +44,12 @@ let hackingEventInStorageTest =
             let invalidBookingViolatesInvariant = { id = 1; seats = [1; 2; 4; 5] }
             
             let bookingEvent = Row1Events.SeatsBooked invalidBookingViolatesInvariant
-            // let serializedEvent = bookingEvent |> serializer.Serialize
             let serializedEvent = bookingEvent.Serialize serializer 
             (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent]
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
-            
+
+
         // this example simulates when one event that is not supposed to be added is added anyway because is processed
         // in parallel 
         testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed even if they are both actually stored - Ok" <| fun _ ->
@@ -69,6 +69,25 @@ let hackingEventInStorageTest =
             (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2]
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 8 "should be equal"
+
+        testCase "store events that books seat on the left and two seat on the right of the row 1, so they are both valid and there are 7 seats left free  - Ok" <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 10 "should be equal"
+            
+            let firstBookingOfFirstSeats =  { id = 1; seats = [1] }
+            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
+            
+            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize  serializer
+            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
+            
+            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2]
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 7 "should be equal"
+
             
     ]
     |> testSequenced
