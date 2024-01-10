@@ -88,6 +88,23 @@ let hackingEventInStorageTest =
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
 
+        testCase "store three single booking events that end up in a valid state" <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 10 "should be equal"
+            let firstBooking =  { id = 1; seats = [1] }
+            let secondBooking = { id = 2; seats = [2] }
+            let thirdBooking = { id = 3; seats = [3] }
+
+            let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize  serializer
+            let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize serializer
+            let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize serializer
+            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3]
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 7 "should be equal"
             
     ]
     |> testSequenced
