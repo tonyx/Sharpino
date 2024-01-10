@@ -338,5 +338,23 @@ let apiTests =
             let booking3 = { id = 6; seats = [6;7;8;9;10]}
             let newBooking2 = app.BookSeats booking3
             Expect.isOk newBooking2 "should be equal"
+
+        ftestCase "try booking seats on many rows, expecting that if one of them is not available than none of them is booked - Error" <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+
+            let app = App(storage)
+            let booking1 = { id = 1; seats = [1;2;3;4;5] }
+            let booked = app.BookSeats booking1
+            Expect.isOk booked "should be equal"
+
+            let booking2 =  { id = 3; seats = [1; 6; 7; 8; 9; 10]}
+            let newBooking = app.BookSeats booking2
+            Expect.isError newBooking "should be equal"
+
+            let booking3 = { id = 6; seats = [6;7;8;9;10]}
+            let newBooking2 = app.BookSeats booking3
+            Expect.isOk newBooking2 "should be equal"
     ] 
     |> testSequenced
