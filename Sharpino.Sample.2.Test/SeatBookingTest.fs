@@ -52,7 +52,7 @@ let hackingEventInStorageTest =
 
         // this example simulates when one event that is not supposed to be added is added anyway because is processed
         // in parallel 
-        testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed even if they are both actually stored - Ok" <| fun _ ->
+        testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
@@ -88,7 +88,7 @@ let hackingEventInStorageTest =
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
 
-        testCase "store three single booking events that end up in a valid state" <| fun _ ->
+        testCase "store three single booking events that end up in a valid state - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
