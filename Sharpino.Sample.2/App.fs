@@ -19,14 +19,14 @@ module App =
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {
-                let reserveCommandRow1 = Row1Command.BookSeats bookingRow1
-                let! result = runCommand<Row1Context.Row1, Row1Events.Row1Events> storage eventBroker row1StateViewer reserveCommandRow1 
+                let bookRow1 = Row1Command.BookSeats bookingRow1
+                let! result = runCommand<Row1Context.Row1, Row1Events.Row1Events> storage eventBroker row1StateViewer bookRow1 
                 return result
             }
         member private this.BookSeatsRow2 (bookingRow2: Seats.Booking) =
             result {
-                let reserveCommandRow2 = Row2Command.BookSeats bookingRow2
-                let! result = runCommand<Row2Context.Row2, Row2Events.Row2Events> storage eventBroker row2StateViewer reserveCommandRow2
+                let bookRow2 = Row2Command.BookSeats bookingRow2
+                let! result = runCommand<Row2Context.Row2, Row2Events.Row2Events> storage eventBroker row2StateViewer bookRow2
                 return result
             }
 
