@@ -339,7 +339,7 @@ let apiTests =
             let newBooking2 = app.BookSeats booking3
             Expect.isOk newBooking2 "should be equal"
 
-        ftestCase "try booking seats on many rows, expecting that if one of them is not available than none of them is booked - Error" <| fun _ ->
+        testCase "try booking seats on many rows, expecting that if one of them is not available than none of them is booked - Error" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()

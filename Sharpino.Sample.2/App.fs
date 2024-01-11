@@ -31,17 +31,17 @@ module App =
             }
 
         member this.BookSeats (booking: Seats.Booking) =
-            let assignToRow1 = booking |> Seats.toRow1
-            let assignToRow2 = booking |> Seats.toRow2
+            let row1Booking = booking |> Seats.toRow1
+            let row2Booking = booking |> Seats.toRow2
             result {
                 let result =
-                    match assignToRow1.isEmpty(), assignToRow2.isEmpty() with
+                    match row1Booking.isEmpty(), row2Booking.isEmpty() with
                     | true, true -> Error "booking is empty"
-                    | false, true -> this.BookSeatsRow1 assignToRow1
-                    | true, false -> this.BookSeatsRow2 assignToRow2
+                    | false, true -> this.BookSeatsRow1 row1Booking
+                    | true, false -> this.BookSeatsRow2 row2Booking
                     | false, false ->
                         runTwoCommands<Row1Context.Row1, Row2Context.Row2, Row1Events.Row1Events, Row2Events.Row2Events> 
-                            storage eventBroker (Row1Command.BookSeats assignToRow1) (Row2Command.BookSeats assignToRow2) 
+                            storage eventBroker (Row1Command.BookSeats row1Booking) (Row2Command.BookSeats row2Booking) 
                             row1StateViewer row2StateViewer
                 return! result
             }
