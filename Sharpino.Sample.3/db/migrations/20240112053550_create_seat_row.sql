@@ -2,6 +2,7 @@
 
 CREATE TABLE public.events_01_seatrow (
                                           id integer NOT NULL,
+                                          aggregate_id uuid NOT NULL,
                                           event json NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           "timestamp" timestamp without time zone NOT NULL
@@ -41,7 +42,7 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
 ALTER TABLE ONLY public.snapshots_01_seatrow
     ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
 
-                                                                                                                           
+
 CREATE OR REPLACE FUNCTION insert_01_seatrow_event_and_return_id(
     IN event_in TEXT
 )
@@ -52,9 +53,9 @@ AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_seatrow(event, timestamp)
-VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
+    VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$
                                                                                                                            

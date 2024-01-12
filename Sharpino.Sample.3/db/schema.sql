@@ -26,9 +26,9 @@ CREATE FUNCTION public.insert_01_seatrow_event_and_return_id(event_in text) RETU
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_seatrow(event, timestamp)
-VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
+    VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
@@ -43,6 +43,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.events_01_seatrow (
     id integer NOT NULL,
+    aggregate_id uuid NOT NULL,
     event json NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL

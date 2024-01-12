@@ -297,3 +297,34 @@ module PgStorage =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
+            member this.AddEventsRefactored(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
+                log.Debug (sprintf "AddEventsRefactored %s %s %A %A" version name aggregateId events)
+                let stream_name = version + name
+                let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                async {
+                    return
+                        try
+                            let transaction = conn.BeginTransaction() 
+                            let ids =
+                                events
+                                |> List.map 
+                                    (
+                                        fun x -> 
+                                            let command' = new NpgsqlCommand(command, conn)
+                                            let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
+                                            param.Value <- x
+                                            command'.Parameters.AddWithValue("event", x ) |> ignore
+                                            let result = command'.ExecuteScalar() 
+                                            result :?> int
+                                    )
+                            transaction.Commit()
+                            conn.Close()
+                            ids |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously

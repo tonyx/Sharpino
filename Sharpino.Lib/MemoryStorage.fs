@@ -308,4 +308,7 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
 
+            member this.AddEventsRefactored(arg1: Version) (arg2: Name) (arg3: System.Guid) (arg4: List<Json>): Result<List<int>,string> = 
+                failwith "Not Implemented"
+
 

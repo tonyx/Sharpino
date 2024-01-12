@@ -66,6 +66,10 @@ module Storage =
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> int * Json -> Name -> Result<unit, string>
         abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
+
+        // following version will be able to specify the aggregate id
+        abstract member AddEventsRefactored: Version -> Name -> Guid -> List<Json> -> Result<List<int>, string>
+
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >

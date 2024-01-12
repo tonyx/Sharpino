@@ -408,7 +408,7 @@ let refactorAggregateTests =
             let availableSeats = (rowAfterBooking.OkValue).GetAvailableSeats()
             Expect.equal availableSeats.Length 4 "should be equal"
         
-        testCase "crete a booking event that violates the invariant rule and process it - Error" <| fun _ ->
+        ftestCase "create a booking event that violates the invariant rule and process it - Error" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
                   { id = 2; State = Free }
@@ -421,8 +421,22 @@ let refactorAggregateTests =
             let bookingEvent = RowAggregateEvent.SeatBooked booking
             let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
             Expect.isError rowAfterBooking "should be equal"
+
+        // ftestCase "create two booking events that violates the invariant rule and another that process it - Error" <| fun _ ->
+        //     let seats = 
+        //         [ { id = 1; State = Free }
+        //           { id = 2; State = Free }
+        //           { id = 3; State = Free }
+        //           { id = 4; State = Free }
+        //           { id = 5; State = Free }
+        //         ]
+        //     let row  = RefactoredRow seats
+        //     let booking = { id = 1; seats = [1;2;4;5] }
+        //     let bookingEvent = RowAggregateEvent.SeatBooked booking
+        //     let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
+        //     Expect.isError rowAfterBooking "should be equal"
             
-        testCase "create two bookings. Use the forgiving strategy. One will violate the invariant rule so just one is considered - Ok" <| fun _ ->
+        ftestCase "create two bookings. Use the forgiving strategy. One will violate the invariant rule so just one is considered - Ok" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
                   { id = 2; State = Free }
