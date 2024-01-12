@@ -33,9 +33,12 @@ module Core =
         events
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
-                match acc with
-                    | Error err -> Error err 
-                    | Ok h -> h |> e.Process
+                acc |> Result.bind (fun acc ->
+                    e.Process acc
+                )
+                // match acc with
+                //     | Error err -> Error err 
+                //     | Ok h -> h |> e.Process
             ) (h |> Ok)
 
     [<TailCall>]

@@ -20,6 +20,75 @@ open Sharpino.Core
 let hackingEventInStorageTest =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
+        testCase "evolve unforginv errors: second booking is not accapted - Error" <| fun _ ->
+            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
+            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4; 5] }
+
+            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
+            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
+
+            let evolved =
+                [ bookingEvent1
+                  bookingEvent3
+                ]
+                |> evolveUNforgivingErrors<Row1, Row1Events.Row1Events> Row1.Zero
+            Expect.isError evolved "should be equal"
+
+        testCase "evolve unforgiving errors: one seat reservation is not accepted  - Error" <| fun _ ->
+            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
+            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
+            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
+
+            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
+            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats
+            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
+
+            let evolved =
+                [ bookingEvent1
+                  bookingEvent2
+                  bookingEvent3
+                ]
+                |> evolveUNforgivingErrors<Row1, Row1Events.Row1Events> Row1.Zero
+            Expect.isError evolved "should be equal"
+
+        testCase "evolve forgiving errors: one seat reservation is not accepted, whereas the others are accepted  - Error" <| fun _ ->
+            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
+            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
+            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
+
+            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
+            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats
+            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
+
+            let evolved =
+                [ bookingEvent1
+                  bookingEvent2
+                  bookingEvent3
+                ]
+                |> evolve<Row1, Row1Events.Row1Events> Row1.Zero
+            Expect.isOk evolved "should be equal"
+            let remainingSeats = (evolved.OkValue).GetAvailableSeats() 
+            Expect.equal remainingSeats.Length 2 "should be equal"
+
+        testCase "process events skippin second one which is inconsistent - Ok" <| fun _ ->
+            let storage = MemoryStorage()
+            StateCache<Row1>.Instance.Clear()
+            StateCache<Row2Context.Row2>.Instance.Clear()
+            let app = App(storage)
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 10 "should be equal"
+            
+            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
+            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
+            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
+
+            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats |> serializer.Serialize
+            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats |> serializer.Serialize
+            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats |> serializer.Serialize
+            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3]
+            let availableSeats = app.GetAllAvailableSeats() |> Result.get
+            Expect.equal availableSeats.Length 7 "should be equal"
+
         testCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
@@ -364,7 +433,7 @@ let apiTests =
 [<Tests>]
 let refactorAggregateTests =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    ftestList "test the evolve about refactored aggregate  " [
+    testList "test the evolve about refactored aggregate  " [
         testCase "available seats  are all seats - OK" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
