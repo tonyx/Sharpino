@@ -10,7 +10,7 @@ Example of seat bookings in event sourcing
  Answer: yes because in-memory and Postgres event-store implementation as single sources of truth are transactional. The runTwoCommands in the Command Handler is transactional.
  2) Can it handle more rows?
  up to tre. (runThreeCommands in the Command Handler)
- 3) Is feasible to scale to thousands of seats/hundreds of rows (even though we know that few rows will be actually involved in a single booking operation)?
+ 3) Is feasible to scale to thousands of seats/hundreds of rows (even though we know that few rows will be involved in a single booking operation)?
  Not yet.
  3) Is Apache Kafka integration included in this example?
  No.
@@ -18,20 +18,28 @@ Example of seat bookings in event sourcing
  Not yet (it will show the "undo" feature of commands to do rollback commands on multiple streams of events).
 
  ## Problem 2
- There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row. 
+ There is an invariant rule that says that no booking can end up leaving the only middle seat free in a row. 
  This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
 
  ### Questions:
  1) can you just use a lock on any row to solve this problem?
  Answer: yes by setting PessimisticLocking to true in appSettings.json that will force single-threaded execution of any command involving the same "aggregate" 
  2) can you solve this problem without using locks?
- Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However they will be skipped by the "evolve" function anyway.
- 3) Where are more info about how to test this behavior?
+ Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However, they will be skipped by the "evolve" function anyway.
+Where is there more info about how to test this behavior?
  Answer: See the testList called hackingEventInStorageTest. 
  It will simply add invalid events and show that the current state is not affected by them.
  4) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
- Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
+ Answer: you can't. The user may need to do some refresh or wait for a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
+# IMPORTANT NOTE: 
+a classical approach  (see https://www.jamesmichaelhickey.com/optimistic-concurrency/) is based on allowing concurrency and still voiding any change on the aggregate that happened concurrently with other changes.  This approach allows at most one change to win.
+
+In Sharpino it is possible an "all-win" policy. The aggregate is the entire row: 
+booking seat 1 and seat 5 at the same time is accepted even though it is done concurrently.
+Sharpino accepts both events because invariant conditions are always checked (in rebuilding the aggregate state for example).
+
+So this approach is more liberal than the "optimistic lock" that uses the aggregate version (see https://www.jamesmichaelhickey.com/optimistic-concurrency/) because this last one is based on the assumption that only one change can win.
 
 
  ## Installation
