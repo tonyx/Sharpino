@@ -16,6 +16,17 @@ module Storage =
             KafkaPartition: Option<int>
             Timestamp: System.DateTime
         }
+        
+    type StorageEventJsonRef =
+        {
+            AggregateId: Guid
+            JsonEvent: Json
+            Id: int
+            KafkaOffset: Option<int64>
+            KafkaPartition: Option<int>
+            Timestamp: System.DateTime
+        }
+        
     type StorageSnapshot = {
         Id: int
         Snapshot: Json

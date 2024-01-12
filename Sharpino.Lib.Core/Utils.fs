@@ -16,6 +16,7 @@ module Definitions =
     type EventId = int
     type SnapshotId = int
     
+    
 
 
 module ApplicationInstance =

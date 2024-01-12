@@ -119,7 +119,6 @@ module StateView =
                             |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
-                            // deserEvents |> evolve<'A, Event<'E>> state
                         return newState
                     }
             let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)

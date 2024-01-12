@@ -56,7 +56,7 @@
 
 <!-- when developing the core comment out this reference:-->
 
-    <PackageReference Include="Sharpino.Core" Version="1.0.6" />
+<!--    <PackageReference Include="Sharpino.Core" Version="1.0.6" />-->
 
 <!-- . -->
 
@@ -78,8 +78,8 @@
   <!-- needed if you are developing the core: -->
 
 
- <!-- <ItemGroup>
+ <ItemGroup>
    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
- </ItemGroup> -->
+ </ItemGroup> 
 
 </Project>

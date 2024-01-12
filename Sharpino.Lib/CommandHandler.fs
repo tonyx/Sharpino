@@ -127,7 +127,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state, _, _) = stateViewer() //<'A, 'E> storage
+                            let! (_, state, _, _) = stateViewer() 
                             let! events =
                                 state
                                 |> command.Execute
