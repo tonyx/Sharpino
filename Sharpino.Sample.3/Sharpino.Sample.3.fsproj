@@ -23,6 +23,7 @@
     <Compile Include="App.fs" />
     <Content Include="appSettings.json" />
     <Compile Include=".env" />
+    <Content Include="README.txt" />
   </ItemGroup>
 
   <ItemGroup>
