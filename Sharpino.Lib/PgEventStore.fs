@@ -43,22 +43,30 @@ module PgStorage =
             member this.TryGetLastSnapshot version name =
                 log.Debug "TryGetLastSnapshot"
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query
-                    |> Sql.executeAsync (fun read ->
-                        (
-                            read.int "id",
-                            read.int "event_id",
-                            read.text "snapshot" 
-                        )
-                    )
-                    |> Async.AwaitTask
+                try
+                    async {
+                        return
+                            connection
+                            |> Sql.connect
+                            |> Sql.query query
+                            |> Sql.executeAsync (fun read ->
+                                (
+                                    read.int "id",
+                                    read.int "event_id",
+                                    read.text "snapshot" 
+                                )
+                            )
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
+                            |> Seq.tryHead
+                    }
                     |> Async.RunSynchronously
-                    |> Seq.tryHead
-                res
+                with
+                | _ as ex ->
+                    log.Info (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
+                    None
 
+            // todo: start using result datatype when error is possible (wrap try catch into Result)
             member this.TryGetLastEventId version name =
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
@@ -173,20 +181,26 @@ module PgStorage =
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
-                connection
-                |> Sql.connect
-                |> Sql.query query
-                |> Sql.parameters ["id", Sql.int id]
-                |> Sql.executeAsync ( fun read ->
-                    (
-                        read.int "id",
-                        read.text "event"
+                try
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync ( fun read ->
+                        (
+                            read.int "id",
+                            read.text "event"
+                        )
                     )
-                )
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Seq.toList
-                |> Ok
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.toList
+                    |> Ok
+                with
+                | _ as ex ->
+                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                    ex.Message |> Error
+
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
