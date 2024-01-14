@@ -15,8 +15,7 @@ module Definitions =
     type SnapId = int
     type EventId = int
     type SnapshotId = int
-    
-    
+    type AggregateId = Guid
 
 
 module ApplicationInstance =

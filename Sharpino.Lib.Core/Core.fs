@@ -5,20 +5,20 @@ open FSharpPlus.Data
 open log4net
 open log4net.Config
 open System
-
+open Sharpino.Utils
 
 module Core =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
-    
     // adding types for object based (no class level) aggregate type
     
     type Aggregate = 
         abstract member Id: Guid // use this one to be able to filter related events from same string
         abstract member Version: string
         abstract member StorageName: string
-        // abstract member Lock: obj
+        abstract member Serialize: ISerializer -> string // json
+        abstract member Zero: unit -> Aggregate
     
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>

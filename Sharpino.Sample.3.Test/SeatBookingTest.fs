@@ -15,6 +15,8 @@ open seatsLockWithSharpino.App
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Core
+open Sharpino
+open System
 
 [<Tests>]
 let hackingEventInStorageTest =
@@ -432,6 +434,11 @@ let apiTests =
 // here I will test the refactored version that is based on proper instances (no static stuff)
 [<Tests>]
 let refactorAggregateTests =
+    let connection = 
+        "Server=127.0.0.1;"+
+        "Database=es_seat_booking;" +
+        "User Id=safe;"+
+        "Password=safe;"
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     testList "test the evolve about refactored aggregate  " [
         testCase "available seats  are all seats - OK" <| fun _ ->
@@ -477,7 +484,7 @@ let refactorAggregateTests =
             let availableSeats = (rowAfterBooking.OkValue).GetAvailableSeats()
             Expect.equal availableSeats.Length 4 "should be equal"
         
-        ftestCase "create a booking event that violates the invariant rule and process it - Error" <| fun _ ->
+        testCase "create a booking event that violates the invariant rule and process it - Error" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
                   { id = 2; State = Free }
@@ -490,22 +497,8 @@ let refactorAggregateTests =
             let bookingEvent = RowAggregateEvent.SeatBooked booking
             let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
             Expect.isError rowAfterBooking "should be equal"
-
-        // ftestCase "create two booking events that violates the invariant rule and another that process it - Error" <| fun _ ->
-        //     let seats = 
-        //         [ { id = 1; State = Free }
-        //           { id = 2; State = Free }
-        //           { id = 3; State = Free }
-        //           { id = 4; State = Free }
-        //           { id = 5; State = Free }
-        //         ]
-        //     let row  = RefactoredRow seats
-        //     let booking = { id = 1; seats = [1;2;4;5] }
-        //     let bookingEvent = RowAggregateEvent.SeatBooked booking
-        //     let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
-        //     Expect.isError rowAfterBooking "should be equal"
             
-        ftestCase "create two bookings. Use the forgiving strategy. One will violate the invariant rule so just one is considered - Ok" <| fun _ ->
+        testCase "create two bookings. Use the forgiving strategy. One will violate the invariant rule so just one is considered - Ok" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
                   { id = 2; State = Free }
@@ -520,5 +513,112 @@ let refactorAggregateTests =
             let bookingEvent2 = RowAggregateEvent.SeatBooked booking2
             let rowAfterBooking = evolve<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent1; bookingEvent2]
             Expect.isOk rowAfterBooking "should be equal"
-            
+
+        testCase "add and retrieve events in refactored aggregate way - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let seats = 
+                [ { id = 1; State = Free }
+                  { id = 2; State = Free }
+                  { id = 3; State = Free }
+                  { id = 4; State = Free }
+                  { id = 5; State = Free }
+                ]
+            let refactoredRow = RefactoredRow seats
+            let booking = { id = 1; seats = [1; 2] }
+            let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
+
+            let eventsAdded = 
+                storage.AddEventsRefactored
+                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow :> Aggregate).StorageName
+                    refactoredRow.Id
+                    [bookingEvent]
+            Expect.isOk eventsAdded "should be equal"
+
+        testCase "add events in refactored way and retrieve it - Ok " <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let seats = 
+                [ { id = 1; State = Free }
+                  { id = 2; State = Free }
+                  { id = 3; State = Free }
+                  { id = 4; State = Free }
+                  { id = 5; State = Free }
+                ]
+            let refactoredRow = RefactoredRow seats
+            let booking = { id = 1; seats = [1; 2] }
+            let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
+
+            let eventsAdded = 
+                storage.AddEventsRefactored
+                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow :> Aggregate).StorageName
+                    refactoredRow.Id
+                    [bookingEvent]
+            Expect.isOk eventsAdded "should be equal"
+            let version = 
+                    (refactoredRow :> Aggregate).Version 
+            let name = 
+                    (refactoredRow :> Aggregate).StorageName
+
+            let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name refactoredRow.Id
+            Expect.isSome storageEvents "should be equal"
+
+        ftestCase "write and retrieve series of events about two different aggregates of the same stream - OK" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let seats = 
+                [ { id = 1; State = Free }
+                  { id = 2; State = Free }
+                  { id = 3; State = Free }
+                  { id = 4; State = Free }
+                  { id = 5; State = Free }
+                ]
+            let refactoredRow = RefactoredRow seats
+            let seats2 = 
+                [ { id = 6; State = Free }
+                  { id = 7; State = Free }
+                  { id = 8; State = Free }
+                  { id = 9; State = Free }
+                  { id = 10; State = Free }
+                ]
+
+            let refactoredRow2 = RefactoredRow seats2
+
+            let booking = { id = 1; seats = [1; 2] }
+            let booking2 = { id = 2; seats = [6; 7] }
+            let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
+            let bookingEvent2 = (RowAggregateEvent.SeatBooked booking2).Serialize serializer
+
+            let eventsAdded = 
+                storage.AddEventsRefactored
+                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow :> Aggregate).StorageName
+                    refactoredRow.Id
+                    [bookingEvent]
+
+            Expect.isOk eventsAdded "should be equal"
+
+            let eventsAdded2 =
+                storage.AddEventsRefactored
+                    (refactoredRow2 :> Aggregate).Version 
+                    (refactoredRow2 :> Aggregate).StorageName
+                    refactoredRow2.Id
+                    [bookingEvent2]
+            Expect.isOk eventsAdded2 "should be equal"
+
+            let version = 
+                    (refactoredRow :> Aggregate).Version 
+            let name = 
+                    (refactoredRow :> Aggregate).StorageName
+
+            let retrievedEvents1 = storage.GetEventsAfterIdRefactored version name refactoredRow.Id 0
+            Expect.isOk retrievedEvents1 "should be equal"
+            Expect.equal (retrievedEvents1.OkValue |> List.length) 1 "should be equal"
+
+            let retrievedEvents2 = storage.GetEventsAfterIdRefactored version name refactoredRow.Id 0
+            Expect.isOk retrievedEvents2 "should be equal"
+            Expect.equal (retrievedEvents2.OkValue |> List.length) 1 "should be equal"
+
     ]        

@@ -13,6 +13,7 @@ open Sharpino.Definitions
 open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
+open System
 
 module StateView =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
@@ -40,6 +41,30 @@ module StateView =
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
             | None ->
                 (0, 'A.Zero) |> Ok
+
+    let inline private tryGetSnapshotByIdAndDeserializeRefactored<'A 
+        when 'A :> Aggregate
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        >
+        (id: int)
+        (version: string)
+        (storageName: string)
+        (storage: IEventStore) 
+        (zero: 'A)
+        =
+            let snapshot = storage.TryGetSnapshotById version storageName id
+            match snapshot |>> snd with
+            | Some snapshot' ->
+                let deserSnapshot = 'A.Deserialize (serializer, snapshot')
+                let eventid = snapshot |>> fst
+                match deserSnapshot with
+                | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
+                | Error e -> 
+                    log.Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
+                    printf "deserialization error %A for snapshot %s" e snapshot'
+                    Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
+            | None ->
+                (0, zero) |> Ok
 
     let inline private getLastSnapshotOrStateCache<'A 
         when 'A: (static member Zero: 'A) 
@@ -71,6 +96,37 @@ module StateView =
             }
             |> Async.RunSynchronously
 
+    let inline private getLastSnapshotOrStateCacheRefactored<'A 
+        when 'A :> Aggregate
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        >
+        (aggregateId: Guid)
+        (version: string)
+        (storageName: string)
+        (storage: IEventStore) 
+        (zero: 'A)
+        =
+            log.Debug "getLastSnapshot"
+            async {
+                return
+                    result {
+                        let lastCacheEventId = Cache.StateCacheRefactored<'A>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                        let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (0, 0)
+                        if (lastSnapshotId = 0 && lastCacheEventId = 0) then
+                            return (0, zero)
+                        else
+                            if lastCacheEventId >= snapshotEventId then
+                                let! state = 
+                                    Cache.StateCacheRefactored<'A>.Instance.GestState (lastCacheEventId, aggregateId)
+                                return (lastCacheEventId, state)
+                            else
+                                let! (eventId, snapshot) = 
+                                    tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage zero
+                                return (eventId, snapshot)
+                    }
+            }
+            |> Async.RunSynchronously
+
     let inline private snapEventIdStateAndEvents<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -95,6 +151,31 @@ module StateView =
                 }
         }
         |> Async.RunSynchronously
+
+    let inline private snapEventIdStateAndEventsRefactored<'A, 'E
+        when 'A :> Aggregate and 'E :> Event<'A>
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        >
+        (h: 'A)
+        (storage: IEventStore)
+        (zero: 'A)
+        = 
+        log.Debug "snapIdStateAndEventsRefactored"
+        async {
+            return
+                result {
+                    let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> h.Id h.Version h.StorageName  storage zero 
+                    let! events = storage.GetEventsAfterIdRefactored h.Version h.StorageName h.Id eventId
+                    // let result =
+                    //     (eventId, state, events)
+                    // return result
+                    return ()
+                }
+
+
+        }
+
+        // ()
                 
     let inline getFreshState<'A, 'E
         when 'A: (static member Zero: 'A)

@@ -1,11 +1,14 @@
 -- migrate:up
 
 CREATE TABLE public.events_01_seatrow (
-                                          id integer NOT NULL,
-                                          aggregate_id uuid NOT NULL,
-                                          event json NOT NULL,
-                                          published boolean NOT NULL DEFAULT false,
-                                          "timestamp" timestamp without time zone NOT NULL
+    id integer NOT NULL,
+    -- aggregate_id uuid NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event json NOT NULL,
+    published boolean NOT NULL DEFAULT false,
+    kafkaoffset BIGINT,
+    kafkapartition INTEGER,
+    "timestamp" timestamp without time zone NOT NULL
 );
 
 ALTER TABLE public.events_01_seatrow ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -25,12 +28,11 @@ CREATE SEQUENCE public.snapshots_01_seatrow_id_seq
     CACHE 1;
 
 CREATE TABLE public.snapshots_01_seatrow (
-                                             id integer DEFAULT nextval('public.snapshots_01_seatrow_id_seq'::regclass) NOT NULL,
-                                             snapshot json NOT NULL,
-                                             event_id integer NOT NULL,
-                                             kafkaoffset BIGINT,
-                                             kafkapartition INTEGER,
-                                             "timestamp" timestamp without time zone NOT NULL
+    id integer DEFAULT nextval('public.snapshots_01_seatrow_id_seq'::regclass) NOT NULL,
+    snapshot json NOT NULL,
+    event_id integer NOT NULL,
+    aggregate_id uuid NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL
 );
 
 ALTER TABLE ONLY public.events_01_seatrow
@@ -44,7 +46,8 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
 
 
 CREATE OR REPLACE FUNCTION insert_01_seatrow_event_and_return_id(
-    IN event_in TEXT
+    IN event_in TEXT,
+    IN aggregate_id uuid
 )
 RETURNS int
        
@@ -56,6 +59,7 @@ BEGIN
     INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
     VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
+
 END;
 $$
                                                                                                                            

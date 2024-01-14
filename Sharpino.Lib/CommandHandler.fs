@@ -105,6 +105,7 @@ module CommandHandler =
                         }
             }    
             |> Async.RunSynchronously   
+
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -152,6 +153,19 @@ module CommandHandler =
                     command()
             | false ->
                 command()
+
+    let inline runCommandRefactored<'A, 'E
+        when 'A :> Aggregate and 
+        'E :> Event<'A>>
+        (storage: IEventStore)
+        (eventBroker: IEventBroker)
+        (command: Command<'A, 'E>)
+        (state: 'A) =
+            log.Debug (sprintf "runCommandRefactored %A" command)
+            
+            ()
+
+        
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)

@@ -8,10 +8,22 @@ open System
 open Seats
 module RowAggregate =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    type RefactoredRow(seats: List<Seat>) =
-        let id = Guid.NewGuid()
+    
+    let private emptyAll (seats: List<Seat>) = 
+        seats 
+        |> List.map 
+            (fun x -> { 
+                        x with 
+                            State = SeatState.Free }
+            )
+
+    // this is my aggregate
+    type RefactoredRow(seats: List<Seat>, id: Guid) =
         member this.Seats = seats
         member this.Id = id
+        new (seats: List<Seat>) = 
+            let id = Guid.NewGuid()
+            new RefactoredRow(seats, id)
         member this.IsAvailable (seatId: Seats.Id) =
             this.Seats
             |> List.filter (fun seat -> seat.id = seatId)
@@ -52,17 +64,46 @@ module RowAggregate =
                     |> boolToResult "error: can't leave a single seat free"
                 let! checkInvariant = theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed
                 return
-                    RefactoredRow (potentialNewRowState)
+                    RefactoredRow (potentialNewRowState, id)
             }
         member this.GetAvailableSeats () =
             seats
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
             |> List.map _.id
+
+        static member Deserialize (json: string) =
+            serializer.Deserialize<RefactoredRow> json
             
         interface Aggregate with
             member this.Id = this.Id
             member this.Version = "_01"
             member this.StorageName = "_seatrow"
-        
-        
-        
+            member this.Serialize serializer = 
+                this
+                |> serializer.Serialize
+            member this.Zero () =   
+                new RefactoredRow (emptyAll this.Seats, this.Id)
+
+    type RowAggregateEvent =        
+        | SeatBooked of Seats.Booking  
+            interface Event<RefactoredRow> with
+                member this.Process (x: RefactoredRow) =
+                    match this with
+                    | SeatBooked booking ->
+                        x.BookSeats booking
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
+        static member Deserialize(serializer: ISerializer) =
+            serializer.Deserialize<RowAggregateEvent>
+
+    type RowAggregateCommand =
+        | BookSeats of Seats.Booking
+            interface Command<RefactoredRow, RowAggregateEvent> with
+                member this.Execute (x: RefactoredRow) =
+                    match this with
+                    | BookSeats booking ->
+                        x.BookSeats booking
+                        |> Result.map (fun row -> [SeatBooked booking])
+                member this.Undoer =
+                    None

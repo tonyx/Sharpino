@@ -59,9 +59,12 @@ module Storage =
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
         // abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset>>
         abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
+        abstract member TryGetLastEventIdByAggregateIdWithKafkaOffSet: Version -> Name -> AggregateId -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
         // toto: the following two can be unified
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
+        abstract member TryGetLastSnapshotIdByAggregateId: Version -> Name -> Guid -> Option<EventId * SnapshotId>
+
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> int * Json -> Name -> Result<unit, string>
@@ -72,6 +75,9 @@ module Storage =
 
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
+
+        abstract member GetEventsAfterIdRefactored: Version ->  Name -> Guid -> EventId-> Result< List< EventId * Json >, string >
+
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >
         abstract member SetPublished: Version -> Name -> EventId -> KafkaOffset -> KafkaPartitionId ->  Result<unit, string>
 

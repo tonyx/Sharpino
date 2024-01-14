@@ -17,10 +17,10 @@ SET row_security = off;
 
 
 --
--- Name: insert_01_seatrow_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_seatrow_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_seatrow_event_and_return_id(event_in text) RETURNS integer
+CREATE FUNCTION public.insert_01_seatrow_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -29,6 +29,7 @@ BEGIN
     INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
     VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
+
 END;
 $$;
 
@@ -46,6 +47,8 @@ CREATE TABLE public.events_01_seatrow (
     aggregate_id uuid NOT NULL,
     event json NOT NULL,
     published boolean DEFAULT false NOT NULL,
+    kafkaoffset bigint,
+    kafkapartition integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -93,8 +96,7 @@ CREATE TABLE public.snapshots_01_seatrow (
     id integer DEFAULT nextval('public.snapshots_01_seatrow_id_seq'::regclass) NOT NULL,
     snapshot json NOT NULL,
     event_id integer NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
+    aggregate_id uuid NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
 
