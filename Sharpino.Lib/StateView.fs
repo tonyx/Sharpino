@@ -152,7 +152,7 @@ module StateView =
         }
         |> Async.RunSynchronously
 
-    let inline private snapEventIdStateAndEventsRefactored<'A, 'E
+    let inline  snapEventIdStateAndEventsRefactored<'A, 'E
         when 'A :> Aggregate and 'E :> Event<'A>
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
@@ -166,16 +166,12 @@ module StateView =
                 result {
                     let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> h.Id h.Version h.StorageName  storage zero 
                     let! events = storage.GetEventsAfterIdRefactored h.Version h.StorageName h.Id eventId
-                    // let result =
-                    //     (eventId, state, events)
-                    // return result
-                    return ()
+                    let result =
+                        (eventId, state, events)
+                    return result
                 }
-
-
         }
-
-        // ()
+        |> Async.RunSynchronously
                 
     let inline getFreshState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -209,4 +205,35 @@ module StateView =
                 (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok
             | Error e -> 
                 log.Error (sprintf "getState: %s" e)
+                Error e
+
+    let inline getFreshStateRefactored<'A, 'E
+        when 'A :> Aggregate and 'E :> Event<'A>
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        >
+        (h: 'A)
+        (storage: IEventStore)
+        (zero: 'A)
+        : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
+            log.Debug "getStateRefactored"
+            let computeNewState =
+                fun () ->
+                    result {
+                        let! (_, state, events) = snapEventIdStateAndEventsRefactored<'A, 'E> h storage zero
+                        let! deserEvents =
+                            events 
+                            |>> snd 
+                            |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
+                        let! newState = 
+                            deserEvents |> evolve<'A, 'E> state
+                        return newState
+                    }
+            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet h.Version h.StorageName h.Id |> Option.defaultValue (0, None, None)
+            let state = StateCacheRefactored<'A>.Instance.Memoize computeNewState (lastEventId, h.Id)
+            match state with
+            | Ok state -> 
+                (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok
+            | Error e -> 
+                log.Error (sprintf "getStateRefactored: %s" e)
                 Error e

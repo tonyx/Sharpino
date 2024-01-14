@@ -440,7 +440,35 @@ let refactorAggregateTests =
         "User Id=safe;"+
         "Password=safe;"
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    testList "test the evolve about refactored aggregate  " [
+    ftestList "test the evolve about refactored aggregate  " [
+        testCase "add a single seat - Ok" <|  fun _ ->
+            let seat = { id = 1; State = Free }
+            let row = RefactoredRow ()
+            let rowWithSeat = row.AddSeat seat |> Result.get
+            let seats = rowWithSeat.Seats
+            Expect.equal seats.Length 1 "should be equal"
+            
+        testCase "add a single seat 2 -  Ok" <|  fun _ ->
+            let seat = { id = 1; State = Free }
+            let row = RefactoredRow ()
+            let rowWithSeat = row.AddSeat seat |> Result.get
+            let seats = rowWithSeat.GetAvailableSeats()
+            Expect.equal seats.Length 1 "should be equal"
+
+        testCase "add a group of one seat -  Ok" <|  fun _ ->
+            let seat = { id = 1; State = Free }
+            let row = RefactoredRow ()
+            let rowWithSeat = row.AddSeats [seat] |> Result.get
+            let seats = rowWithSeat.Seats
+            Expect.equal seats.Length 1 "should be equal"
+
+        testCase "add a group of one seat 2 -  Ok" <|  fun _ ->
+            let seat = { id = 1; State = Free }
+            let row = RefactoredRow ()
+            let rowWithSeat = row.AddSeats [seat] |> Result.get
+            let seats = rowWithSeat.GetAvailableSeats()
+            Expect.equal seats.Length 1 "should be equal"
+
         testCase "available seats  are all seats - OK" <| fun _ ->
             let seats = 
                 [ { id = 1; State = Free }
@@ -449,8 +477,12 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let row  = RefactoredRow seats
-            let result = row.GetAvailableSeats()
+            let row  = RefactoredRow ()
+            let rowWithSeats = row.AddSeats seats |> Result.get
+
+            let result = rowWithSeats.GetAvailableSeats()
+            // let result = row.GetAvailableSeats()
+            printf "%A" result
             Expect.equal result.Length 5 "should be equal"
         
         testCase "book one seat - Ok" <| fun _ ->
@@ -461,9 +493,11 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let row = RefactoredRow seats
+
+            let row = RefactoredRow ()
+            let row' = row.AddSeats seats |> Result.get
             let booking = { id = 1; seats = [1] }
-            let booked = row.BookSeats booking |> Result.get
+            let booked = row'.BookSeats booking |> Result.get
             let availableSeats = booked.GetAvailableSeats()
             Expect.equal availableSeats.Length 4 "should be equal"
         
@@ -475,10 +509,11 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let row  = RefactoredRow seats
+            let row  = RefactoredRow ()
+            let row' = row.AddSeats seats |> Result.get
             let booking = { id = 1; seats = [1] }
             let bookingEvent = RowAggregateEvent.SeatBooked booking
-            let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
+            let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row' [bookingEvent]
             Expect.isOk rowAfterBooking "should be equal"
             
             let availableSeats = (rowAfterBooking.OkValue).GetAvailableSeats()
@@ -492,7 +527,8 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let row  = RefactoredRow seats
+            let row = RefactoredRow ()
+            let row  = row.AddSeats seats |> Result.get
             let booking = { id = 1; seats = [1;2;4;5] }
             let bookingEvent = RowAggregateEvent.SeatBooked booking
             let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent]
@@ -506,12 +542,13 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let row  = RefactoredRow seats
+            let row = RefactoredRow ()
+            let row' = row.AddSeats seats |> Result.get
             let booking1 = { id = 1; seats = [1; 2] }
             let booking2 = { id = 2; seats = [4; 5] }
             let bookingEvent1 = RowAggregateEvent.SeatBooked booking1
             let bookingEvent2 = RowAggregateEvent.SeatBooked booking2
-            let rowAfterBooking = evolve<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row  [bookingEvent1; bookingEvent2]
+            let rowAfterBooking = evolve<RefactoredRow, RowAggregateEvent.RowAggregateEvent> row'  [bookingEvent1; bookingEvent2]
             Expect.isOk rowAfterBooking "should be equal"
 
         testCase "add and retrieve events in refactored aggregate way - Ok" <| fun _ ->
@@ -524,19 +561,20 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let refactoredRow = RefactoredRow seats
+            let refactoredRow = RefactoredRow ()
+            let refactoredRow' = refactoredRow.AddSeats seats |> Result.get
             let booking = { id = 1; seats = [1; 2] }
             let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow :> Aggregate).Version 
-                    (refactoredRow :> Aggregate).StorageName
-                    refactoredRow.Id
+                    (refactoredRow' :> Aggregate).Version 
+                    (refactoredRow' :> Aggregate).StorageName
+                    refactoredRow'.Id
                     [bookingEvent]
             Expect.isOk eventsAdded "should be equal"
 
-        testCase "add events in refactored way and retrieve it - Ok " <| fun _ ->
+        ftestCase "add events in refactored way and retrieve it - Ok " <| fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             storage.Reset "_01" "_seatrow" |> ignore
             let seats = 
@@ -546,26 +584,61 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let refactoredRow = RefactoredRow seats
+            let refactoredRow = RefactoredRow ()
+            let refactoredRow' = refactoredRow.AddSeats seats |> Result.get
             let booking = { id = 1; seats = [1; 2] }
             let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow :> Aggregate).Version 
-                    (refactoredRow :> Aggregate).StorageName
-                    refactoredRow.Id
+                    (refactoredRow' :> Aggregate).Version 
+                    (refactoredRow' :> Aggregate).StorageName
+                    refactoredRow'.Id
                     [bookingEvent]
             Expect.isOk eventsAdded "should be equal"
             let version = 
-                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow' :> Aggregate).Version 
             let name = 
-                    (refactoredRow :> Aggregate).StorageName
+                    (refactoredRow' :> Aggregate).StorageName
 
             let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name refactoredRow.Id
             Expect.isSome storageEvents "should be equal"
 
-        ftestCase "write and retrieve series of events about two different aggregates of the same stream - OK" <| fun _ ->
+        testCase "add seats events  - Ok " <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            storage.Reset "_01" "_seatrow" |> ignore
+
+            let refactoredRow = RefactoredRow ()
+            let seat = { id = 1; State = Free }
+            let seatAdded = (RowAggregateEvent.SeatAdded seat).Serialize serializer
+            let eventAdded = 
+                storage.AddEventsRefactored
+                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow :> Aggregate).StorageName
+                    refactoredRow.Id
+                    [seatAdded]
+            Expect.isOk eventAdded "should be equal"
+            let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet (refactoredRow :> Aggregate).Version (refactoredRow :> Aggregate).StorageName refactoredRow.Id
+            Expect.isSome storageEvents "should be equal"
+
+        testCase "add more seats events - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let refactoredRow = RefactoredRow ()
+            let seats = 
+                [ { id = 1; State = Free }
+                  { id = 2; State = Free }
+                ]
+            let seatsAdded = (RowAggregateEvent.SeatsAdded seats).Serialize serializer
+            let eventAdded = 
+                storage.AddEventsRefactored
+                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow :> Aggregate).StorageName
+                    refactoredRow.Id
+                    [seatsAdded]
+            Expect.isOk eventAdded "should be equal"
+
+        testCase "write and retrieve series of events about two different aggregates of the same stream - OK" <| fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             storage.Reset "_01" "_seatrow" |> ignore
             let seats = 
@@ -575,7 +648,9 @@ let refactorAggregateTests =
                   { id = 4; State = Free }
                   { id = 5; State = Free }
                 ]
-            let refactoredRow = RefactoredRow seats
+            let refactoredRowX = RefactoredRow ()
+            let refactoredRow' = refactoredRowX.AddSeats seats |> Result.get
+
             let seats2 = 
                 [ { id = 6; State = Free }
                   { id = 7; State = Free }
@@ -584,7 +659,8 @@ let refactorAggregateTests =
                   { id = 10; State = Free }
                 ]
 
-            let refactoredRow2 = RefactoredRow seats2
+            let refactoredRow2X = RefactoredRow ()
+            let refactoredRow2 = refactoredRow2X.AddSeats seats2 |> Result.get
 
             let booking = { id = 1; seats = [1; 2] }
             let booking2 = { id = 2; seats = [6; 7] }
@@ -593,9 +669,9 @@ let refactorAggregateTests =
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow :> Aggregate).Version 
-                    (refactoredRow :> Aggregate).StorageName
-                    refactoredRow.Id
+                    (refactoredRow' :> Aggregate).Version 
+                    (refactoredRow' :> Aggregate).StorageName
+                    refactoredRow'.Id
                     [bookingEvent]
 
             Expect.isOk eventsAdded "should be equal"
@@ -609,15 +685,15 @@ let refactorAggregateTests =
             Expect.isOk eventsAdded2 "should be equal"
 
             let version = 
-                    (refactoredRow :> Aggregate).Version 
+                    (refactoredRow' :> Aggregate).Version 
             let name = 
-                    (refactoredRow :> Aggregate).StorageName
+                    (refactoredRow' :> Aggregate).StorageName
 
-            let retrievedEvents1 = storage.GetEventsAfterIdRefactored version name refactoredRow.Id 0
+            let retrievedEvents1 = storage.GetEventsAfterIdRefactored version name refactoredRow'.Id 0
             Expect.isOk retrievedEvents1 "should be equal"
             Expect.equal (retrievedEvents1.OkValue |> List.length) 1 "should be equal"
 
-            let retrievedEvents2 = storage.GetEventsAfterIdRefactored version name refactoredRow.Id 0
+            let retrievedEvents2 = storage.GetEventsAfterIdRefactored version name refactoredRow2.Id 0
             Expect.isOk retrievedEvents2 "should be equal"
             Expect.equal (retrievedEvents2.OkValue |> List.length) 1 "should be equal"
 

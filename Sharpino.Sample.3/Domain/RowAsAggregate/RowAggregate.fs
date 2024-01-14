@@ -17,13 +17,24 @@ module RowAggregate =
                             State = SeatState.Free }
             )
 
-    // this is my aggregate
-    type RefactoredRow(seats: List<Seat>, id: Guid) =
+
+
+    // make this private
+    type RefactoredRow (seats: List<Seat>, id: Guid) =
+        let seats = seats
+        let id = id
+
+        new () = 
+            let id = Guid.NewGuid ()
+            new RefactoredRow ([], id)
+
+        private new (seats: List<Seat>) = 
+            let id = Guid.NewGuid ()
+            new RefactoredRow (seats, id)
+
         member this.Seats = seats
         member this.Id = id
-        new (seats: List<Seat>) = 
-            let id = Guid.NewGuid()
-            new RefactoredRow(seats, id)
+
         member this.IsAvailable (seatId: Seats.Id) =
             this.Seats
             |> List.filter (fun seat -> seat.id = seatId)
@@ -66,6 +77,13 @@ module RowAggregate =
                 return
                     RefactoredRow (potentialNewRowState, id)
             }
+        member this.AddSeat (seat: Seat): Result<RefactoredRow, string> =
+            let newSeats = seat :: seats
+            RefactoredRow (newSeats, id) |> Ok
+
+        member this.AddSeats (seats: List<Seat>): Result<RefactoredRow, string> =
+            let newSeats = this.Seats @ seats
+            RefactoredRow (newSeats, id) |> Ok
         member this.GetAvailableSeats () =
             seats
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
@@ -83,14 +101,22 @@ module RowAggregate =
                 |> serializer.Serialize
             member this.Zero () =   
                 new RefactoredRow (emptyAll this.Seats, this.Id)
+            member this.Lock = this
 
     type RowAggregateEvent =        
         | SeatBooked of Seats.Booking  
+        | SeatAdded of Seats.Seat
+        | SeatsAdded of Seats.Seat list
             interface Event<RefactoredRow> with
                 member this.Process (x: RefactoredRow) =
                     match this with
                     | SeatBooked booking ->
                         x.BookSeats booking
+                    | SeatAdded seat ->
+                        x.AddSeat seat
+                    | SeatsAdded seats ->
+                        x.AddSeats seats
+
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
@@ -99,11 +125,19 @@ module RowAggregate =
 
     type RowAggregateCommand =
         | BookSeats of Seats.Booking
+        | AddSeat of Seats.Seat
+        | AddSeats of List<Seats.Seat>
             interface Command<RefactoredRow, RowAggregateEvent> with
                 member this.Execute (x: RefactoredRow) =
                     match this with
                     | BookSeats booking ->
                         x.BookSeats booking
                         |> Result.map (fun row -> [SeatBooked booking])
+                    | AddSeat seat ->
+                        x.AddSeat seat
+                        |> Result.map (fun row -> [SeatAdded seat])
+                    | AddSeats seats ->
+                        x.AddSeats seats
+                        |> Result.map (fun row -> [SeatsAdded seats])
                 member this.Undoer =
                     None

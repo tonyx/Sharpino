@@ -40,6 +40,18 @@ module CommandHandler =
             let result = fun () -> getFreshState<'A, 'E> eventStore
             result
 
+    let inline getStorageFreshStateViewerRefactored<'A, 'E
+        when 'A :> Aggregate and 
+        'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and 
+        'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        >
+        (eventStore: IEventStore) 
+        (h: 'A)
+        (zero: 'A) =
+            let result = fun () -> getFreshStateRefactored<'A, 'E> h eventStore zero
+            result
+
     let config = 
         try
             Conf.config ()
@@ -156,15 +168,47 @@ module CommandHandler =
 
     let inline runCommandRefactored<'A, 'E
         when 'A :> Aggregate and 
-        'E :> Event<'A>>
+        'E :> Event<'A>
+        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
+        'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> string)
+        >
         (storage: IEventStore)
         (eventBroker: IEventBroker)
+        (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>)
-        (state: 'A) =
+        =
             log.Debug (sprintf "runCommandRefactored %A" command)
-            
-            ()
-
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (_, state, _, _) = stateViewer() 
+                            let! events =
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> (fun x -> x.Serialize serializer)
+                            let! ids =
+                                events' |> storage.AddEventsRefactored state.Version state.StorageName state.Id
+                            let sent =
+                                let idAndEvents = List.zip ids events'
+                                // let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
+                                let sent = tryPublish eventBroker state.Version state.StorageName idAndEvents
+                                sent |> Result.toOption
+                            // let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
+                            return ([ids], [sent])
+                        }
+                }
+                |> Async.RunSynchronously 
+            match config.PessimisticLock with
+            | true ->
+                // todo:
+                // lock 'A.Lock <| fun () ->
+                command()
+            | false ->
+                command()
         
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 

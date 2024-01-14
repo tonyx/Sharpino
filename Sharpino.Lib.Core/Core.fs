@@ -19,6 +19,7 @@ module Core =
         abstract member StorageName: string
         abstract member Serialize: ISerializer -> string // json
         abstract member Zero: unit -> Aggregate
+        abstract member Lock: obj
     
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
