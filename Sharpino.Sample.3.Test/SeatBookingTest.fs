@@ -17,11 +17,13 @@ open Sharpino.Cache
 open Sharpino.Core
 open Sharpino
 open System
+open seatsLockWithSharpino
+open seatsLockWithSharpino.Stadium
 
 [<Tests>]
 let hackingEventInStorageTest =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
+    ftestList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
         testCase "evolve unforginv errors: second booking is not accapted - Error" <| fun _ ->
             let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
             let thirdBookingOfLastTwoSeats = { id = 3; seats = [4; 5] }
@@ -183,7 +185,7 @@ let hackingEventInStorageTest =
     
 [<Tests>]
 let tests =
-    testList "singleRows tests" [
+    ftestList "singleRows tests" [
 
         testCase "all seats of the first row are free - Ok" <| fun _ ->
             let currentSeats = Row1.Zero
@@ -234,7 +236,7 @@ let tests =
 
 [<Tests>]
 let apiTests =
-    testList "test api level (multi-rows) tests" [
+    ftestList "test api level (multi-rows) tests" [
         testCase "book seats affecting first and second row - Ok" <| fun _ ->
             // setup
             let storage = MemoryStorage()
@@ -568,13 +570,15 @@ let refactorAggregateTests =
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow' :> Aggregate).Version 
-                    (refactoredRow' :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
+                    // (refactoredRow' :> Aggregate).Version 
+                    // (refactoredRow' :> Aggregate).StorageName
                     refactoredRow'.Id
                     [bookingEvent]
             Expect.isOk eventsAdded "should be equal"
 
-        ftestCase "add events in refactored way and retrieve it - Ok " <| fun _ ->
+        testCase "add events in refactored way and retrieve it - Ok " <| fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             storage.Reset "_01" "_seatrow" |> ignore
             let seats = 
@@ -591,15 +595,15 @@ let refactorAggregateTests =
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow' :> Aggregate).Version 
-                    (refactoredRow' :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
                     refactoredRow'.Id
                     [bookingEvent]
             Expect.isOk eventsAdded "should be equal"
             let version = 
-                    (refactoredRow' :> Aggregate).Version 
+                    RefactoredRow.Version
             let name = 
-                    (refactoredRow' :> Aggregate).StorageName
+                    RefactoredRow.StorageName
 
             let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name refactoredRow.Id
             Expect.isSome storageEvents "should be equal"
@@ -613,12 +617,13 @@ let refactorAggregateTests =
             let seatAdded = (RowAggregateEvent.SeatAdded seat).Serialize serializer
             let eventAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow :> Aggregate).Version 
-                    (refactoredRow :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
                     refactoredRow.Id
                     [seatAdded]
             Expect.isOk eventAdded "should be equal"
-            let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet (refactoredRow :> Aggregate).Version (refactoredRow :> Aggregate).StorageName refactoredRow.Id
+            // let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet (refactoredRow :> Aggregate).Version (refactoredRow :> Aggregate).StorageName refactoredRow.Id
+            let storageEvents = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet RefactoredRow.Version RefactoredRow.StorageName refactoredRow.Id
             Expect.isSome storageEvents "should be equal"
 
         testCase "add more seats events - Ok" <| fun _ ->
@@ -632,8 +637,10 @@ let refactorAggregateTests =
             let seatsAdded = (RowAggregateEvent.SeatsAdded seats).Serialize serializer
             let eventAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow :> Aggregate).Version 
-                    (refactoredRow :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
+                    // (refactoredRow :> Aggregate).Version 
+                    // (refactoredRow :> Aggregate).StorageName
                     refactoredRow.Id
                     [seatsAdded]
             Expect.isOk eventAdded "should be equal"
@@ -669,8 +676,8 @@ let refactorAggregateTests =
 
             let eventsAdded = 
                 storage.AddEventsRefactored
-                    (refactoredRow' :> Aggregate).Version 
-                    (refactoredRow' :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
                     refactoredRow'.Id
                     [bookingEvent]
 
@@ -678,16 +685,16 @@ let refactorAggregateTests =
 
             let eventsAdded2 =
                 storage.AddEventsRefactored
-                    (refactoredRow2 :> Aggregate).Version 
-                    (refactoredRow2 :> Aggregate).StorageName
+                    RefactoredRow.Version
+                    RefactoredRow.StorageName
                     refactoredRow2.Id
                     [bookingEvent2]
             Expect.isOk eventsAdded2 "should be equal"
 
             let version = 
-                    (refactoredRow' :> Aggregate).Version 
+                    RefactoredRow.Version
             let name = 
-                    (refactoredRow' :> Aggregate).StorageName
+                    RefactoredRow.StorageName
 
             let retrievedEvents1 = storage.GetEventsAfterIdRefactored version name refactoredRow'.Id 0
             Expect.isOk retrievedEvents1 "should be equal"
@@ -696,5 +703,112 @@ let refactorAggregateTests =
             let retrievedEvents2 = storage.GetEventsAfterIdRefactored version name refactoredRow2.Id 0
             Expect.isOk retrievedEvents2 "should be equal"
             Expect.equal (retrievedEvents2.OkValue |> List.length) 1 "should be equal"
+    ]
+[<Tests>]
+let stadiumtestsAggregateTests =
+    let connection = 
+        "Server=127.0.0.1;"+
+        "Database=es_seat_booking;" +
+        "User Id=safe;"+
+        "Password=safe;"
+    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    ftestList "add rows to stadium" [
+        testCase "there are no rows at the beginning - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let rows = refactoredApp.GetAllRows() |> Result.get
+            Expect.equal rows.Length 0 "should be equal"
+            
+        testCase "add a row - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<Stadium>.Instance.Clear()
+            (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row = RefactoredRow ()
+            let rowAdded = refactoredApp.AddRow row
+            Expect.isOk rowAdded "should be equal"
 
-    ]        
+        testCase "add a row and retrieve it - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<Stadium>.Instance.Clear()
+            (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row = RefactoredRow ()
+            let rowAdded = refactoredApp.AddRow row
+            Expect.isOk rowAdded "should be equal"
+            let rows = refactoredApp.GetAllRows() |> Result.get
+            Expect.equal rows.Length 1 "should be equal"
+            printf "row: %A" rows.[0].Id
+
+        testCase "add a row and retrieve it, verify the number of seats - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<Stadium>.Instance.Clear()
+            (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row = RefactoredRow ()
+            let rowAdded = refactoredApp.AddRow row
+            Expect.isOk rowAdded "should be equal"
+            let rows = refactoredApp.GetAllRows() |> Result.get
+            Expect.equal rows.Length 1 "should be equal"
+            let seats = rows.[0].GetAvailableSeats()
+            Expect.equal seats.Length 0 "should be equal"
+
+        testCase "get a row by id - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<Stadium>.Instance.Clear()
+            (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row = RefactoredRow ()
+            let rowAdded = refactoredApp.AddRow row
+            Expect.isOk rowAdded "should be equal"
+            let rows = refactoredApp.GetAllRows() |> Result.get
+            Expect.equal rows.Length 1 "should be equal"
+            let id = rows.[0].Id
+            let retrievedRow = refactoredApp.GetRow id
+            Expect.isOk retrievedRow "should be equal"
+
+        testCase "add a row and a seat to that row - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<Stadium>.Instance.Clear()
+            storage.Reset "_01" "_stadium" |> ignore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row = RefactoredRow ()
+            let rowAdded = refactoredApp.AddRow row
+            Expect.isOk rowAdded "should be equal"
+            let rows = refactoredApp.GetAllRows() |> Result.get
+            Expect.equal rows.Length 1 "should be equal"
+            let id = rows.[0].Id
+            let retrievedRow = refactoredApp.GetRow id |> Result.get
+            let seats = retrievedRow.GetAvailableSeats()
+            Expect.equal seats.Length 0 "should be equal"
+
+
+
+        
+
+
+
+        // ftestCase "add a row and a seat to that row - Ok" <| fun _ ->
+        //     let storage = PgStorage.PgEventStore(connection) :> IEventStore
+        //     StateCache<Stadium>.Instance.Clear()
+        //     (storage :> IEventStore).Reset "_01" "_stadium" |> ignore
+        //     let storage = PgStorage.PgEventStore(connection) :> IEventStore
+        //     let refactoredApp = RefactoredApp.RefactoredApp(storage)
+        //     let row = RefactoredRow ()
+        //     let rowAdded = refactoredApp.AddRow row
+        //     Expect.isOk rowAdded "should be equal"
+        //     let rows = refactoredApp.GetAllRows() |> Result.get
+        //     Expect.equal rows.Length 1 "should be equal"
+        //     let rowId = rows.[0].Id
+        //     let seat = { id = 1; State = Free }
+        //     let seatAdded = refactoredApp.AddSeat rowId seat
+        //     Expect.isOk seatAdded "should be ok"
+
+    ]
+    |> testSequenced

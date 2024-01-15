@@ -2,7 +2,6 @@
 
 CREATE TABLE public.events_01_seatrow (
     id integer NOT NULL,
-    -- aggregate_id uuid NOT NULL,
     aggregate_id uuid NOT NULL,
     event json NOT NULL,
     published boolean NOT NULL DEFAULT false,
@@ -36,10 +35,10 @@ CREATE TABLE public.snapshots_01_seatrow (
 );
 
 ALTER TABLE ONLY public.events_01_seatrow
-    ADD CONSTRAINT events_seat_row_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT events_seatrow_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots_01_seatrow
-    ADD CONSTRAINT snapshots_tags_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT snapshots_seatrow_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots_01_seatrow
     ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;

@@ -34,6 +34,24 @@ END;
 $$;
 
 
+--
+-- Name: insert_01_stadium_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_stadium_event_and_return_id(event_in text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+    INSERT INTO events_01_stadium(event, timestamp)
+    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
+
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -59,6 +77,34 @@ CREATE TABLE public.events_01_seatrow (
 
 ALTER TABLE public.events_01_seatrow ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.events_01_seatrow_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: events_01_stadium; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.events_01_stadium (
+    id integer NOT NULL,
+    event json NOT NULL,
+    published boolean DEFAULT false NOT NULL,
+    kafkaoffset bigint,
+    kafkapartition integer,
+    "timestamp" timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: events_01_stadium_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.events_01_stadium ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.events_01_stadium_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -102,11 +148,43 @@ CREATE TABLE public.snapshots_01_seatrow (
 
 
 --
--- Name: events_01_seatrow events_seat_row_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: snapshots_01_stadium_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.snapshots_01_stadium_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: snapshots_01_stadium; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.snapshots_01_stadium (
+    id integer DEFAULT nextval('public.snapshots_01_stadium_id_seq'::regclass) NOT NULL,
+    snapshot json NOT NULL,
+    event_id integer NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: events_01_seatrow events_seatrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.events_01_seatrow
-    ADD CONSTRAINT events_seat_row_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT events_seatrow_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: events_01_stadium events_stadium_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events_01_stadium
+    ADD CONSTRAINT events_stadium_pkey PRIMARY KEY (id);
 
 
 --
@@ -118,11 +196,19 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: snapshots_01_seatrow snapshots_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: snapshots_01_seatrow snapshots_seatrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.snapshots_01_seatrow
-    ADD CONSTRAINT snapshots_tags_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT snapshots_seatrow_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: snapshots_01_stadium snapshots_stadium_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_01_stadium
+    ADD CONSTRAINT snapshots_stadium_pkey PRIMARY KEY (id);
 
 
 --
@@ -131,6 +217,14 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
 
 ALTER TABLE ONLY public.snapshots_01_seatrow
     ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
+-- Name: snapshots_01_stadium event_01_stadium_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_01_stadium
+    ADD CONSTRAINT event_01_stadium_fk FOREIGN KEY (event_id) REFERENCES public.events_01_stadium(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -144,4 +238,6 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20240112053550'),
-    ('20240112060609');
+    ('20240112060609'),
+    ('20240115084217'),
+    ('20240115084835');

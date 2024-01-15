@@ -43,14 +43,14 @@ module StateView =
                 (0, 'A.Zero) |> Ok
 
     let inline private tryGetSnapshotByIdAndDeserializeRefactored<'A 
-        when 'A :> Aggregate
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        when 'A :> Aggregate and
+        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
+        'A: (static member Zero: 'A)
         >
         (id: int)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
-        (zero: 'A)
         =
             let snapshot = storage.TryGetSnapshotById version storageName id
             match snapshot |>> snd with
@@ -64,7 +64,7 @@ module StateView =
                     printf "deserialization error %A for snapshot %s" e snapshot'
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
             | None ->
-                (0, zero) |> Ok
+                (0, 'A.Zero) |> Ok
 
     let inline private getLastSnapshotOrStateCache<'A 
         when 'A: (static member Zero: 'A) 
@@ -97,14 +97,14 @@ module StateView =
             |> Async.RunSynchronously
 
     let inline private getLastSnapshotOrStateCacheRefactored<'A 
-        when 'A :> Aggregate
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        when 'A :> Aggregate and
+        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)  and
+        'A: (static member Zero: 'A)
         >
         (aggregateId: Guid)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
-        (zero: 'A)
         =
             log.Debug "getLastSnapshot"
             async {
@@ -113,7 +113,7 @@ module StateView =
                         let lastCacheEventId = Cache.StateCacheRefactored<'A>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                         let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (0, 0)
                         if (lastSnapshotId = 0 && lastCacheEventId = 0) then
-                            return (0, zero)
+                            return (0, 'A.Zero)
                         else
                             if lastCacheEventId >= snapshotEventId then
                                 let! state = 
@@ -121,7 +121,7 @@ module StateView =
                                 return (lastCacheEventId, state)
                             else
                                 let! (eventId, snapshot) = 
-                                    tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage zero
+                                    tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage 
                                 return (eventId, snapshot)
                     }
             }
@@ -153,19 +153,21 @@ module StateView =
         |> Async.RunSynchronously
 
     let inline  snapEventIdStateAndEventsRefactored<'A, 'E
-        when 'A :> Aggregate and 'E :> Event<'A>
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        when 'A :> Aggregate and 'E :> Event<'A> and
+        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
+        'A: (static member Zero: 'A) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string) 
         >
-        (h: 'A)
+        (id: Guid)
         (storage: IEventStore)
-        (zero: 'A)
         = 
         log.Debug "snapIdStateAndEventsRefactored"
         async {
             return
                 result {
-                    let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> h.Id h.Version h.StorageName  storage zero 
-                    let! events = storage.GetEventsAfterIdRefactored h.Version h.StorageName h.Id eventId
+                    let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> id 'A.Version 'A.StorageName storage
+                    let! events = storage.GetEventsAfterIdRefactored 'A.Version 'A.StorageName id eventId
                     let result =
                         (eventId, state, events)
                     return result
@@ -211,16 +213,20 @@ module StateView =
         when 'A :> Aggregate and 'E :> Event<'A>
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
         >
-        (h: 'A)
+        (id: Guid)
+        (version: string)
+        (name: string)
         (storage: IEventStore)
-        (zero: 'A)
         : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
             log.Debug "getStateRefactored"
             let computeNewState =
                 fun () ->
                     result {
-                        let! (_, state, events) = snapEventIdStateAndEventsRefactored<'A, 'E> h storage zero
+                        let! (_, state, events) = snapEventIdStateAndEventsRefactored<'A, 'E> id storage // zero
                         let! deserEvents =
                             events 
                             |>> snd 
@@ -229,8 +235,8 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet h.Version h.StorageName h.Id |> Option.defaultValue (0, None, None)
-            let state = StateCacheRefactored<'A>.Instance.Memoize computeNewState (lastEventId, h.Id)
+            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name  id |> Option.defaultValue (0, None, None)
+            let state = StateCacheRefactored<'A>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
                 (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok

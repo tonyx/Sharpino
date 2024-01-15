@@ -7,6 +7,7 @@ open Sharpino.Core
 open System
 open Seats
 module RowAggregate =
+    open Sharpino.Lib.Core.Commons
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     
     let private emptyAll (seats: List<Seat>) = 
@@ -17,20 +18,13 @@ module RowAggregate =
                             State = SeatState.Free }
             )
 
-
-
-    // make this private
-    type RefactoredRow (seats: List<Seat>, id: Guid) =
+    type RefactoredRow private (seats: List<Seat>, id: Guid) =
         let seats = seats
         let id = id
 
         new () = 
             let id = Guid.NewGuid ()
             new RefactoredRow ([], id)
-
-        private new (seats: List<Seat>) = 
-            let id = Guid.NewGuid ()
-            new RefactoredRow (seats, id)
 
         member this.Seats = seats
         member this.Id = id
@@ -91,17 +85,23 @@ module RowAggregate =
 
         static member Deserialize (json: string) =
             serializer.Deserialize<RefactoredRow> json
+
+        static member Zero = 
+            new RefactoredRow () 
+
+        static member Version = "_01"
+        static member StorageName = "_seatrow"
             
         interface Aggregate with
-            member this.Id = this.Id
-            member this.Version = "_01"
-            member this.StorageName = "_seatrow"
+            // member this.Id = this.Id
+            // member this.Version = "_01"
+            // member this.StorageName = "_seatrow"
             member this.Serialize serializer = 
                 this
                 |> serializer.Serialize
-            member this.Zero () =   
-                new RefactoredRow (emptyAll this.Seats, this.Id)
             member this.Lock = this
+        interface Entity with
+            member this.Id = this.Id
 
     type RowAggregateEvent =        
         | SeatBooked of Seats.Booking  
@@ -116,7 +116,6 @@ module RowAggregate =
                         x.AddSeat seat
                     | SeatsAdded seats ->
                         x.AddSeats seats
-
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

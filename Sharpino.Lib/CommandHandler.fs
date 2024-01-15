@@ -22,6 +22,7 @@ open log4net
 open log4net.Config
 
 module CommandHandler =
+    open Sharpino.Lib.Core.Commons
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
@@ -42,14 +43,18 @@ module CommandHandler =
 
     let inline getStorageFreshStateViewerRefactored<'A, 'E
         when 'A :> Aggregate and 
+        'A :> Entity and
         'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and 
+        'A : (static member Zero: 'A) and
+        'A : (static member StorageName: string) and
+        'A : (static member Version: string) and
         'E :> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         >
         (eventStore: IEventStore) 
-        (h: 'A)
-        (zero: 'A) =
-            let result = fun () -> getFreshStateRefactored<'A, 'E> h eventStore zero
+        (id: Guid)
+        =
+            let result = fun () -> getFreshStateRefactored<'A, 'E> id 'A.Version 'A.StorageName eventStore 
             result
 
     let config = 
@@ -168,11 +173,16 @@ module CommandHandler =
 
     let inline runCommandRefactored<'A, 'E
         when 'A :> Aggregate and 
+        'A :> Entity and
         'E :> Event<'A>
         and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
+        'A : (static member Zero: 'A) and
+        'A : (static member StorageName: string) and
+        'A : (static member Version: string) and
         'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E : (member Serialize: ISerializer -> string)
         >
+        (aggregateId: Guid)
         (storage: IEventStore)
         (eventBroker: IEventBroker)
         (stateViewer: StateViewer<'A>)
@@ -191,11 +201,11 @@ module CommandHandler =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)
                             let! ids =
-                                events' |> storage.AddEventsRefactored state.Version state.StorageName state.Id
+                                events' |> storage.AddEventsRefactored 'A.Version 'A.StorageName state.Id
                             let sent =
                                 let idAndEvents = List.zip ids events'
                                 // let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
-                                let sent = tryPublish eventBroker state.Version state.StorageName idAndEvents
+                                let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
                                 sent |> Result.toOption
                             // let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return ([ids], [sent])
@@ -205,7 +215,6 @@ module CommandHandler =
             match config.PessimisticLock with
             | true ->
                 // todo:
-                // lock 'A.Lock <| fun () ->
                 command()
             | false ->
                 command()
