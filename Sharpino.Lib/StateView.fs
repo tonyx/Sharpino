@@ -127,7 +127,7 @@ module StateView =
             }
             |> Async.RunSynchronously
 
-    let inline private snapEventIdStateAndEvents<'A, 'E
+    let inline snapEventIdStateAndEvents<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -203,8 +203,8 @@ module StateView =
             let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
-            | Ok state -> 
-                (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok
+            | Ok state' -> 
+                (lastEventId, state', kafkaOffSet, kafkaPartition) |> Ok
             | Error e -> 
                 log.Error (sprintf "getState: %s" e)
                 Error e

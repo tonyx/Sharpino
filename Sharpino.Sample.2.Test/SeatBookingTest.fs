@@ -173,10 +173,14 @@ let apiTests =
             let booking = { id = 1; seats = [3;7] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
-            let available = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal available.Length 8 "should be equal"
 
-            Expect.equal (available |> Set.ofList) ([1;2;4;5;6;8;9;10] |> Set.ofList) "should be equal"
+            let available = app.GetAllAvailableSeats() // |> Result.get
+            Expect.isOk available "should be equal"
+            let available' = available |> Result.get
+
+            Expect.equal available'.Length 8 "should be equal"
+
+            Expect.equal (available' |> Set.ofList) ([1;2;4;5;6;8;9;10] |> Set.ofList) "should be equal"
 
         testCase "book seats affecting only the first row - Ok" <| fun _ ->
             // setup

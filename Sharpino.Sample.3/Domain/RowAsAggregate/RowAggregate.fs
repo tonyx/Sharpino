@@ -72,8 +72,15 @@ module RowAggregate =
                     RefactoredRow (potentialNewRowState, id)
             }
         member this.AddSeat (seat: Seat): Result<RefactoredRow, string> =
-            let newSeats = seat :: seats
-            RefactoredRow (newSeats, id) |> Ok
+            result {
+                let! notAlreadyExists =
+                    seats
+                    |> List.tryFind (fun x -> x.id = seat.id)
+                    |> Option.isNone
+                    |> boolToResult (sprintf "Seat with id '%d' already exists" seat.id)
+                let newSeats = seat :: seats
+                return RefactoredRow (newSeats, id)
+            }
 
         member this.AddSeats (seats: List<Seat>): Result<RefactoredRow, string> =
             let newSeats = this.Seats @ seats
@@ -83,11 +90,12 @@ module RowAggregate =
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
             |> List.map _.id
 
-        static member Deserialize (json: string) =
+        static member Deserialize (serializer: ISerializer, json: string) =
             serializer.Deserialize<RefactoredRow> json
 
-        static member Zero = 
-            new RefactoredRow () 
+        // static member Zero = 
+        //     printf "Zero called\n"
+        //     new RefactoredRow () 
 
         static member Version = "_01"
         static member StorageName = "_seatrow"
@@ -119,8 +127,8 @@ module RowAggregate =
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize
-        static member Deserialize(serializer: ISerializer) =
-            serializer.Deserialize<RowAggregateEvent>
+        static member Deserialize(serializer: ISerializer, x: string) =
+            serializer.Deserialize<RowAggregateEvent> x
 
     type RowAggregateCommand =
         | BookSeats of Seats.Booking

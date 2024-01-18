@@ -52,9 +52,8 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         >
         (eventStore: IEventStore) 
-        (id: Guid)
         =
-            let result = fun () -> getFreshStateRefactored<'A, 'E> id 'A.Version 'A.StorageName eventStore 
+            let result = fun (id: Guid) -> getFreshStateRefactored<'A, 'E> id 'A.Version 'A.StorageName eventStore 
             result
 
     let config = 

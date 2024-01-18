@@ -9,14 +9,15 @@ open seatsLockWithSharpino.RowAggregate
 open seatsLockWithSharpino.RowAggregateEvent
 
 module RowAggregateCommand =
-    type RowAggregateCommand =
-        | BookSeats of Seats.Booking
-            interface Command<RefactoredRow, RowAggregateEvent> with
-                member this.Execute (x: RefactoredRow) =
-                    match this with
-                    | BookSeats booking ->
-                        x.BookSeats booking
-                        |> Result.map (fun x -> [SeatBooked booking])
-                member this.Undoer = None
+    ()
+    // type RowAggregateCommand =
+    //     | BookSeats of Seats.Booking
+    //         interface Command<RefactoredRow, RowAggregateEvent> with
+    //             member this.Execute (x: RefactoredRow) =
+    //                 match this with
+    //                 | BookSeats booking ->
+    //                     x.BookSeats booking
+    //                     |> Result.map (fun x -> [SeatBooked booking])
+    //             member this.Undoer = None
                     
                 
