@@ -82,23 +82,21 @@ module PgStorage =
                 |> Seq.tryHead
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                failwith "unimplemented"
-
-                // log.Debug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                // let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                // connection
-                // |> Sql.connect
-                // |> Sql.query query
-                // |> Sql.parameters ["aggregate_id", Sql.guid aggregateId]
-                // |> Sql.executeAsync (fun read ->
-                //     (
-                //         read.int "event_id",
-                //         read.int "id"
-                //     )
-                // )
-                // |> Async.AwaitTask
-                // |> Async.RunSynchronously
-                // |> Seq.tryHead
+                log.Debug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
+                connection
+                |> Sql.connect
+                |> Sql.query query
+                |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId]
+                |> Sql.executeAsync (fun read ->
+                    (
+                        read.int "event_id",
+                        read.int "id"
+                    )
+                )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.tryHead
 
             member this.TryGetEvent version id name =
                 log.Debug (sprintf "TryGetEvent %s %s" version name)

@@ -29,7 +29,7 @@ CREATE SEQUENCE public.snapshots_01_seatrow_id_seq
 CREATE TABLE public.snapshots_01_seatrow (
     id integer DEFAULT nextval('public.snapshots_01_seatrow_id_seq'::regclass) NOT NULL,
     snapshot json NOT NULL,
-    event_id integer NOT NULL,
+    event_id integer, -- the initial snapshot has no event_id associated so it can be null
     aggregate_id uuid NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );

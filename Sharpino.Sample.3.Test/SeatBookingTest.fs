@@ -126,7 +126,6 @@ let hackingEventInStorageTest =
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
 
-
         // this example simulates when one event that is not supposed to be added is added anyway because is processed
         // in parallel 
         testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
@@ -1211,14 +1210,15 @@ let buildCurrentStateOfaRowAggregateTest  =
         "User Id=safe;"+
         "Password=safe;"
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    testList "test building the current state  " [
-        testCase "no row aggreagate with that specific id (don't know yet)- Ok" <|  fun _ ->
+    ftestList "test building the current state  " [
+        testCase "there is no snapshot about an aggregate by its id, so storage will return none - Ok" <|  fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             let anyGuid = Guid.NewGuid()
-            // let state = getFreshStateRefactored<RefactoredRow, RowAggregateEvent> anyGuid storage
+            let snapshot = storage.TryGetLastSnapshotIdByAggregateId RefactoredRow.Version RefactoredRow.StorageName anyGuid
+            Expect.isNone snapshot "should be equal"
 
-            Expect.isTrue true "true should be true"
     ]
+    |> testSequenced
 
 
 [<Tests>]

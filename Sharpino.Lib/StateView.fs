@@ -118,11 +118,11 @@ module StateView =
                             if lastCacheEventId >= snapshotEventId then
                                 let! state = 
                                     Cache.StateCacheRefactored<'A>.Instance.GestState (lastCacheEventId, aggregateId)
-                                return (lastCacheEventId, state)
+                                return (lastCacheEventId, state) 
                             else
                                 let! (eventId, snapshot) = 
                                     tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage 
-                                return (eventId, snapshot)
+                                return (eventId, snapshot) 
                     }
             }
             |> Async.RunSynchronously
@@ -152,7 +152,7 @@ module StateView =
         }
         |> Async.RunSynchronously
 
-    let inline  snapEventIdStateAndEventsRefactored<'A, 'E
+    let inline snapEventIdStateAndEventsRefactored<'A, 'E
         when 'A :> Aggregate and 'E :> Event<'A> and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
         'A: (static member Zero: 'A) and
