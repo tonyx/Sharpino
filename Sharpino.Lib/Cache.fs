@@ -85,14 +85,16 @@ module Cache =
                 queue.Clear()
                 ()
 
+        // todo probably wrong
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
-            let (b, res) = dic.TryGetValue arg
-            if b then
-                res
-            else
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
+            f()
+            // let (b, res) = dic.TryGetValue arg
+            // if b then
+            //     res
+            // else
+            //     let res = f()
+            //     this.TryAddToDictionary(arg, res)
+            //     res
         member this.LastEventId() =
             dic.Keys  
             |> List.ofSeq 

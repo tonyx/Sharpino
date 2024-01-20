@@ -1,7 +1,7 @@
 namespace seatsLockWithSharpino
 
 open seatsLockWithSharpino.Row1Context
-open seatsLockWithSharpino.RowAggregate
+open seatsLockWithSharpino.RefactoredRow
 open seatsLockWithSharpino.Seats
 open seatsLockWithSharpino
 open seatsLockWithSharpino.Row
@@ -19,19 +19,22 @@ open System
 
 module Stadium =
     open Sharpino.Repositories
+    open Sharpino.Utils
     type Stadium = 
         {
             rows: IRepository<RefactoredRow>
+            rowsReferences: List<Guid>
         }
         with
             static member Zero =
                 {
                     rows = ListRepository<RefactoredRow>.Zero
+                    rowsReferences = []
                 }
-            static member FromList (xs: List<RefactoredRow>) =
-                {
-                    rows = ListRepository<RefactoredRow>.Create xs
-                }
+            // static member FromList (xs: List<RefactoredRow>) =
+            //     {
+            //         rows = ListRepository<RefactoredRow>.Create xs
+            //     }
             member this.AddRow (r: RefactoredRow) =
                 result {
                     let! added = this.rows.Add (r, sprintf "A row with id '%A' already exists" r.Id)
@@ -40,6 +43,30 @@ module Stadium =
                             this with
                                 rows = added
                         }
+                }
+            member this.AddRowReference (id: Guid) =
+                result {
+                    let! notAlreadyExists =
+                        this.rowsReferences 
+                        |> List.contains id 
+                        |> not
+                        |> boolToResult (sprintf "A row with id '%A' already exists" id)
+
+                    return {
+                        this with
+                            rowsReferences = id::this.rowsReferences
+                    }
+                } 
+            member this.RemoveRowReference (id: Guid) =
+                result {
+                    let! chckExists =
+                        this.rowsReferences 
+                        |> List.contains id 
+                        |> boolToResult (sprintf "A row with id '%A' does not exist" id)
+                    return {
+                        this with
+                            rowsReferences = this.rowsReferences |> List.filter (fun x -> x <> id)
+                    }
                 }
             member this.RemoveRow  (id: Guid) =
                 result {

@@ -306,8 +306,6 @@ module StateView =
         and 'A: (static member Version: string)
         >
         (id: Guid)
-        (version: string)
-        (name: string)
         (storage: IEventStore)
         : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
             log.Debug "getStateRefactored"
@@ -327,7 +325,7 @@ module StateView =
                         printf "getFreshStateRefactored - 300\n"
                         return newState
                     }
-            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name  id |> Option.defaultValue (0, None, None)
+            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName  id |> Option.defaultValue (0, None, None)
             let state = StateCacheRefactored<'A>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 

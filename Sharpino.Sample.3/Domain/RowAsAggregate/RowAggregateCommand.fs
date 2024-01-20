@@ -5,7 +5,7 @@ open Sharpino
 open Sharpino.Core
 open System
 open Seats
-open seatsLockWithSharpino.RowAggregate
+open seatsLockWithSharpino.RefactoredRow
 open seatsLockWithSharpino.RowAggregateEvent
 
 module RowAggregateCommand =

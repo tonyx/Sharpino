@@ -45,7 +45,6 @@ module CommandHandler =
         when 'A :> Aggregate and 
         'A :> Entity and
         'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and 
-        'A : (static member Zero: 'A) and
         'A : (static member StorageName: string) and
         'A : (static member Version: string) and
         'E :> Event<'A>
@@ -53,7 +52,7 @@ module CommandHandler =
         >
         (eventStore: IEventStore) 
         =
-            let result = fun (id: Guid) -> getFreshStateRefactored<'A, 'E> id 'A.Version 'A.StorageName eventStore 
+            let result = fun (id: Guid) -> getFreshStateRefactored<'A, 'E> id eventStore 
             result
 
     let config = 
@@ -171,14 +170,13 @@ module CommandHandler =
                 command()
 
     let inline runCommandRefactored<'A, 'E
-        when 'A :> Aggregate and 
-        'A :> Entity and
-        'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
-        'A : (static member Zero: 'A) and
-        'A : (static member StorageName: string) and
-        'A : (static member Version: string) and
-        'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        when 'A :> Aggregate 
+        and 'A :> Entity 
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E : (member Serialize: ISerializer -> string)
         >
         (aggregateId: Guid)
@@ -203,10 +201,8 @@ module CommandHandler =
                                 events' |> storage.AddEventsRefactored 'A.Version 'A.StorageName state.Id
                             let sent =
                                 let idAndEvents = List.zip ids events'
-                                // let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
                                 let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
                                 sent |> Result.toOption
-                            // let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return ([ids], [sent])
                         }
                 }

@@ -6,7 +6,7 @@ open Sharpino
 open Sharpino.Core
 open System
 open Seats
-module RowAggregate =
+module RefactoredRow =
     open Sharpino.Lib.Core.Commons
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     
@@ -27,6 +27,10 @@ module RowAggregate =
 
         member this.Seats = seats
         member this.Id = id
+
+        member this.Serialize (serializer: ISerializer) =
+            this
+            |> serializer.Serialize
 
         member this.IsAvailable (seatId: Seats.Id) =
             this.Seats
@@ -59,7 +63,8 @@ module RowAggregate =
                 // it just checks that the middle one can't be free, but
                 // actually it was supposed to be "no single seat left" anywhere A.F.A.I.K.
                 let theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed =
-                    (potentialNewRowState.[0].State = Seats.SeatState.Booked &&
+                    (potentialNewRowState.Length >= 5 &&
+                    potentialNewRowState.[0].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[1].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[2].State = Seats.SeatState.Free &&
                     potentialNewRowState.[3].State = Seats.SeatState.Booked &&
@@ -92,20 +97,13 @@ module RowAggregate =
         static member Deserialize (serializer: ISerializer, json: string) =
             serializer.Deserialize<RefactoredRow> json
 
-        // static member Zero = 
-        //     printf "Zero called\n"
-        //     new RefactoredRow () 
-
         static member Version = "_01"
         static member StorageName = "_seatrow"
             
         interface Aggregate with
             member this.Id = this.Id
-            // member this.Version = "_01"
-            // member this.StorageName = "_seatrow"
             member this.Serialize serializer = 
-                this
-                |> serializer.Serialize
+                this.Serialize serializer
             member this.Lock = this
         interface Entity with
             member this.Id = this.Id
