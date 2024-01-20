@@ -22,8 +22,7 @@ module RowAggregate =
         let seats = seats
         let id = id
 
-        new () = 
-            let id = Guid.NewGuid ()
+        new (id: Guid) = 
             new RefactoredRow ([], id)
 
         member this.Seats = seats
@@ -101,7 +100,7 @@ module RowAggregate =
         static member StorageName = "_seatrow"
             
         interface Aggregate with
-            // member this.Id = this.Id
+            member this.Id = this.Id
             // member this.Version = "_01"
             // member this.StorageName = "_seatrow"
             member this.Serialize serializer = 

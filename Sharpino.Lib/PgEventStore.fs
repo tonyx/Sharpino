@@ -90,7 +90,7 @@ module PgStorage =
                 |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId]
                 |> Sql.executeAsync (fun read ->
                     (
-                        read.int "event_id",
+                        read.intOrNone "event_id",
                         read.int "id"
                     )
                 )
@@ -235,6 +235,27 @@ module PgStorage =
                         |> Async.RunSynchronously
                     () |> Ok
 
+            member this.SetInitialAggregateState aggregateId version name json =
+                log.Debug "entered in setSnapshot"
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let _ =
+                    connection
+                    |> Sql.connect
+                    |> Sql.executeTransactionAsync
+                        [
+                            command,
+                                [
+                                    [
+                                        ("@aggregate_id", Sql.uuid aggregateId);
+                                        ("snapshot",  Sql.jsonb json);
+                                        ("timestamp", Sql.timestamp System.DateTime.Now)
+                                    ]
+                                ]
+                        ]
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                () |> Ok
+
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -281,6 +302,25 @@ module PgStorage =
                     |> Sql.executeAsync (fun read ->
                         (
                             read.int "event_id",
+                            read.text "snapshot"
+                        )
+                    )
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.tryHead
+                res
+
+            member this.TryGetAggregateSnapshotById version name id =
+                log.Debug (sprintf "TryGetSnapshotById %s %s %d" version name id)
+                let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+                let res =
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["id", Sql.int id]
+                    |> Sql.executeAsync (fun read ->
+                        (
+                            read.intOrNone "event_id",
                             read.text "snapshot"
                         )
                     )
@@ -376,6 +416,28 @@ module PgStorage =
                     |> Sql.connect
                     |> Sql.query query
                     |> Sql.parameters ["id", Sql.int id; "aggregateId", Sql.uuid aggregateId]
+                    |> Sql.executeAsync ( fun read ->
+                        (
+                            read.int "id",
+                            read.text "event"
+                        )
+                    )
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously   
+                    |> Seq.toList
+                    |> Ok
+                with
+                | _ as ex -> 
+                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                    ex.Message |> Error
+            member this.GetEventsAfterNoneRefactored version name aggregateId: Result<List<EventId * Json>,string> = 
+                log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A" version name aggregateId)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
+                try 
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",

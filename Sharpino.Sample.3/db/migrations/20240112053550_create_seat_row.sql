@@ -43,7 +43,6 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
 ALTER TABLE ONLY public.snapshots_01_seatrow
     ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
 
-
 CREATE OR REPLACE FUNCTION insert_01_seatrow_event_and_return_id(
     IN event_in TEXT,
     IN aggregate_id uuid

@@ -44,27 +44,39 @@ module StateView =
 
     let inline private tryGetSnapshotByIdAndDeserializeRefactored<'A 
         when 'A :> Aggregate and
-        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
-        'A: (static member Zero: 'A)
+        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
         (id: int)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
         =
-            let snapshot = storage.TryGetSnapshotById version storageName id
+            printf "tryGetSnapshotByIdAndDeserializeRefactored - 100\n"
+            // let snapshot = storage.TryGetSnapshotById version storageName id
+            // let snapshot = storage.TryGetSnapshotById version storageName id
+            let snapshot = storage.TryGetAggregateSnapshotById version storageName id
+
+            printf "ZZZZZZZZ: %A \n" snapshot
+
+            printf "tryGetSnapshotByIdAndDeserializeRefactored - 200\n"
             match snapshot |>> snd with
             | Some snapshot' ->
+                printf "HHHHHHHHH: %A\n" snapshot'
                 let deserSnapshot = 'A.Deserialize (serializer, snapshot')
                 let eventid = snapshot |>> fst
                 match deserSnapshot with
-                | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
+                | Ok deserSnapshot -> 
+                    printf "tryGetSnapshotByIdAndDeserializeRefactored - 300\n"
+                    printf "QQQQQQQ. snapshot %A" snapshot'
+                    printf "QQQQQQQ. ID. ++++. deserSnapshotId %A" deserSnapshot.Id
+                    (eventid.Value, deserSnapshot) |> Ok
                 | Error e -> 
                     log.Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
                     printf "deserialization error %A for snapshot %s" e snapshot'
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
             | None ->
-                (0, 'A.Zero) |> Ok
+                Error "not found"
+                // (0, 'A.Zero) |> Ok
 
     let inline private getLastSnapshotOrStateCache<'A 
         when 'A: (static member Zero: 'A) 
@@ -96,10 +108,41 @@ module StateView =
             }
             |> Async.RunSynchronously
 
-    let inline private getLastSnapshotOrStateCacheRefactored<'A 
+    // let inline private getLastSnapshotOrStateCacheRefactored<'A 
+    //     when 'A :> Aggregate and
+    //     'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)  and
+    //     'A: (static member Zero: 'A)
+    //     >
+    //     (aggregateId: Guid)
+    //     (version: string)
+    //     (storageName: string)
+    //     (storage: IEventStore) 
+    //     =
+    //         log.Debug "getLastSnapshot"
+    //         async {
+    //             return
+    //                 result {
+    //                     let lastCacheEventId = Cache.StateCacheRefactored<'A>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+    //                     let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
+    //                     if (lastSnapshotId = 0 && lastCacheEventId = 0) then
+    //                         return (0, 'A.Zero)
+    //                     else
+    //                         if 
+    //                             snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
+    //                             let! state = 
+    //                                 Cache.StateCacheRefactored<'A>.Instance.GestState (lastCacheEventId, aggregateId)
+    //                             return (lastCacheEventId, state) 
+    //                         else
+    //                             let! (eventId, snapshot) = 
+    //                                 tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage 
+    //                             return (eventId, snapshot) 
+    //                 }
+    //         }
+    //         |> Async.RunSynchronously
+
+    let inline private getLastSnapshotOrStateCacheRefactoredRefactored<'A 
         when 'A :> Aggregate and
-        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)  and
-        'A: (static member Zero: 'A)
+        'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
         (aggregateId: Guid)
         (version: string)
@@ -110,19 +153,27 @@ module StateView =
             async {
                 return
                     result {
+                        printf "getLastSnapshotOrStateCacheRefactoredRefactored = 100\n"
                         let lastCacheEventId = Cache.StateCacheRefactored<'A>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
-                        let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (0, 0)
+                        printf "getLastSnapshotOrStateCacheRefactoredRefactored = 200\n"
+                        let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
+                        printf "getLastSnapshotOrStateCacheRefactoredRefactored = 300\n"
                         if (lastSnapshotId = 0 && lastCacheEventId = 0) then
-                            return (0, 'A.Zero)
+                            return None
                         else
-                            if lastCacheEventId >= snapshotEventId then
+                            if 
+                                snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                 let! state = 
                                     Cache.StateCacheRefactored<'A>.Instance.GestState (lastCacheEventId, aggregateId)
-                                return (lastCacheEventId, state) 
+                                return (lastCacheEventId |> Some, state) |> Some 
                             else
                                 let! (eventId, snapshot) = 
+                                    printf "getLastSnapshotOrStateCacheRefactoredRefactored = 400\n"
                                     tryGetSnapshotByIdAndDeserializeRefactored<'A> lastSnapshotId version storageName storage 
-                                return (eventId, snapshot) 
+
+                                printf "YYYYYYYYY. snapshotId: %A\n" (snapshot.Id)
+                                printf "YYYYYYYYY. snapshot %A\n" (snapshot.Serialize serializer)
+                                return (eventId , snapshot) |> Some 
                     }
             }
             |> Async.RunSynchronously
@@ -152,13 +203,34 @@ module StateView =
         }
         |> Async.RunSynchronously
 
-    let inline snapEventIdStateAndEventsRefactored<'A, 'E
+    // let inline snapEventIdStateAndEventsRefactored<'A, 'E
+    //     when 'A :> Aggregate and 'E :> Event<'A> and
+    //     'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
+    //     'A: (static member Zero: 'A) and
+    //     'A: (static member StorageName: string) and
+    //     'A: (static member Version: string) 
+    //     >
+    //     (id: Guid)
+    //     (storage: IEventStore)
+    //     = 
+    //     log.Debug "snapIdStateAndEventsRefactored"
+    //     async {
+    //         return
+    //             result {
+    //                 let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> id 'A.Version 'A.StorageName storage
+    //                 let! events = storage.GetEventsAfterIdRefactored 'A.Version 'A.StorageName id eventId
+    //                 let result =
+    //                     (eventId, state, events)
+    //                 return result
+    //             }
+    //     }
+    //     |> Async.RunSynchronously
+
+    let inline snapEventIdStateAndEventsRefactoredRefactored<'A, 'E
         when 'A :> Aggregate and 'E :> Event<'A> and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and
-        'A: (static member Zero: 'A) and
         'A: (static member StorageName: string) and
-        'A: (static member Version: string) 
-        >
+        'A: (static member Version: string)>
         (id: Guid)
         (storage: IEventStore)
         = 
@@ -166,14 +238,31 @@ module StateView =
         async {
             return
                 result {
-                    let! (eventId, state) = getLastSnapshotOrStateCacheRefactored<'A> id 'A.Version 'A.StorageName storage
-                    let! events = storage.GetEventsAfterIdRefactored 'A.Version 'A.StorageName id eventId
-                    let result =
-                        (eventId, state, events)
-                    return result
+                    printf "snapEventIdStateAndEventsRefactoredRefactored - 100 \n"
+                    let! eventIdAndState = getLastSnapshotOrStateCacheRefactoredRefactored<'A> id 'A.Version 'A.StorageName storage
+                    printf "snapEventIdStateAndEventsRefactoredRefactored - 200 \n"
+                    match eventIdAndState with
+                    | None -> 
+                        return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
+                    | Some (eventId, state)  when eventId.IsSome ->
+                        printf "snapEventIdStateAndEventsRefactoredRefactored - 300 \n"
+                        let! events = storage.GetEventsAfterIdRefactored 'A.Version 'A.StorageName id eventId.Value
+                        let result =
+                            (eventId, state, events)
+                        printf "snapEventIdStateAndEventsRefactoredRefactored - 400 \n"
+                        return result
+                    | Some (eventId, state) when eventId.IsNone ->
+                        printf "snapEventIdStateAndEventsRefactoredRefactored - 500 \n"
+                        printf "\n\nGGGGGGG, state %A\n\n" (state.Serialize serializer)
+                        let! events = storage.GetEventsAfterNoneRefactored 'A.Version 'A.StorageName id 
+                        let result =
+                            (eventId, state, events)
+                        printf "snapEventIdStateAndEventsRefactoredRefactored - 600 \n"
+                        return result
                 }
         }
         |> Async.RunSynchronously
+                
                 
     let inline getFreshState<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -213,7 +302,6 @@ module StateView =
         when 'A :> Aggregate and 'E :> Event<'A>
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >
@@ -225,14 +313,18 @@ module StateView =
             log.Debug "getStateRefactored"
             let computeNewState =
                 fun () ->
-                    result {
-                        let! (_, state, events) = snapEventIdStateAndEventsRefactored<'A, 'E> id storage // zero
+                    result { 
+                        printf "getFreshStateRefactored - 100\n"
+                        let! (_, state, events) = snapEventIdStateAndEventsRefactoredRefactored<'A, 'E> id storage // zero
+                        printf "XXXXX. state %A" (state.Serialize serializer)
+                        printf "getFreshStateRefactored - 200\n"
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
+                        printf "getFreshStateRefactored - 300\n"
                         return newState
                     }
             let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name  id |> Option.defaultValue (0, None, None)

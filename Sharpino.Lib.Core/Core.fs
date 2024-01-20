@@ -14,7 +14,7 @@ module Core =
     // adding types for object based (no class level) aggregate type
     
     type Aggregate = 
-        // abstract member Id: Guid // use this one to be able to filter related events from same string
+        abstract member Id: Guid // use this one to be able to filter related events from same string
         // abstract member Version: string
         // abstract member StorageName: string
 

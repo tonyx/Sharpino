@@ -220,6 +220,8 @@ module MemoryStorage =
                         |> List.tryFind (fun x -> x.Id = id)
                     res
 
+            member this.SetInitialAggregateState aggregateId version name json =
+                failwith "not implemented"
             member this.TryGetLastEventId  version  name = 
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
@@ -270,6 +272,8 @@ module MemoryStorage =
                     |> List.tryFind (fun x -> x.Id = id)
                     |>> (fun x -> (x.EventId, x.Snapshot))
 
+            member this.TryGetAggregateSnapshotById version name id =
+                failwith "not implemented"
             // Issue: it will not survive after a version migration because the timestamps will be different
             member this.GetEventsInATimeInterval (version: Version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
@@ -317,5 +321,6 @@ module MemoryStorage =
                 failwith "Not Implemented"
             member this.GetEventsAfterIdRefactored(arg1: Version) (arg2: Name) (arg3: Guid) (arg4: EventId): Result<List<EventId * Json>,string> = 
                 failwith "Not Implemented"
-
+            member this.GetEventsAfterNoneRefactored (arg1: Version) (arg2: Name) (arg3: Guid): Result<List<EventId * Json>,string> = 
+                failwith "Not Implemented"
 
