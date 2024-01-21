@@ -213,7 +213,74 @@ module CommandHandler =
                 command()
             | false ->
                 command()
-        
+
+    let inline runTwoCommandsRefactored<'A1, 'A2, 'E1, 'E2
+        when 'A1 :> Aggregate
+        and 'A1 :> Entity
+        and 'A2 :> Aggregate
+        and 'A2 :> Entity
+        and 'E1 :> Event<'A1>
+        and 'E2 :> Event<'A2>
+        and 'E1 : (member Serialize: ISerializer -> string)
+        and 'E2 : (member Serialize: ISerializer -> string)
+        and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (storage: IEventStore)
+        (eventBroker: IEventBroker)
+        (stateViewerA1: StateViewer<'A1>)
+        (stateViewerA2: StateViewer<'A2>)
+        (command1: Command<'A1, 'E1>)
+        (command2: Command<'A2, 'E2>)
+        =
+            log.Debug (sprintf "runTwoCommandsRefactored %A %A" command1 command2)
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (_, state1, _, _) = stateViewerA1() 
+                            let! (_, state2, _, _) = stateViewerA2() 
+                            let! events1 =
+                                state1
+                                |> command1.Execute
+                            let! events2 =
+                                state2
+                                |> command2.Execute
+                            let events1' =
+                                events1 
+                                |>> (fun x -> x.Serialize serializer)
+                            let events2' =
+                                events2 
+                                |>> (fun x -> x.Serialize serializer)
+                            let! idLists =
+                                storage.MultiAddEventsRefactored
+                                    [
+                                        (events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                                        (events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                                    ]
+                            let sent =
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
+                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
+                                [ sent1; sent2 ]
+                            return (idLists, sent)
+                        }
+                }
+                |> Async.RunSynchronously 
+            match config.PessimisticLock with
+            | true ->
+                command()
+            | false ->
+                command()
+
+
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)

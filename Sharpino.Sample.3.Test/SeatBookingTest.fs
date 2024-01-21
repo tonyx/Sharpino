@@ -1679,7 +1679,7 @@ let stadiumtestsAggregateTests =
             let book = refactoredApp.BookSeats row.Id booking
             Expect.isError book "should be equal"
 
-        testCase "add two rows with five seats each then book seats of two rows - Ok" <| fun _ ->
+        ftestCase "add two rows with five seats each then book seats of two rows - Ok" <| fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             StateCache<StadiumContext.StadiumContext>.Instance.Clear()
             StateCacheRefactored<RefactoredRow>.Instance.Clear()
@@ -1688,6 +1688,7 @@ let stadiumtestsAggregateTests =
             let refactoredApp = RefactoredApp.RefactoredApp(storage)
             let row1 = RefactoredRow (Guid.NewGuid())
             let row1Added = refactoredApp.AddRowRefactored row1
+            Expect.isOk row1Added "should be equal"
             let seat11 = { id = 1; State = Free }
             let seat12 = { id = 2; State = Free }
             let seat13 = { id = 3; State = Free }
@@ -1697,6 +1698,7 @@ let stadiumtestsAggregateTests =
             Expect.isOk addSeat1 "should be equal"
             let row2 = RefactoredRow (Guid.NewGuid())
             let row2Added = refactoredApp.AddRowRefactored row2
+            Expect.isOk row2Added "should be equal"
             let seat21 = { id = 6; State = Free }
             let seat22 = { id = 7; State = Free }
             let seat23 = { id = 8; State = Free }
@@ -1704,6 +1706,19 @@ let stadiumtestsAggregateTests =
             let seat25 = { id = 10; State = Free }
             let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
             Expect.isOk addSeat2 "should be equal"
+
+            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+
+            let twoBookings = refactoredApp.BookSeatsTwoRows (row1.Id, booking1) (row2.Id, booking2)
+            Expect.isOk twoBookings "should be equal"
+
+            let retrieveRow1 = refactoredApp.GetRowRefactored row1.Id
+            let retrieveRow2 = refactoredApp.GetRowRefactored row2.Id
+            let availableSeats1 = retrieveRow1 |> Result.get |> fun x -> x.GetAvailableSeats()
+            let availableSeats2 = retrieveRow2 |> Result.get |> fun x -> x.GetAvailableSeats()
+            Expect.isTrue (availableSeats1.Length = 0) "should be equal"
+            Expect.isTrue (availableSeats2.Length = 0) "should be equal"
 
 
     ]

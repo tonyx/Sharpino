@@ -171,8 +171,6 @@ module PgStorage =
                                             (
                                                 fun x ->
                                                     (
-                                                        let param = new NpgsqlParameter("@event", NpgsqlTypes.NpgsqlDbType.Json)
-                                                        param.Value <- x
                                                         command.Parameters.AddWithValue("event", x ) |> ignore
                                                         let result = command.ExecuteScalar() 
                                                         result :?> int
@@ -401,6 +399,43 @@ module PgStorage =
                             transaction.Commit()
                             conn.Close()
                             ids |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously
+
+            member this.MultiAddEventsRefactored (arg: List<List<Json> * Version * Name * System.Guid>) =
+                log.Debug (sprintf "MultiAddEventsRefactored %A" arg)
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                let transaction = conn.BeginTransaction() 
+                async {
+                    return
+                        try
+                            let cmdList = 
+                                arg 
+                                |> List.map 
+                                    (
+                                        fun (events, version,  name, aggregateId) -> 
+                                            let stream_name = version + name
+                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
+                                            events
+                                            |>> 
+                                            (
+                                                fun x ->
+                                                    (
+                                                        command.Parameters.AddWithValue("event", x ) |> ignore
+                                                        command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                                        let result = command.ExecuteScalar() 
+                                                        result :?> int
+                                                    )
+                                            )
+                                    )
+                            transaction.Commit()    
+                            conn.Close()
+                            cmdList |> Ok
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)

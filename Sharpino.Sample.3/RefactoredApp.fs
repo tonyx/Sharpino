@@ -47,15 +47,15 @@ module RefactoredApp =
                 return result
             }
 
-        // member this.BookSeatsTwoRows (rowId1: Guid, booking1: Booking) (rowid2: Guid, booking2: Booking) =
-        //     result {
-        //         let bookSeat1 = RowAggregateCommand.BookSeats booking1
-        //         let bookSeat2 = RowAggregateCommand.BookSeats booking2
-        //         let! result = 
-        //             runCommandRefactored<RefactoredRow, RowAggregateEvent> 
-        //                 rowId storage eventBroker (fun () -> rowStateViewer rowId) bookSeat
-        //         return result
-        //     }
+        member this.BookSeatsTwoRows (rowId1: Guid, booking1: Booking) (rowid2: Guid, booking2: Booking) =
+            result {
+                let bookSeat1 = RowAggregateCommand.BookSeats booking1
+                let bookSeat2 = RowAggregateCommand.BookSeats booking2
+                let! result = 
+                    runTwoCommandsRefactored<RefactoredRow, RefactoredRow, RowAggregateEvent, RowAggregateEvent> 
+                        rowId1 rowid2 storage eventBroker (fun () -> rowStateViewer rowId1) (fun () -> rowStateViewer rowid2) bookSeat1 bookSeat2
+                return result
+            }
 
         member this.GetRowRefactored id =
             result {

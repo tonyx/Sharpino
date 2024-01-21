@@ -306,6 +306,9 @@ module MemoryStorage =
                                         ]
                         Ok ()
 
+            member this.MultiAddEventsRefactored (arg: List<List<Json> * Version * Name * Guid>) =
+                failwith "not implemented"
+
             member this.TryGetLastEventIdWithKafkaOffSet version name  = 
                 log.Debug (sprintf "TryGetLastEventIdWithKafkaOffSet %s %s" version name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then

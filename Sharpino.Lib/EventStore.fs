@@ -76,6 +76,9 @@ module Storage =
         abstract member AddEventsRefactored: Version -> Name -> Guid -> List<Json> -> Result<List<int>, string>
 
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
+        abstract member MultiAddEventsRefactored:  List<List<Json> * Version * Name * Guid>  -> Result<List<List<int>>, string>
+
+
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
 
         abstract member GetEventsAfterIdRefactored: Version ->  Name -> Guid -> EventId-> Result< List< EventId * Json >, string >
