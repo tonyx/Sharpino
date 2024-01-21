@@ -1679,7 +1679,7 @@ let stadiumtestsAggregateTests =
             let book = refactoredApp.BookSeats row.Id booking
             Expect.isError book "should be equal"
 
-        ftestCase "add two rows with five seats each then book seats of two rows - Ok" <| fun _ ->
+        testCase "add two rows with five seats each then book seats of two rows - Ok" <| fun _ ->
             let storage = PgStorage.PgEventStore(connection) :> IEventStore
             StateCache<StadiumContext.StadiumContext>.Instance.Clear()
             StateCacheRefactored<RefactoredRow>.Instance.Clear()
@@ -1710,7 +1710,7 @@ let stadiumtestsAggregateTests =
             let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
             let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
 
-            let twoBookings = refactoredApp.BookSeatsTwoRows (row1.Id, booking1) (row2.Id, booking2)
+            let twoBookings = refactoredApp.BookSeatsTwoRows' (row1.Id, booking1) (row2.Id, booking2)
             Expect.isOk twoBookings "should be equal"
 
             let retrieveRow1 = refactoredApp.GetRowRefactored row1.Id
@@ -1719,6 +1719,144 @@ let stadiumtestsAggregateTests =
             let availableSeats2 = retrieveRow2 |> Result.get |> fun x -> x.GetAvailableSeats()
             Expect.isTrue (availableSeats1.Length = 0) "should be equal"
             Expect.isTrue (availableSeats2.Length = 0) "should be equal"
+
+        testCase "add two rows with five seats each then book one of them, then book again receiving error - Error" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<StadiumContext.StadiumContext>.Instance.Clear()
+            StateCacheRefactored<RefactoredRow>.Instance.Clear()
+            storage.Reset "_01" "_stadium" |> ignore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row1 = RefactoredRow (Guid.NewGuid())
+            let row1Added = refactoredApp.AddRowRefactored row1
+            Expect.isOk row1Added "should be equal"
+            let seat11 = { id = 1; State = Free }
+            let seat12 = { id = 2; State = Free }
+            let seat13 = { id = 3; State = Free }
+            let seat14 = { id = 4; State = Free }
+            let seat15 = { id = 5; State = Free }
+            let addSeat1 = refactoredApp.AddSeats row1.Id [seat11; seat12; seat13; seat14; seat15]
+            Expect.isOk addSeat1 "should be equal"
+            let row2 = RefactoredRow (Guid.NewGuid())
+            let row2Added = refactoredApp.AddRowRefactored row2
+            Expect.isOk row2Added "should be equal"
+            let seat21 = { id = 6; State = Free }
+            let seat22 = { id = 7; State = Free }
+            let seat23 = { id = 8; State = Free }
+            let seat24 = { id = 9; State = Free }
+            let seat25 = { id = 10; State = Free }
+            let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
+            Expect.isOk addSeat2 "should be equal"
+
+            let booking0 = { id = 1; seats = [1]}
+            let book = refactoredApp.BookSeats row1.Id booking0
+            Expect.isOk book "should be ok"
+
+            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+
+            let twoBookings = refactoredApp.BookSeatsTwoRows' (row1.Id, booking1) (row2.Id, booking2)
+            Expect.isError twoBookings "should be equal"
+
+        testCase "book seats many rows  - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<StadiumContext.StadiumContext>.Instance.Clear()
+            StateCacheRefactored<RefactoredRow>.Instance.Clear()
+            storage.Reset "_01" "_stadium" |> ignore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row1 = RefactoredRow (Guid.NewGuid())
+            let row1Added = refactoredApp.AddRowRefactored row1
+            Expect.isOk row1Added "should be equal"
+            let seat11 = { id = 1; State = Free }
+            let seat12 = { id = 2; State = Free }
+            let seat13 = { id = 3; State = Free }
+            let seat14 = { id = 4; State = Free }
+            let seat15 = { id = 5; State = Free }
+            let addSeat1 = refactoredApp.AddSeats row1.Id [seat11; seat12; seat13; seat14; seat15]
+            Expect.isOk addSeat1 "should be equal"
+            let row2 = RefactoredRow (Guid.NewGuid())
+            let row2Added = refactoredApp.AddRowRefactored row2
+            Expect.isOk row2Added "should be equal"
+            let seat21 = { id = 6; State = Free }
+            let seat22 = { id = 7; State = Free }
+            let seat23 = { id = 8; State = Free }
+            let seat24 = { id = 9; State = Free }
+            let seat25 = { id = 10; State = Free }
+            let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
+            Expect.isOk addSeat2 "should be equal"
+
+            let seat31 = { id = 11; State = Free }
+            let seat32 = { id = 12; State = Free }
+            let seat33 = { id = 13; State = Free }
+            let seat34 = { id = 14; State = Free }
+            let seat35 = { id = 15; State = Free }
+
+            let row3 = RefactoredRow (Guid.NewGuid())
+            let row3Added = refactoredApp.AddRowRefactored row3
+            Expect.isOk row3Added "should be equal"
+            let addSeats3 = refactoredApp.AddSeats row3.Id [seat31; seat32; seat33; seat34; seat35]
+            Expect.isOk addSeats3 "should be equal"
+
+            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+            let booking3 = { id = 3; seats = [11; 12; 13; 14; 15]}
+
+            let booked = refactoredApp.BookSeatsNRows [(row1.Id, booking1); (row2.Id, booking2); (row3.Id, booking3)]
+            Expect.isOk booked "should be equal"
+
+        ftestCase "add three roos, book seats on two rows - Ok" <| fun _ ->
+            let storage = PgStorage.PgEventStore(connection) :> IEventStore
+            StateCache<StadiumContext.StadiumContext>.Instance.Clear()
+            StateCacheRefactored<RefactoredRow>.Instance.Clear()
+            storage.Reset "_01" "_stadium" |> ignore
+            storage.Reset "_01" "_seatrow" |> ignore
+            let refactoredApp = RefactoredApp.RefactoredApp(storage)
+            let row1 = RefactoredRow (Guid.NewGuid())
+            let row1Added = refactoredApp.AddRowRefactored row1
+            Expect.isOk row1Added "should be equal"
+            let seat11 = { id = 1; State = Free }
+            let seat12 = { id = 2; State = Free }
+            let seat13 = { id = 3; State = Free }
+            let seat14 = { id = 4; State = Free }
+            let seat15 = { id = 5; State = Free }
+            let addSeat1 = refactoredApp.AddSeats row1.Id [seat11; seat12; seat13; seat14; seat15]
+            Expect.isOk addSeat1 "should be equal"
+            let row2 = RefactoredRow (Guid.NewGuid())
+            let row2Added = refactoredApp.AddRowRefactored row2
+            Expect.isOk row2Added "should be equal"
+            let seat21 = { id = 6; State = Free }
+            let seat22 = { id = 7; State = Free }
+            let seat23 = { id = 8; State = Free }
+            let seat24 = { id = 9; State = Free }
+            let seat25 = { id = 10; State = Free }
+            let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
+            Expect.isOk addSeat2 "should be equal"
+
+            let seat31 = { id = 11; State = Free }
+            let seat32 = { id = 12; State = Free }
+            let seat33 = { id = 13; State = Free }
+            let seat34 = { id = 14; State = Free }
+            let seat35 = { id = 15; State = Free }
+
+            let row3 = RefactoredRow (Guid.NewGuid())
+            let row3Added = refactoredApp.AddRowRefactored row3
+            Expect.isOk row3Added "should be equal"
+            let addSeats3 = refactoredApp.AddSeats row3.Id [seat31; seat32; seat33; seat34; seat35]
+            Expect.isOk addSeats3 "should be equal"
+
+            let booking1 = { id = 1; seats = [1; 2; 3; 4]}
+            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+
+            let booked = refactoredApp.BookSeatsNRows [(row1.Id, booking1); (row2.Id, booking2)]
+            Expect.isOk booked "should be equal"
+
+            let firstRow = refactoredApp.GetRowRefactored row1.Id |> Result.get
+            let availableSeats = firstRow.GetAvailableSeats()
+            Expect.equal availableSeats.Length 1 "should be equal"
+            let secondRow = refactoredApp.GetRowRefactored row2.Id |> Result.get
+            let availableSeats2 = secondRow.GetAvailableSeats()
+            Expect.equal availableSeats2.Length 0 "should be equal"
 
 
     ]

@@ -47,13 +47,36 @@ module RefactoredApp =
                 return result
             }
 
-        member this.BookSeatsTwoRows (rowId1: Guid, booking1: Booking) (rowid2: Guid, booking2: Booking) =
+        member this.BookSeatsTwoRows' (rowId1: Guid, booking1: Booking) (rowid2: Guid, booking2: Booking) =
             result {
-                let bookSeat1 = RowAggregateCommand.BookSeats booking1
-                let bookSeat2 = RowAggregateCommand.BookSeats booking2
+                let bookSeats = 
+                    [ (BookSeats booking1):> Command<RefactoredRow, RowAggregateEvent>
+                      (BookSeats booking2):> Command<RefactoredRow, RowAggregateEvent> ]
                 let! result = 
-                    runTwoCommandsRefactored<RefactoredRow, RefactoredRow, RowAggregateEvent, RowAggregateEvent> 
-                        rowId1 rowid2 storage eventBroker (fun () -> rowStateViewer rowId1) (fun () -> rowStateViewer rowid2) bookSeat1 bookSeat2
+                    runNCommandsRefactored<RefactoredRow, RowAggregateEvent> 
+                        [rowId1; rowid2] 
+                        storage 
+                        eventBroker 
+                        [
+                            (fun () -> rowStateViewer rowId1)
+                            (fun () -> rowStateViewer rowid2)
+                        ] 
+                        bookSeats
+                return result
+            }
+
+        member this.BookSeatsNRows (rowAndbookings: List<Guid * Booking>) =
+            result {
+                let bookSeats = 
+                    rowAndbookings
+                    |> List.map (fun (rowId, booking) -> (BookSeats booking):> Command<RefactoredRow, RowAggregateEvent>)
+                let! result = 
+                    runNCommandsRefactored<RefactoredRow, RowAggregateEvent> 
+                        (rowAndbookings |> List.map fst) 
+                        storage 
+                        eventBroker 
+                        (rowAndbookings |> List.map (fun (rowId, _) -> fun () -> rowStateViewer rowId)) 
+                        bookSeats
                 return result
             }
 
