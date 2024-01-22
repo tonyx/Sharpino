@@ -11,6 +11,14 @@ open System
 
 module Cache =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let config = 
+        try
+            Conf.config ()
+        with
+        | :? _ as ex -> 
+            // if appSettings.json is missing
+            log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
+            Conf.defaultConf
 
     // probably the size of this cache can be just 1 because I need to keep only the current state. 
     type StateCache<'A > private () =
@@ -62,10 +70,10 @@ module Cache =
             queue.Clear()
 
 
-    type StateCacheRefactored<'A when 'A :> Aggregate> private () =
+    type AggregateCache<'A when 'A :> Aggregate> private () =
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
-        static let instance = StateCacheRefactored<'A>()
+        static let instance = AggregateCache<'A>()
         static member Instance = instance
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
@@ -73,8 +81,7 @@ module Cache =
             try
                 dic.Add(arg, res)
                 queue.Enqueue arg
-                // I guess I can keep only the last state
-                if (queue.Count > 100) then
+                if (queue.Count > config.CacheAggregateSize) then
                     let removed = queue.Dequeue()
                     dic.Remove removed |> ignore
                 ()
@@ -85,16 +92,18 @@ module Cache =
                 queue.Clear()
                 ()
 
-        // todo probably wrong
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
-            f()
-            // let (b, res) = dic.TryGetValue arg
-            // if b then
-            //     res
-            // else
-            //     let res = f()
-            //     this.TryAddToDictionary(arg, res)
-            //     res
+            match arg with
+            | 0, _ ->
+                f()
+            | _ ->
+                let (b, res) = dic.TryGetValue arg
+                if b then
+                    res
+                else
+                    let res = f()
+                    this.TryAddToDictionary(arg, res)
+                    res
         member this.LastEventId() =
             dic.Keys  
             |> List.ofSeq 
@@ -109,7 +118,7 @@ module Cache =
             |> List.sort 
             |> List.tryLast
 
-        member this.GestState (key: EventId * AggregateId) =
+        member this.GetState (key: EventId * AggregateId) =
             let (b, res) = dic.TryGetValue key
             if b then
                 res

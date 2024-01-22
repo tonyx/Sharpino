@@ -14,12 +14,14 @@ module Conf =
         {
             PessimisticLock: bool
             RefreshTimeout: int
+            CacheAggregateSize: int
         }
 
     let defaultConf = 
         { 
             PessimisticLock = false 
             RefreshTimeout = 100
+            CacheAggregateSize = 100
         }
 
     let config () =

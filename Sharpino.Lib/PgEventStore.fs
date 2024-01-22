@@ -374,10 +374,12 @@ module PgStorage =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
-            member this.AddEventsRefactored(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
+            member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
                 log.Debug (sprintf "AddEventsRefactored %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
-                printf "stream name: %s\n" stream_name
+
+                // printf "stream name: %s\n" stream_name
+
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -406,7 +408,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddEventsRefactored (arg: List<List<Json> * Version * Name * System.Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * System.Guid>) =
                 log.Debug (sprintf "MultiAddEventsRefactored %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -443,7 +445,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.GetEventsAfterIdRefactored version name aggregateId id: Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * Json>,string> = 
                 log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
                 try 

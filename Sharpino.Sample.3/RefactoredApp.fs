@@ -23,7 +23,7 @@ module RefactoredApp =
             getStorageFreshStateViewer<StadiumContext, StadiumEvent > storage
 
         let rowStateViewer =    
-            getStorageFreshStateViewerRefactored<RefactoredRow, RowAggregateEvent> storage
+            getAggregateStorageFreshStateViewer<RefactoredRow, RowAggregateEvent> storage
 
         new(storage: IEventStore) = RefactoredApp(storage, doNothingBroker)
 
@@ -42,7 +42,7 @@ module RefactoredApp =
             result {
                 let bookSeat = RowAggregateCommand.BookSeats booking
                 let! result = 
-                    runCommandRefactored<RefactoredRow, RowAggregateEvent> 
+                    runAggregateCommand<RefactoredRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) bookSeat
                 return result
             }
@@ -53,7 +53,7 @@ module RefactoredApp =
                     [ (BookSeats booking1):> Command<RefactoredRow, RowAggregateEvent>
                       (BookSeats booking2):> Command<RefactoredRow, RowAggregateEvent> ]
                 let! result = 
-                    runNCommandsRefactored<RefactoredRow, RowAggregateEvent> 
+                    runNAggregateCommands<RefactoredRow, RowAggregateEvent> 
                         [rowId1; rowid2] 
                         storage 
                         eventBroker 
@@ -71,7 +71,7 @@ module RefactoredApp =
                     rowAndbookings
                     |> List.map (fun (rowId, booking) -> (BookSeats booking):> Command<RefactoredRow, RowAggregateEvent>)
                 let! result = 
-                    runNCommandsRefactored<RefactoredRow, RowAggregateEvent> 
+                    runNAggregateCommands<RefactoredRow, RowAggregateEvent> 
                         (rowAndbookings |> List.map fst) 
                         storage 
                         eventBroker 
@@ -116,7 +116,7 @@ module RefactoredApp =
             result {
                 let addSeat = RowAggregateCommand.AddSeat seat
                 let! result = 
-                    runCommandRefactored<RefactoredRow, RowAggregateEvent> 
+                    runAggregateCommand<RefactoredRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
                 return result
             }
@@ -125,7 +125,7 @@ module RefactoredApp =
             result {
                 let addSeats = RowAggregateCommand.AddSeats seats
                 let! result = 
-                    runCommandRefactored<RefactoredRow, RowAggregateEvent> 
+                    runAggregateCommand<RefactoredRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeats
                 return result
             }
@@ -146,7 +146,7 @@ module RefactoredApp =
             result { 
                 let addSeat = RowAggregateCommand.AddSeat seat
                 let! result = 
-                    runCommandRefactored<RefactoredRow, RowAggregateEvent> 
+                    runAggregateCommand<RefactoredRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
                 return result
             }

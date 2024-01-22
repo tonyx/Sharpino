@@ -41,18 +41,18 @@ module CommandHandler =
             let result = fun () -> getFreshState<'A, 'E> eventStore
             result
 
-    let inline getStorageFreshStateViewerRefactored<'A, 'E
-        when 'A :> Aggregate and 
-        'A :> Entity and
-        'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) and 
-        'A : (static member StorageName: string) and
-        'A : (static member Version: string) and
-        'E :> Event<'A>
+    let inline getAggregateStorageFreshStateViewer<'A, 'E
+        when 'A :> Aggregate 
+        and 'A :> Entity 
+        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E :> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         >
         (eventStore: IEventStore) 
         =
-            let result = fun (id: Guid) -> getFreshStateRefactored<'A, 'E> id eventStore 
+            let result = fun (id: Guid) -> getAggregateFreshState<'A, 'E> id eventStore 
             result
 
     let config = 
@@ -60,7 +60,6 @@ module CommandHandler =
             Conf.config ()
         with
         | :? _ as ex -> 
-            // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
 
@@ -168,8 +167,7 @@ module CommandHandler =
                     command()
             | false ->
                 command()
-
-    let inline runCommandRefactored<'A, 'E
+    let inline runAggregateCommand<'A, 'E
         when 'A :> Aggregate 
         and 'A :> Entity 
         and 'E :> Event<'A>
@@ -185,12 +183,13 @@ module CommandHandler =
         (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>)
         =
+            let stateView = stateViewer()
             log.Debug (sprintf "runCommandRefactored %A" command)
             let command = fun () ->
                 async {
                     return
                         result {
-                            let! (_, state, _, _) = stateViewer() 
+                            let! (_, state, _, _) = stateView
                             let! events =
                                 state
                                 |> command.Execute
@@ -198,7 +197,7 @@ module CommandHandler =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)
                             let! ids =
-                                events' |> storage.AddEventsRefactored 'A.Version 'A.StorageName state.Id
+                                events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id
                             let sent =
                                 let idAndEvents = List.zip ids events'
                                 let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
@@ -207,14 +206,16 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously 
-            match config.PessimisticLock with
-            | true ->
-                // todo:
-                command()
-            | false ->
+            match (stateView, config.PessimisticLock) with
+            |  Error e, _ -> Error e 
+            |  _, true ->
+                let myLock = stateView |> Result.toOption |> Option.map (fun (_, s, _, _) -> s.Lock)
+                lock myLock <| fun () ->
+                    command()
+            | _, false ->
                 command()
 
-    let inline runNCommandsRefactored<'A1, 'E1
+    let inline runNAggregateCommands<'A1, 'E1
         when 'A1 :> Aggregate
         and 'A1 :> Entity
         and 'E1 :> Event<'A1>
@@ -260,7 +261,7 @@ module CommandHandler =
                                 |> List.map (fun (events, id) -> (events, 'A1.Version, 'A1.StorageName, id))
 
                             let! idLists =
-                                storage.MultiAddEventsRefactored packParametersForDb
+                                storage.MultiAddAggregateEvents packParametersForDb
 
                             let kafkaParameters =
                                  List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) idLists serializedEvents
@@ -270,141 +271,15 @@ module CommandHandler =
                                 kafkaParameters
                                 |> List.map (fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption)
                             return (idLists, sent)
-
                         }
                 }
                 |> Async.RunSynchronously 
             match config.PessimisticLock with
             | true ->
+                log.Warn "pessimistic lock is true, but we are not using it in runNAggregateCommands"
                 command()
             | false ->
                 command()
-    let inline runTwoCommandsRefactored'<'A1, 'E1
-        when 'A1 :> Aggregate
-        and 'A1 :> Entity
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: ISerializer -> string)
-        and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        >
-        (aggregateId1: Guid)
-        (aggregateId2: Guid)
-        (storage: IEventStore)
-        (eventBroker: IEventBroker)
-        (stateViewerA1: StateViewer<'A1>)
-        (stateViewerA2: StateViewer<'A1>)
-        (command1: Command<'A1, 'E1>)
-        (command2: Command<'A1, 'E1>)
-        =
-            log.Debug (sprintf "runTwoCommandsRefactored %A %A" command1 command2)
-            let command = fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state1, _, _) = stateViewerA1() 
-                            let! (_, state2, _, _) = stateViewerA2() 
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
-                            let events1' =
-                                events1 
-                                |>> (fun x -> x.Serialize serializer)
-                            let events2' =
-                                events2 
-                                |>> (fun x -> x.Serialize serializer)
-                            let! idLists =
-                                storage.MultiAddEventsRefactored
-                                    [
-                                        (events1', 'A1.Version, 'A1.StorageName, aggregateId1)
-                                        (events2', 'A1.Version, 'A1.StorageName, aggregateId2)
-                                    ]
-                            let sent =
-                                let idAndEvents1 = List.zip idLists.[0] events1'
-                                let idAndEvents2 = List.zip idLists.[1] events2'
-                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                let sent2 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents2 |> Result.toOption
-                                [ sent1; sent2 ]
-                            return (idLists, sent)
-                        }
-                }
-                |> Async.RunSynchronously 
-            match config.PessimisticLock with
-            | true ->
-                command()
-            | false ->
-                command()
-
-    let inline runTwoCommandsRefactored<'A1, 'A2, 'E1, 'E2
-        when 'A1 :> Aggregate
-        and 'A1 :> Entity
-        and 'A2 :> Aggregate
-        and 'A2 :> Entity
-        and 'E1 :> Event<'A1>
-        and 'E2 :> Event<'A2>
-        and 'E1 : (member Serialize: ISerializer -> string)
-        and 'E2 : (member Serialize: ISerializer -> string)
-        and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 : (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        >
-        (aggregateId1: Guid)
-        (aggregateId2: Guid)
-        (storage: IEventStore)
-        (eventBroker: IEventBroker)
-        (stateViewerA1: StateViewer<'A1>)
-        (stateViewerA2: StateViewer<'A2>)
-        (command1: Command<'A1, 'E1>)
-        (command2: Command<'A2, 'E2>)
-        =
-            log.Debug (sprintf "runTwoCommandsRefactored %A %A" command1 command2)
-            let command = fun () ->
-                async {
-                    return
-                        result {
-                            let! (_, state1, _, _) = stateViewerA1() 
-                            let! (_, state2, _, _) = stateViewerA2() 
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
-                            let events1' =
-                                events1 
-                                |>> (fun x -> x.Serialize serializer)
-                            let events2' =
-                                events2 
-                                |>> (fun x -> x.Serialize serializer)
-                            let! idLists =
-                                storage.MultiAddEventsRefactored
-                                    [
-                                        (events1', 'A1.Version, 'A1.StorageName, aggregateId1)
-                                        (events2', 'A2.Version, 'A2.StorageName, aggregateId2)
-                                    ]
-                            let sent =
-                                let idAndEvents1 = List.zip idLists.[0] events1'
-                                let idAndEvents2 = List.zip idLists.[1] events2'
-                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
-                                [ sent1; sent2 ]
-                            return (idLists, sent)
-                        }
-                }
-                |> Async.RunSynchronously 
-            match config.PessimisticLock with
-            | true ->
-                command()
-            | false ->
-                command()
-
-
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)

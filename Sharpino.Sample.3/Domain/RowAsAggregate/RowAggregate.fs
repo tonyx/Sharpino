@@ -10,13 +10,13 @@ module RefactoredRow =
     open Sharpino.Lib.Core.Commons
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     
-    let private emptyAll (seats: List<Seat>) = 
-        seats 
-        |> List.map 
-            (fun x -> { 
-                        x with 
-                            State = SeatState.Free }
-            )
+    // let private emptyAll (seats: List<Seat>) = 
+    //     seats 
+    //     |> List.map 
+    //         (fun x -> { 
+    //                     x with 
+    //                         State = SeatState.Free }
+    //         )
 
     type RefactoredRow private (seats: List<Seat>, id: Guid) =
         let seats = seats
@@ -63,7 +63,7 @@ module RefactoredRow =
                 // it just checks that the middle one can't be free, but
                 // actually it was supposed to be "no single seat left" anywhere A.F.A.I.K.
                 let theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed =
-                    (potentialNewRowState.Length >= 5 &&
+                    (potentialNewRowState.Length = 5 &&
                     potentialNewRowState.[0].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[1].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[2].State = Seats.SeatState.Free &&
@@ -136,12 +136,12 @@ module RefactoredRow =
                     match this with
                     | BookSeats booking ->
                         x.BookSeats booking
-                        |> Result.map (fun row -> [SeatBooked booking])
+                        |> Result.map (fun _ -> [SeatBooked booking])
                     | AddSeat seat ->
                         x.AddSeat seat
-                        |> Result.map (fun row -> [SeatAdded seat])
+                        |> Result.map (fun _ -> [SeatAdded seat])
                     | AddSeats seats ->
                         x.AddSeats seats
-                        |> Result.map (fun row -> [SeatsAdded seats])
+                        |> Result.map (fun _ -> [SeatsAdded seats])
                 member this.Undoer =
                     None

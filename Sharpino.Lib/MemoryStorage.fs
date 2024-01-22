@@ -306,7 +306,7 @@ module MemoryStorage =
                                         ]
                         Ok ()
 
-            member this.MultiAddEventsRefactored (arg: List<List<Json> * Version * Name * Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * Guid>) =
                 failwith "not implemented"
 
             member this.TryGetLastEventIdWithKafkaOffSet version name  = 
@@ -318,11 +318,11 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
 
-            member this.AddEventsRefactored(arg1: Version) (arg2: Name) (arg3: System.Guid) (arg4: List<Json>): Result<List<int>,string> = 
+            member this.AddAggregateEvents(arg1: Version) (arg2: Name) (arg3: System.Guid) (arg4: List<Json>): Result<List<int>,string> = 
                 failwith "Not Implemented"
             member this.TryGetLastEventIdByAggregateIdWithKafkaOffSet(arg1: Version) (arg2: Name) (arg3: AggregateId): Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>> = 
                 failwith "Not Implemented"
-            member this.GetEventsAfterIdRefactored(arg1: Version) (arg2: Name) (arg3: Guid) (arg4: EventId): Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEventsAfterId(arg1: Version) (arg2: Name) (arg3: Guid) (arg4: EventId): Result<List<EventId * Json>,string> = 
                 failwith "Not Implemented"
             member this.GetEventsAfterNoneRefactored (arg1: Version) (arg2: Name) (arg3: Guid): Result<List<EventId * Json>,string> = 
                 failwith "Not Implemented"
