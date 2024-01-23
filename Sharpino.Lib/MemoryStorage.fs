@@ -324,6 +324,8 @@ module MemoryStorage =
                 failwith "Not Implemented"
             member this.GetAggregateEventsAfterId(arg1: Version) (arg2: Name) (arg3: Guid) (arg4: EventId): Result<List<EventId * Json>,string> = 
                 failwith "Not Implemented"
-            member this.GetEventsAfterNoneRefactored (arg1: Version) (arg2: Name) (arg3: Guid): Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEvents (arg1: Version) (arg2: Name) (arg3: Guid): Result<List<EventId * Json>,string> = 
                 failwith "Not Implemented"
+
+            member this.SetAggregateSnapshot(var0) (var1, var2, var3) (var4) = failwith "Not implemented"
 

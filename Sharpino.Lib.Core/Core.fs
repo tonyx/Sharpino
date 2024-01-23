@@ -18,7 +18,7 @@ module Core =
         // abstract member Version: string
         // abstract member StorageName: string
 
-        abstract member Serialize: ISerializer -> string // json
+        abstract member Serialize: ISerializer -> string
         abstract member Lock: obj
     
     type Event<'A> =

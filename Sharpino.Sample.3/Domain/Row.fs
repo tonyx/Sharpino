@@ -21,19 +21,19 @@ module Row =
                 let! check = 
                     let seatsInvolved =
                         seats
-                        |> List.filter (fun seat -> booking.seats |> List.contains seat.id)
+                        |> List.filter (fun seat -> booking.seatIds |> List.contains seat.id)
                     seatsInvolved
                         |> List.forall (fun seat -> seat.State = Seats.SeatState.Free)
                         |> boolToResult "Seat already booked"
                 
                 let claimedSeats = 
                     seats
-                    |> List.filter (fun seat -> booking.seats |> List.contains seat.id)
+                    |> List.filter (fun seat -> booking.seatIds |> List.contains seat.id)
                     |> List.map (fun seat -> { seat with State = Seats.SeatState.Booked })
 
                 let unclaimedSeats = 
                     seats
-                    |> List.filter (fun seat -> not (booking.seats |> List.contains seat.id))
+                    |> List.filter (fun seat -> not (booking.seatIds |> List.contains seat.id))
 
                 let potentialNewRowState = 
                     claimedSeats @ unclaimedSeats

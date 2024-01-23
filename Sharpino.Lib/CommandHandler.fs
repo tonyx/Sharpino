@@ -81,7 +81,7 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            let! (id, state, _, _) = stateViewer () //getState<'A, 'E> storage 
+                            let! (id, state, _, _) = stateViewer ()
                             let serState = state.Serialize serializer
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
@@ -184,7 +184,7 @@ module CommandHandler =
         (command: Command<'A, 'E>)
         =
             let stateView = stateViewer()
-            log.Debug (sprintf "runCommandRefactored %A" command)
+            log.Debug (sprintf "runAggregateCommand %A" command)
             let command = fun () ->
                 async {
                     return

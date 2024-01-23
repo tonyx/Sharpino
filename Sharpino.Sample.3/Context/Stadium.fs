@@ -22,20 +22,20 @@ module Stadium =
     open Sharpino.Utils
     type Stadium = 
         {
-            rows: IRepository<RefactoredRow>
+            rows: IRepository<SeatsRow>
             rowsReferences: List<Guid>
         }
         with
             static member Zero =
                 {
-                    rows = ListRepository<RefactoredRow>.Zero
+                    rows = ListRepository<SeatsRow>.Zero
                     rowsReferences = []
                 }
             // static member FromList (xs: List<RefactoredRow>) =
             //     {
             //         rows = ListRepository<RefactoredRow>.Create xs
             //     }
-            member this.AddRow (r: RefactoredRow) =
+            member this.AddRow (r: SeatsRow) =
                 result {
                     let! added = this.rows.Add (r, sprintf "A row with id '%A' already exists" r.Id)
                     return

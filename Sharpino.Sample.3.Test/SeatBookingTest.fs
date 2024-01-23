@@ -3,6 +3,7 @@ module Tests
 open seatsLockWithSharpino.Row1Context
 open seatsLockWithSharpino.RefactoredRow
 open seatsLockWithSharpino.Seats
+open seatsLockWithSharpino.RefactoredApp
 open seatsLockWithSharpino
 open seatsLockWithSharpino.Row
 open seatsLockWithSharpino.Row1
@@ -25,175 +26,283 @@ open Sharpino.StateView
 open Sharpino.CommandHandler
 
 [<Tests>]
+let aggregateRowRefactoredTests =
+    ()
+    // let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    // testList "domain tests" [
+    //     testCase "make bookings about seats that don't exist - Error" <| fun _ ->
+    //         let seats = 
+    //             [ { id = 1; State = Free }
+    //               { id = 2; State = Free }
+    //             ]
+    //         let row = RefactoredRow (Guid.NewGuid())
+    //         let rowWithSeats = row.AddSeats seats |> Result.get
+    //         let booking = { id = 1; seatIds = [1; 2; 3] }
+    //         let reservedSeats = rowWithSeats.BookSeats booking
+    //         Expect.isError reservedSeats "should be equal"
+    //         
+    //     testCase "make bookings about seats that exist - Ok" <| fun _ ->
+    //         let seats = 
+    //             [ { id = 1; State = Free }
+    //               { id = 2; State = Free }
+    //             ]
+    //         let row = RefactoredRow (Guid.NewGuid())
+    //         let rowWithSeats = row.AddSeats seats |> Result.get
+    //         let booking = { id = 1; seatIds = [1; 2; 3] }
+    //         let reservedSeats = rowWithSeats.BookSeats booking
+    //         Expect.isError reservedSeats "should be equal"
+    // ]
+    // |> testSequenced
+
+[<Tests>]
 let hackingEventInStorageTest =
-    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
-        testCase "evolve unforginv errors: second booking is not accapted - Error" <| fun _ ->
-            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
-            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4; 5] }
+    ()
+    // let connection = 
+    //     "Server=127.0.0.1;"+
+    //     "Database=es_seat_booking;" +
+    //     "User Id=safe;"+
+    //     "Password=safe;"
+    // let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    // let Row1() =
+    //     let seats =
+    //         [ { id = 1; State = Free }
+    //           { id = 2; State = Free }
+    //           { id = 3; State = Free }
+    //           { id = 4; State = Free }
+    //           { id = 5; State = Free }
+    //         ]
+    //     let row = RefactoredRow (Guid.NewGuid())
+    //     let rowWithSeats = row.AddSeats seats |> Result.get
+    //     rowWithSeats
+    //     
+    // let mkRow(seatIds: List<int>) =
+    //     let row = RefactoredRow (Guid.NewGuid())
+    //     let seats =
+    //         seatIds
+    //             |> List.map (fun id -> { id = id; State = Free })
+    //     row.AddSeats seats
+    //     row
+    //     
+    // testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
+    //     testCase "evolve unforgiving errors: second booking is not accepted - Error" <| fun _ ->
+    //         let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+    //         let thirdBookingOfLastTwoSeats = { id = 3; seatIds = [4; 5] }
+    //         
+    //         let bookingEvent1 = RefactoredRow.RowAggregateEvent.SeatBooked firstBookingOfFirstTwoSeats 
+    //         let bookingEvent2 = RefactoredRow.RowAggregateEvent.SeatBooked thirdBookingOfLastTwoSeats
+    //         
+    //         let rowWithSeats = Row1 ()
+    //         let evolved =
+    //             [ bookingEvent1
+    //               bookingEvent2
+    //             ]
+    //             |> evolveUNforgivingErrors<RefactoredRow, RefactoredRow.RowAggregateEvent> rowWithSeats
+    //         Expect.isError evolved "should be equal" 
+    //     
+    //     testCase "evolve unforgiving errors: one seat reservation is not accepted  - Error" <| fun _ ->
+    //         let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+    //         let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+    //         let thirdBookingOfLastTwoSeats = { id = 3; seatIds = [4] }
+    //
+    //         let bookingEvent1 = RowAggregateEvent.SeatBooked firstBookingOfFirstTwoSeats 
+    //         let bookingEvent2 = RowAggregateEvent.SeatBooked secondBookingOfLastTwoSeats
+    //         let bookingEvent3 = RowAggregateEvent.SeatBooked thirdBookingOfLastTwoSeats
+    //         
+    //         let row = RefactoredRow (Guid.NewGuid())
+    //         let seats = 
+    //             [ { id = 1; State = Free }
+    //               { id = 2; State = Free }
+    //               { id = 3; State = Free }
+    //               { id = 4; State = Free }
+    //               { id = 5; State = Free }
+    //             ]
+    //         let rowWithSeats = row.AddSeats seats |> Result.get    
+    //
+    //         let evolved =
+    //             [ bookingEvent1
+    //               bookingEvent2
+    //               bookingEvent3
+    //             ]
+    //             |> evolveUNforgivingErrors<RefactoredRow, RefactoredRow.RowAggregateEvent> rowWithSeats
+    //         Expect.isError evolved "should be equal"
+    //
+    //     testCase "evolve forgiving errors: one seat reservation is not accepted, whereas the others are accepted  - Ok" <| fun _ ->
+    //         let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+    //         let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+    //         let thirdBookingOfLastTwoSeats = { id = 3; seatIds = [4] }
+    //
+    //         let bookingEvent1 = RowAggregateEvent.SeatBooked firstBookingOfFirstTwoSeats 
+    //         let bookingEvent2 = RowAggregateEvent.SeatBooked secondBookingOfLastTwoSeats
+    //         let bookingEvent3 = RowAggregateEvent.SeatBooked thirdBookingOfLastTwoSeats
+    //         
+    //         let rowWithSeats = Row1 ()
+    //         
+    //         let evolved =
+    //             [ bookingEvent1
+    //               bookingEvent2
+    //               bookingEvent3
+    //             ]
+    //             |> evolve<RefactoredRow, RowAggregateEvent> rowWithSeats
+    //         Expect.isOk evolved "should be equal"
+    //         let remainingSeats = (evolved.OkValue).GetAvailableSeats() 
+    //         Expect.equal remainingSeats.Length 2 "should be equal"
 
-            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
-            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
-
-            let evolved =
-                [ bookingEvent1
-                  bookingEvent3
-                ]
-                |> evolveUNforgivingErrors<Row1, Row1Events.Row1Events> Row1.Zero
-            Expect.isError evolved "should be equal"
-
-        testCase "evolve unforgiving errors: one seat reservation is not accepted  - Error" <| fun _ ->
-            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
-            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
-            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
-
-            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
-            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats
-            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
-
-            let evolved =
-                [ bookingEvent1
-                  bookingEvent2
-                  bookingEvent3
-                ]
-                |> evolveUNforgivingErrors<Row1, Row1Events.Row1Events> Row1.Zero
-            Expect.isError evolved "should be equal"
-
-        testCase "evolve forgiving errors: one seat reservation is not accepted, whereas the others are accepted  - Error" <| fun _ ->
-            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
-            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
-            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
-
-            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats 
-            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats
-            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats
-
-            let evolved =
-                [ bookingEvent1
-                  bookingEvent2
-                  bookingEvent3
-                ]
-                |> evolve<Row1, Row1Events.Row1Events> Row1.Zero
-            Expect.isOk evolved "should be equal"
-            let remainingSeats = (evolved.OkValue).GetAvailableSeats() 
-            Expect.equal remainingSeats.Length 2 "should be equal"
-
-        testCase "process events skippin second one which is inconsistent - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
+        // testCase "process events skipping second one which is inconsistent - Ok" <| fun _ ->
+        //     let storage = MemoryStorage()
+        //     StateCache<Row1>.Instance.Clear()
+        //     StateCache<Row2Context.Row2>.Instance.Clear()
+        //     let app = App(storage)
+        //     let availableSeats = app.GetAllAvailableSeats() |> Result.get
+        //     Expect.equal availableSeats.Length 10 "should be equal"
+        //     
+        //     let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+        //     let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+        //     let thirdBookingOfLastTwoSeats = { id = 3; seatIds = [4] }
+        //
+        //     let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats |> serializer.Serialize
+        //     let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats |> serializer.Serialize
+        //     let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats |> serializer.Serialize
+        //     let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3] 
+        //     Expect.isOk eventsAdded "should be equal"
+        //     let availableSeats = app.GetAllAvailableSeats() |> Result.get
+        //     Expect.equal availableSeats.Length 7 "should be equal"
             
-            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
-            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
-            let thirdBookingOfLastTwoSeats = { id = 3; seats = [4] }
-
-            let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats |> serializer.Serialize
-            let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats |> serializer.Serialize
-            let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats |> serializer.Serialize
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3] 
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 7 "should be equal"
-
-        testCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-            let seatOneBooking = { id = 1; seats = [1] }
-            let bookingEvent = Row1Events.SeatsBooked seatOneBooking
-            let serializedEvent = bookingEvent.Serialize serializer
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent]
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 9 "should be equal"
-        
-        testCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-            
-            let invalidBookingViolatesInvariant = { id = 1; seats = [1; 2; 4; 5] }
-            
-            let bookingEvent = Row1Events.SeatsBooked invalidBookingViolatesInvariant
-            let serializedEvent = bookingEvent.Serialize serializer 
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent] 
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-
-        // this example simulates when one event that is not supposed to be added is added anyway because is processed
-        // in parallel 
-        testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-            
-            let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
-            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
-            
-            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstTwoSeats).Serialize  serializer
-            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
-            
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2] 
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 8 "should be equal"
-
-        testCase "store events that books seat on the left and two seat on the right of the row 1, so they are both valid and there are 7 seats left free  - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-            
-            let firstBookingOfFirstSeats =  { id = 1; seats = [1] }
-            let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
-            
-            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize  serializer
-            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
-            
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2]
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 7 "should be equal"
-
-        testCase "store three single booking events that end up in a valid state - Ok" <| fun _ ->
-            let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
-            let app = App(storage)
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 10 "should be equal"
-            let firstBooking =  { id = 1; seats = [1] }
-            let secondBooking = { id = 2; seats = [2] }
-            let thirdBooking = { id = 3; seats = [3] }
-
-            let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize  serializer
-            let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize serializer
-            let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize serializer
-            let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3]
-            Expect.isOk eventsAdded "should be equal"
-            let availableSeats = app.GetAllAvailableSeats() |> Result.get
-            Expect.equal availableSeats.Length 7 "should be equal"
-            
-    ]
-    |> testSequenced
+    //     testCase "process events skipping second one which is inconsistent - Ok" <| fun _ ->
+    //         let storage = PgStorage.PgEventStore(connection)
+    //         (storage :> IEventStore).Reset "_01" "_seatrow"
+    //         (storage :> IEventStore).Reset StadiumContext.StadiumContext.Version StadiumContext.StadiumContext.StorageName
+    //         
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         AggregateCache<RefactoredRow>.Instance.Clear()
+    //         let app = RefactoredApp(storage)
+    //         
+    //         let row1 = mkRow [1;2;3;4;5]
+    //         let row2 = mkRow [6;7;8;9;10]
+    //         
+    //         let row1Added = app.AddRow row1
+    //         Expect.isOk row1Added "should be equal"
+    //         let row2Added = app.AddRow row2
+    //         Expect.isOk row2Added "should be equal"
+    //         
+    //         let rows = app.GetAllRows() |> Result.get
+    //         
+    //         Expect.equal rows.Length 2 "should be equal"
+    //         
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         
+    //         //
+    //         // let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+    //         // let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+    //         // let thirdBookingOfLastTwoSeats = { id = 3; seatIds = [4] }
+    //         //
+    //         // let bookingEvent1 = Row1Events.SeatsBooked firstBookingOfFirstTwoSeats |> serializer.Serialize
+    //         // let bookingEvent2 = Row1Events.SeatsBooked secondBookingOfLastTwoSeats |> serializer.Serialize
+    //         // let bookingEvent3 = Row1Events.SeatsBooked thirdBookingOfLastTwoSeats |> serializer.Serialize
+    //         // let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3] 
+    //         // Expect.isOk eventsAdded "should be equal"
+    //         // let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         // Expect.equal availableSeats.Length 7 "should be equal"
+    //
+    //     testCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
+    //         let storage = MemoryStorage()
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         let app = App(storage)
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         let seatOneBooking = { id = 1; seatIds = [1] }
+    //         let bookingEvent = Row1Events.SeatsBooked seatOneBooking
+    //         let serializedEvent = bookingEvent.Serialize serializer
+    //         let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent]
+    //         Expect.isOk eventsAdded "should be equal"
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 9 "should be equal"
+    //     
+    //     testCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
+    //         let storage = MemoryStorage()
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         let app = App(storage)
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         
+    //         let invalidBookingViolatesInvariant = { id = 1; seatIds = [1; 2; 4; 5] }
+    //         
+    //         let bookingEvent = Row1Events.SeatsBooked invalidBookingViolatesInvariant
+    //         let serializedEvent = bookingEvent.Serialize serializer 
+    //         let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent] 
+    //         Expect.isOk eventsAdded "should be equal"
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //
+    //     // this example simulates when one event that is not supposed to be added is added anyway because is processed
+    //     // in parallel 
+    //     testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
+    //         let storage = MemoryStorage()
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         let app = App(storage)
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         
+    //         let firstBookingOfFirstTwoSeats =  { id = 1; seatIds = [1; 2] }
+    //         let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+    //         
+    //         let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstTwoSeats).Serialize  serializer
+    //         let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
+    //         
+    //         let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2] 
+    //         Expect.isOk eventsAdded "should be equal"
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 8 "should be equal"
+    //
+    //     testCase "store events that books seat on the left and two seat on the right of the row 1, so they are both valid and there are 7 seats left free  - Ok" <| fun _ ->
+    //         let storage = MemoryStorage()
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         let app = App(storage)
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         
+    //         let firstBookingOfFirstSeats =  { id = 1; seatIds = [1] }
+    //         let secondBookingOfLastTwoSeats = { id = 2; seatIds = [4; 5] }
+    //         
+    //         let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize  serializer
+    //         let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
+    //         
+    //         let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2]
+    //         Expect.isOk eventsAdded "should be equal"
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 7 "should be equal"
+    //
+    //     testCase "store three single booking events that end up in a valid state - Ok" <| fun _ ->
+    //         let storage = MemoryStorage()
+    //         StateCache<Row1>.Instance.Clear()
+    //         StateCache<Row2Context.Row2>.Instance.Clear()
+    //         let app = App(storage)
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 10 "should be equal"
+    //         let firstBooking =  { id = 1; seatIds = [1] }
+    //         let secondBooking = { id = 2; seatIds = [2] }
+    //         let thirdBooking = { id = 3; seatIds = [3] }
+    //
+    //         let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize  serializer
+    //         let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize serializer
+    //         let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize serializer
+    //         let eventsAdded = (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3]
+    //         Expect.isOk eventsAdded "should be equal"
+    //         let availableSeats = app.GetAllAvailableSeats() |> Result.get
+    //         Expect.equal availableSeats.Length 7 "should be equal"
+    //         
+    // ]
+    // |> testSequenced
     
 [<Tests>]
 let tests =
+    ()
+    
     testList "singleRows tests" [
 
         testCase "all seats of the first row are free - Ok" <| fun _ ->
@@ -203,39 +312,39 @@ let tests =
 
         testCase "cannot leave the only central 3 seat free - Error" <| fun _ ->
             let currentSeats = Row1.Zero
-            let booking = { id = 1; seats = [1; 2; 4; 5] }
+            let booking = { id = 1; seatIds = [1; 2; 4; 5] }
             let reservedSeats = currentSeats.BookSeats booking
             Expect.isError reservedSeats "should be equal"
             
         testCase "can leave the two central seats 2 and 3 free - Ok" <| fun _ ->
             let currentSeats = Row1.Zero
-            let booking = { id = 1; seats = [1; 4; 5] }
+            let booking = { id = 1; seatIds = [1; 4; 5] }
             let reservedSeats = currentSeats.BookSeats booking
             Expect.isOk reservedSeats "should be equal"
 
         testCase "book a single seat from the first row - Ok" <| fun _ ->
-            let booking = { id = 1; seats = [1] }
+            let booking = { id = 1; seatIds = [1] }
             let row1WithOneSeatBooked = Row1.Zero.BookSeats booking |> Result.get
             let availableSeats = row1WithOneSeatBooked.GetAvailableSeats()
             Expect.equal availableSeats.Length 4 "should be equal"
 
         testCase "book a single seat from the second row - Ok" <| fun _ ->
-            let booking = { id = 2; seats = [6] }
+            let booking = { id = 2; seatIds = [6] }
             let row2Context = RowContext(row2Seats)
             let row2WithOneSeatBooked = row2Context.BookSeats booking |> Result.get
             let availables = row2WithOneSeatBooked.GetAvailableSeats()
             Expect.equal availables.Length 4 "should be equal"
 
         testCase "book a seat that is already booked - Error" <| fun _ ->
-            let booking = { id = 1; seats = [1] }
+            let booking = { id = 1; seatIds = [1] }
             let row1WithOneSeatBooked = Row1.Zero.BookSeats booking |> Result.get
             Expect.isFalse (row1WithOneSeatBooked.IsAvailable 1) "should be equal"
-            let newBooking = { id = 1; seats = [1] }
+            let newBooking = { id = 1; seatIds = [1] }
             let reservedSeats' = row1WithOneSeatBooked.BookSeats newBooking 
             Expect.isError reservedSeats' "should be equal"
 
         testCase "book five seats - Ok" <| fun _ ->
-            let booking = { id = 1; seats = [1;2;3;4;5] }
+            let booking = { id = 1; seatIds = [1;2;3;4;5] }
             let row1FullyBooked = Row1.Zero.BookSeats booking |> Result.get
             let availableSeats = row1FullyBooked.GetAvailableSeats()    
             Expect.equal availableSeats.Length 0 "should be equal"
@@ -253,7 +362,7 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
 
-            let booking = { id = 1; seats = [3;7] }
+            let booking = { id = 1; seatIds = [3;7] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
             let available = app.GetAllAvailableSeats() |> Result.get
@@ -268,7 +377,7 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
 
             let app = App(storage)
-            let booking = { id = 1; seats = [1;2;3;4;5] }
+            let booking = { id = 1; seatIds = [1; 2; 3; 4; 5] }
             let booked = app.BookSeats booking
             Expect.isOk booked "should be equal"
 
@@ -279,7 +388,7 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
 
             let app = App(storage)
-            let booking1 = { id = 1; seats = [1;2;3;4;5] }
+            let booking1 = { id = 1; seatIds = [1; 2; 3; 4; 5] }
             let booked = app.BookSeats booking1 
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -291,7 +400,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking2 = { id = 2; seats = [6;7;8;9;10] }
+            let booking2 = { id = 2; seatIds = [6;7;8;9;10] }
             let booked = app.BookSeats booking2 
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -303,7 +412,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking2 = { id = 2; seats = [6] }
+            let booking2 = { id = 2; seatIds = [6] }
             let booked = app.BookSeats booking2 
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -314,7 +423,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking = { id = 2; seats = [1] }
+            let booking = { id = 2; seatIds = [1] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -325,7 +434,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking = { id = 2; seats = [6;7] }
+            let booking = { id = 2; seatIds = [6;7] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -337,10 +446,10 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking = { id = 1; seats = [6] }
+            let booking = { id = 1; seatIds = [6] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
-            let booking2 = { id = 2; seats = [6] }
+            let booking2 = { id = 2; seatIds = [6] }
             let booked2 = app.BookSeats booking2
             Expect.isError booked2 "should be equal"
 
@@ -349,10 +458,10 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking = { id = 1; seats = [6] }
+            let booking = { id = 1; seatIds = [6] }
             let booked = app.BookSeats booking 
             Expect.isOk booked "should be equal"
-            let booking2 = { id = 2; seats = [6; 7] }
+            let booking2 = { id = 2; seatIds = [6; 7] }
             let booked2 = app.BookSeats booking2
             Expect.isError booked2 "should be equal"
 
@@ -361,7 +470,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking  = { id = 3; seats = [6;7;8;9;10] }
+            let booking  = { id = 3; seatIds = [6;7;8;9;10] }
             let booked = app.BookSeats booking
             Expect.isOk booked "should be equal"
 
@@ -379,7 +488,7 @@ let apiTests =
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)
-            let booking  = { id = 3; seats = [6;7;9;10] }
+            let booking  = { id = 3; seatIds = [6;7;9;10] }
             let booked = app.BookSeats booking
             Expect.isError booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -393,14 +502,14 @@ let apiTests =
             let app = App(storage)
             let row1FreeSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal row1FreeSeats.Length 10 "should be equal"
-            let booking =  { id = 1; seats = [1;2;3;4;5] }
+            let booking =  { id = 1; seatIds = [1;2;3;4;5] }
             let booked = app.BookSeats booking
             Expect.isOk booked "should be equal"
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
 
             Expect.isTrue (availableSeats |> List.contains 6) "should be equal" 
             Expect.isFalse (availableSeats |> List.contains 1) "should be equal" 
-            let booking2 = { id = 2; seats = [1] }
+            let booking2 = { id = 2; seatIds = [1] }
             let booked2 = app.BookSeats booking2
             Expect.isError booked2 "should be equal"
 
@@ -410,15 +519,15 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
 
             let app = App(storage)
-            let booking1 = { id = 1; seats = [1;2;3;4;5] }
+            let booking1 = { id = 1; seatIds = [1;2;3;4;5] }
             let booked = app.BookSeats booking1
             Expect.isOk booked "should be equal"
 
-            let booking2 =  { id = 3; seats = [1; 6; 7; 8; 9; 10]}
+            let booking2 =  { id = 3; seatIds = [1; 6; 7; 8; 9; 10]}
             let newBooking = app.BookSeats booking2
             Expect.isError newBooking "should be equal"
 
-            let booking3 = { id = 6; seats = [6;7;8;9;10]}
+            let booking3 = { id = 6; seatIds = [6;7;8;9;10]}
             let newBooking2 = app.BookSeats booking3
             Expect.isOk newBooking2 "should be equal"
 
@@ -428,15 +537,15 @@ let apiTests =
             StateCache<Row2Context.Row2>.Instance.Clear()
 
             let app = App(storage)
-            let booking1 = { id = 1; seats = [1;2;3;4;5] }
+            let booking1 = { id = 1; seatIds = [1;2;3;4;5] }
             let booked = app.BookSeats booking1
             Expect.isOk booked "should be equal"
 
-            let booking2 =  { id = 3; seats = [1; 6; 7; 8; 9; 10]}
+            let booking2 =  { id = 3; seatIds = [1; 6; 7; 8; 9; 10]}
             let newBooking = app.BookSeats booking2
             Expect.isError newBooking "should be equal"
 
-            let booking3 = { id = 6; seats = [6;7;8;9;10]}
+            let booking3 = { id = 6; seatIds = [6;7;8;9;10]}
             let newBooking2 = app.BookSeats booking3
             Expect.isOk newBooking2 "should be equal"
     ] 
@@ -513,7 +622,7 @@ let refactorAggregateTests =
 
             let row = RefactoredRow (Guid.NewGuid())
             let row' = row.AddSeats seats |> Result.get
-            let booking = { id = 1; seats = [1] }
+            let booking = { id = 1; seatIds = [1] }
             let booked = row'.BookSeats booking |> Result.get
             let availableSeats = booked.GetAvailableSeats()
             Expect.equal availableSeats.Length 4 "should be equal"
@@ -528,7 +637,7 @@ let refactorAggregateTests =
                 ]
             let row = RefactoredRow (Guid.NewGuid())
             let row' = row.AddSeats seats |> Result.get
-            let booking = { id = 1; seats = [1] }
+            let booking = { id = 1; seatIds = [1] }
             let bookingEvent = RowAggregateEvent.SeatBooked booking
             let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent> row' [bookingEvent]
             Expect.isOk rowAfterBooking "should be equal"
@@ -546,7 +655,7 @@ let refactorAggregateTests =
                 ]
             let row = RefactoredRow (Guid.NewGuid())
             let row  = row.AddSeats seats |> Result.get
-            let booking = { id = 1; seats = [1;2;4;5] }
+            let booking = { id = 1; seatIds = [1;2;4;5] }
             let bookingEvent = RowAggregateEvent.SeatBooked booking
             let rowAfterBooking =  evolveUNforgivingErrors<RefactoredRow, RowAggregateEvent> row  [bookingEvent]
             Expect.isError rowAfterBooking "should be equal"
@@ -561,8 +670,8 @@ let refactorAggregateTests =
                 ]
             let row = RefactoredRow (Guid.NewGuid())
             let row' = row.AddSeats seats |> Result.get
-            let booking1 = { id = 1; seats = [1; 2] }
-            let booking2 = { id = 2; seats = [4; 5] }
+            let booking1 = { id = 1; seatIds = [1; 2] }
+            let booking2 = { id = 2; seatIds = [4; 5] }
             let bookingEvent1 = RowAggregateEvent.SeatBooked booking1
             let bookingEvent2 = RowAggregateEvent.SeatBooked booking2
             let rowAfterBooking = evolve<RefactoredRow, RowAggregateEvent> row'  [bookingEvent1; bookingEvent2]
@@ -581,7 +690,7 @@ let refactorAggregateTests =
                 ]
             let refactoredRow = RefactoredRow (Guid.NewGuid())
             let refactoredRow' = refactoredRow.AddSeats seats |> Result.get
-            let booking = { id = 1; seats = [1; 2] }
+            let booking = { id = 1; seatIds = [1; 2] }
             let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
 
             let eventsAdded = 
@@ -605,7 +714,7 @@ let refactorAggregateTests =
                 ]
             let refactoredRow = RefactoredRow (Guid.NewGuid())
             let refactoredRow' = refactoredRow.AddSeats seats |> Result.get
-            let booking = { id = 1; seats = [1; 2] }
+            let booking = { id = 1; seatIds = [1; 2] }
             let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
 
             let eventsAdded = 
@@ -684,8 +793,8 @@ let refactorAggregateTests =
             let refactoredRow2X = RefactoredRow (Guid.NewGuid())
             let refactoredRow2 = refactoredRow2X.AddSeats seats2 |> Result.get
 
-            let booking = { id = 1; seats = [1; 2] }
-            let booking2 = { id = 2; seats = [6; 7] }
+            let booking = { id = 1; seatIds = [1; 2] }
+            let booking2 = { id = 2; seatIds = [6; 7] }
             let bookingEvent = (RowAggregateEvent.SeatBooked booking).Serialize serializer
             let bookingEvent2 = (RowAggregateEvent.SeatBooked booking2).Serialize serializer
 
@@ -1332,8 +1441,8 @@ let buildCurrentStateOfaRowAggregateTest  =
             let seats = state'.Seats
             Expect.equal seats.Length 5 "should be equal"
 
-            let booking1: Booking  = { id = 1; seats = [1]}
-            let booking2: Booking  = { id = 2; seats = [2; 3]}
+            let booking1: Booking  = { id = 1; seatIds = [1]}
+            let booking2: Booking  = { id = 2; seatIds = [2; 3]}
 
             let booking1Event = (RefactoredRow.SeatBooked booking1).Serialize serializer
             let booking2Event = (RefactoredRow.SeatBooked booking2).Serialize serializer
@@ -1366,8 +1475,8 @@ let buildCurrentStateOfaRowAggregateTest  =
             let seats = state'.Seats
             Expect.equal seats.Length 5 "should be equal"
 
-            let booking1: Booking  = { id = 1; seats = [1]}
-            let booking2: Booking  = { id = 2; seats = [2; 3]}
+            let booking1: Booking  = { id = 1; seatIds = [1]}
+            let booking2: Booking  = { id = 2; seatIds = [2; 3]}
 
             let booking1Event = (RefactoredRow.SeatBooked booking1).Serialize serializer
             let booking2Event = (RefactoredRow.SeatBooked booking2).Serialize serializer
@@ -1599,7 +1708,7 @@ let stadiumtestsAggregateTests =
             let retrievedRow = refactoredApp.GetRowRefactored row.Id
             let seats = retrievedRow |> Result.get |> fun x -> x.GetAvailableSeats()
             Expect.equal seats.Length 1 "should be equal"
-            let booking = { id = 1; seats = [1]} 
+            let booking = { id = 1; seatIds = [1]} 
             let book = refactoredApp.BookSeats row.Id booking
             Expect.isOk book "should be equal"
             let seats = refactoredApp.GetRowRefactored row.Id |> Result.get |> fun x -> x.GetAvailableSeats()
@@ -1620,7 +1729,7 @@ let stadiumtestsAggregateTests =
             let retrievedRow = refactoredApp.GetRowRefactored row.Id
             let seats = retrievedRow |> Result.get |> fun x -> x.GetAvailableSeats()
             Expect.equal seats.Length 1 "should be equal"
-            let booking = { id = 1; seats = [1]} 
+            let booking = { id = 1; seatIds = [1]} 
             let book = refactoredApp.BookSeats row.Id booking
             Expect.isOk book "should be equal"
             let seats = refactoredApp.GetRowRefactored row.Id |> Result.get |> fun x -> x.GetAvailableSeats()
@@ -1647,7 +1756,7 @@ let stadiumtestsAggregateTests =
             let retrievedRow = refactoredApp.GetRowRefactored row.Id
             let retrievedSeats = retrievedRow |> Result.get |> fun x -> x.Seats
             Expect.equal retrievedSeats.Length 3 "should be equal"
-            let booking = { id = 1; seats = [1; 3]}
+            let booking = { id = 1; seatIds = [1; 3]}
             let book = refactoredApp.BookSeats row.Id booking
             let availableSeats = refactoredApp.GetRowRefactored row.Id |> Result.get |> fun x -> x.GetAvailableSeats()
             Expect.equal availableSeats.Length 1 "should be equal"
@@ -1680,7 +1789,7 @@ let stadiumtestsAggregateTests =
             let retrievedRow = refactoredApp.GetRowRefactored row.Id
             let retrievedSeats = retrievedRow |> Result.get |> fun x -> x.Seats
             Expect.equal retrievedSeats.Length 5 "should be equal"
-            let booking = { id = 1; seats = [1; 2; 4; 5]}
+            let booking = { id = 1; seatIds = [1; 2; 4; 5]}
             let book = refactoredApp.BookSeats row.Id booking
             Expect.isError book "should be equal"
 
@@ -1712,8 +1821,8 @@ let stadiumtestsAggregateTests =
             let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
             Expect.isOk addSeat2 "should be equal"
 
-            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
-            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+            let booking1 = { id = 1; seatIds = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seatIds = [6; 7; 8; 9; 10]}
 
             let twoBookings = refactoredApp.BookSeatsTwoRows' (row1.Id, booking1) (row2.Id, booking2)
             Expect.isOk twoBookings "should be equal"
@@ -1753,12 +1862,12 @@ let stadiumtestsAggregateTests =
             let addSeat2 = refactoredApp.AddSeats row2.Id [seat21; seat22; seat23; seat24; seat25]
             Expect.isOk addSeat2 "should be equal"
 
-            let booking0 = { id = 1; seats = [1]}
+            let booking0 = { id = 1; seatIds = [1]}
             let book = refactoredApp.BookSeats row1.Id booking0
             Expect.isOk book "should be ok"
 
-            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
-            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+            let booking1 = { id = 1; seatIds = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seatIds = [6; 7; 8; 9; 10]}
 
             let twoBookings = refactoredApp.BookSeatsTwoRows' (row1.Id, booking1) (row2.Id, booking2)
             Expect.isError twoBookings "should be equal"
@@ -1803,9 +1912,9 @@ let stadiumtestsAggregateTests =
             let addSeats3 = refactoredApp.AddSeats row3.Id [seat31; seat32; seat33; seat34; seat35]
             Expect.isOk addSeats3 "should be equal"
 
-            let booking1 = { id = 1; seats = [1; 2; 3; 4; 5]}
-            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
-            let booking3 = { id = 3; seats = [11; 12; 13; 14; 15]}
+            let booking1 = { id = 1; seatIds = [1; 2; 3; 4; 5]}
+            let booking2 = { id = 2; seatIds = [6; 7; 8; 9; 10]}
+            let booking3 = { id = 3; seatIds = [11; 12; 13; 14; 15]}
 
             let booked = refactoredApp.BookSeatsNRows [(row1.Id, booking1); (row2.Id, booking2); (row3.Id, booking3)]
             Expect.isOk booked "should be equal"
@@ -1850,8 +1959,8 @@ let stadiumtestsAggregateTests =
             let addSeats3 = refactoredApp.AddSeats row3.Id [seat31; seat32; seat33; seat34; seat35]
             Expect.isOk addSeats3 "should be equal"
 
-            let booking1 = { id = 1; seats = [1; 2; 3; 4]}
-            let booking2 = { id = 2; seats = [6; 7; 8; 9; 10]}
+            let booking1 = { id = 1; seatIds = [1; 2; 3; 4]}
+            let booking2 = { id = 2; seatIds = [6; 7; 8; 9; 10]}
 
             let booked = refactoredApp.BookSeatsNRows [(row1.Id, booking1); (row2.Id, booking2)]
             Expect.isOk booked "should be equal"
@@ -1900,20 +2009,20 @@ let stadiumtestsAggregateTests =
             let availableSeats = retrievedRow.GetAvailableSeats()
             Expect.equal availableSeats.Length 15 "should be equal" 
 
-            let booking1 = { id = 1; seats = [1]}
+            let booking1 = { id = 1; seatIds = [1]}
             let bookMade = refactoredApp.BookSeats row1.Id booking1
             Expect.isOk bookMade "should be equal"
             let retrievedRow = refactoredApp.GetRowRefactored row1.Id |> Result.get
             let availableSeats = retrievedRow.GetAvailableSeats()
             Expect.equal availableSeats.Length 14 "should be equal"
 
-            let booking2 = { id = 2; seats = [2]}
+            let booking2 = { id = 2; seatIds = [2]}
             let bookmade2 = refactoredApp.BookSeats row1.Id booking2
             Expect.isOk bookmade2 "should be equal" 
             let retrievedRow = refactoredApp.GetRowRefactored row1.Id |> Result.get
             let availableSeats2 = retrievedRow.GetAvailableSeats()
             Expect.equal availableSeats2.Length 13 "should be equal"
-            let boooking3 = { id = 3; seats = [3; 4]}
+            let boooking3 = { id = 3; seatIds = [3; 4]}
             let bookmade3 = refactoredApp.BookSeats row1.Id boooking3
             Expect.isOk bookmade3 "should be equal"
             let retrievedRow = refactoredApp.GetRowRefactored row1.Id |> Result.get

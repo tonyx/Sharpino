@@ -174,7 +174,7 @@ module StateView =
                             (eventId, state, events)
                         return result
                     | Some (eventId, state) when eventId.IsNone ->
-                        let! events = storage.GetEventsAfterNoneRefactored 'A.Version 'A.StorageName id 
+                        let! events = storage.GetAggregateEvents 'A.Version 'A.StorageName id 
                         let result =
                             (eventId, state, events)
                         return result

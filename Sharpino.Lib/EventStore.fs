@@ -69,6 +69,7 @@ module Storage =
         abstract member TryGetAggregateSnapshotById: Version -> Name -> int ->Option<Option<EventId> * Json>
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
+        abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>
         abstract member SetInitialAggregateState: AggregateId -> Version -> Name -> Json ->  Result<unit, string>
         abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
 
@@ -81,7 +82,7 @@ module Storage =
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
 
         abstract member GetAggregateEventsAfterId: Version ->  Name -> Guid -> EventId-> Result< List< EventId * Json >, string >
-        abstract member GetEventsAfterNoneRefactored: Version ->  Name -> Guid -> Result< List< EventId * Json >, string >
+        abstract member GetAggregateEvents: Version ->  Name -> Guid -> Result< List< EventId * Json >, string >
 
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * Json >
         abstract member SetPublished: Version -> Name -> EventId -> KafkaOffset -> KafkaPartitionId ->  Result<unit, string>

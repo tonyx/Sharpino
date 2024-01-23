@@ -119,6 +119,7 @@ module PgStorage =
                     |> Async.AwaitTask
                     |> Async.RunSynchronously
                     |> Seq.tryHead
+                    
             member this.AddEvents version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
@@ -186,6 +187,7 @@ module PgStorage =
                                 ex.Message |> Error
                 }
                 |> Async.RunSynchronously
+                
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
@@ -208,6 +210,7 @@ module PgStorage =
                 | _ as ex -> 
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
+                    
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
@@ -254,6 +257,32 @@ module PgStorage =
                     |> Async.RunSynchronously
                 () |> Ok
 
+            member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
+                log.Debug "entered in setSnapshot"
+                let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@aggregate_id @event_id, @snapshot, @timestamp)" version name
+                let tryEvent = ((this :> IEventStore).TryGetEvent version eventId name)
+                match tryEvent with
+                | None -> Error (sprintf "event %d not found" eventId)
+                | Some event -> 
+                    let _ =
+                        connection
+                        |> Sql.connect
+                        |> Sql.executeTransactionAsync
+                            [
+                                command,
+                                    [
+                                        [
+                                            ("@aggregate_id", Sql.uuid aggregateId);
+                                            ("@event_id", Sql.int event.Id);
+                                            ("snapshot",  Sql.jsonb snapshot);
+                                            ("timestamp", Sql.timestamp event.Timestamp)
+                                        ]
+                                    ]
+                            ]
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    () |> Ok
+            
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -467,7 +496,7 @@ module PgStorage =
                 | _ as ex -> 
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
-            member this.GetEventsAfterNoneRefactored version name aggregateId: Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEvents version name aggregateId: Result<List<EventId * Json>,string> = 
                 log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
                 try 

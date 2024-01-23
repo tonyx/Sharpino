@@ -44,7 +44,7 @@ module StadiumContext =
             this
             |> serializer.Serialize
 
-        member this.AddRow (r: RefactoredRow) =
+        member this.AddRow (r: SeatsRow) =
             result {
                 let! stadium = this.stadium.AddRow r
                 return
@@ -82,7 +82,7 @@ module StadiumContext =
             this.stadium.GetRows ()
         
     type StadiumEvent =
-        | RowAdded of RefactoredRow
+        | RowAdded of SeatsRow
         | RowReferenceAdded of Guid
         | RowReferenceRemoved of Guid
             interface Event<StadiumContext> with
@@ -102,13 +102,13 @@ module StadiumContext =
             |> serializer.Serialize
 
     type StadiumCommand =
-        | AddRow of RefactoredRow
+        | AddRow of SeatsRow
         | AddRowReference of Guid
         | RemoveRowReference of Guid
             interface Command<StadiumContext, StadiumEvent> with
                 member this.Execute (x: StadiumContext) =
                     match this with
-                    | AddRow (row: RefactoredRow) ->
+                    | AddRow (row: SeatsRow) ->
                         x.AddRow row
                         |> Result.map (fun _ -> [StadiumEvent.RowAdded row])
                     | AddRowReference id ->

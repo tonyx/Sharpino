@@ -12,21 +12,21 @@ module Seats =
         } 
     type Booking =
         { id: Id
-          seats: List<Id>
+          seatIds: List<Id>
         }
         with member 
                 this.isEmpty() = 
-                    this.seats |> List.isEmpty
+                    this.seatIds |> List.isEmpty
     let toRow1 (booking: Booking) =
         {
             booking with
-                seats = booking.seats |> List.filter (fun seatId -> seatId >= 1 && seatId <= 5)
+                seatIds = booking.seatIds |> List.filter (fun seatId -> seatId >= 1 && seatId <= 5)
         }
 
     let toRow2 (booking: Booking) =
         {
             booking with
-                seats = booking.seats |> List.filter (fun seatId -> seatId >= 6 && seatId <= 10)
+                seatIds = booking.seatIds |> List.filter (fun seatId -> seatId >= 6 && seatId <= 10)
         }
 
 
