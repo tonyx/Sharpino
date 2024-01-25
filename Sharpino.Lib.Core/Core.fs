@@ -15,9 +15,6 @@ module Core =
     
     type Aggregate = 
         abstract member Id: Guid // use this one to be able to filter related events from same string
-        // abstract member Version: string
-        // abstract member StorageName: string
-
         abstract member Serialize: ISerializer -> string
         abstract member Lock: obj
     
@@ -37,9 +34,6 @@ module Core =
                 acc |> Result.bind (fun acc ->
                     e.Process acc
                 )
-                // match acc with
-                //     | Error err -> Error err 
-                //     | Ok h -> h |> e.Process
             ) (h |> Ok)
 
     [<TailCall>]

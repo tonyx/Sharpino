@@ -20,17 +20,17 @@ No sensible data (GDPR) support.
 - Example application with tests including Kafka subscriber.
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events
 - A specific practice to refactor context and test context refactoring
-- Send events to Apache Kafka 
 
 
 ## Projects
-
-__Sharpino.Lib__:
+__Sharpino.Lib.Core__:
 
 - [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the context. The latter just skip those events.
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, execute commands, and produces and store events using the __storage__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, execute commands, produces and store events using a storage that supports pub/sub model (only Eventstoredb at the moment).
+__Sharpino.Lib__:
+
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
+- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, executes commands, produces and stores events using an event store that supports pub/sub model ( Eventstoredb ).
 - [DbStorage.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory. 
 - [Cache.fs](Sharpino.Lib/Cache.fs). Cache current state.
 
@@ -38,10 +38,10 @@ __Sharpino.Lib__:
 __Sharpino.Sample__
 You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
 
-It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs)
+It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
 .
 
--  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) own a partition of the models and provide members to handle them. 
+-  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provides members to handle them. 
 
 - __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
 
@@ -89,13 +89,51 @@ dbmate -e up
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
 If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).
 
-## Tests on eventstoredb
-If eventstore is running on docker you may want to run tests on it as follows:
-by making the eventstore tests not pending (search for "eventstore tests" and change ptestList to ftestList)
-or by uncommenting the following line on the file [MultiversionsTests.fs](Sharpino.Sample.Test/MultiversionsTests.fs):
+## Tests on eventstoredb. EventStroreDb is not mantained that much at the moment
+
+The following line needs to stay commented out.
+
 ```Fsharp
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 ```
+
+# Sample application 2 is a problem of booking seats in two rows of five seats:
+1. Booking seats among multiple rows (where those rows are aggregates) in an event-sourcing way.
+2. Booking seats in a single row by two concurrent commands that singularly do not violate any invariant rule and yet the final state is potentially invalid.
+
+## Problem 1
+
+I have two rows of seats related to two different streams of events. Each row has 5 seats. I want to book a seat in row 1 and a seat in row 2. I want to do this in a single transaction so that if just one of the claimed seats is already booked then the entire multiple-row transaction fails and no seats are booked at all.
+### Questions:
+1) can you do this in a transactional way?
+   Answer: yes because in-memory and Postgres event-store implementation as single sources of truth are transactional. The runTwoCommands in the Command Handler is transactional.
+2) Can it handle more rows?
+   up to tre. (runThreeCommands in the Command Handler)
+3) Is feasible to scale to thousands of seats/hundreds of rows (even though we know that few rows will be actually involved in a single booking operation)?
+   Not yet.
+3) Is Apache Kafka integration included in this example?
+   No.
+4) Is EventStoreDb integration included in this example?
+   Not yet (it will show the "undo" feature of commands to do rollback commands on multiple streams of events).
+
+## Problem 2
+There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row.
+This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
+
+### Questions:
+1) can you just use a lock on any row to solve this problem?
+   Answer: yes by setting PessimisticLocking to true in appSettings.json that will force single-threaded execution of any command involving the same "aggregate"
+2) can you solve this problem without using locks?
+   Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However they will be skipped by the "evolve" function anyway.
+3) Where are more info about how to test this behavior?
+   Answer: See the testList called hackingEventInStorageTest.
+   It will simply add invalid events and show that the current state is not affected by them.
+4) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
+   Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
+
+
+
+
 
 __Faq__: 
 - Why "Sharpino"? 
@@ -109,12 +147,27 @@ __Faq__:
         - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
-    - add the nuget package Sharpino to your project (current version 1.0.1)
+    - add the nuget package Sharpino to your project (current version 1.4.1)
     - note: on my side, when I added Sharpino as a library into a web app, then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## News: 
+- Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample3 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
+
+- Booking seat example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
+- Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync events).
+- Version 1.4.6: fix bug in Postgres AddEvents 
+- Version 1.4.5: Upgrade to net8.0
+- Info: in adding new features I may risk breaking backward compatibility. At the moment I am handling in this simple way: if I change the signature of a function I add a new function with the new signature and I deprecate the old one. I will keep the old one for a while. I will remove it only if I am sure that nobody is using it.
+- Version: 1.4.4 Postgres tables of events need a new column: kafkaoffset of type BigInt. It is used to store the offset/position of the event in the Kafka topic.
+See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
+(Error handling can be improved in writing/reading Kafka event info there).
+Those data will be used in the future to feed the "kafkaViewer" on initialization.
+
+- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer. The one for Broker based is coming soon)
+- [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
+- Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
 - Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: the new Repository interface (and implementation) is __not compatible__ with the one introduced in Version 1.3.8!
 - Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities.
@@ -126,7 +179,10 @@ __Faq__:
     "SharpinoConfig": {
         "PessimisticLock": false // or true
     }
-}
+
 ``` 
 
-More documentation [(Sharpino gitbook)](https://tonyx.github.io)
+More documentation (a little bit  out of date. Will fix it soon) [(Sharpino gitbook)](https://tonyx.github.io)
+
+<a href="https://www.buymeacoffee.com/Now7pmK92m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
