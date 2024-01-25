@@ -1,7 +1,7 @@
 
-namespace Tonyx.seatsLockWithSharpino
-open Tonyx.seatsLockWithSharpino.Stadium
-open Tonyx.seatsLockWithSharpino.StadiumEvents
+namespace Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Stadium
+open Tonyx.SeatsBooking.StadiumEvents
 open FsToolkit.ErrorHandling
 open Sharpino.Core
 open System

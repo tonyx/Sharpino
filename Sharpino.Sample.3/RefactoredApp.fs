@@ -1,13 +1,13 @@
 
-namespace Tonyx.seatsLockWithSharpino
-open Tonyx.seatsLockWithSharpino.Seats
-open Tonyx.seatsLockWithSharpino.RefactoredRow
-open Tonyx.seatsLockWithSharpino.Stadium
-open Tonyx.seatsLockWithSharpino.StadiumEvents
-open Tonyx.seatsLockWithSharpino.StadiumCommands
-open Tonyx.seatsLockWithSharpino.RowAggregateEvent
-open Tonyx.seatsLockWithSharpino.RowAggregateCommand
-open Tonyx.seatsLockWithSharpino
+namespace Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Seats
+open Tonyx.SeatsBooking.RefactoredRow
+open Tonyx.SeatsBooking.Stadium
+open Tonyx.SeatsBooking.StadiumEvents
+open Tonyx.SeatsBooking.StadiumCommands
+open Tonyx.SeatsBooking.RowAggregateEvent
+open Tonyx.SeatsBooking.RowAggregateCommand
+open Tonyx.SeatsBooking
 open Sharpino.CommandHandler
 open System
 open FsToolkit.ErrorHandling

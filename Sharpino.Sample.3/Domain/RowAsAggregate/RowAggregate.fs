@@ -1,12 +1,12 @@
-namespace Tonyx.seatsLockWithSharpino
+namespace Tonyx.SeatsBooking
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open Sharpino.Lib.Core.Commons
 open System
-open Tonyx.seatsLockWithSharpino
-open Tonyx.seatsLockWithSharpino.Seats
+open Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Seats
 module RefactoredRow =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
 

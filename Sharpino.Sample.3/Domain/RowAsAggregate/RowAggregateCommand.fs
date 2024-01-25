@@ -1,11 +1,11 @@
-namespace Tonyx.seatsLockWithSharpino
+namespace Tonyx.SeatsBooking
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open System
-open Tonyx.seatsLockWithSharpino.RefactoredRow
-open Tonyx.seatsLockWithSharpino.RowAggregateEvent
+open Tonyx.SeatsBooking.RefactoredRow
+open Tonyx.SeatsBooking.RowAggregateEvent
 
 module RowAggregateCommand =
     type RowAggregateCommand =

@@ -1,5 +1,5 @@
 
-namespace Tonyx.seatsLockWithSharpino
+namespace Tonyx.SeatsBooking
 
 module Seats =
     type Id = int

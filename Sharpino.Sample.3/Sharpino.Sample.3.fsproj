@@ -9,7 +9,7 @@
   <ItemGroup>
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Seats.fs" />
-    <Compile Include="Domain/Row.fs" />
+<!--    <Compile Include="Domain/Row.fs" />-->
     <Compile Include="Domain/RowAsAggregate/RowAggregate.fs" />
     <Compile Include="Domain/RowAsAggregate/RowAggregateEvent.fs" />
     <Compile Include="Domain/RowAsAggregate/RowAggregateCommand.fs" />

@@ -1,6 +1,6 @@
 
 // namespace seatsLockWithSharpino
-namespace Tonyx.seatsLockWithSharpino
+namespace Tonyx.SeatsBooking
 
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
