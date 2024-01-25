@@ -17,29 +17,30 @@ module PgStorage =
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgEventStore(connection: string) =
+        member this.Reset version name = 
+            if (Conf.isTestEnv) then
+                try
+                    // additional precautions to avoid deleting data in non dev/test env 
+                    // is configuring the db user rights in prod accordingly (only read and write/append)
+                    let res1 =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
+                        |> Sql.executeNonQuery
+                    let res2 =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query (sprintf "DELETE from events%s%s" version name)
+                        |> Sql.executeNonQuery
+                    ()
+                with 
+                    | _ as e -> failwith (e.ToString())
+            else
+                failwith "operation allowed only in test db"
         interface IEventStore with
             // only test db should be able to reset
-            member this.Reset(version: Version) (name: Name): unit = 
-                if (Conf.isTestEnv) then
-                    try
-                        // additional precautions to avoid deleting data in non dev/test env 
-                        // is configuring the db user rights in prod accordingly (only read and write/append)
-                        let res1 =
-                            connection
-                            |> Sql.connect
-                            |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                            |> Sql.executeNonQuery
-                        let res2 =
-                            connection
-                            |> Sql.connect
-                            |> Sql.query (sprintf "DELETE from events%s%s" version name)
-                            |> Sql.executeNonQuery
-                        ()
-                    with 
-                        | _ as e -> failwith (e.ToString())
-                else
-                    failwith "operation allowed only in test db"
-
+            member this.Reset(version: Version) (name: Name): unit =
+                this.Reset version name
             member this.TryGetLastSnapshot version name =
                 log.Debug "TryGetLastSnapshot"
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
@@ -337,7 +338,7 @@ module PgStorage =
                     |> Seq.tryHead
                 res
 
-            member this.TryGetAggregateSnapshotById version name id =
+            member this.TryGetAggregateSnapshotById version name aggregateId id =
                 log.Debug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
                 let res =

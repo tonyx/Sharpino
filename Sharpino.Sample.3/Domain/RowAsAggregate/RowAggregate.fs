@@ -26,35 +26,35 @@ module RefactoredRow =
 
         member this.IsAvailable (seatId: Seats.Id) =
             this.Seats
-            |> List.filter (fun seat -> seat.id = seatId)
+            |> List.filter (fun seat -> seat.Id = seatId)
             |> List.exists (fun seat -> seat.State = Seats.SeatState.Free)
             
         member this.BookSeats (booking: Booking) =
             result {
                 let! checkSeatsAreFree = 
                     seats
-                    |> List.filter (fun seat -> booking.seatIds |> List.contains seat.id)
+                    |> List.filter (fun seat -> booking.SeatIds |> List.contains seat.Id)
                     |> List.forall (fun seat -> seat.State = SeatState.Free)
                     |> boolToResult "Seat already booked"
                         
                 let! checkSeatsExist =
-                    let thisSeatsIds = this.Seats |> List.map _.id
-                    booking.seatIds
+                    let thisSeatsIds = this.Seats |> List.map _.Id
+                    booking.SeatIds
                     |> List.forall (fun seatId -> thisSeatsIds |> List.contains seatId)
                     |> boolToResult "Seat not found"
                 
                 let claimedSeats = 
                     seats
-                    |> List.filter (fun seat -> booking.seatIds |> List.contains seat.id)
+                    |> List.filter (fun seat -> booking.SeatIds |> List.contains seat.Id)
                     |> List.map (fun seat -> { seat with State = Seats.SeatState.Booked })
 
                 let unclaimedSeats = 
                     seats
-                    |> List.filter (fun seat -> not (booking.seatIds |> List.contains seat.id))
+                    |> List.filter (fun seat -> not (booking.SeatIds |> List.contains seat.Id))
 
                 let potentialNewRowState = 
                     claimedSeats @ unclaimedSeats
-                    |> List.sortBy _.id
+                    |> List.sortBy _.Id
                 
                 // it just checks that the middle one can't be free, but
                 // actually it was supposed to be "no single seat left" anywhere A.F.A.I.K.
@@ -66,7 +66,7 @@ module RefactoredRow =
                     potentialNewRowState.[3].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[4].State = Seats.SeatState.Booked)
                     |> not
-                    |> boolToResult "error: can't leave a single seat free"
+                    |> boolToResult "error: can't leave a single seat free in the middle"
                 let! checkInvariant = theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed
                 return
                     SeatsRow (potentialNewRowState, id)
@@ -75,9 +75,9 @@ module RefactoredRow =
             result {
                 let! notAlreadyExists =
                     seats
-                    |> List.tryFind (fun x -> x.id = seat.id)
+                    |> List.tryFind (fun x -> x.Id = seat.Id)
                     |> Option.isNone
-                    |> boolToResult (sprintf "Seat with id '%d' already exists" seat.id)
+                    |> boolToResult (sprintf "Seat with id '%d' already exists" seat.Id)
                 let newSeats = seat :: seats
                 return SeatsRow (newSeats, id)
             }
@@ -88,7 +88,7 @@ module RefactoredRow =
         member this.GetAvailableSeats () =
             seats
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
-            |> List.map _.id
+            |> List.map _.Id
 
         static member Deserialize (serializer: ISerializer, json: string) =
             serializer.Deserialize<SeatsRow> json

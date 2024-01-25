@@ -49,13 +49,11 @@ module Core =
         // latest valid value of the accumulator
         | Error err, _::es -> 
             log.Info (sprintf "warning 1: %A" err)
-            printf "warning 1: %A" err
             evolveSkippingErrors (guard |> Ok) es guard
         // if the accumulator is error and the list is empty then we are at the end, and so we just
         // get the guard as the latest valid value of the accumulator
         | Error err, [] -> 
             log.Info (sprintf "warning 2: %An" err)
-            printf "warning 2: %A\n" err
             guard |> Ok
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
@@ -64,7 +62,6 @@ module Core =
             match newGuard with
             | Error err -> 
                 log.Info (sprintf "warning 3: %A" err)
-                printf "warning 3: %A\n" err
                 evolveSkippingErrors (guard |> Ok) es guard
             | Ok h' ->
                 evolveSkippingErrors (h' |> Ok) es h'

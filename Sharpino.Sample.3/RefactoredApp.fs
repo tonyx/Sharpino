@@ -1,12 +1,11 @@
 
 namespace seatsLockWithSharpino 
 open seatsLockWithSharpino.RefactoredRow
-open seatsLockWithSharpino.StadiumContext
+open seatsLockWithSharpino.Stadium
+open seatsLockWithSharpino.StadiumEvents
+open seatsLockWithSharpino.StadiumCommands
 open Sharpino.CommandHandler
 open System
-open Farmer
-open FSharpPlus.Operators
-open FSharpPlus
 open FsToolkit.ErrorHandling
 
 module RefactoredApp =
@@ -20,21 +19,23 @@ module RefactoredApp =
         }
     type StadiumBookingSystem(storage: IEventStore, eventBroker: IEventBroker) =
         let stadiumStateViewer =
-            getStorageFreshStateViewer<StadiumContext, StadiumEvent > storage
+            getStorageFreshStateViewer<Stadium, StadiumEvent > storage
 
         let rowStateViewer =    
             getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage
 
         new(storage: IEventStore) = StadiumBookingSystem(storage, doNothingBroker)
-
-        member this.AddRow (row: SeatsRow) =
+        
+        member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {
-                let serializedRow = (row :> Aggregate).Serialize serializer
+                // todo: undo mechanism or similar to remove the initialsnapshot if the addrow fails
+                // or accept there will be potentially rows with no reference (not hurting anything)
+                let seatsRow = SeatsRow rowId
+                let initSnapshot = seatsRow.Serialize serializer
                 let! stored =
-                    storage.SetInitialAggregateState (row.Id) SeatsRow.Version SeatsRow.StorageName serializedRow
-                    
-                let addRow = StadiumCommand.AddRow row
-                let! result = runCommand<StadiumContext.StadiumContext, StadiumContext.StadiumEvent> storage eventBroker stadiumStateViewer addRow 
+                    storage.SetInitialAggregateState rowId SeatsRow.Version SeatsRow.StorageName initSnapshot
+                let addRowReference = StadiumCommand.AddRowReference rowId
+                let! result = runCommand<Stadium, StadiumEvent> storage eventBroker stadiumStateViewer addRowReference
                 return result
             }
 
@@ -44,24 +45,6 @@ module RefactoredApp =
                 let! result = 
                     runAggregateCommand<SeatsRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) bookSeat
-                return result
-            }
-
-        member this.BookSeatsTwoRows' (rowId1: Guid, booking1: Booking) (rowid2: Guid, booking2: Booking) =
-            result {
-                let bookSeats = 
-                    [ (BookSeats booking1):> Command<SeatsRow, RowAggregateEvent>
-                      (BookSeats booking2):> Command<SeatsRow, RowAggregateEvent> ]
-                let! result = 
-                    runNAggregateCommands<SeatsRow, RowAggregateEvent> 
-                        [rowId1; rowid2] 
-                        storage 
-                        eventBroker 
-                        [
-                            (fun () -> rowStateViewer rowId1)
-                            (fun () -> rowStateViewer rowid2)
-                        ] 
-                        bookSeats
                 return result
             }
 
@@ -80,41 +63,18 @@ module RefactoredApp =
                 return result
             }
 
-        member this.GetRowRefactored id =
+        member this.GetRow id =
             result {
                 let! (_, rowState, _, _) = rowStateViewer id
                 return rowState
             }
-        member this.AddRowRefactored (row: SeatsRow) =
-            let alreadyExists = 
-                rowStateViewer row.Id
-            result {
-                let! notAlreadyExists = 
-                    rowStateViewer row.Id
-                    |> Result.toOption
-                    |> Option.isSome
-                    |> not
-                    |> boolToResult (sprintf "A row with id '%A' already exists" row.Id)
-
-                let serializedRow = row.Serialize serializer
-                // todo: shold use an undo mechanism here (unset the snapshot if the referenceadded fails)
-                let! rowAdd =
-                    storage.SetInitialAggregateState (row.Id) SeatsRow.Version SeatsRow.StorageName serializedRow
-                let! referenceAdded = 
-                    runCommand<StadiumContext.StadiumContext, StadiumContext.StadiumEvent> storage eventBroker stadiumStateViewer (StadiumCommand.AddRowReference row.Id)
-                return referenceAdded
-            }
-
-        member this.GetRow (id: Guid) =
-            result {
-                let! (_, stadiumState, _, _) = stadiumStateViewer()
-                let! row = stadiumState.GetRow id
-                return row
-            }
 
         member this.AddSeat (rowId: Guid) (seat: Seat) =
             result {
-                let addSeat = RowAggregateCommand.AddSeat seat
+                let! rowIdMustBeUnassigned =
+                    seat.RowId.IsNone |> boolToResult "Seat already assigned to a row"
+                let addSeat =
+                    RowAggregateCommand.AddSeat {seat with RowId = rowId |> Some}
                 let! result = 
                     runAggregateCommand<SeatsRow, RowAggregateEvent> 
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
@@ -130,33 +90,8 @@ module RefactoredApp =
                 return result
             }
 
-        // member this.GetAllRows() = 
-        //     result {
-        //         let! (_, stadiumState, _, _) = stadiumStateViewer ()
-        //         return stadiumState.GetRows()
-        //     }
-            
-        // member this.GetAllAvailableSeats() =
-        //     result {
-        //         let! rows = this.GetAllRows()
-        //         let availableSeats =
-        //             rows
-        //             |> List.map (fun row -> row.GetAvailableSeats())
-        //             |> List.concat
-        //         return availableSeats     
-        //     }
-
         member this.GetAllRowReferences() = 
             result {
                 let! (_, stadiumState, _, _) = stadiumStateViewer ()
                 return stadiumState.GetRowReferences ()
-            }
-
-        member this.AddSeatToRow (rowId: Guid) (seat: Seat) =
-            result { 
-                let addSeat = RowAggregateCommand.AddSeat seat
-                let! result = 
-                    runAggregateCommand<SeatsRow, RowAggregateEvent> 
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
-                return result
             }

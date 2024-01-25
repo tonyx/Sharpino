@@ -46,12 +46,13 @@ module StateView =
         when 'A :> Aggregate and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
+        (aggregateId: Guid)
         (id: int)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
         =
-            let snapshot = storage.TryGetAggregateSnapshotById version storageName id
+            let snapshot = storage.TryGetAggregateSnapshotById version storageName aggregateId id
             match snapshot |>> snd with
             | Some snapshot' ->
                 let deserSnapshot = 'A.Deserialize (serializer, snapshot')
@@ -120,7 +121,7 @@ module StateView =
                                 return (lastCacheEventId |> Some, state) |> Some 
                             else
                                 let! (eventId, snapshot) = 
-                                    tryGetAggregateSnapshot<'A> lastSnapshotId version storageName storage 
+                                    tryGetAggregateSnapshot<'A> aggregateId lastSnapshotId version storageName storage 
 
                                 return (eventId , snapshot) |> Some 
                     }
@@ -161,9 +162,12 @@ module StateView =
         (storage: IEventStore)
         = 
         log.Debug "snapIdStateAndEventsRefactored"
+        // printf "snapIdStateAndEventsRefactored - 100\n"
         async {
+            // printf "snapIdStateAndEventsRefactored - 200\n"
             return
                 result {
+                    // printf "snapIdStateAndEventsRefactored - 300\n"
                     let! eventIdAndState = getLastSnapshotOrStateCacheRefactoredRefactored<'A> id 'A.Version 'A.StorageName storage
                     match eventIdAndState with
                     | None -> 
@@ -226,18 +230,24 @@ module StateView =
         >
         (id: Guid)
         (storage: IEventStore)
-        : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
+        : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
+            // printf "getAggregateFreshStateXXXXX -- 100\n"
             log.Debug "getStateRefactored"
             let computeNewState =
                 fun () ->
+                    // printf "getAggregateFreshStatexXX -- 250\n"
                     result { 
+                        // printf "getAggregateFreshState -- 200\n"
                         let! (_, state, events) = snapEventIdStateAndEventsRefactoredRefactored<'A, 'E> id storage // zero
+                        // printf "getAggregateFreshState -- 300\n"
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
+                        // printf "getAggregateFreshState -- 400\n"
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
+                        // printf "getAggregateFreshState -- 500\n"
                         return newState
                     }
             let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName  id |> Option.defaultValue (0, None, None)

@@ -10,20 +10,12 @@
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Seats.fs" />
     <Compile Include="Domain/Row.fs" />
-    <Compile Include="Domain/Row1/Row1.fs" />
-    <Compile Include="Domain/Row1/Row1Context.fs" />
-    <Compile Include="Domain/Row1/Events.fs" />
-    <Compile Include="Domain/Row1/Commands.fs" />
-    <Compile Include="Domain/Row2/Row2.fs" />
-    <Compile Include="Domain/Row2/Row2Context.fs" />
-    <Compile Include="Domain/Row2/Events.fs" />
-    <Compile Include="Domain/Row2/Commands.fs" />
     <Compile Include="Domain/RowAsAggregate/RowAggregate.fs" />
     <Compile Include="Domain/RowAsAggregate/RowAggregateEvent.fs" />
     <Compile Include="Domain/RowAsAggregate/RowAggregateCommand.fs" />
-    <Compile Include="Context/Stadium.fs" />
-    <Compile Include="Context/StadiumContext.fs" />
-    <Compile Include="App.fs" />
+    <Compile Include="Stadium/Stadium.fs" />
+    <Compile Include="Stadium/Events.fs" />
+    <Compile Include="Stadium/Commands.fs" />
     <Compile Include="RefactoredApp.fs" />
     <Content Include="appSettings.json" />
     <Content Include="README.txt" />

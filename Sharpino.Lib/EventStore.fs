@@ -33,6 +33,14 @@ module Storage =
         TimeStamp: System.DateTime
         EventId: int
     }
+    
+    type StorageAggregateSnapshot = {
+        Id: int
+        AggregateId: Guid
+        Snapshot: Json
+        TimeStamp: System.DateTime
+        EventId: Option<int>
+    }
 
     type StorageEvent<'E> =
         {
@@ -57,16 +65,15 @@ module Storage =
         abstract member Reset: Version -> Name -> unit
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
-        // abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset>>
         abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
         abstract member TryGetLastEventIdByAggregateIdWithKafkaOffSet: Version -> Name -> AggregateId -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
-        // toto: the following two can be unified
+        // todo: the following two can be unified
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
         abstract member TryGetLastSnapshotIdByAggregateId: Version -> Name -> Guid -> Option<Option<EventId> * SnapshotId>
 
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
-        abstract member TryGetAggregateSnapshotById: Version -> Name -> int ->Option<Option<EventId> * Json>
+        abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> int ->Option<Option<EventId> * Json>
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>

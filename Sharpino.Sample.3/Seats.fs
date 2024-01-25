@@ -7,26 +7,27 @@ module Seats =
         | Booked
         | Free
     type Seat =
-        { id: Id
-          State: SeatState 
+        { Id: Id
+          State: SeatState
+          RowId: Option<System.Guid>
         } 
     type Booking =
-        { id: Id
-          seatIds: List<Id>
+        { Id: Id
+          SeatIds: List<Id>
         }
         with member 
                 this.isEmpty() = 
-                    this.seatIds |> List.isEmpty
+                    this.SeatIds |> List.isEmpty
     let toRow1 (booking: Booking) =
         {
             booking with
-                seatIds = booking.seatIds |> List.filter (fun seatId -> seatId >= 1 && seatId <= 5)
+                SeatIds = booking.SeatIds |> List.filter (fun seatId -> seatId >= 1 && seatId <= 5)
         }
 
     let toRow2 (booking: Booking) =
         {
             booking with
-                seatIds = booking.seatIds |> List.filter (fun seatId -> seatId >= 6 && seatId <= 10)
+                SeatIds = booking.SeatIds |> List.filter (fun seatId -> seatId >= 6 && seatId <= 10)
         }
 
 
