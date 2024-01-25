@@ -152,6 +152,12 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
+## Roadmap:
+- complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
+- add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
+- select the type of lock per aggregate and context
+- given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
+
 ## News: 
 - Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample3 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
 
