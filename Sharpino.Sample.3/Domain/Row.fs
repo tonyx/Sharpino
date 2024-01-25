@@ -1,6 +1,6 @@
 
-namespace seatsLockWithSharpino
-open seatsLockWithSharpino.Seats
+namespace Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino
 open Sharpino.Utils
 open Sharpino
 open FsToolkit.ErrorHandling

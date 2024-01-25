@@ -1,12 +1,12 @@
-namespace seatsLockWithSharpino
-// module Sharpino.Sample._3.Domain.RowAsAggregate.RowAggregate
+namespace Tonyx.seatsLockWithSharpino
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open Sharpino.Lib.Core.Commons
 open System
-open Seats
+open Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino.Seats
 module RefactoredRow =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
 
@@ -103,41 +103,3 @@ module RefactoredRow =
             member this.Lock = this
         interface Entity with
             member this.Id = this.Id
-
-    type RowAggregateEvent =        
-        | SeatBooked of Seats.Booking  
-        | SeatAdded of Seats.Seat
-        | SeatsAdded of Seats.Seat list
-            interface Event<SeatsRow> with
-                member this.Process (x: SeatsRow) =
-                    match this with
-                    | SeatBooked booking ->
-                        x.BookSeats booking
-                    | SeatAdded seat ->
-                        x.AddSeat seat
-                    | SeatsAdded seats ->
-                        x.AddSeats seats
-        member this.Serialize(serializer: ISerializer) =
-            this
-            |> serializer.Serialize
-        static member Deserialize(serializer: ISerializer, x: string) =
-            serializer.Deserialize<RowAggregateEvent> x
-
-    type RowAggregateCommand =
-        | BookSeats of Seats.Booking
-        | AddSeat of Seats.Seat
-        | AddSeats of List<Seats.Seat>
-            interface Command<SeatsRow, RowAggregateEvent> with
-                member this.Execute (x: SeatsRow) =
-                    match this with
-                    | BookSeats booking ->
-                        x.BookSeats booking
-                        |> Result.map (fun _ -> [SeatBooked booking])
-                    | AddSeat seat ->
-                        x.AddSeat seat
-                        |> Result.map (fun _ -> [SeatAdded seat])
-                    | AddSeats seats ->
-                        x.AddSeats seats
-                        |> Result.map (fun _ -> [SeatsAdded seats])
-                member this.Undoer =
-                    None

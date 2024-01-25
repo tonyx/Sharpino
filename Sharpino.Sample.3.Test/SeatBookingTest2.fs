@@ -1,12 +1,13 @@
 
 module SeatBookingTests2
 
-open seatsLockWithSharpino.RefactoredRow
-open seatsLockWithSharpino.Seats
-open seatsLockWithSharpino.RefactoredApp
-open seatsLockWithSharpino.Stadium
-open seatsLockWithSharpino.StadiumEvents
-open seatsLockWithSharpino.StadiumCommands
+open Tonyx.seatsLockWithSharpino.Seats
+open Tonyx.seatsLockWithSharpino.RefactoredRow
+open Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino.RefactoredApp
+open Tonyx.seatsLockWithSharpino.Stadium
+open Tonyx.seatsLockWithSharpino.StadiumEvents
+open Tonyx.seatsLockWithSharpino.RowAggregateEvent
 open Expecto
 open Sharpino
 open Sharpino.PgStorage

@@ -1,23 +1,29 @@
-namespace seatsLockWithSharpino
+namespace Tonyx.seatsLockWithSharpino
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open System
-open Seats
-open seatsLockWithSharpino.RefactoredRow
-open seatsLockWithSharpino.RowAggregateEvent
+open Tonyx.seatsLockWithSharpino.RefactoredRow
+open Tonyx.seatsLockWithSharpino.RowAggregateEvent
 
 module RowAggregateCommand =
-    ()
-    // type RowAggregateCommand =
-    //     | BookSeats of Seats.Booking
-    //         interface Command<RefactoredRow, RowAggregateEvent> with
-    //             member this.Execute (x: RefactoredRow) =
-    //                 match this with
-    //                 | BookSeats booking ->
-    //                     x.BookSeats booking
-    //                     |> Result.map (fun x -> [SeatBooked booking])
-    //             member this.Undoer = None
-                    
+    type RowAggregateCommand =
+        | BookSeats of Seats.Booking
+        | AddSeat of Seats.Seat
+        | AddSeats of List<Seats.Seat>
+            interface Command<SeatsRow, RowAggregateEvent> with
+                member this.Execute (x: SeatsRow) =
+                    match this with
+                    | BookSeats booking ->
+                        x.BookSeats booking
+                        |> Result.map (fun _ -> [SeatBooked booking])
+                    | AddSeat seat ->
+                        x.AddSeat seat
+                        |> Result.map (fun _ -> [SeatAdded seat])
+                    | AddSeats seats ->
+                        x.AddSeats seats
+                        |> Result.map (fun _ -> [SeatsAdded seats])
+                member this.Undoer =
+                    None
                 

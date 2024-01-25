@@ -1,12 +1,10 @@
 
-namespace seatsLockWithSharpino
-open seatsLockWithSharpino.Stadium
-open seatsLockWithSharpino.StadiumEvents
+namespace Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino.Stadium
+open Tonyx.seatsLockWithSharpino.StadiumEvents
 open FsToolkit.ErrorHandling
-open Sharpino.Definitions
 open Sharpino.Core
 open System
-open Sharpino.Utils
 
 module StadiumCommands =
     type StadiumCommand =

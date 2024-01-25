@@ -1,18 +1,21 @@
 
-namespace seatsLockWithSharpino 
-open seatsLockWithSharpino.RefactoredRow
-open seatsLockWithSharpino.Stadium
-open seatsLockWithSharpino.StadiumEvents
-open seatsLockWithSharpino.StadiumCommands
+namespace Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino.Seats
+open Tonyx.seatsLockWithSharpino.RefactoredRow
+open Tonyx.seatsLockWithSharpino.Stadium
+open Tonyx.seatsLockWithSharpino.StadiumEvents
+open Tonyx.seatsLockWithSharpino.StadiumCommands
+open Tonyx.seatsLockWithSharpino.RowAggregateEvent
+open Tonyx.seatsLockWithSharpino.RowAggregateCommand
+open Tonyx.seatsLockWithSharpino
 open Sharpino.CommandHandler
 open System
 open FsToolkit.ErrorHandling
+open Sharpino.Storage
+open Sharpino.Core
+open Sharpino.Utils
 
 module RefactoredApp =
-    open Sharpino.Storage
-    open Seats
-    open Sharpino.Core
-    open Sharpino.Utils
     let doNothingBroker: IEventBroker = 
         {
             notify = None

@@ -1,5 +1,5 @@
-namespace seatsLockWithSharpino
-open seatsLockWithSharpino.Stadium
+namespace Tonyx.seatsLockWithSharpino
+open Tonyx.seatsLockWithSharpino.Stadium
 open Sharpino.Definitions
 open Sharpino.Core
 open System
