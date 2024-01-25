@@ -54,6 +54,7 @@ module KafkaReceiver =
             let result = cons.Consume()
             result
             
+        // too late to change the name
         member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
             ResultCE.result {
                 try

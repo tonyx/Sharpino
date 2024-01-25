@@ -1,4 +1,4 @@
-﻿module Sharpino.Sample._3.Test
+module Tonyx.SeatsBooking.Tests
 open Expecto
 
 [<EntryPoint>]

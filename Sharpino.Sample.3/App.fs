@@ -1,7 +1,7 @@
 
 namespace Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.RefactoredRow
+open Tonyx.SeatsBooking.NewRow
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
@@ -15,7 +15,7 @@ open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
 
-module RefactoredApp =
+module App =
     let doNothingBroker: IEventBroker = 
         {
             notify = None

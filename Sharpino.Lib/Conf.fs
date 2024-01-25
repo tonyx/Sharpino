@@ -1,6 +1,5 @@
 namespace Sharpino
 open Microsoft.Extensions.Configuration
-open Microsoft.Extensions.Configuration.Json
 open log4net
 open System
 

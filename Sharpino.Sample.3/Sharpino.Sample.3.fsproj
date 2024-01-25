@@ -2,21 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>Sharpino.Sample._3</RootNamespace>
+    <!-- <RootNamespace>Sharpino.Sample._3</RootNamespace> -->
+    <RootNamespace>Tonyx.SeatBooking</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Seats.fs" />
-<!--    <Compile Include="Domain/Row.fs" />-->
-    <Compile Include="Domain/RowAsAggregate/RowAggregate.fs" />
-    <Compile Include="Domain/RowAsAggregate/RowAggregateEvent.fs" />
-    <Compile Include="Domain/RowAsAggregate/RowAggregateCommand.fs" />
+    <Compile Include="Rows/Rows.fs" />
+    <Compile Include="Rows/RowEvents.fs" />
+    <Compile Include="Rows/RowCommands.fs" />
     <Compile Include="Stadium/Stadium.fs" />
-    <Compile Include="Stadium/Events.fs" />
-    <Compile Include="Stadium/Commands.fs" />
-    <Compile Include="RefactoredApp.fs" />
+    <Compile Include="Stadium/StadiumEvents.fs" />
+    <Compile Include="Stadium/StadiumCommands.fs" />
+    <Compile Include="App.fs" />
     <Content Include="appSettings.json" />
     <Content Include="README.txt" />
   </ItemGroup>

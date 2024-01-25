@@ -4,7 +4,7 @@ open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open System
-open Tonyx.SeatsBooking.RefactoredRow
+open Tonyx.SeatsBooking.NewRow
 open Tonyx.SeatsBooking.RowAggregateEvent
 
 module RowAggregateCommand =

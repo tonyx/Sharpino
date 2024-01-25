@@ -30,8 +30,6 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    // this implementation cannot avoid the annoying messages that producer.Build prints when kafka is not running
-    // let getKafkaBroker (bootStrapServer: string, pgConnection: string) =
     let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore) =
         try 
             let config = ProducerConfig()

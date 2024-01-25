@@ -7,7 +7,7 @@ open Sharpino.Lib.Core.Commons
 open System
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Seats
-module RefactoredRow =
+module NewRow =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
 
     type SeatsRow private (seats: List<Seat>, id: Guid) =

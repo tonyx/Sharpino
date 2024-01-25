@@ -8,7 +8,7 @@
 
   <ItemGroup>
 <!--    <Compile Include="SeatBookingTest.fs" />-->
-    <Compile Include="SeatBookingTest2.fs" />
+    <Compile Include="SeatBookingTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
 

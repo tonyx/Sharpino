@@ -1,10 +1,10 @@
 namespace Sharpino
 open System
-open Sharpino.Utils
-open Sharpino.Core
+// open Sharpino.Utils
+// open Sharpino.Core
 open Sharpino.Definitions
-open Sharpino.Lib.Core.Commons
-open FsToolkit.ErrorHandling
+// open Sharpino.Lib.Core.Commons
+// open FsToolkit.ErrorHandling
 open log4net
 
 module Storage =
@@ -73,18 +73,17 @@ module Storage =
         abstract member TryGetLastSnapshotIdByAggregateId: Version -> Name -> Guid -> Option<Option<EventId> * SnapshotId>
 
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
-        abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> int ->Option<Option<EventId> * Json>
+        abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * Json>
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>
         abstract member SetInitialAggregateState: AggregateId -> Version -> Name -> Json ->  Result<unit, string>
         abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
 
-        // following version will be able to specify the aggregate id
-        abstract member AddAggregateEvents: Version -> Name -> Guid -> List<Json> -> Result<List<int>, string>
+        abstract member AddAggregateEvents: Version -> Name -> Guid -> List<Json> -> Result<List<EventId>, string>
 
-        abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<int>>, string>
-        abstract member MultiAddAggregateEvents:  List<List<Json> * Version * Name * Guid>  -> Result<List<List<int>>, string>
+        abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddAggregateEvents:  List<List<Json> * Version * Name * Guid>  -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
 
@@ -96,6 +95,6 @@ module Storage =
 
     type IEventBroker =
         {
-            notify: Option<Version -> Name -> List<int * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
+            notify: Option<Version -> Name -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
         }
 

@@ -9,12 +9,10 @@ open FSharpPlus
 
 open Sharpino.Core
 open Sharpino.Storage
-open Sharpino.Cache
 open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.KafkaBroker
-open System.Runtime
 open System.Runtime.CompilerServices
 
 open FsToolkit.ErrorHandling
@@ -230,7 +228,7 @@ module CommandHandler =
         (stateViewers: List<StateViewer<'A1>>)
         (commands: List<Command<'A1, 'E1>>)
         =
-            log.Debug "runNCommandsRefactored"
+            log.Debug "runNAggregateCommands"
             let command = fun () ->
                 async {
                     return

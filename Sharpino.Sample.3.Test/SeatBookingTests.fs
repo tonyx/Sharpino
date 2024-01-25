@@ -1,10 +1,10 @@
 
-module SeatBookingTests2
+module SeatBookingTests
 
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.RefactoredRow
+open Tonyx.SeatsBooking.NewRow
 open Tonyx.SeatsBooking
-open Tonyx.SeatsBooking.RefactoredApp
+open Tonyx.SeatsBooking.App
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.RowAggregateEvent
@@ -14,8 +14,8 @@ open Sharpino.PgStorage
 open Sharpino.MemoryStorage
 open Sharpino.Storage
 open Sharpino.Cache
-open System
 open Sharpino.CommandHandler
+open System
 
 [<Tests>]
 let storageEventsTests =
