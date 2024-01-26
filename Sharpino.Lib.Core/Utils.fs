@@ -18,6 +18,7 @@ module Definitions =
     type AggregateId = Guid
 
 
+
 module ApplicationInstance =
     type ApplicationInstance() =
         let mutable ApplicationGuid = Guid.NewGuid()
