@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>1.4.8</Version>
+    <Version>1.4.9</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -45,7 +45,7 @@
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
 
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.13.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
 
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
@@ -54,17 +54,11 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
 
-<!-- when developing the core comment out this reference:-->
-
-<!--    <PackageReference Include="Sharpino.Core" Version="1.0.6" />-->
-
-<!-- . -->
-
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.8.3" />
+    <PackageReference Include="Farmer" Version="1.8.4" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.3.0" />
     <PackageReference Include="FSharpPlus" Version="1.5.0" />
@@ -72,14 +66,14 @@
     <PackageReference Include="Npgsql" Version="8.0.1" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
+    <PackageReference Include="Sharpino.Core" Version="1.0.7" />
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-
-
+<!-- 
  <ItemGroup>
    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
- </ItemGroup> 
+ </ItemGroup>  -->
 
 </Project>
