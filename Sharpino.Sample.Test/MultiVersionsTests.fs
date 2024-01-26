@@ -168,7 +168,7 @@ let testCoreEvolve =
     let serializer = JsonSerializer(serSettings) :> ISerializer
 
     testList "evolve test" [
-        multipleTestCase "generate the events directly without using the repository - Ok " currentTestConfs <| fun (ap, _, _) ->
+        multipleTestCase "generate the events directly without using the command handler - Ok " currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
