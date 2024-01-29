@@ -19,6 +19,7 @@ module App =
     let doNothingBroker: IEventBroker = 
         {
             notify = None
+            notifyAggregate = None 
         }
     type StadiumBookingSystem(storage: IEventStore, eventBroker: IEventBroker) =
         let stadiumStateViewer =

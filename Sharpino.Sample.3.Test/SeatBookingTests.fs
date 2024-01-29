@@ -22,6 +22,7 @@ let storageEventsTests =
     let doNothingBroker: IEventBroker =
         {
             notify = None
+            notifyAggregate = None 
         }
     let connection = 
         "Server=127.0.0.1;"+

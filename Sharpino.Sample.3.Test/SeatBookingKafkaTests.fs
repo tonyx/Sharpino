@@ -39,8 +39,6 @@ let storageEventsTests =
             StateCache<Stadium>.Instance.Clear()
             AggregateCache<SeatsRow>.Instance.Clear()
             
-            
-            
             let rowId = Guid.NewGuid()
             let row = SeatsRow (rowId, localhostBroker)
             let rowStorageCreation = row.Serialize serializer
@@ -60,7 +58,6 @@ let storageEventsTests =
             StateCache<Stadium>.Instance.Clear()
             AggregateCache<SeatsRow>.Instance.Clear()
 
-            // let seatSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
             let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoTestClient") |> Result.get
 
             let stadiumBookingSystem = StadiumBookingSystem(eventStore, localhostBroker)
@@ -103,13 +100,16 @@ let storageEventsTests =
             let seat = { Id = 1; State = Free; RowId = None } 
             let addSeat = stadiumBookingSystem.AddSeat rowId seat
             Expect.isOk addSeat "should be ok"
+            
             let seatAdded = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
+            
             let partition = seatAdded.Partition
             let position = seatAdded.Offset
             rowSubscriber.Assign(position, partition)
             let consumeResult = rowSubscriber.Consume()
             let message = consumeResult.Message.Value
-            let brokerMessage = message |> serializer.Deserialize<BrokerMessage> |> Result.get
+            
+            let brokerMessage = message |> serializer.Deserialize<BrokerAggregateMessage> |> Result.get
             let event = brokerMessage.Event |> serializer.Deserialize<RowAggregateEvent> |> Result.get
             let expected =
                 RowAggregateEvent.SeatAdded
@@ -118,7 +118,7 @@ let storageEventsTests =
                     }
             Expect.equal event expected "should be equal"
 
-        testCase "Add a seat to a row and get the state using kafka viewer - Ok" <| fun _ ->
+        ftestCase "Add a seat to a row and get the state using kafka viewer - Ok" <| fun _ ->
             let eventStore = pgStorage
             eventStore.Reset "_01" "_seatrow"
             eventStore.Reset "_01" "_stadium"
@@ -126,7 +126,6 @@ let storageEventsTests =
             AggregateCache<SeatsRow>.Instance.Clear()
 
             let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
-            // let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoTestClient") |> Result.get
 
             let stadiumBookingSystem = StadiumBookingSystem(eventStore, localhostBroker)
             let rowId = Guid.NewGuid()
@@ -143,7 +142,7 @@ let storageEventsTests =
             rowSubscriber.Assign(position, partition)
             let consumeResult = rowSubscriber.Consume()
             let message = consumeResult.Message.Value
-            let brokerMessage = message |> serializer.Deserialize<BrokerMessage> |> Result.get
+            let brokerMessage = message |> serializer.Deserialize<BrokerAggregateMessage> |> Result.get
             let event = brokerMessage.Event |> serializer.Deserialize<RowAggregateEvent> |> Result.get
             let expected =
                 RowAggregateEvent.SeatAdded
@@ -152,33 +151,14 @@ let storageEventsTests =
                     }
             Expect.equal event expected "should be equal"
 
-            let seatsKafkaVierwer =
+            let seatsKafkaViewer =
                     mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
                         rowId
                         rowSubscriber
                         (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
              
-            Expect.isTrue true "true"
-
-    
+            let (_, state, _, _) = seatsKafkaViewer.State()
+            Expect.equal state.Seats.Length 1 "should be equal"
             
-            
-            // let seat = { Id = 1; State = Free; RowId = None }
-            // let seat
-            // let rowId = Guid.NewGuid()
-            // let row = SeatsRow (rowId, localhostBroker)
-            // let rowStorageCreation = row.Serialize serializer
-            // let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
-            // let seat = { Id = 1; State = Free; RowId = None } 
-
-            // Expect.isOk stored "should be ok"
-
-
-            
-            // let rowStateViewer = getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore
-            // let gotState = rowStateViewer rowId
-            // Expect.isOk gotState "should be ok"
-            // let (_, state, _, _) = gotState |> Result.get
-            // Expect.equal (state.Seats.Length) 0 "should be 0"
     ]
     |> testSequenced

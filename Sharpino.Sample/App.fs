@@ -38,6 +38,7 @@ module App =
     let doNothingBroker = 
         {
             notify = None
+            notifyAggregate =  None
         }
     [<CurrentVersion>]
     type CurrentVersionApp

@@ -71,6 +71,81 @@ module KafkaReceiver =
             with 
             | _ as e -> Result.Error (e.Message)
 
+    // todo: unify with KafkaViewer
+    type KafkaAggregateViewer<'A, 'E when 'E :> Event<'A>> 
+        (aggregateId: Guid,
+        subscriber: KafkaSubscriber, 
+        sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
+        appId: Guid)
+        =
+        let mutable state = 
+            try
+                sourceOfTruthStateViewer aggregateId |> Result.get
+            with
+            | e  -> 
+                log.Error (sprintf "cannot get the state from the source of truth. Error: %A \n" e.Message)
+                failwith "error" 
+        let (_, _, offset, partition) = state
+        let _ =
+            match offset, partition with
+            | Some off, Some part ->
+                subscriber.Assign(off + 1L, part)
+            | _ -> 
+                log.Error "Cannot assign offset and partition because they are None"
+                ()
+
+        member this.State () = 
+            state
+
+        member this.Refresh() =
+            let result = subscriber.consume(config.RefreshTimeout)
+            match result with
+            | Error e -> 
+                log.Error e
+                Result.Error e 
+            | Ok msg ->
+                ResultCE.result {
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
+                    let eventId = newMessage.EventId
+                    let currentStateId, _, _, _ = this.State ()
+                    if eventId = currentStateId + 1 then
+                        let msgAppId = newMessage.ApplicationId
+                        let msgAggregateId = newMessage.AggregateId
+                        let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
+                        let (_, currentState, _, _) = this.State ()
+                        if appId <> msgAppId || aggregateId <> msgAggregateId then
+                            ()
+                        else
+                            let! newState = evolve currentState [newEvent] 
+                            state <- (eventId, newState, None, None)
+                        return () |> Result.Ok
+                    else
+                        let! _ = this.ForceSyncWithSourceOfTruth()
+                        let _ =
+                            let _, _, offset, partition = this.State ()
+                            match offset, partition with
+                            | Some off, Some part ->
+                                subscriber.Assign(off + 1L, part)
+                            | _ -> 
+                                log.Error "Cannot assign offset and partition"
+                                ()
+                        return () |> Result.Ok
+                }
+
+        member this.ForceSyncWithSourceOfTruth() = 
+            ResultCE.result {
+                let! newState = sourceOfTruthStateViewer aggregateId
+                state <- newState 
+                let _, _, offset, partition = this.State ()
+                match offset, partition with
+                | Some off, Some part ->
+                    subscriber.Assign(off + 1L, part)
+                | _ ->
+                    log.Error "Cannot assign offset and partition"
+                    ()
+                return ()
+            }
+    
     type KafkaViewer<'A, 'E when 'E :> Event<'A>> 
         (subscriber: KafkaSubscriber, 
         sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
@@ -178,6 +253,5 @@ module KafkaReceiver =
         (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (applicationId: Guid) 
         =
-            ()
-        // KafkaViewer<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)
+            KafkaAggregateViewer<'A, 'E>(aggregateId, subscriber, sourceOfTruthStateViewer, applicationId)
 

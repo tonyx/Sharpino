@@ -198,7 +198,8 @@ module CommandHandler =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id
                             let sent =
                                 List.zip ids events'
-                                |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName 
+                                // |> tryPublish eventBroker 'A.Version 'A.StorageName 
                                 |> Result.toOption
                             return ([ids], [sent])
                         }

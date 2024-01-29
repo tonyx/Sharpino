@@ -96,5 +96,6 @@ module Storage =
     type IEventBroker =
         {
             notify: Option<Version -> Name -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
+            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
         }
 
