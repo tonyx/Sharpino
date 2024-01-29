@@ -39,10 +39,10 @@ let allVersions =
         // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
         // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
-        //
-        // (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        
+        (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
+        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // I am sorry but I think I am going to ditch eventstoreDb in the future
@@ -248,7 +248,8 @@ let multiVersionsTests =
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset() 
-            let actualTodos = ap.getAllTodos() |> Result.get
+            let initialTodos = ap.getAllTodos() |> Result.get
+            Expect.equal initialTodos [] "should be equal"
 
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let added = ap.addTodo todo
@@ -267,7 +268,8 @@ let multiVersionsTests =
 
         multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
-            let actualTodos = ap.getAllTodos() |> Result.get
+            let initialTodos = ap.getAllTodos() |> Result.get
+            Expect.equal initialTodos [] "should be equal"
             let todo = mkTodo (Guid.NewGuid()) "test" [] []
             let result = ap.addTodo todo
             Expect.isOk result "should be ok"
@@ -522,8 +524,6 @@ let multiVersionsTests =
 
             Expect.isOk added1 "should be ok"
             Expect.isTrue true "true"
-
-        //     // Expect.isOk added1 "should be ok"
 
             let added2 = ap.addCategory category2
             Expect.isOk added2 "should be ok"
