@@ -10,6 +10,7 @@ open Npgsql
 open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
+open Sharpino.Definitions
 open Sharpino.Utils
 open Sharpino.Storage
 open log4net
@@ -23,7 +24,14 @@ module KafkaBroker =
     type BrokerMessage = {
         ApplicationId: Guid
         EventId: int
-        Event: string
+        Event: Json
+    }
+    
+    type BrokerAggregateMessage = {
+        ApplicationId: Guid
+        AggregateId: Guid
+        EventId: int
+        Event: Json
     }
 
     let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
@@ -38,7 +46,7 @@ module KafkaBroker =
             let p = producer.Build()
             let message = Message<Null, string>()
 
-            let notifyMessage (version: string) (name: string)  (msg: int * string) =
+            let notifyMessage (version: string) (name: string)  (msg: int * Json) =
                 let topic = name + "-" + version |> String.replace "_" ""
 
                 let brokerMessage = {
@@ -63,7 +71,7 @@ module KafkaBroker =
                         | Ok _  -> sent |> Ok
                         | Error e -> Error e
                     else        
-                        Error("Not persisted in Kafka")
+                        Error(sprintf "Message %A Not persisted in Kafka topic. Sent: %A" message sent)
                 with
                     | _ as e -> 
                         log.Error e.Message
@@ -119,18 +127,15 @@ module KafkaBroker =
                 notify = None
             }
 
-    let notify (broker: IEventBroker) (version: string) (name: string) (idAndEvents: List<int * string>) =
-        match broker.notify with
-        | Some notify ->
-            notify version name idAndEvents
-        | None ->
-            log.Info "no broker configured"
-            [] |> Ok
-
     let tryPublish eventBroker version name idAndEvents =
         async {
             return
-                notify eventBroker version name idAndEvents
+                match eventBroker.notify with
+                | Some notify ->
+                    notify version name idAndEvents
+                | None ->
+                    log.Info "no sending to any broker"
+                    [] |> Ok
         }
         |> Async.StartAsTask
         |> Async.AwaitTask

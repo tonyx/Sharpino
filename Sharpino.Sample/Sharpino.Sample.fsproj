@@ -54,11 +54,10 @@
     <PackageReference Include="Saturn" Version="0.16.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
 
-    <!-- <PackageReference Include="Sharpino.Core" Version="1.0.4" /> -->
     <!-- commend this when develp the lib-->
     <!-- <PackageReference Include="Sharpino" Version="1.4.8" /> -->
     <!-- commend this when you develp the lib-->
-    <!-- <PackageReference Include="Sharpino.Core" Version="1.0.4" /> -->
+    <!-- <PackageReference Include="Sharpino.Core" Version="1.0.7" /> -->
 
   </ItemGroup>
 

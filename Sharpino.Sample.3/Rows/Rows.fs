@@ -3,6 +3,7 @@ open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
+open Sharpino.Storage
 open Sharpino.Lib.Core.Commons
 open System
 open Tonyx.SeatsBooking
@@ -14,7 +15,7 @@ module NewRow =
         let seats = seats
         let id = id
 
-        new (id: Guid) = 
+        new (id: Guid, eventBroker: IEventBroker) = 
             new SeatsRow ([], id)
 
         member this.Seats = seats

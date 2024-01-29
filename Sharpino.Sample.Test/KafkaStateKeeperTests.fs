@@ -77,7 +77,8 @@ open Sharpino.Sample.EventBrokerBasedApp
                 todoSubscriber.Assign(position, partition)
 
                 // when
-                let todosKafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
+                let todosKafkaViewer =
+                    mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
                 let todosKafkaViewerState = todosKafkaViewer.State() |> fun (_, b, _, _) -> b
 
                 // then

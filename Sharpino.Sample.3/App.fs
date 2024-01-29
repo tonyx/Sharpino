@@ -33,7 +33,7 @@ module App =
             ResultCE.result {
                 // todo: undo mechanism or similar to remove the initialsnapshot if the addrow fails
                 // or accept there will be potentially rows with no reference (not hurting anything)
-                let seatsRow = SeatsRow rowId
+                let seatsRow = SeatsRow (rowId, doNothingBroker)
                 let initSnapshot = seatsRow.Serialize serializer
                 let! stored =
                     storage.SetInitialAggregateState rowId SeatsRow.Version SeatsRow.StorageName initSnapshot

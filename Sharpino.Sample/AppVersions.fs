@@ -43,7 +43,6 @@ module AppVersions =
 
 
     // if kafka doesn't run this will give some annoying messages
-    // let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", connection)
     let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", pgStorage)
 
     let memoryStorage = MemoryStorage.MemoryStorage()

@@ -107,8 +107,8 @@ module KafkaReceiver =
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
                     let eventId = newMessage.EventId
-                    let currentStateid, _, _, _ = this.State ()
-                    if eventId = currentStateid + 1 then
+                    let currentStateId, _, _, _ = this.State ()
+                    if eventId = currentStateId + 1 then
                         let msgAppId = newMessage.ApplicationId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
                         let (_, currentState, _, _) = this.State ()
@@ -163,4 +163,21 @@ module KafkaReceiver =
         =
         KafkaViewer<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)
 
+    let inline mkKafkaAggregateViewer<'A, 'E
+        when 'A:> Aggregate
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >
+        (aggregateId: Guid)
+        (subscriber: KafkaSubscriber) 
+        (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
+        (applicationId: Guid) 
+        =
+            ()
+        // KafkaViewer<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)
 

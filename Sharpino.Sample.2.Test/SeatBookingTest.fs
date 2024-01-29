@@ -35,6 +35,7 @@ let hackingEventInStorageTest =
         
         testCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
             let storage = MemoryStorage()
+            
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
             let app = App(storage)

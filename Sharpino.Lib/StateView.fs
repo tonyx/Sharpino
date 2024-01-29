@@ -182,8 +182,7 @@ module StateView =
                 }
         }
         |> Async.RunSynchronously
-                
-                
+        
     let inline getFreshState<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
