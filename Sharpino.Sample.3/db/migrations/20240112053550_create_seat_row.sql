@@ -41,7 +41,26 @@ ALTER TABLE ONLY public.snapshots_01_seatrow
     ADD CONSTRAINT snapshots_seatrow_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots_01_seatrow
-    ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
+    ADD CONSTRAINT event_01_seatrow_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow (id) MATCH FULL ON DELETE CASCADE;
+
+CREATE SEQUENCE public.aggregate_events_01_seatrow_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+CREATE TABLE public.aggregate_events_01_seatrow (
+    id integer DEFAULT nextval('public.aggregate_events_01_seatrow_id_seq') NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event_id integer
+);
+
+ALTER TABLE ONLY public.aggregate_events_01_seatrow
+    ADD CONSTRAINT aggregate_events_01_seatrow_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.aggregate_events_01_seatrow
+    ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.aggregate_events_01_seatrow (id) MATCH FULL ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION insert_01_seatrow_event_and_return_id(
     IN event_in TEXT,
@@ -57,7 +76,6 @@ BEGIN
     INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
     VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
-
 END;
 $$
                                                                                                                            

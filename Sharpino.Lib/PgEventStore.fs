@@ -262,6 +262,7 @@ module PgStorage =
             member this.SetInitialAggregateState aggregateId version name json =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 try
                     let _ =
                         connection
@@ -274,6 +275,12 @@ module PgStorage =
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("snapshot",  Sql.jsonb json);
                                             ("timestamp", Sql.timestamp System.DateTime.Now)
+                                        ]
+                                    ]
+                                command2,
+                                    [
+                                        [
+                                            ("@aggregate_id", Sql.uuid aggregateId)
                                         ]
                                     ]
                             ]
