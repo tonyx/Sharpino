@@ -150,9 +150,9 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
                             let sent =
-                                let idAndEvents = List.zip ids events'
-                                let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
-                                sent |> Result.toOption
+                                List.zip ids events'
+                                |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                |> Result.toOption
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return ([ids], [sent])
                         }
@@ -197,9 +197,9 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id
                             let sent =
-                                let idAndEvents = List.zip ids events'
-                                let sent = tryPublish eventBroker 'A.Version 'A.StorageName idAndEvents
-                                sent |> Result.toOption
+                                List.zip ids events'
+                                |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                |> Result.toOption
                             return ([ids], [sent])
                         }
                 }
@@ -207,7 +207,11 @@ module CommandHandler =
             match (stateView, config.PessimisticLock) with
             |  Error e, _ -> Error e 
             |  _, true ->
-                let myLock = stateView |> Result.toOption |> Option.map (fun (_, s, _, _) -> s.Lock)
+                // consider that if stateView is error then we are not here (ouch!)
+                let myLock =
+                    stateView
+                    |> Result.toOption
+                    |> Option.map (fun (_, s, _, _) -> s.Lock)
                 lock myLock <| fun () ->
                     command()
             | _, false ->
