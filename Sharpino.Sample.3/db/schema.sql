@@ -17,6 +17,26 @@ SET row_security = off;
 
 
 --
+-- Name: insert_01_seatrow_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_seatrow_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_01_seatrow_event_and_return_id(event_in, aggregate_id);
+
+    INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id )
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_01_seatrow_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -29,7 +49,6 @@ BEGIN
     INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
     VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
-
 END;
 $$;
 
@@ -52,9 +71,32 @@ END;
 $$;
 
 
+--
+-- Name: aggregate_events_01_seatrow_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.aggregate_events_01_seatrow_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: aggregate_events_01_seatrow; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.aggregate_events_01_seatrow (
+    id integer DEFAULT nextval('public.aggregate_events_01_seatrow_id_seq'::regclass) NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event_id integer
+);
+
 
 --
 -- Name: events_01_seatrow; Type: TABLE; Schema: public; Owner: -
@@ -172,6 +214,14 @@ CREATE TABLE public.snapshots_01_stadium (
 
 
 --
+-- Name: aggregate_events_01_seatrow aggregate_events_01_seatrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_seatrow
+    ADD CONSTRAINT aggregate_events_01_seatrow_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: events_01_seatrow events_seatrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -212,6 +262,14 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 
 
 --
+-- Name: aggregate_events_01_seatrow aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_seatrow
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
 -- Name: snapshots_01_seatrow event_01_seatrow_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -238,6 +296,5 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20240112053550'),
-    ('20240112060609'),
     ('20240115084217'),
     ('20240115084835');

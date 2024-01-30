@@ -131,6 +131,13 @@ module KafkaReceiver =
                                 ()
                         return () |> Result.Ok
                 }
+                
+        member this.RefreshLoop() =
+            let mutable result = this.Refresh()
+            while (result |> Result.toOption).IsSome do
+                result <- this.Refresh()
+                ()
+            ()
 
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
@@ -206,6 +213,12 @@ module KafkaReceiver =
                         return () |> Result.Ok
                 }
 
+        member this.RefreshLoop() =
+            let mutable result = this.Refresh()
+            while (result |> Result.toOption).IsSome do
+                result <- this.Refresh()
+                ()
+            ()
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer()

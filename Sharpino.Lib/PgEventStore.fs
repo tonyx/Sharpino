@@ -33,10 +33,25 @@ module PgStorage =
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
                         |> Sql.executeNonQuery
                     ()
+                    
                 with 
                     | _ as e -> failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
+        member this.ResetAggregateStream version name =         
+            if (Conf.isTestEnv) then
+                try
+                    let res1 =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
+                        |> Sql.executeNonQuery
+                    ()    
+                with
+                    | _ as e -> failwith (e.ToString())
+            else
+                failwith "operation allowed only in test db"
+                
         interface IEventStore with
             // only test db should be able to reset
             member this.Reset(version: Version) (name: Name): unit =
@@ -446,7 +461,8 @@ module PgStorage =
             member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name
+                // let command = sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name
+                let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 async {

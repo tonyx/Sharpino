@@ -60,7 +60,7 @@ ALTER TABLE ONLY public.aggregate_events_01_seatrow
     ADD CONSTRAINT aggregate_events_01_seatrow_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.aggregate_events_01_seatrow
-    ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.aggregate_events_01_seatrow (id) MATCH FULL ON DELETE CASCADE;
+    ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow (id) MATCH FULL ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION insert_01_seatrow_event_and_return_id(
     IN event_in TEXT,
@@ -77,6 +77,27 @@ BEGIN
     VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
+$$;
+
+CREATE OR REPLACE FUNCTION insert_01_seatrow_aggregate_event_and_return_id(
+    IN event_in TEXT,
+    IN aggregate_id uuid
+)
+    RETURNS int
+    LANGUAGE plpgsql
+AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_01_seatrow_event_and_return_id(event_in, aggregate_id);
+    
+    INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id )
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
 $$
-                                                                                                                           
+
+
+
 -- migrate:down

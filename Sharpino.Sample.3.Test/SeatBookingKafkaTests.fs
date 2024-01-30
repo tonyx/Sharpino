@@ -118,10 +118,11 @@ let storageEventsTests =
                     }
             Expect.equal event expected "should be equal"
 
-        ftestCase "Add a seat to a row and get the state using kafka viewer - Ok" <| fun _ ->
+        testCase "Add a seat to a row and get the state using kafka viewer - Ok" <| fun _ ->
             let eventStore = pgStorage
             eventStore.Reset "_01" "_seatrow"
             eventStore.Reset "_01" "_stadium"
+            eventStore.ResetAggregateStream "_01" "_seatrow"
             StateCache<Stadium>.Instance.Clear()
             AggregateCache<SeatsRow>.Instance.Clear()
 
@@ -159,6 +160,150 @@ let storageEventsTests =
              
             let (_, state, _, _) = seatsKafkaViewer.State()
             Expect.equal state.Seats.Length 1 "should be equal"
+            
+        testCase "Add many seats to a row and get the state using kafka viewer - Ok" <| fun _ ->
+            let eventStore = pgStorage
+            eventStore.Reset "_01" "_seatrow"
+            eventStore.Reset "_01" "_stadium"
+            eventStore.ResetAggregateStream "_01" "_seatrow"
+            
+            StateCache<Stadium>.Instance.Clear()
+            AggregateCache<SeatsRow>.Instance.Clear()
+
+            let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
+
+            let stadiumBookingSystem = StadiumBookingSystem(eventStore, localhostBroker)
+            let rowId = Guid.NewGuid()
+
+            let addRowReference = stadiumBookingSystem.AddRowReference rowId
+            Expect.isOk addRowReference "should be ok"
+           
+            let seat = { Id = 1; State = Free; RowId = None } 
+            let addSeat = stadiumBookingSystem.AddSeat rowId seat
+            Expect.isOk addSeat "should be ok"
+            let seatAdded = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
+            let partition = seatAdded.Partition
+            let position = seatAdded.Offset
+            rowSubscriber.Assign(position, partition)
+            let consumeResult = rowSubscriber.Consume()
+            let message = consumeResult.Message.Value
+            let brokerMessage = message |> serializer.Deserialize<BrokerAggregateMessage> |> Result.get
+            let event = brokerMessage.Event |> serializer.Deserialize<RowAggregateEvent> |> Result.get
+            let expected =
+                RowAggregateEvent.SeatAdded
+                    {
+                        seat with RowId = Some rowId
+                    }
+            Expect.equal event expected "should be equal"
+
+            let seatsKafkaViewer =
+                    mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+                        rowId
+                        rowSubscriber
+                        (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
+             
+            let (_, state, _, _) = seatsKafkaViewer.State()
+            Expect.equal state.Seats.Length 1 "should be equal"
+            
+            let seat2 = { Id = 2; State = Free; RowId = None }
+            let addSeat2 = stadiumBookingSystem.AddSeat rowId seat2
+            Expect.isOk addSeat2 "should be ok"
+            let seat3 = { Id = 3; State = Free; RowId = None }
+            let addSeat3 = stadiumBookingSystem.AddSeat rowId seat3
+            Expect.isOk addSeat3 "should be ok"
+            
+            seatsKafkaViewer.RefreshLoop() |> ignore
+            
+            let (_, state, _, _) = seatsKafkaViewer.State()
+            Expect.equal state.Seats.Length 3 "should be equal"
+            
+        ftestCase "Add many rows and many seats using kafka viewer - Ok" <| fun _ ->
+            let eventStore = pgStorage
+            eventStore.Reset "_01" "_seatrow"
+            eventStore.Reset "_01" "_stadium"
+            eventStore.ResetAggregateStream "_01" "_seatrow"
+            
+            StateCache<Stadium>.Instance.Clear()
+            AggregateCache<SeatsRow>.Instance.Clear()
+
+            let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
+
+            let stadiumBookingSystem = StadiumBookingSystem(eventStore, localhostBroker)
+            let rowId = Guid.NewGuid()
+
+            let addRowReference = stadiumBookingSystem.AddRowReference rowId
+            Expect.isOk addRowReference "should be ok"
+            
+            let rowId2 = Guid.NewGuid()
+            let addRowReference2 = stadiumBookingSystem.AddRowReference rowId2
+            Expect.isOk addRowReference2 "should be ok"
+           
+            let seat = { Id = 1; State = Free; RowId = None } 
+            let addSeat = stadiumBookingSystem.AddSeat rowId seat
+            Expect.isOk addSeat "should be ok"
+            let seatAdded = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
+            let partition = seatAdded.Partition
+            let position = seatAdded.Offset
+            rowSubscriber.Assign(position, partition)
+            let consumeResult = rowSubscriber.Consume()
+            let message = consumeResult.Message.Value
+            let brokerMessage = message |> serializer.Deserialize<BrokerAggregateMessage> |> Result.get
+            let event = brokerMessage.Event |> serializer.Deserialize<RowAggregateEvent> |> Result.get
+            let expected =
+                RowAggregateEvent.SeatAdded
+                    {
+                        seat with RowId = Some rowId
+                    }
+            Expect.equal event expected "should be equal"
+            
+            let seat12 = { Id = 11; State = Free; RowId = None }
+            let addSeat2 = stadiumBookingSystem.AddSeat rowId2 seat12
+            Expect.isOk addSeat "should be ok"
+            
+            let seatsKafkaViewer =
+                    mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+                        rowId
+                        rowSubscriber
+                        (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
+             
+            let seats2KafkaViewer =
+                    mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+                        rowId2
+                        rowSubscriber
+                        (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid()) 
+            
+            let (_, state, _, _) = seatsKafkaViewer.State()
+            Expect.equal state.Seats.Length 1 "should be equal"
+            
+            let (_, stateRow2, _, _) = seats2KafkaViewer.State()
+            Expect.equal stateRow2.Seats.Length 1 "should be equal"
+            
+            let seat2 = { Id = 2; State = Free; RowId = None }
+            let addSeat2 = stadiumBookingSystem.AddSeat rowId seat2
+            Expect.isOk addSeat2 "should be ok"
+            let seat3 = { Id = 3; State = Free; RowId = None }
+            let addSeat3 = stadiumBookingSystem.AddSeat rowId seat3
+            Expect.isOk addSeat3 "should be ok"
+            
+            seatsKafkaViewer.RefreshLoop() |> ignore
+            
+            let (_, state, _, _) = seatsKafkaViewer.State()
+            Expect.equal state.Seats.Length 3 "should be equal"
+            
+            
+            let seat22 = { Id = 22; State = Free; RowId = None }
+            let addSeat22 = stadiumBookingSystem.AddSeat rowId2 seat22
+            Expect.isOk addSeat22 "should be ok"
+            
+            let seat23 = { Id = 23; State = Free; RowId = None }
+            let addSeat23 = stadiumBookingSystem.AddSeat rowId2 seat23
+            Expect.isOk addSeat23 "should be ok"
+            
+            seats2KafkaViewer.RefreshLoop() |> ignore
+            let (_, stateRow2, _, _) = seats2KafkaViewer.State()
+            Expect.equal stateRow2.Seats.Length 3 "should be equal"
+            
+            
             
     ]
     |> testSequenced
