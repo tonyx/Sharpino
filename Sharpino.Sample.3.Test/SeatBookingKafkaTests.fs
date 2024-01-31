@@ -217,7 +217,7 @@ let storageEventsTests =
             let (_, state, _, _) = seatsKafkaViewer.State()
             Expect.equal state.Seats.Length 3 "should be equal"
             
-        ftestCase "Add many rows and many seats using kafka viewer - Ok" <| fun _ ->
+        testCase "Add many rows and many seats using kafka viewer - Ok" <| fun _ ->
             let eventStore = pgStorage
             eventStore.Reset "_01" "_seatrow"
             eventStore.Reset "_01" "_stadium"
@@ -289,7 +289,6 @@ let storageEventsTests =
             
             let (_, state, _, _) = seatsKafkaViewer.State()
             Expect.equal state.Seats.Length 3 "should be equal"
-            
             
             let seat22 = { Id = 22; State = Free; RowId = None }
             let addSeat22 = stadiumBookingSystem.AddSeat rowId2 seat22

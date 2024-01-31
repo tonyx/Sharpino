@@ -63,6 +63,9 @@ module StateView =
                 | Error e, _-> 
                     log.Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
+                | _ -> 
+                    log.Error (sprintf "deserialization error for snapshot %s" snapshot')
+                    Error (sprintf "deserialization error for snapshot %s" snapshot')
             | None ->
                 Error "not found"
 

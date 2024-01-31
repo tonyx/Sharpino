@@ -84,7 +84,7 @@ module KafkaReceiver =
             with
             | e  -> 
                 log.Error (sprintf "cannot get the state from the source of truth. Error: %A \n" e.Message)
-                failwith "error" 
+                failwith (sprintf "cannot get the state from the source of truth error %A"  e.Message)
         let (_, _, offset, partition) = state
         let _ =
             match offset, partition with

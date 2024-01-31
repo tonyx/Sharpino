@@ -16,6 +16,7 @@
     <Compile Include="Stadium/StadiumEvents.fs" />
     <Compile Include="Stadium/StadiumCommands.fs" />
     <Compile Include="App.fs" />
+    <Compile Include="EventStoreBasedApp.fs" />
     <Content Include="appSettings.json" />
     <Content Include="README.txt" />
   </ItemGroup>

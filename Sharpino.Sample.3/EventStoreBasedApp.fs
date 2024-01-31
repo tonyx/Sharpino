@@ -13,27 +13,38 @@ open Sharpino.Definitions
 open System
 open FsToolkit.ErrorHandling
 open Sharpino.Storage
+open Sharpino.ApplicationInstance
 open Sharpino.Core
 open Sharpino.Utils
 
-module App =
+module StadiumkafkaBookingSystem =
+    open Sharpino.KafkaReceiver
     let doNothingBroker: IEventBroker = 
         {
             notify = None
             notifyAggregate = None 
         }
+    type StadiumKafkaBookingSystem
+        (storage: IEventStore, eventBroker: IEventBroker) =
 
-    // type StateViewer = unit -> Result<EventId * Stadium * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
-    // type AggregateViewer = Guid -> Result<EventId * SeatsRow * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
+        let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > storage
+        let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoTestClient") |> Result.get
+        let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
+        let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
+        let kafkaBasedStadiumState =
+            fun () ->
+                kafkaStadiumViewer.RefreshLoop()
+                kafkaStadiumViewer.State() |> Result.Ok
 
-    type StadiumBookingSystem
-        (storage: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        let kafkaRowViewer = 
+            fun (rowId: Guid) -> mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent> rowId rowSubscriber (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage) (ApplicationInstance.Instance.GetGuid()) 
 
-        new(storage: IEventStore) = 
-            StadiumBookingSystem(storage, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
-        new(storage: IEventStore, eventBroker: IEventBroker) = 
-            StadiumBookingSystem(storage, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
-        
+        let rowStateViewer =
+            fun (rowId: Guid) ->
+                let viewer = kafkaRowViewer rowId
+                viewer.RefreshLoop()
+                viewer.State() |> Result.Ok
+
         member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {
                 // todo: undo mechanism or similar to remove the initialsnapshot if the addrow fails
@@ -43,10 +54,9 @@ module App =
                 let! stored =
                     storage.SetInitialAggregateState rowId SeatsRow.Version SeatsRow.StorageName initSnapshot
                 let addRowReference = StadiumCommand.AddRowReference rowId
-                let! result = runCommand<Stadium, StadiumEvent> storage eventBroker stadiumStateViewer addRowReference
+                let! result = runCommand<Stadium, StadiumEvent> storage eventBroker kafkaBasedStadiumState  addRowReference
                 return result
             }
-
         member this.BookSeats (rowId: Guid) (booking: Booking) =
             result {
                 let bookSeat = RowAggregateCommand.BookSeats booking
@@ -55,7 +65,6 @@ module App =
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) bookSeat
                 return result
             }
-
         member this.BookSeatsNRows (rowAndbookings: List<Guid * Booking>) =
             result {
                 let bookSeats = 
@@ -70,13 +79,11 @@ module App =
                         bookSeats
                 return result
             }
-
         member this.GetRow id =
             result {
                 let! (_, rowState, _, _) = rowStateViewer id
                 return rowState
             }
-
         member this.AddSeat (rowId: Guid) (seat: Seat) =
             result {
                 let! rowIdMustBeUnassigned =
@@ -88,7 +95,6 @@ module App =
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
                 return result
             }
-
         member this.AddSeats (rowId: Guid) (seats: List<Seat>) =
             result {
                 let addSeats = RowAggregateCommand.AddSeats seats
@@ -97,9 +103,8 @@ module App =
                         rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeats
                 return result
             }
-
         member this.GetAllRowReferences() = 
             result {
-                let! (_, stadiumState, _, _) = stadiumStateViewer ()
+                let! (_, stadiumState, _, _) = kafkaBasedStadiumState ()
                 return stadiumState.GetRowReferences ()
             }

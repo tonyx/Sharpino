@@ -24,6 +24,7 @@ module CommandHandler =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
+    type AggregateViewer<'A> = Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
 
     let inline getStorageFreshStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -199,7 +200,6 @@ module CommandHandler =
                             let sent =
                                 List.zip ids events'
                                 |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName 
-                                // |> tryPublish eventBroker 'A.Version 'A.StorageName 
                                 |> Result.toOption
                             return ([ids], [sent])
                         }
