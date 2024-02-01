@@ -45,7 +45,7 @@ let storageEventsTests =
             let stadiumAddedRowEvent = (StadiumEvent.RowReferenceAdded rowId).Serialize serializer
             (eventStore :> IEventStore).AddEvents Stadium.Version  Stadium.StorageName [stadiumAddedRowEvent]
             
-            let row = SeatsRow (rowId, doNothingBroker)
+            let row = SeatsRow rowId
             let serializedRow = row.Serialize serializer
             (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow"  serializedRow
            
@@ -65,7 +65,7 @@ let storageEventsTests =
             eventStore.Reset "_01" "_seatrow"
             eventStore.Reset "_01" "_stadium"
             let rowId = Guid.NewGuid()
-            let row = SeatsRow (rowId, doNothingBroker)
+            let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
             let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"
@@ -81,7 +81,7 @@ let storageEventsTests =
             eventStore.Reset "_01" "_seatrow"
             eventStore.Reset "_01" "_stadium"
             let rowId = Guid.NewGuid()
-            let row = SeatsRow (rowId, doNothingBroker)
+            let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
             let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"

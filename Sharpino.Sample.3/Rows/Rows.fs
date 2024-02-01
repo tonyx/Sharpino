@@ -14,8 +14,8 @@ module NewRow =
     type SeatsRow private (seats: List<Seat>, id: Guid) =
         let seats = seats
         let id = id
-
-        new (id: Guid, eventBroker: IEventBroker) = 
+            
+        new (id: Guid) = 
             new SeatsRow ([], id)
 
         member this.Seats = seats

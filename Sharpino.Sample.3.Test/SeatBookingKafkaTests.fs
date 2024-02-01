@@ -41,7 +41,7 @@ let storageEventsTests =
             AggregateCache<SeatsRow>.Instance.Clear()
             
             let rowId = Guid.NewGuid()
-            let row = SeatsRow (rowId, localhostBroker)
+            let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
             let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"
