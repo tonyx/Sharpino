@@ -4,7 +4,8 @@ module SeatBookingKafkaTests
 open Tonyx.SeatsBooking.Seats
 open Tonyx.SeatsBooking.NewRow
 open Tonyx.SeatsBooking
-open Tonyx.SeatsBooking.App
+// open Tonyx.SeatsBooking.StadiumBookingSystem
+open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.RowAggregateEvent
@@ -158,7 +159,7 @@ let storageEventsTests =
                         rowSubscriber
                         (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
              
-            let (_, state, _, _) = seatsKafkaViewer.State()
+            let (_, state, _, _) = seatsKafkaViewer.State() |> Result.get
             Expect.equal state.Seats.Length 1 "should be equal"
             
         testCase "Add many seats to a row and get the state using kafka viewer - Ok" <| fun _ ->
@@ -202,7 +203,7 @@ let storageEventsTests =
                         rowSubscriber
                         (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid())
              
-            let (_, state, _, _) = seatsKafkaViewer.State()
+            let (_, state, _, _) = seatsKafkaViewer.State() |> Result.get
             Expect.equal state.Seats.Length 1 "should be equal"
             
             let seat2 = { Id = 2; State = Free; RowId = None }
@@ -214,7 +215,7 @@ let storageEventsTests =
             
             seatsKafkaViewer.RefreshLoop() |> ignore
             
-            let (_, state, _, _) = seatsKafkaViewer.State()
+            let (_, state, _, _) = seatsKafkaViewer.State() |> Result.get
             Expect.equal state.Seats.Length 3 "should be equal"
             
         testCase "Add many rows and many seats using kafka viewer - Ok" <| fun _ ->
@@ -272,10 +273,10 @@ let storageEventsTests =
                         rowSubscriber
                         (CommandHandler.getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.ApplicationInstance.Instance.GetGuid()) 
             
-            let (_, state, _, _) = seatsKafkaViewer.State()
+            let (_, state, _, _) = seatsKafkaViewer.State() |> Result.get
             Expect.equal state.Seats.Length 1 "should be equal"
             
-            let (_, stateRow2, _, _) = seats2KafkaViewer.State()
+            let (_, stateRow2, _, _) = seats2KafkaViewer.State() |> Result.get
             Expect.equal stateRow2.Seats.Length 1 "should be equal"
             
             let seat2 = { Id = 2; State = Free; RowId = None }
@@ -287,7 +288,7 @@ let storageEventsTests =
             
             seatsKafkaViewer.RefreshLoop() |> ignore
             
-            let (_, state, _, _) = seatsKafkaViewer.State()
+            let (_, state, _, _) = seatsKafkaViewer.State() |> Result.get
             Expect.equal state.Seats.Length 3 "should be equal"
             
             let seat22 = { Id = 22; State = Free; RowId = None }
@@ -299,7 +300,7 @@ let storageEventsTests =
             Expect.isOk addSeat23 "should be ok"
             
             seats2KafkaViewer.RefreshLoop() |> ignore
-            let (_, stateRow2, _, _) = seats2KafkaViewer.State()
+            let (_, stateRow2, _, _) = seats2KafkaViewer.State() |> Result.get
             Expect.equal stateRow2.Seats.Length 3 "should be equal"
             
             

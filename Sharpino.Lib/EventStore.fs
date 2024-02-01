@@ -63,6 +63,7 @@ module Storage =
 
     type IEventStore =
         abstract member Reset: Version -> Name -> unit
+        abstract member ResetAggregateStream: Version -> Name -> unit
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>

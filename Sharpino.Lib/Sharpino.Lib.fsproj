@@ -66,14 +66,13 @@
     <PackageReference Include="Npgsql" Version="8.0.1" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
-    <PackageReference Include="Sharpino.Core" Version="1.0.7" />
+<!--    <PackageReference Include="Sharpino.Core" Version="1.0.7" />-->
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-<!-- 
  <ItemGroup>
    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
- </ItemGroup>  -->
+ </ItemGroup> 
 
 </Project>

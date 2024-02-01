@@ -69,7 +69,6 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-
     type AggregateCache<'A when 'A :> Aggregate> private () =
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()

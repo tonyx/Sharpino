@@ -8,6 +8,7 @@ module App =
     let doNothingBroker: IEventBroker = 
         {
             notify = None
+            notifyAggregate = None 
         }
     type App(storage: IEventStore, eventBroker: IEventBroker) =
         let row1StateViewer =

@@ -5,6 +5,7 @@ open FsToolkit.ErrorHandling
 open Npgsql.FSharp
 open Npgsql
 open FSharpPlus
+open FSharpPlus.Operators
 open Sharpino
 open Sharpino.Storage
 open Sharpino.Definitions
@@ -53,9 +54,11 @@ module PgStorage =
                 failwith "operation allowed only in test db"
                 
         interface IEventStore with
-            // only test db should be able to reset
+            // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
                 this.Reset version name
+            member this.ResetAggregateStream(version: Version) (name: Name): unit =
+                this.ResetAggregateStream version name    
             member this.TryGetLastSnapshot version name =
                 log.Debug "TryGetLastSnapshot"
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
@@ -169,7 +172,8 @@ module PgStorage =
                             let transaction = conn.BeginTransaction() 
                             let ids =
                                 events
-                                |> List.map 
+                                // |> List.map 
+                                |>>
                                     (
                                         fun x -> 
                                             let command' = new NpgsqlCommand(command, conn)
@@ -199,7 +203,7 @@ module PgStorage =
                         try
                             let cmdList = 
                                 arg 
-                                |> List.map 
+                                |>>
                                     (
                                         fun (events, version,  name) -> 
                                             let stream_name = version + name
@@ -461,7 +465,6 @@ module PgStorage =
             member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
-                // let command = sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name
                 let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -471,7 +474,7 @@ module PgStorage =
                             let transaction = conn.BeginTransaction() 
                             let ids =
                                 events
-                                |> List.map 
+                                |>> 
                                     (
                                         fun x -> 
                                             let command' = new NpgsqlCommand(command, conn)
@@ -500,7 +503,7 @@ module PgStorage =
                         try
                             let cmdList = 
                                 arg 
-                                |> List.map 
+                                |>>
                                     (
                                         fun (events, version,  name, aggregateId) -> 
                                             let stream_name = version + name

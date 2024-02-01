@@ -2,24 +2,17 @@
 namespace Sharpino
 
 open FsToolkit.ErrorHandling
-open Npgsql.FSharp
 open FSharpPlus
 open Sharpino
 open Sharpino.Storage
 open Sharpino.Definitions
-open log4net
-open log4net.Config
 open Confluent.Kafka
 open Sharpino.Core
-open Sharpino.Storage
 open Sharpino.Utils
-open Sharpino.Definitions
-open Sharpino.CommandHandler
 open Sharpino.KafkaBroker
 open System
-open Farmer
-open System.Threading.Tasks
-open Microsoft.Extensions.Hosting
+open log4net
+open log4net.Config
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
@@ -43,15 +36,15 @@ module KafkaReceiver =
 
         let consumer = new ConsumerBuilder<Null, string>(config)
         let cons = consumer.Build () 
-        let _ = cons.Subscribe(topic)
+        let _ = cons.Subscribe topic 
         
         member this.Assign(position: int64, partition: int) =
-            let partition = new Partition(partition) 
-            cons.Assign ([new TopicPartitionOffset(topic, partition, position)])
+            let partition = Partition(partition) 
+            cons.Assign [TopicPartitionOffset(topic, partition, position)]
             () 
 
         member this.Consume () =
-            let result = cons.Consume()
+            let result = cons.Consume ()
             result
             
         // too late to change the name
@@ -59,7 +52,7 @@ module KafkaReceiver =
             ResultCE.result {
                 try
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
-                    let result = cons.Consume(cancellationTokenSource.Token)
+                    let result = cons.Consume cancellationTokenSource.Token
                     return result
                 with 
                 | _ -> 
@@ -80,25 +73,23 @@ module KafkaReceiver =
         =
         let mutable state = 
             try
-                sourceOfTruthStateViewer aggregateId |> Result.get
+                sourceOfTruthStateViewer aggregateId 
             with
             | e  -> 
-                log.Error (sprintf "cannot get the state from the source of truth. Error: %A \n" e.Message)
-                failwith (sprintf "cannot get the state from the source of truth error %A"  e.Message)
-        let (_, _, offset, partition) = state
+                "state error" |> Result.Error
         let _ =
-            match offset, partition with
-            | Some off, Some part ->
-                subscriber.Assign(off + 1L, part)
+            match state with
+            | Ok ( _, _, Some offset, Some partition ) ->
+                subscriber.Assign ( offset + 1L, partition )
             | _ -> 
-                log.Error "Cannot assign offset and partition because they are None"
+                log.Info "Cannot assign offset and partition because they are None"
                 ()
 
         member this.State () = 
             state
 
-        member this.Refresh() =
-            let result = subscriber.consume(config.RefreshTimeout)
+        member this.Refresh () =
+            let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
                 log.Error e
@@ -107,33 +98,33 @@ module KafkaReceiver =
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
                     let eventId = newMessage.EventId
-                    let currentStateId, _, _, _ = this.State ()
+                    let! currentStateId, _, _, _ = this.State ()
                     if eventId = currentStateId + 1 then
                         let msgAppId = newMessage.ApplicationId
                         let msgAggregateId = newMessage.AggregateId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
-                        let (_, currentState, _, _) = this.State ()
+                        let! (_, currentState, _, _) = this.State ()
                         if appId <> msgAppId || aggregateId <> msgAggregateId then
                             ()
                         else
                             let! newState = evolve currentState [newEvent] 
-                            state <- (eventId, newState, None, None)
+                            state <- ( eventId, newState, None, None ) |> Result.Ok
                         return () |> Result.Ok
                     else
                         let! _ = this.ForceSyncWithSourceOfTruth()
+                        let! _, _, offset, partition = this.State ()
                         let _ =
-                            let _, _, offset, partition = this.State ()
                             match offset, partition with
                             | Some off, Some part ->
-                                subscriber.Assign(off + 1L, part)
+                                subscriber.Assign( off + 1L, part )
                             | _ -> 
                                 log.Error "Cannot assign offset and partition"
                                 ()
                         return () |> Result.Ok
                 }
                 
-        member this.RefreshLoop() =
-            let mutable result = this.Refresh()
+        member this.RefreshLoop () =
+            let mutable result = this.Refresh ()
             while (result |> Result.toOption).IsSome do
                 result <- this.Refresh()
                 ()
@@ -142,11 +133,11 @@ module KafkaReceiver =
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer aggregateId
-                state <- newState 
-                let _, _, offset, partition = this.State ()
+                state <- newState |> Result.Ok
+                let! _, _, offset, partition = this.State ()
                 match offset, partition with
                 | Some off, Some part ->
-                    subscriber.Assign(off + 1L, part)
+                    subscriber.Assign ( off + 1L, part )
                 | _ ->
                     log.Error "Cannot assign offset and partition"
                     ()
@@ -160,27 +151,24 @@ module KafkaReceiver =
         =
         let mutable state = 
             try
-                sourceOfTruthStateViewer() |> Result.get
+                sourceOfTruthStateViewer ()
             with
             | e  -> 
-                log.Error (sprintf "cannot get the state from the source of truth. Error: %A \n" e.Message)
-                failwith "error" 
-
-        let (_, _, offset, partition) = state
+                "state error" |> Result.Error
 
         let _ =
-            match offset, partition with
-            | Some off, Some part ->
-                subscriber.Assign(off + 1L, part)
+            match state with
+            | Ok ( _, _, Some offset, Some partition ) ->
+                subscriber.Assign (offset + 1L, partition)
             | _ -> 
-                log.Error "Cannot assign offset and partition because they are None"
+                log.Info "Cannot assign offset and partition because they are None"
                 ()
 
-        member this.State () = 
+        member this.State () =
             state
 
         member this.Refresh() =
-            let result = subscriber.consume(config.RefreshTimeout)
+            let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
                 log.Error e
@@ -189,21 +177,21 @@ module KafkaReceiver =
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
                     let eventId = newMessage.EventId
-                    let currentStateId, _, _, _ = this.State ()
+                    let! currentStateId, _, _, _ = this.State ()
                     if eventId = currentStateId + 1 then
                         let msgAppId = newMessage.ApplicationId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
-                        let (_, currentState, _, _) = this.State ()
+                        let! _, currentState, _, _ = this.State ()
                         if appId <> msgAppId then
                             ()
                         else
                             let! newState = evolve currentState [newEvent] 
-                            state <- (eventId, newState, None, None)
+                            state <- (eventId, newState, None, None) |> Result.Ok
                         return () |> Result.Ok
                     else
-                        let! _ = this.ForceSyncWithSourceOfTruth()
+                        let! _ = this.ForceSyncWithSourceOfTruth ()
+                        let! _, _, offset, partition = this.State ()
                         let _ =
-                            let _, _, offset, partition = this.State ()
                             match offset, partition with
                             | Some off, Some part ->
                                 subscriber.Assign(off + 1L, part)
@@ -214,19 +202,19 @@ module KafkaReceiver =
                 }
 
         member this.RefreshLoop() =
-            let mutable result = this.Refresh()
-            while (result |> Result.toOption).IsSome do
-                result <- this.Refresh()
+            let mutable result = this.Refresh ()
+            while ( result |> Result.toOption ).IsSome do
+                result <- this.Refresh ()
                 ()
             ()
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
-                let! newState = sourceOfTruthStateViewer()
-                state <- newState 
-                let _, _, offset, partition = this.State ()
+                let! newState = sourceOfTruthStateViewer ()
+                state <- newState |> Result.Ok
+                let! _, _, offset, partition = this.State ()
                 match offset, partition with
                 | Some off, Some part ->
-                    subscriber.Assign(off + 1L, part)
+                    subscriber.Assign ( off + 1L, part )
                 | _ ->
                     log.Error "Cannot assign offset and partition"
                     ()

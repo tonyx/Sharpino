@@ -62,7 +62,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 // when
                 let todosKafkaViewer =
                     mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
-                let todosKafkaViewerState = todosKafkaViewer.State() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
 
                 // then
                 Expect.equal (todosKafkaViewerState.todos.todos.GetAll()) [todo] "should be equal"
@@ -83,7 +83,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todosKafkaViewer =
                     mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber
                         (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
-                let todosKafkaViewerState = todosKafkaViewer.State() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
 
                 todoSubscriber.Assign(position, partition)
 
@@ -110,7 +110,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todo2Added = app.addTodo todo2
 
                 todosKafkaViewer.Refresh() |> ignore
-                let todosKafkaViewerState = todosKafkaViewer.State() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2] |> Set.ofList
                 Expect.equal actual expected "should be equal"
@@ -138,7 +138,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todo3Added = app.addTodo todo3
 
                 todosKafkaViewer.Refresh() |> ignore
-                let todosKafkaViewerState = todosKafkaViewer.State() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
                 Expect.equal actual expected "should be equal"
@@ -169,7 +169,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todo3 = mkTodo (Guid.NewGuid()) "testX3" [] []
                 let todo3Added = app.addTodo todo3
 
-                let todosKafkaViewerState = currentStateViewer() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
@@ -201,7 +201,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todo3 = mkTodo (Guid.NewGuid()) "testX3" [] []
                 let todo3Added = app.addTodo todo3
 
-                let todosKafkaViewerState = currentStateViewer() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
@@ -209,7 +209,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 let todo4 = mkTodo (Guid.NewGuid()) "testX4" [] []
                 let todo4Added = app.addTodo todo4
-                let todosKafkaViewerState = currentStateViewer() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3; todo4] |> Set.ofList
                 Expect.equal actual expected "should be equal"
@@ -240,7 +240,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todo3 = mkTodo (Guid.NewGuid()) "testX3" [] []
                 let todo3Added = app.addTodo todo3
 
-                let todosKafkaViewerState = currentStateViewer() |> fun (_, b, _, _) -> b
+                let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
                 let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList

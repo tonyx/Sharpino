@@ -222,10 +222,14 @@ module MemoryStorage =
             snapshots_dic.Clear()
             event_id_seq_dic.Clear()
             snapshot_id_seq_dic.Clear()
+            aggregate_events_dic.Clear()
+            aggregate_snapshots_dic.Clear()
             
         interface IEventStore with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.Reset version name =
+                this.Reset version name
+            member this.ResetAggregateStream version name =
                 this.Reset version name
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
@@ -243,7 +247,7 @@ module MemoryStorage =
                     ]
                 let events = getExistingEvents version name @ newEvents
                 storeEvents version name events
-                let ids = newEvents |> List.map (fun x -> x.Id)
+                let ids = newEvents |>> _.Id 
                 ids |> Ok
 
             member this.GetEventsAfterId version id name =
@@ -309,7 +313,7 @@ module MemoryStorage =
                 else
                     events_dic.[version].[name]
                     |> List.tryLast
-                    |>> (fun x -> x.Id)
+                    |>> _.Id 
             member this.TryGetLastSnapshot version name =
                 log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
@@ -339,7 +343,7 @@ module MemoryStorage =
                 else
                     snapshots_dic.[version].[name]
                     |> List.tryLast
-                    |>> (fun x -> x.EventId)
+                    |>> _.EventId 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
@@ -437,7 +441,7 @@ module MemoryStorage =
                     ]
                 let events' = getExistingAggregateEvents version name aggregateId @ newEvents
                 storeAggregateEvents version name aggregateId events'
-                let ids = newEvents |> List.map _.Id
+                let ids = newEvents |>> _.Id
                 ids |> Ok
                     
             member this.TryGetLastEventIdByAggregateIdWithKafkaOffSet(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>> =
@@ -451,7 +455,7 @@ module MemoryStorage =
                         if (aggregate_events_dic.[version].[name].ContainsKey aggregateId) then
                             aggregate_events_dic.[version].[name].[aggregateId]
                             |> List.tryLast
-                            |>> (fun x -> (x.Id, None, None))
+                            |>> ( fun x -> ( x.Id, x.KafkaOffset, x.KafkaPartition ))
                         else
                             None 
                 
@@ -481,7 +485,7 @@ module MemoryStorage =
                             [] |> Ok
                         else
                             aggregate_events_dic.[version].[name].[aggregateId]
-                            |> List.map (fun x -> (x.Id, x.JsonEvent))
+                            |>> (fun x -> (x.Id, x.JsonEvent))
                             |> Ok
 
             member this.SetAggregateSnapshot version (aggregateId, eventId, snapshot) name =

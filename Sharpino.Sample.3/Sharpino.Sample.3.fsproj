@@ -15,10 +15,12 @@
     <Compile Include="Stadium/Stadium.fs" />
     <Compile Include="Stadium/StadiumEvents.fs" />
     <Compile Include="Stadium/StadiumCommands.fs" />
-    <Compile Include="App.fs" />
-    <Compile Include="EventStoreBasedApp.fs" />
+    <Compile Include="IStadiumBookingSystem.fs" />
+    <Compile Include="StorageStadiumBookingSystem.fs" />
+    <Compile Include="KafkaStadiumBookingSystem.fs" />
     <Content Include="appSettings.json" />
     <Content Include="README.txt" />
+    <Compile Include="IStadiumBookingSystem.fs" />
   </ItemGroup>
 
   <ItemGroup>

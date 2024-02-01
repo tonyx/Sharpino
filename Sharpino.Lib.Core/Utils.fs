@@ -1,12 +1,9 @@
 
 namespace Sharpino
 open FSharp.Core
-open FSharpPlus
-open FSharpPlus.Data
 open Newtonsoft.Json
 open Expecto
 open System
-open FsToolkit.ErrorHandling
 
 module Definitions =
     type Json = string
@@ -47,7 +44,6 @@ module Utils =
                     JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
                 with
                 | ex  ->
-                    printf "error deserialize: %A" ex
                     Error (ex.ToString())
         
             member this.Serialize<'A> (x: 'A): string =
