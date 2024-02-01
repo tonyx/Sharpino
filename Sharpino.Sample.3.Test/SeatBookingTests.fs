@@ -151,7 +151,7 @@ let aggregateRowRefactoredTests =
  
     let stores =
         [
-            // (getStorageBasedStadiumBooking, "", ()); 
+            (getStorageBasedStadiumBooking, "", ()); 
             (getKafkaBasedStadiumBooking, "", ()); 
             // (getKafkaBasedStadiumBooking2, "", ()); 
         ]
