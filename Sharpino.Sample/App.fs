@@ -29,6 +29,7 @@ open Sharpino.Sample.Converters
 open Sharpino.StateView
 open System
 open FSharpPlus
+open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open log4net
 module App =
@@ -212,7 +213,7 @@ module App =
             let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             result {
                 let! events'' = 
-                    events |> catchErrors (serializer.Deserialize)
+                    events |> List.traverseResultM (serializer.Deserialize)
                 return 
                     { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events'' }
             }
@@ -391,7 +392,7 @@ module App =
             let events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo |>> snd
             result {
                 let! events'' = 
-                    events |> catchErrors (serializer.Deserialize)
+                    events |> List.traverseResultM (serializer.Deserialize)
                 return 
                     { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events'' }
             }

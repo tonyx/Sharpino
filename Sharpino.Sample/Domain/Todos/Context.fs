@@ -52,7 +52,7 @@ module TodosContext =
 
             result
                 {
-                    let! categoriesMustExist = t.CategoryIds |> catchErrors checkCategoryExists
+                    let! categoriesMustExist = t.CategoryIds |> List.traverseResultM checkCategoryExists
                     let! todos = this.todos.AddTodo t
                     return 
                         {

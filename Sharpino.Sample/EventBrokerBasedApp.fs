@@ -217,7 +217,7 @@ module EventBrokerBasedApp =
             let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             result {
                 let! events'' = 
-                    events |> catchErrors (serializer.Deserialize)
+                    events |> List.traverseResultM (serializer.Deserialize)
                 return 
                     { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events'' }
             }

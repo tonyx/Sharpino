@@ -55,7 +55,7 @@ module Repositories =
 
                     ResultCE.result {
                         let! doesNotExist =
-                            xs |> catchErrors notExists
+                            xs |> List.traverseResultM notExists
                         return {
                             this    
                                 with Items = xs @ this.Items
@@ -69,7 +69,7 @@ module Repositories =
 
                     ResultCE.result {
                         let! doesNotExist =
-                            xs |> catchErrors notExists
+                            xs |> List.traverseResultM notExists
                         return 
                             {
                                 this    

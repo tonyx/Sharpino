@@ -206,7 +206,7 @@ module StateView =
                         let! deserEvents =
                             events 
                             |>> snd 
-                            |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
+                            |> List.traverseResultM (fun x -> 'E.Deserialize (serializer, x))
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
                         return newState
@@ -238,7 +238,7 @@ module StateView =
                         let! deserEvents =
                             events 
                             |>> snd 
-                            |> catchErrors (fun x -> 'E.Deserialize (serializer, x))
+                            |> List.traverseResultM (fun x -> 'E.Deserialize (serializer, x))
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
                         return newState

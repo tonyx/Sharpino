@@ -115,34 +115,34 @@ module KafkaBroker =
                         fun version name events ->
                             result {    
                                 try 
-                                    let notified = events |> catchErrors (fun x -> notifyMessage version name x) 
+                                    let notified = events |> List.traverseResultM (fun x -> notifyMessage version name x) 
                                     let notified2 =
                                         match notified with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 1 %s" e)
-                                            events |> catchErrors (fun x -> notifyMessage version name x)
+                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
 
                                     let notified3 =
                                         match notified2 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 2 %s" e)
-                                            events |> catchErrors (fun x -> notifyMessage version name x)
+                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
 
                                     let notified4 =
                                         match notified3 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 3 %s" e)
-                                            events |> catchErrors (fun x -> notifyMessage version name x)
+                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
 
                                     let notified5 =
                                         match notified4 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 4 %s" e)
-                                            events |> catchErrors (fun x -> notifyMessage version name x)
+                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
                                     return! notified5
                                 with
                                 | _ as e -> 
@@ -154,34 +154,34 @@ module KafkaBroker =
                         fun version name aggregateId events ->
                             result {    
                                 try 
-                                    let notified = events |> catchErrors (fun x -> notifyAggregateMessage version name aggregateId x) 
+                                    let notified = events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x) 
                                     let notified2 =
                                         match notified with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 1 %s" e)
-                                            events |> catchErrors (fun x -> notifyAggregateMessage version name aggregateId x)
+                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
 
                                     let notified3 =
                                         match notified2 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 2 %s" e)
-                                            events |> catchErrors (fun x -> notifyAggregateMessage version name aggregateId x)
+                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
 
                                     let notified4 =
                                         match notified3 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 3 %s" e)
-                                            events |> catchErrors (fun x -> notifyAggregateMessage version name aggregateId x)
+                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
 
                                     let notified5 =
                                         match notified4 with
                                         | Ok x -> Ok x 
                                         | Error e -> 
                                             log.Error (sprintf "retry send n. 4 %s" e)
-                                            events |> catchErrors (fun x -> notifyAggregateMessage version name aggregateId x)
+                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
                                     return! notified5
                                 with
                                 | _ as e -> 
