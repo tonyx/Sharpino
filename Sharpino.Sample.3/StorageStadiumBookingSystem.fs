@@ -126,5 +126,4 @@ module StorageStadiumBookingSystem =
             member this.GetAllRowReferences() =  this.GetAllRowReferences()
             member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
                 this.AddInvariant (rowId: Guid) (invariant: InvariantContainer)
-                // failwith "not implemented"
             

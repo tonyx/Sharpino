@@ -1,4 +1,5 @@
 namespace Tonyx.SeatsBooking
+open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
@@ -20,6 +21,8 @@ module rec SeatRow =
    // the pickler will then be able to serialize and deserialize the invariant
     type InvariantContainer (invariant: string) =
         member this.Invariant = invariant
+        member this.UnPickled () =
+            pickler.UnPickleOfString invariant // this.Invariant
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
             
         new (id: Guid) = 
@@ -45,9 +48,9 @@ module rec SeatRow =
                     |> List.filter (fun seat -> booking.SeatIds |> List.contains seat.Id)
                     |> List.forall (fun seat -> seat.State = SeatState.Free)
                     |> boolToResult "Seat already booked"
-                        
+                    
                 let! checkSeatsExist =
-                    let thisSeatsIds = this.Seats |> List.map _.Id
+                    let thisSeatsIds = this.Seats |>> _.Id
                     booking.SeatIds
                     |> List.forall (fun seatId -> thisSeatsIds |> List.contains seatId)
                     |> boolToResult "Seat not found"
@@ -55,7 +58,7 @@ module rec SeatRow =
                 let claimedSeats = 
                     seats
                     |> List.filter (fun seat -> booking.SeatIds |> List.contains seat.Id)
-                    |> List.map (fun seat -> { seat with State = Seats.SeatState.Booked })
+                    |>> (fun seat -> { seat with State = Seats.SeatState.Booked })
 
                 let unclaimedSeats = 
                     seats
@@ -69,7 +72,7 @@ module rec SeatRow =
                 
                 let! checkInvariants =
                     this.Invariants
-                    |> List.map (fun (inv: InvariantContainer) -> (pickler.UnPickleOfString (inv.Invariant) :> Invariant).Compile())
+                    |>> (fun (inv: InvariantContainer) -> ((inv.UnPickled ()) :> Invariant).Compile())
                     |> List.traverseResultM 
                         (fun ch -> ch result)
                 return

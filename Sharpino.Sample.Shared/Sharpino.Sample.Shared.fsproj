@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Log4net" Version="2.0.15" />
-    <PackageReference Include="Sharpino.Core" Version="1.0.7" />
+    <PackageReference Include="Sharpino.Core" Version="1.0.8" />
   </ItemGroup>
 
 </Project>

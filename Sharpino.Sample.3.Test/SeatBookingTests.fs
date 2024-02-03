@@ -142,6 +142,7 @@ let aggregateRowRefactoredTests =
             mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent> rowId rowSubscriber (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> (eventStore())) (ApplicationInstance.Instance.GetGuid())
             
     let rowStateViewer: AggregateViewer<SeatsRow> =
+        // todo: fix this because apparently will recreate the kafka viewer every time
         fun (rowId: Guid) ->
             let viewer = kafkaRowViewer rowId
             viewer.RefreshLoop()
