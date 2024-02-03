@@ -20,7 +20,6 @@
     <Compile Include="KafkaStadiumBookingSystem.fs" />
     <Content Include="appSettings.json" />
     <Content Include="README.txt" />
-    <Compile Include="IStadiumBookingSystem.fs" />
   </ItemGroup>
 
   <ItemGroup>
