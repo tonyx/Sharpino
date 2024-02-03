@@ -6,7 +6,7 @@ open Sharpino.Core
 open Sharpino.Lib.Core.Commons
 open System
 open Tonyx.SeatsBooking
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Seats
 
 module RowAggregateEvent =
@@ -14,6 +14,7 @@ module RowAggregateEvent =
         | SeatBooked of Seats.Booking  
         | SeatAdded of Seats.Seat
         | SeatsAdded of Seats.Seat list
+        | InvariantAdded of InvariantContainer
             interface Event<SeatsRow> with
                 member this.Process (x: SeatsRow) =
                     match this with
@@ -23,6 +24,9 @@ module RowAggregateEvent =
                         x.AddSeat seat
                     | SeatsAdded seats ->
                         x.AddSeats seats
+                    | InvariantAdded invariant ->
+                        x.AddInvariant invariant
+                        
         member this.Serialize(serializer: ISerializer) =
             this
             |> serializer.Serialize

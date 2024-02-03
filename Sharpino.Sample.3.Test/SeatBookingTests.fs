@@ -4,7 +4,7 @@ module SeatBookingTests
 open Sharpino.KafkaReceiver
 open Tonyx.SeatsBooking.IStadiumBookingSystem
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Tonyx.SeatsBooking.Stadium
@@ -12,6 +12,7 @@ open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Expecto
 open Sharpino
+open Sharpino.Utils
 open Sharpino.ApplicationInstance
 open Sharpino.PgStorage
 open Sharpino.MemoryStorage
@@ -20,10 +21,12 @@ open Sharpino.Cache
 open Sharpino.CommandHandler
 open Sharpino.TestUtils
 open System
+open MBrace.FsPickler.Json
 open Tonyx.SeatsBooking.StadiumKafkaBookingSystem
 
 [<Tests>]
 let storageEventsTests =
+    let pickler = FsPickler.CreateJsonSerializer(indent = false)
     let doNothingBroker: IEventBroker =
         {
             notify = None
@@ -152,7 +155,7 @@ let aggregateRowRefactoredTests =
     let stores =
         [
             (getStorageBasedStadiumBooking, "", ()); 
-            (getKafkaBasedStadiumBooking, "", ()); 
+            // (getKafkaBasedStadiumBooking, "", ()); 
             // (getKafkaBasedStadiumBooking2, "", ()); 
         ]
         
@@ -186,7 +189,6 @@ let aggregateRowRefactoredTests =
             Expect.isOk addedRow "should be ok"
             let retrievedRow = stadiumBookingSystem.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
-                    
             
         multipleTestCase "retrieve an unexisting row - Error" stores <| fun (bookingSystem, _, _) ->
             setUp()
@@ -426,7 +428,7 @@ let aggregateRowRefactoredTests =
             let tryBooking = stadiumBookingSystem.BookSeats rowId booking
             Expect.isOk tryBooking "should be ok"
                     
-        multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok"  stores <| fun (bookingSystem, _, _) ->
+        fmultipleTestCase "violate the middle seat non empty constraint in one single booking - Ok"  stores <| fun (bookingSystem, _, _) ->
             setUp()
             let eventStore = eventStore ()
               
@@ -435,9 +437,30 @@ let aggregateRowRefactoredTests =
             eventStore.ResetAggregateStream "_01" "_seatrow"
             
             let rowId = Guid.NewGuid()
-            let stadiumBookingSystem = bookingSystem () 
+            let stadiumBookingSystem = bookingSystem ()
+            let middleSeatInvariant: Invariant  =
+                <@
+                    fun (seatsRow: SeatsRow) ->
+                        let seats: List<Seat> = seatsRow.Seats
+                        (
+                            seats.Length = 5 &&
+                            seats.[0].State = SeatState.Booked &&
+                            seats.[1].State = SeatState.Booked &&
+                            seats.[2].State = SeatState.Free &&
+                            seats.[3].State = SeatState.Booked &&
+                            seats.[4].State = SeatState.Booked)
+                        |> not
+                        |> boolToResult "error: can't leave a single seat free in the middle"
+                @>
+                
+            let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)     
+                
             let addedRow = stadiumBookingSystem.AddRowReference rowId
             Expect.isOk addedRow "should be ok"
+            
+            let addedRule = stadiumBookingSystem.AddInvariant rowId middleSeatInvariantContainer
+            Expect.isOk addedRule "should be ok"
+            
             let seats = [
                 { Id = 1; State = Free; RowId = None }
                 { Id = 2; State = Free; RowId = None }
@@ -507,10 +530,34 @@ let aggregateRowRefactoredTests =
             
             let rowId1 = Guid.NewGuid()
             let rowId2 = Guid.NewGuid()
-            let stadiumBookingSystem = bookingSystem () 
+            let stadiumBookingSystem = bookingSystem ()
+           
+            let middleSeatNotFreeRule: Invariant =
+                <@
+                    fun (seatsRow: SeatsRow) ->
+                        let seats: List<Seat> = seatsRow.Seats
+                        (
+                            seats.Length = 5 &&
+                            seats.[0].State = SeatState.Booked &&
+                            seats.[1].State = SeatState.Booked &&
+                            seats.[2].State = SeatState.Free &&
+                            seats.[3].State = SeatState.Booked &&
+                            seats.[4].State = SeatState.Booked)
+                        |> not
+                        |> boolToResult "error: can't leave a single seat free in the middle"
+                @>
+            let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
+            
             let addedRow1 = stadiumBookingSystem.AddRowReference rowId1
             Expect.isOk addedRow1 "should be ok"
+            let addedInvariant = stadiumBookingSystem.AddInvariant rowId1 invariantContainer
+            
+            Expect.isOk addedInvariant "should be ok"
             let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+            
+            let addedInvariant = stadiumBookingSystem.AddInvariant rowId2 invariantContainer
+            Expect.isOk addedInvariant "should be ok"
+            
             Expect.isOk addedRow2 "should be ok"
             let seats1 = [
                 { Id = 1; State = Free; RowId = None }

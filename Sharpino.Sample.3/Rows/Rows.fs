@@ -6,19 +6,27 @@ open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Lib.Core.Commons
 open System
+open FSharp.Quotations
+open MBrace.FsPickler.Json
+open Newtonsoft.Json
+open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Seats
-module NewRow =
+module rec SeatRow =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-
-    type SeatsRow private (seats: List<Seat>, id: Guid) =
-        let seats = seats
-        let id = id
+    let pickler = FsPickler.CreateJsonSerializer(indent = false)
+        
+   // due to serialization issues, we need to wrap the invariant in a container as a string.
+   // the pickler will then be able to serialize and deserialize the invariant
+    type InvariantContainer (invariant: string) =
+        member this.Invariant = invariant
+    type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
             
         new (id: Guid) = 
-            new SeatsRow ([], id)
+            new SeatsRow ([], id, [])
 
         member this.Seats = seats
+        member this.Invariants = invariants 
         member this.Id = id
 
         member this.Serialize (serializer: ISerializer) =
@@ -56,21 +64,16 @@ module NewRow =
                 let potentialNewRowState = 
                     claimedSeats @ unclaimedSeats
                     |> List.sortBy _.Id
+               
+                let result = SeatsRow (potentialNewRowState, id, this.Invariants)
                 
-                // it just checks that the middle one can't be free, but
-                // actually it was supposed to be "no single seat left" anywhere A.F.A.I.K.
-                let theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed =
-                    (potentialNewRowState.Length = 5 &&
-                    potentialNewRowState.[0].State = Seats.SeatState.Booked &&
-                    potentialNewRowState.[1].State = Seats.SeatState.Booked &&
-                    potentialNewRowState.[2].State = Seats.SeatState.Free &&
-                    potentialNewRowState.[3].State = Seats.SeatState.Booked &&
-                    potentialNewRowState.[4].State = Seats.SeatState.Booked)
-                    |> not
-                    |> boolToResult "error: can't leave a single seat free in the middle"
-                let! checkInvariant = theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed
+                let! checkInvariants =
+                    this.Invariants
+                    |> List.map (fun (inv: InvariantContainer) -> (pickler.UnPickleOfString (inv.Invariant) :> Invariant).Compile())
+                    |> List.traverseResultM 
+                        (fun ch -> ch result)
                 return
-                    SeatsRow (potentialNewRowState, id)
+                    result
             }
         member this.AddSeat (seat: Seat): Result<SeatsRow, string> =
             result {
@@ -80,12 +83,14 @@ module NewRow =
                     |> Option.isNone
                     |> boolToResult (sprintf "Seat with id '%d' already exists" seat.Id)
                 let newSeats = seat :: seats
-                return SeatsRow (newSeats, id)
+                return SeatsRow (newSeats, id, this.Invariants)
             }
+        member this.AddInvariant (invariant: InvariantContainer) =
+            SeatsRow (seats, id, invariant :: this.Invariants) |> Ok
 
         member this.AddSeats (seats: List<Seat>): Result<SeatsRow, string> =
             let newSeats = this.Seats @ seats
-            SeatsRow (newSeats, id) |> Ok
+            SeatsRow (newSeats, id, this.Invariants) |> Ok
         member this.GetAvailableSeats () =
             seats
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
@@ -104,3 +109,6 @@ module NewRow =
             member this.Lock = this
         interface Entity with
             member this.Id = this.Id
+    type Invariant = Quotations.Expr<(SeatsRow -> Result<bool, string>)>
+        
+        

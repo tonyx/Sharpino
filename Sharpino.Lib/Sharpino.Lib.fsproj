@@ -44,6 +44,7 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
+    <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
 
@@ -66,13 +67,13 @@
     <PackageReference Include="Npgsql" Version="8.0.1" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
-    <PackageReference Include="Sharpino.Core" Version="1.0.8" />
+<!--    <PackageReference Include="Sharpino.Core" Version="1.0.8" />-->
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-<!-- <ItemGroup>-->
-<!--   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
-<!-- </ItemGroup> -->
+ <ItemGroup>
+   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+ </ItemGroup> 
 
 </Project>

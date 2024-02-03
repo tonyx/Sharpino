@@ -4,7 +4,7 @@ open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open System
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.RowAggregateEvent
 
 module RowAggregateCommand =
@@ -12,6 +12,7 @@ module RowAggregateCommand =
         | BookSeats of Seats.Booking
         | AddSeat of Seats.Seat
         | AddSeats of List<Seats.Seat>
+        | AddInvariant of InvariantContainer
             interface Command<SeatsRow, RowAggregateEvent> with
                 member this.Execute (x: SeatsRow) =
                     match this with
@@ -24,6 +25,9 @@ module RowAggregateCommand =
                     | AddSeats seats ->
                         x.AddSeats seats
                         |> Result.map (fun _ -> [SeatsAdded seats])
+                    | AddInvariant invariant ->
+                        x.AddInvariant invariant
+                        |> Result.map (fun _ -> [InvariantAdded invariant])     
                 member this.Undoer =
                     None
                 

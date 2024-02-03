@@ -2,7 +2,7 @@
 namespace Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.IStadiumBookingSystem
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
@@ -107,6 +107,14 @@ module StorageStadiumBookingSystem =
                 let! (_, stadiumState, _, _) = stadiumStateViewer ()
                 return stadiumState.GetRowReferences ()
             }
+        member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
+            let addInvariant = RowAggregateCommand.AddInvariant invariant
+            result {
+                let! result =
+                    runAggregateCommand<SeatsRow, RowAggregateEvent> 
+                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addInvariant
+                return result         
+            }
         interface IStadiumBookingSystem with
             member this.AddRowReference rowId = this.AddRowReference rowId
             // member this.BookSeats = this.BookSeats
@@ -116,4 +124,7 @@ module StorageStadiumBookingSystem =
             member this.AddSeat (rowId: Guid) (seat: Seat) = this.AddSeat (rowId: Guid) (seat: Seat) 
             member this.AddSeats (rowId: Guid) (seats: List<Seat>) =  this.AddSeats (rowId: Guid) (seats: List<Seat>) 
             member this.GetAllRowReferences() =  this.GetAllRowReferences()
+            member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
+                this.AddInvariant (rowId: Guid) (invariant: InvariantContainer)
+                // failwith "not implemented"
             

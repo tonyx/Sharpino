@@ -2,7 +2,7 @@
 namespace Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.IStadiumBookingSystem
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
@@ -124,3 +124,5 @@ module StadiumKafkaBookingSystem =
             member this.AddSeat (rowId: Guid) (seat: Seat) = this.AddSeat (rowId: Guid) (seat: Seat) 
             member this.AddSeats (rowId: Guid) (seats: List<Seat>) =  this.AddSeats (rowId: Guid) (seats: List<Seat>) 
             member this.GetAllRowReferences() =  this.GetAllRowReferences()
+            member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
+                failwith "not implemented"

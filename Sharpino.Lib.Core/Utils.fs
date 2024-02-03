@@ -3,6 +3,16 @@ namespace Sharpino
 open FSharp.Core
 open Newtonsoft.Json
 open Expecto
+// open MBrace.FsPickler
+// open MBrace.FsPickler.Json
+// open FSharp.Quotations
+// open FSharp.Quotations.Evaluator
+// open System.IO
+// open MBrace.FsPickler
+// open MBrace.FsPickler.Json
+// open System.IO
+// open System.Text
+
 open System
 
 module Definitions =
@@ -13,8 +23,6 @@ module Definitions =
     type EventId = int
     type SnapshotId = int
     type AggregateId = Guid
-
-
 
 module ApplicationInstance =
     type ApplicationInstance() =
@@ -36,7 +44,35 @@ module Utils =
     type ISerializer =
         abstract member Deserialize<'A> : Json -> Result<'A, string>
         abstract member Serialize<'A> : 'A -> Json
-
+        
+        
+    // // open Utils
+    // open MBrace.FsPickler
+    // open MBrace.FsPickler.Json
+    // open System.IO
+    // open System.Text
+    // let serializerX = JsonSerializer(indent = true)
+    // let utf8 = UTF8Encoding(false)
+    //
+    // type JsonSerializer(serSettings: JsonSerializerSettings) =
+    //         member this.toJson (x: 'a) =
+    //             use stream = new MemoryStream()
+    //             serializerX.Serialize(stream, x)
+    //             stream.ToArray() |> utf8.GetString
+    //
+    //         member this.parseJson<'a> json =
+    //             use reader = new StringReader(json)
+    //             serializerX.Deserialize<'a>(reader)
+    //         interface ISerializer with
+    //             member this.Serialize (x: 'a) =
+    //                 this.toJson x
+    //             member this.Deserialize<'A> (json: string) =
+    //                 try
+    //                     this.parseJson<'A> json |> Ok
+    //                 with
+    //                 | ex  ->
+    //                     Error (ex.ToString())
+        
     type JsonSerializer(serSettings: JsonSerializerSettings) =
         interface ISerializer with
             member this.Deserialize<'A> (json: string): Result<'A, string> =
@@ -48,7 +84,7 @@ module Utils =
         
             member this.Serialize<'A> (x: 'A): string =
                 JsonConvert.SerializeObject(x, serSettings)
-
+                
     let catchErrors f l =
         l
         |> List.fold (fun acc x ->
@@ -78,6 +114,33 @@ module Utils =
     type UpgradedVersion() =
         inherit Attribute()
 
+module Utils' =
+    open Utils
+    open MBrace.FsPickler
+    open MBrace.FsPickler.Json
+    open System.IO
+    open System.Text
+    let serializer = JsonSerializer(indent = true)
+    let utf8 = UTF8Encoding(false)
+    
+    type JsonSerializer(serSettings: JsonSerializerSettings) =
+            member this.toJson (x: 'a) =
+                use stream = new MemoryStream()
+                serializer.Serialize(stream, x)
+                stream.ToArray() |> utf8.GetString
+
+            member this.parseJson<'a> json =
+                use reader = new StringReader(json)
+                serializer.Deserialize<'a>(reader)
+            interface ISerializer with
+                member this.Serialize (x: 'a) =
+                    this.toJson x
+                member this.Deserialize<'A> (json: string) =
+                    try
+                        this.parseJson<'A> json |> Ok
+                    with
+                    | ex  ->
+                        Error (ex.ToString())
 module TestUtils =
     let multipleTestCase name par myTest =
         testList name (

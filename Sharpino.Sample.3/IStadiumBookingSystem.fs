@@ -1,7 +1,7 @@
 
 namespace Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Seats
-open Tonyx.SeatsBooking.NewRow
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
@@ -27,4 +27,5 @@ module IStadiumBookingSystem =
         abstract member AddSeat: Guid -> Seat -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         abstract member AddSeats: Guid -> List<Seat> -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         abstract member GetAllRowReferences: unit -> Result<List<Guid>,string>
+        abstract member AddInvariant: Guid -> InvariantContainer -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         
