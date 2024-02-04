@@ -14,9 +14,13 @@ open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Seats
 module rec SeatRow =
-    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let pickler = FsPickler.CreateJsonSerializer(indent = false)
-        
+    let checkInvariants (row: SeatsRow) =
+        row.Invariants
+        |>> (fun (inv: InvariantContainer) -> ((inv.UnPickled ()) :> Invariant).Compile())
+        |> List.traverseResultM 
+            (fun ch -> ch row)
    // due to serialization issues, we need to wrap the invariant in a container as a string.
    // the pickler will then be able to serialize and deserialize the invariant
     type InvariantContainer (invariant: string) =
@@ -26,7 +30,7 @@ module rec SeatRow =
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
             
         new (id: Guid) = 
-            new SeatsRow ([], id, [])
+            SeatsRow ([], id, [])
 
         member this.Seats = seats
         member this.Invariants = invariants 
@@ -69,12 +73,7 @@ module rec SeatRow =
                     |> List.sortBy _.Id
                
                 let result = SeatsRow (potentialNewRowState, id, this.Invariants)
-                
-                let! checkInvariants =
-                    this.Invariants
-                    |>> (fun (inv: InvariantContainer) -> ((inv.UnPickled ()) :> Invariant).Compile())
-                    |> List.traverseResultM 
-                        (fun ch -> ch result)
+                let! checkInvariant =  result |> checkInvariants
                 return
                     result
             }
@@ -86,14 +85,20 @@ module rec SeatRow =
                     |> Option.isNone
                     |> boolToResult (sprintf "Seat with id '%d' already exists" seat.Id)
                 let newSeats = seat :: seats
-                return SeatsRow (newSeats, id, this.Invariants)
+                let result = SeatsRow (newSeats, id, this.Invariants)
+                let! checkInvariants = result |> checkInvariants
+                return result
             }
         member this.AddInvariant (invariant: InvariantContainer) =
             SeatsRow (seats, id, invariant :: this.Invariants) |> Ok
 
         member this.AddSeats (seats: List<Seat>): Result<SeatsRow, string> =
             let newSeats = this.Seats @ seats
-            SeatsRow (newSeats, id, this.Invariants) |> Ok
+            result {
+                let result = SeatsRow (newSeats, id, this.Invariants)
+                let! checkInvariants =  result |> checkInvariants
+                return result
+            }
         member this.GetAvailableSeats () =
             seats
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
