@@ -21,6 +21,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3", "Sharpi
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3.Test", "Sharpino.Sample.3.Test\Sharpino.Sample.3.Test.fsproj", "{EB479E56-7615-4048-9832-BECC76BAC38C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.Client", "Sharpino.Sample.Client", "{8ED7E64B-B5F1-4D6D-9BE9-0CA983A5C44A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App", "Sharpino.Sample.Client\src\App.fsproj", "{D4C9757D-69AD-4975-92FA-0C507116929A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,5 +70,12 @@ Global
 		{EB479E56-7615-4048-9832-BECC76BAC38C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EB479E56-7615-4048-9832-BECC76BAC38C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EB479E56-7615-4048-9832-BECC76BAC38C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4C9757D-69AD-4975-92FA-0C507116929A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4C9757D-69AD-4975-92FA-0C507116929A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4C9757D-69AD-4975-92FA-0C507116929A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4C9757D-69AD-4975-92FA-0C507116929A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D4C9757D-69AD-4975-92FA-0C507116929A} = {8ED7E64B-B5F1-4D6D-9BE9-0CA983A5C44A}
 	EndGlobalSection
 EndGlobal

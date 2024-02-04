@@ -18,8 +18,6 @@ open System.Reflection
 open Feliz
 open Feliz.Bulma
 
-
-
 type Window =
     // function description
     abstract alert: ?message: string -> unit
@@ -138,7 +136,6 @@ let containerBox (model: State) (dispatch: Msg -> unit) =
                         prop.text "Add"
                     ]
                 ]
-                
 
                 Html.div [
                     Html.text "Categories"

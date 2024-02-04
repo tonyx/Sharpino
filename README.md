@@ -159,6 +159,8 @@ __Faq__:
 - given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## News: 
+- Added sample application 3 (booking seats of rows where rows are aggregates of a context which is a stadium).
+- Current version 1.5.0: - Kafka integration for fine-grained aggregates (identified by Id) is included. 
 - Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample3 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
 
 - Booking seat example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
