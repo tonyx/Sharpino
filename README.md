@@ -153,7 +153,7 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## Roadmap:
-- complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
+- (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
 - add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
 - select the type of lock per aggregate and context
 - given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
