@@ -159,7 +159,19 @@ __Faq__:
 - given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## News: 
-- Added sample application 3 (booking seats of rows where rows are aggregates of a context which is a stadium).
+- Version 1.5.1: - 
+  - Added a new configuration file named appSettings.json in the root of the project with the following content:
+```json
+  {
+      "LockType":{"Case":"Optimistic"},
+      "RefreshTimeout": 100,
+      "CacheAggregateSize": 100
+  }
+```
+- Added the possibility to make the optimistic lock for aggregates work as the classic one (so now it can handle multiple aggregate transactions properly).
+- See the sql script of sample 3: it includes the steps related to change "on the fly" (by application) the db level constraints that inhibit adding two events with the same aggregate stateid.
+- (in the same stream) in the event store.
+ 
 - Current version 1.5.0: - Kafka integration for fine-grained aggregates (identified by Id) is included. 
 - Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample3 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
 
@@ -182,6 +194,8 @@ Those data will be used in the future to feed the "kafkaViewer" on initializatio
 - Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not lists anymore but use Repository data type (which at the moment uses plain lists anyway). 
 
 - Version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
+ __don't use this because the configuration is changed in version 1.5.1__
+
 ```json
 
     "SharpinoConfig": {
