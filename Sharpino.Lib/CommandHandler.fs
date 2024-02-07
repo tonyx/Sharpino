@@ -472,7 +472,6 @@ module CommandHandler =
                 |> Async.RunSynchronously
 
             match config.LockType with
-            // match config.PessimisticLock with
             | Pessimistic ->
                 lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
                     command()

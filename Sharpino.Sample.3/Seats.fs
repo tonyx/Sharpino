@@ -18,17 +18,6 @@ module Seats =
         with member 
                 this.isEmpty() = 
                     this.SeatIds |> List.isEmpty
-    let toRow1 (booking: Booking) =
-        {
-            booking with
-                SeatIds = booking.SeatIds |> List.filter (fun seatId -> seatId >= 1 && seatId <= 5)
-        }
-
-    let toRow2 (booking: Booking) =
-        {
-            booking with
-                SeatIds = booking.SeatIds |> List.filter (fun seatId -> seatId >= 6 && seatId <= 10)
-        }
 
 
 
