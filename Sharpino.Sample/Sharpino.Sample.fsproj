@@ -38,9 +38,9 @@
    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
  </ItemGroup> -->
   
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup>-->
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
@@ -56,7 +56,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
 
     <!-- commend this when develp the lib-->
-<!--     <PackageReference Include="Sharpino" Version="1.5.0" /> -->
+     <PackageReference Include="Sharpino" Version="1.5.1" /> 
     <!-- commend this when you develp the lib-->
     <!-- <PackageReference Include="Sharpino.Core" Version="1.0.8" /> -->
 

@@ -26,16 +26,15 @@
     <PackageReference Include="FSharpPlus" Version="1.6.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-<!-- 
-    <PackageReference Include="Sharpino" Version="1.4.8" />
-    <PackageReference Include="Sharpino.Core" Version="1.0.7" /> -->
+    <PackageReference Include="Sharpino" Version="1.5.1" />
+    
 
   </ItemGroup>
 
   <!-- enable during dev: -->
 
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup>-->
 
 </Project>

@@ -54,7 +54,7 @@ __Commands__ defines also _undoers_ are functions that can undo the commands to 
 
 __Sharpino.Sample.tests__
 - tests for the sample application
-
+[Sharpino.Lib.fsproj](Sharpino.Lib%2FSharpino.Lib.fsproj)
 __Sharpino.Sample.Kafka__
 - scripts to setup a Kafka topics corresponding to the contexts of the sample application
 

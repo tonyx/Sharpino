@@ -23,15 +23,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.0" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Sharpino" Version="1.5.1" />
   </ItemGroup>
   
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup>-->
 
 </Project>
