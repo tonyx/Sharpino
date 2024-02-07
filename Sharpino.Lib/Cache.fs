@@ -65,6 +65,7 @@ module Cache =
             else
                 Error "state not found"
 
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.Clear() =
             dic.Clear()
             queue.Clear()
@@ -124,6 +125,7 @@ module Cache =
             else
                 Error "state not found"
 
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.Clear() =
             dic.Clear()
             queue.Clear()

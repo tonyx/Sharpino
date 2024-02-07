@@ -249,7 +249,14 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> _.Id 
                 ids |> Ok
-
+                
+            member this.SetClassicOptimisticLock version name =
+                // nothing to do with memory db (or maybe yes?)
+                () |> Ok
+            member this.UnSetClassicOptimisticLock version name =
+                // nothing to do with memory db (or maybe yes?)
+                () |> Ok
+                
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
@@ -292,7 +299,7 @@ module MemoryStorage =
                         |> List.tryFind (fun x -> x.Id = id)
                     res
 
-            member this.SetInitialAggregateState aggregateId version name snapshot =
+            member this.SetInitialAggregateState aggregateId aggregateStateId version name snapshot =
                 let initialState =
                     {
                         Id = next_snapshot_id version name
@@ -405,13 +412,13 @@ module MemoryStorage =
                                         ]
                         Ok ()
 
-            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * AggregateId * Guid> ) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg
                     |> List.map
-                        (fun (xs, version, name, aggregateId) ->
-                            (this :> IEventStore).AddAggregateEvents version name aggregateId xs |> Result.get
+                        (fun (xs, version, name, aggregateId, aggregateVersionId) ->
+                            (this :> IEventStore).AddAggregateEvents version name aggregateId aggregateVersionId xs |> Result.get
                         )
                 cmds |> Ok        
 
@@ -425,13 +432,14 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddAggregateEvents version name aggregateId events =
+            member this.AddAggregateEvents version name aggregateId aggregateStateId events =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
                         for e in events do
                             yield {
                                 AggregateId = aggregateId
+                                AggregateStateId = aggregateStateId
                                 Id = next_aggregate_event_id version name aggregateId
                                 JsonEvent = e
                                 KafkaOffset = None

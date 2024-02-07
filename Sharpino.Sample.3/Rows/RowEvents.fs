@@ -3,17 +3,18 @@ open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
+open Sharpino.Definitions
 open Sharpino.Lib.Core.Commons
-open System
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Seats
 
 module RowAggregateEvent =
-    type RowAggregateEvent =        
-        | SeatBooked of Seats.Booking  
-        | SeatAdded of Seats.Seat
-        | SeatsAdded of Seats.Seat list
+    type RowAggregateEvent =
+        
+        | SeatBooked of Booking
+        | SeatAdded of Seat
+        | SeatsAdded of List<Seat>
         | InvariantAdded of InvariantContainer
             interface Event<SeatsRow> with
                 member this.Process (x: SeatsRow) =

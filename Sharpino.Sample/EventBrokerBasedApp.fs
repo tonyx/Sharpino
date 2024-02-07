@@ -100,7 +100,6 @@ module EventBrokerBasedApp =
                 return result
             }
         member this.PingCategory () =
-            failwith "unimplemented"
             result {
                 let! result =
                     TodoCommand.Ping()

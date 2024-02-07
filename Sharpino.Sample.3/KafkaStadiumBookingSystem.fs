@@ -47,6 +47,14 @@ module StadiumKafkaBookingSystem =
                 viewer.RefreshLoop()
                 viewer.State()
 
+        member this.SetAggregateStateControlInOptimisticLock Version Name =
+            ResultCE.result {
+                return! storage.SetClassicOptimisticLock Version Name
+            }
+        member this.UnSetAggregateStateControlInOptimisticLock Version Name =
+            ResultCE.result {
+                return! storage.UnSetClassicOptimisticLock Version Name
+            }
         member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {
                 // todo: undo mechanism or similar to remove the initialsnapshot if the addrow fails
@@ -54,7 +62,7 @@ module StadiumKafkaBookingSystem =
                 let seatsRow = SeatsRow rowId
                 let initSnapshot = seatsRow.Serialize serializer
                 let! stored =
-                    storage.SetInitialAggregateState rowId SeatsRow.Version SeatsRow.StorageName initSnapshot
+                    storage.SetInitialAggregateState rowId seatsRow.StateId SeatsRow.Version SeatsRow.StorageName initSnapshot
                 let addRowReference = StadiumCommand.AddRowReference rowId
 
                 let! result = runCommand<Stadium, StadiumEvent> storage eventBroker kafkaBasedStadiumState addRowReference
@@ -116,6 +124,10 @@ module StadiumKafkaBookingSystem =
                 return stadiumState.GetRowReferences ()
             }
         interface IStadiumBookingSystem with
+            member this.SetAggregateStateControlInOptimisticLock version name = 
+                this.SetAggregateStateControlInOptimisticLock version name
+            member this.UnSetAggregateStateControlInOptimisticLock version name = 
+                this.UnSetAggregateStateControlInOptimisticLock version name     
             member this.AddRowReference rowId = this.AddRowReference rowId
             // member this.BookSeats = this.BookSeats
             member this.BookSeats (rowId: Guid) (booking: Booking) = this.BookSeats rowId booking
@@ -126,3 +138,4 @@ module StadiumKafkaBookingSystem =
             member this.GetAllRowReferences() =  this.GetAllRowReferences()
             member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
                 failwith "not implemented"
+

@@ -37,7 +37,6 @@ module StateView =
                 | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
                 | Error e -> 
                     log.Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
-                    printf "deserialization error %A for snapshot %s" e snapshot'
                     Error (sprintf "deserialization error %A for snapshot %s" e snapshot')
             | None ->
                 (0, 'A.Zero) |> Ok
@@ -172,15 +171,15 @@ module StateView =
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
-                    | Some (eventId, state)  when eventId.IsSome ->
-                        let! events = storage.GetAggregateEventsAfterId 'A.Version 'A.StorageName id eventId.Value
+                    | Some (Some eventId, state) ->
+                        let! events = storage.GetAggregateEventsAfterId 'A.Version 'A.StorageName id eventId
                         let result =
-                            (eventId, state, events)
+                            (eventId |> Some, state, events)
                         return result
-                    | Some (eventId, state) when eventId.IsNone ->
+                    | Some (None, state) ->
                         let! events = storage.GetAggregateEvents 'A.Version 'A.StorageName id 
                         let result =
-                            (eventId, state, events)
+                            (None, state, events)
                         return result
                 }
         }

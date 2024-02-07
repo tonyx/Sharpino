@@ -8,11 +8,13 @@ export default defineConfig({
     outDir: "../dist",
   },
   server: {
-    "port": 8080,
-    "proxy": {
-        "/api/": 'http://localhost:5000'
-        // "/api/": 'https://sharpinowebservice2.azurewebsites.net'
+    port: 8080,
+    proxy: {
+        "/api/": {
+          target: "http://localhost:5000",
+          changeOrigin: true,
+        }
     },
     "open": true
   }
-})
+});

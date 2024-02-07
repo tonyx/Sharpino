@@ -20,6 +20,7 @@ module Storage =
     type StorageEventJsonRef =
         {
             AggregateId: Guid
+            AggregateStateId: Guid
             JsonEvent: Json
             Id: int
             KafkaOffset: Option<int64>
@@ -63,6 +64,8 @@ module Storage =
 
     type IEventStore =
         abstract member Reset: Version -> Name -> unit
+        abstract member SetClassicOptimisticLock: Version -> Name -> Result<unit, string>
+        abstract member UnSetClassicOptimisticLock: Version -> Name -> Result<unit, string>
         abstract member ResetAggregateStream: Version -> Name -> unit
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
@@ -78,13 +81,13 @@ module Storage =
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>
-        abstract member SetInitialAggregateState: AggregateId -> Version -> Name -> Json ->  Result<unit, string>
+        abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> Json ->  Result<unit, string>
         abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
 
-        abstract member AddAggregateEvents: Version -> Name -> Guid -> List<Json> -> Result<List<EventId>, string>
+        abstract member AddAggregateEvents: Version -> Name -> AggregateId -> AggregateStateId -> List<Json> -> Result<List<EventId>, string>
 
         abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<EventId>>, string>
-        abstract member MultiAddAggregateEvents:  List<List<Json> * Version * Name * Guid>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddAggregateEvents:  List<List<Json> * Version * Name * AggregateId * AggregateStateId>  -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >
 

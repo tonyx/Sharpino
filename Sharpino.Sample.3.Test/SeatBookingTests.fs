@@ -50,7 +50,7 @@ let storageEventsTests =
             
             let row = SeatsRow rowId
             let serializedRow = row.Serialize serializer
-            (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow"  serializedRow
+            (eventStore :> IEventStore).SetInitialAggregateState rowId rowId "_01" "_seatrow"  serializedRow
            
             let stadiumBookingSystem = StadiumBookingSystem eventStore
             let retrievedRows = stadiumBookingSystem.GetAllRowReferences()
@@ -70,7 +70,7 @@ let storageEventsTests =
             let rowId = Guid.NewGuid()
             let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
-            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
+            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId rowId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"
             
             let rowStateViewer = getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore
@@ -86,7 +86,7 @@ let storageEventsTests =
             let rowId = Guid.NewGuid()
             let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
-            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
+            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId rowId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"
             
             let rowStateViewer = getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore
@@ -97,7 +97,9 @@ let storageEventsTests =
            
             let seat = { Id = 1; State = Free; RowId = None } 
             let seatAdded = (RowAggregateEvent.SeatAdded seat).Serialize serializer
-            let added = (eventStore :> IEventStore).AddAggregateEvents "_01" "_seatrow" rowId [seatAdded]
+            
+            // todo: fix with id of state version last parameter
+            let added = (eventStore :> IEventStore).AddAggregateEvents "_01" "_seatrow" rowId rowId [seatAdded]
             Expect.isOk added "should be ok"
             
             let rowStateViewer = getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore
@@ -160,7 +162,7 @@ let aggregateRowRefactoredTests =
             // (getKafkaBasedStadiumBooking2, "", ()); 
         ]
         
-    ftestList ("pgEventStore seatBookingTests - ") [
+    testList ("pgEventStore seatBookingTests - ") [
         multipleTestCase "initially the stadium has no row references - Ok" stores <| fun (bookingSystem, _, _) ->
             setUp()
             let eventStore: IEventStore = eventStore ()
@@ -203,6 +205,19 @@ let aggregateRowRefactoredTests =
             let rowId = Guid.NewGuid()
             let retrievedRow = stadiumBookingSystem.GetRow rowId
             Expect.isError retrievedRow "should be error"
+            
+        multipleTestCase "set optimisitc lock style" stores <| fun (bookingSystem, _, _) ->
+            setUp()
+            let eventStore = eventStore ()
+            eventStore.Reset "_01" "_seatrow"
+            eventStore.Reset Stadium.Version Stadium.StorageName
+            eventStore.ResetAggregateStream "_01" "_seatrow"
+                    
+            let stadiumBookingSystem = bookingSystem ()
+            let setLock = stadiumBookingSystem.SetAggregateStateControlInOptimisticLock "_01" "_seatrow"
+            // this call will introduce at a db level a costraint such such that no
+            // event can be stored if they are produced from the same aggregate state
+            Expect.isOk setLock "should be ok"
                     
         multipleTestCase "add a row reference and then seat to it. retrieve the seat then - Ok" stores <| fun (bookingSystem, _, _) ->
             setUp()
@@ -220,6 +235,7 @@ let aggregateRowRefactoredTests =
             let seat = { Id = 1; State = Free; RowId = None}
             let seatAdded = stadiumBookingSystem.AddSeat rowId seat
             Expect.isOk seatAdded "should be ok"
+            
                     
             let retrievedRow = stadiumBookingSystem.GetRow rowId 
             Expect.isOk retrievedRow "should be ok"
@@ -429,7 +445,7 @@ let aggregateRowRefactoredTests =
             let tryBooking = stadiumBookingSystem.BookSeats rowId booking
             Expect.isOk tryBooking "should be ok"
                     
-        fmultipleTestCase "violate the middle seat non empty constraint in one single booking - Ok"  stores <| fun (bookingSystem, _, _) ->
+        multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok"  stores <| fun (bookingSystem, _, _) ->
             setUp()
             let eventStore = eventStore ()
               

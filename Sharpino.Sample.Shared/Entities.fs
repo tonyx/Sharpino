@@ -1,7 +1,16 @@
 ﻿namespace Sharpino.Sample.Shared
 open System
-open Sharpino.Lib.Core.Commons
 
+#if  FABLE_COMPILER
+module Commons =
+    [<Fable.Core.Mangle>]
+    type Entity =
+        abstract member Id: Guid
+        
+open Commons
+#else 
+open Sharpino.Lib.Core.Commons
+#endif
 module Route =
     let builder typeName methodName =
         sprintf "/api/%s/%s" typeName methodName

@@ -28,10 +28,11 @@ module rec SeatRow =
         member this.UnPickled () =
             pickler.UnPickleOfString invariant // this.Invariant
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
-            
+        let stateId = Guid.NewGuid()    
         new (id: Guid) = 
             SeatsRow ([], id, [])
 
+        member this.StateId = stateId
         member this.Seats = seats
         member this.Invariants = invariants 
         member this.Id = id
@@ -111,6 +112,7 @@ module rec SeatRow =
         static member StorageName = "_seatrow"
             
         interface Aggregate with
+            member this.StateId = this.StateId
             member this.Id = this.Id
             member this.Serialize serializer = 
                 this.Serialize serializer

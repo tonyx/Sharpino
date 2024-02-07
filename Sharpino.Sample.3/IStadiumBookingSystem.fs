@@ -9,8 +9,8 @@ open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
 open Tonyx.SeatsBooking
 open Sharpino.CommandHandler
-open Sharpino.Definitions
 open System
+open Sharpino.Definitions
 open FsToolkit.ErrorHandling
 open Sharpino.Storage
 open Sharpino.ApplicationInstance
@@ -20,6 +20,8 @@ open Sharpino.Utils
 module IStadiumBookingSystem =
     
     type IStadiumBookingSystem =
+        abstract member SetAggregateStateControlInOptimisticLock: Version -> Name -> Result<unit,string>
+        abstract member UnSetAggregateStateControlInOptimisticLock: Version -> Name -> Result<unit,string>
         abstract member AddRowReference : Guid -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         abstract member BookSeats : Guid -> Booking -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         abstract member BookSeatsNRows : List<Guid * Booking> -> Result<(List<List<EventId>> * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>

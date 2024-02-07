@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-<!--    <Compile Include="SeatBookingTest.fs" />-->
     <Compile Include="SeatBookingTests.fs" />
     <Compile Include="SeatBookingKafkaTests.fs" />
     <Compile Include="Main.fs" />

@@ -116,7 +116,6 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
                 log.Debug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
@@ -247,7 +246,6 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.toList
                     |> Ok
-                    
                 with
                 | _ as ex ->
                     log.Error (sprintf "an error occurred: %A" ex.Message)
@@ -278,10 +276,11 @@ module PgStorage =
                         |> Async.RunSynchronously
                     () |> Ok
 
-            member this.SetInitialAggregateState aggregateId version name json =
+            member this.SetInitialAggregateState aggregateId aggregateStateId version name json =
                 log.Debug "entered in setSnapshot"
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+                // todo: fix correct aggregatestateid
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" version name
+                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" version name
                 try
                     let _ =
                         connection
@@ -292,6 +291,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
+                                            ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  Sql.jsonb json);
                                             ("timestamp", Sql.timestamp System.DateTime.Now)
                                         ]
@@ -300,6 +300,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId)
+                                            ("aggregate_state_id", Sql.uuid aggregateStateId)
                                         ]
                                     ]
                             ]
@@ -462,10 +463,65 @@ module PgStorage =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
-            member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> = 
+            
+            member this.SetClassicOptimisticLock version name =
+                log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
+                let command = sprintf "CALL set_classic_optimistic_lock%s%s()" version name
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                async {
+                    return
+                        try
+                            let transaction = conn.BeginTransaction() 
+                            let _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.query command
+                                |> Sql.executeNonQueryAsync
+                                |> Async.AwaitTask
+                                |> Async.RunSynchronously
+                                |> ignore
+                            transaction.Commit()
+                            conn.Close()
+                            () |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously
+                
+            member this.UnSetClassicOptimisticLock version name =
+                log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
+                let command = sprintf "CALL un_set_classic_optimistic_lock%s%s()" version name
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                async {
+                    return
+                        try
+                            let transaction = conn.BeginTransaction() 
+                            let _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.query command
+                                |> Sql.executeNonQueryAsync
+                                |> Async.AwaitTask
+                                |> Async.RunSynchronously
+                                |> ignore
+                            transaction.Commit()
+                            conn.Close()
+                            () |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously
+                
+            member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (aggregateStateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name
+                let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 async {
@@ -480,6 +536,7 @@ module PgStorage =
                                             let command' = new NpgsqlCommand(command, conn)
                                             command'.Parameters.AddWithValue("event", x ) |> ignore
                                             command'.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                            command'.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
                                             let result = command'.ExecuteScalar() 
                                             result :?> int
                                     )
@@ -493,7 +550,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * System.Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * System.Guid * System.Guid>) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -505,9 +562,9 @@ module PgStorage =
                                 arg 
                                 |>>
                                     (
-                                        fun (events, version,  name, aggregateId) -> 
+                                        fun (events, version,  name, aggregateId, aggregateStateId) ->
                                             let stream_name = version + name
-                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
+                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
                                             events
                                             |>> 
                                             (
@@ -515,6 +572,7 @@ module PgStorage =
                                                     (
                                                         command.Parameters.AddWithValue("event", x ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                                        command.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
                                                         let result = command.ExecuteScalar() 
                                                         result :?> int
                                                     )

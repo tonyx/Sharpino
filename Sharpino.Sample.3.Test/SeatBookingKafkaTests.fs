@@ -43,7 +43,7 @@ let storageEventsTests =
             let rowId = Guid.NewGuid()
             let row = SeatsRow rowId
             let rowStorageCreation = row.Serialize serializer
-            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId "_01" "_seatrow" rowStorageCreation
+            let stored = (eventStore :> IEventStore).SetInitialAggregateState rowId row.StateId "_01" "_seatrow" rowStorageCreation
             Expect.isOk stored "should be ok"
             
             let rowStateViewer = getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore

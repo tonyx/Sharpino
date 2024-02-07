@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino.Core</id>
-    <version>1.0.8</version>
+    <version>1.0.9</version>
     <title>Sharpino.Core</title>
     <authors>Antonio Lucca</authors>
-    <description>Simple F# Event-Sourcing Library (Core)</description>
+    <description>Simple F# Event Sourcing Library (Core)</description>
     <copyright>Copyright ©2023 Antonio Lucca</copyright>
     <projectUrl>https://github.com/tonyx/Sharpino</projectUrl>
     <license type="expression">MIT</license>
@@ -13,13 +13,12 @@
     <dependencies>
       <group targetFramework="net8.0">
         <dependency id="Expecto" version="10.1.0" />
-        <dependency id="Fable.Core" version="4.2.0" />
-        <dependency id="Farmer" version="1.8.3" />
-        <dependency id="FSharpPlus" version="1.5.0" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.13.0" />
+        <dependency id="Fable.Core" version="4.3.0" />
+        <dependency id="Farmer" version="1.8.6" />
+        <dependency id="FSharpPlus" version="1.6.0" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.15.0" />
         <dependency id="Log4net" version="2.0.15" />
         <dependency id="Newtonsoft.Json" version="13.0.3" />
-
       </group>
     </dependencies>
   </metadata>

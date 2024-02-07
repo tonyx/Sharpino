@@ -5,8 +5,11 @@ open System
 open FSharpPlus.Data
 
 open FSharp.Core
+open FSharp.Data
 open FSharpPlus
+open FSharpPlus.Operators
 
+open Sharpino.Conf
 open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Utils
@@ -17,6 +20,7 @@ open System.Runtime.CompilerServices
 
 open FsToolkit.ErrorHandling
 open log4net
+
 open log4net.Config
 
 module CommandHandler =
@@ -60,6 +64,7 @@ module CommandHandler =
         with
         | :? _ as ex -> 
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
+            printf "appSettings.json file not found using defult!!! %A\n" ex
             Conf.defaultConf
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
@@ -160,11 +165,11 @@ module CommandHandler =
                 }
                 |> Async.RunSynchronously 
 
-            match config.PessimisticLock with
-            | true ->
+            match config.LockType with
+            | Pessimistic ->
                 lock 'A.Lock <| fun () ->
                     command()
-            | false ->
+            | _ ->
                 command()
     let inline runAggregateCommand<'A, 'E
         when 'A :> Aggregate 
@@ -196,7 +201,7 @@ module CommandHandler =
                                 events 
                                 |>> (fun x -> x.Serialize serializer)
                             let! ids =
-                                events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id
+                                events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
                             let sent =
                                 List.zip ids events'
                                 |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName 
@@ -205,9 +210,9 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously 
-            match (stateView, config.PessimisticLock) with
+            match (stateView, config.LockType) with
             |  Error e, _ -> Error e 
-            |  _, true ->
+            |  _, Pessimistic ->
                 // consider that if stateView is error then we are not here (ouch!)
                 let myLock =
                     stateView
@@ -215,7 +220,7 @@ module CommandHandler =
                     |> Option.map (fun (_, s, _, _) -> s.Lock)
                 lock myLock <| fun () ->
                     command()
-            | _, false ->
+            | _, _ ->
                 command()
 
     let inline runNAggregateCommands<'A1, 'E1
@@ -240,7 +245,7 @@ module CommandHandler =
                         result {
                             let! states =
                                 stateViewers
-                                |> List.map (fun x -> x())
+                                |>> (fun x -> x())
                                 |> List.traverseResultM id
 
                             let states' = 
@@ -252,36 +257,40 @@ module CommandHandler =
 
                             let! events =
                                 statesAndCommands
-                                |> List.map (fun (state, command) -> command.Execute state)
+                                |>> (fun (state, command) -> command.Execute state)
                                 |> List.traverseResultM id
 
                             let serializedEvents =
                                 events 
                                 |>> (fun x -> x |>> fun (z: 'E1) -> z.Serialize serializer )
-
+                            
+                            let aggregateIdsWithStateIds =
+                                List.zip aggregateIds states'
+                                |>> (fun (id, state ) -> (id, state.StateId))    
+                                
                             let packParametersForDb =
-                                List.zip serializedEvents aggregateIds
-                                |> List.map (fun (events, id) -> (events, 'A1.Version, 'A1.StorageName, id))
+                                List.zip serializedEvents aggregateIdsWithStateIds
+                                |>> (fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)) // id must be aggregate state_version_id
 
                             let! idLists =
                                 storage.MultiAddAggregateEvents packParametersForDb
 
                             let kafkaParameters =
                                  List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) idLists serializedEvents
-                                 |> List.map (fun (idList, serializedEvents) -> List.zip idList serializedEvents)
+                                 |>>  (fun (idList, serializedEvents) -> List.zip idList serializedEvents)
 
                             let sent =
                                 kafkaParameters
-                                |> List.map (fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption)
+                                |>> (fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption)
                             return (idLists, sent)
                         }
                 }
                 |> Async.RunSynchronously 
-            match config.PessimisticLock with
-            | true ->
-                log.Warn "pessimistic lock is true, but we are not using it in runNAggregateCommands"
+            match config.LockType with
+            | Optimistic ->
                 command()
-            | false ->
+            | _ ->
+                log.Warn "locktype is pessimistic, but we are not using it in runNAggregateCommands"
                 command()
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
@@ -357,11 +366,11 @@ module CommandHandler =
                     }
                 |> Async.RunSynchronously
 
-            match config.PessimisticLock with
-            | true ->
+            match config.LockType with
+            | Pessimistic ->
                 lock ('A1.Lock, 'A2.Lock) <| fun () ->
                     command()
-            | false ->
+            | _ ->
                 command()
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
@@ -462,11 +471,12 @@ module CommandHandler =
                 }
                 |> Async.RunSynchronously
 
-            match config.PessimisticLock with
-            | true ->
+            match config.LockType with
+            // match config.PessimisticLock with
+            | Pessimistic ->
                 lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
                     command()
-            | false ->
+            | _ ->
                 command()
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)

@@ -27,7 +27,7 @@ module RowAggregateCommand =
                         |> Result.map (fun _ -> [SeatsAdded seats])
                     | AddInvariant invariant ->
                         x.AddInvariant invariant
-                        |> Result.map (fun _ -> [InvariantAdded invariant])     
+                        |> Result.map (fun _ -> [InvariantAdded invariant])
                 member this.Undoer =
                     None
                 

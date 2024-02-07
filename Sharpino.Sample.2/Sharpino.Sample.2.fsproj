@@ -18,12 +18,12 @@
     <Compile Include="Domain/Row2/Events.fs" />
     <Compile Include="Domain/Row2/Commands.fs" />
     <Compile Include="App.fs" />
-    <Content Include="appSettings.json" />
+    <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 
   <ItemGroup>
-    <PackageReference Include="FSharpPlus" Version="1.5.0" />
+    <PackageReference Include="FSharpPlus" Version="1.6.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 <!-- 
