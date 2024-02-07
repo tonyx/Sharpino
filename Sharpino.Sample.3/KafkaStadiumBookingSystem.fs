@@ -12,6 +12,7 @@ open Tonyx.SeatsBooking
 open Sharpino.CommandHandler
 open Sharpino.Definitions
 open System
+open System.Collections
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.Storage
@@ -41,12 +42,47 @@ module StadiumKafkaBookingSystem =
             fun (rowId: Guid) ->
                 mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent> rowId rowSubscriber (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage) (ApplicationInstance.Instance.GetGuid()) 
 
-        let rowStateViewer: AggregateViewer<SeatsRow> =
+        let kafkaRowViewer' rowSubscriber' = 
             fun (rowId: Guid) ->
-                let viewer = kafkaRowViewer rowId
+                mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent> rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage) (ApplicationInstance.Instance.GetGuid()) 
+        
+        // todo: adjust to avoid recreating the viewer each time. See carefully the subscriber alignment issues (code about 'Assign'...)
+        let rowStateViewer: AggregateViewer<SeatsRow> =
+            // let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
+            fun (rowId: Guid) ->
+                let kafkarViewer = kafkaRowViewer' rowSubscriber
+                let viewer = kafkarViewer rowId
                 viewer.RefreshLoop()
                 viewer.State()
+                
+        // this is spike code:        
+        // let rowStateViewer: AggregateViewer<SeatsRow> =
+        //     let viewers = Generic.Dictionary<Guid, KafkaAggregateViewer<SeatsRow, RowAggregateEvent>>()
+        //     fun (rowId: Guid) ->
+        //         let viewer =
+        //             if false then
+        //             // if viewers.ContainsKey(rowId) then
+        //                 viewers.[rowId]
+        //             else
+        //                 let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
+        //                 let kafkarViewer = kafkaRowViewer' rowSubscriber
+        //                 let viewer = kafkarViewer rowId
+        //                 // viewers.Add(rowId, viewer)
+        //                 viewer
+        //         // let kafkarViewer = kafkaRowViewer' rowSubscriber
+        //         // let viewer = kafkarViewer rowId
+        //         viewer.RefreshLoop()
+        //         viewer.State()
 
+        
+        member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
+            let addInvariant = RowAggregateCommand.AddInvariant invariant
+            result {
+                let! result =
+                    runAggregateCommand<SeatsRow, RowAggregateEvent> 
+                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addInvariant
+                return result         
+            }
         member this.SetAggregateStateControlInOptimisticLock Version Name =
             ResultCE.result {
                 return! storage.SetClassicOptimisticLock Version Name
@@ -137,5 +173,5 @@ module StadiumKafkaBookingSystem =
             member this.AddSeats (rowId: Guid) (seats: List<Seat>) =  this.AddSeats (rowId: Guid) (seats: List<Seat>) 
             member this.GetAllRowReferences() =  this.GetAllRowReferences()
             member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
-                failwith "not implemented"
+                this.AddInvariant (rowId: Guid) (invariant: InvariantContainer)
 

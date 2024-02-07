@@ -21,6 +21,7 @@ open Sharpino.Cache
 open Sharpino.CommandHandler
 open Sharpino.TestUtils
 open System
+open System.Collections
 open MBrace.FsPickler.Json
 open Tonyx.SeatsBooking.StadiumKafkaBookingSystem
 
@@ -144,9 +145,17 @@ let aggregateRowRefactoredTests =
             mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent> rowId rowSubscriber (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> (eventStore())) (ApplicationInstance.Instance.GetGuid())
             
     let rowStateViewer: AggregateViewer<SeatsRow> =
-        // todo: fix this because apparently will recreate the kafka viewer every time
+        let perRowViewers = Generic.Dictionary<Guid, KafkaAggregateViewer<SeatsRow, RowAggregateEvent>>()
         fun (rowId: Guid) ->
-            let viewer = kafkaRowViewer rowId
+            let viewer =
+                if perRowViewers.Keys.Contains(rowId) then
+                    printf "retrieving rowId: %A\n" rowId
+                    perRowViewers.[rowId]
+                else
+                    printf "making new rowId: %A\n" rowId
+                    let viewer = kafkaRowViewer rowId
+                    perRowViewers.Add(rowId, viewer)
+                    viewer
             viewer.RefreshLoop()
             viewer.State()
                 
@@ -157,8 +166,8 @@ let aggregateRowRefactoredTests =
  
     let stores =
         [
-            (getStorageBasedStadiumBooking, "", ()); 
-            // (getKafkaBasedStadiumBooking, "", ()); 
+            // (getStorageBasedStadiumBooking, "", ()); 
+            (getKafkaBasedStadiumBooking, "", ()); 
             // (getKafkaBasedStadiumBooking2, "", ()); 
         ]
         
