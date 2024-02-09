@@ -1,5 +1,6 @@
 namespace Tonyx.SeatsBooking
 open FsToolkit.ErrorHandling
+open Tonyx.SeatsBooking.Shared.Entities
 open Sharpino.Utils
 open Sharpino
 open Sharpino.Core

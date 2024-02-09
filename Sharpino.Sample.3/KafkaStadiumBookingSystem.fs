@@ -8,6 +8,7 @@ open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
+open Tonyx.SeatsBooking.Shared.Entities
 open Tonyx.SeatsBooking
 open Sharpino.CommandHandler
 open Sharpino.Definitions
@@ -48,7 +49,6 @@ module StadiumKafkaBookingSystem =
         
         // todo: adjust to avoid recreating the viewer each time. See carefully the subscriber alignment issues (code about 'Assign'...)
         let rowStateViewer: AggregateViewer<SeatsRow> =
-            // let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoTestClient") |> Result.get
             fun (rowId: Guid) ->
                 let kafkarViewer = kafkaRowViewer' rowSubscriber
                 let viewer = kafkarViewer rowId

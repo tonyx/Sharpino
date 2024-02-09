@@ -4,6 +4,7 @@ module SeatBookingKafkaTests
 open Tonyx.SeatsBooking.Seats
 open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Shared.Entities
 // open Tonyx.SeatsBooking.StadiumBookingSystem
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Tonyx.SeatsBooking.Stadium

@@ -8,6 +8,7 @@ open Tonyx.SeatsBooking.StadiumCommands
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
 open Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Shared.Entities
 open Sharpino.CommandHandler
 open System
 open Sharpino.Definitions
@@ -30,4 +31,5 @@ module IStadiumBookingSystem =
         abstract member AddSeats: Guid -> List<Seat> -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
         abstract member GetAllRowReferences: unit -> Result<List<Guid>,string>
         abstract member AddInvariant: Guid -> InvariantContainer -> Result<(List<EventId> list * List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>> option list),string>
+ 
         

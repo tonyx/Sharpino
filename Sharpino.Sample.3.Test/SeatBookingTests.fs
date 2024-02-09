@@ -22,6 +22,7 @@ open Sharpino.CommandHandler
 open Sharpino.TestUtils
 open System
 open System.Collections
+open Tonyx.SeatsBooking.Shared.Entities
 open MBrace.FsPickler.Json
 open Tonyx.SeatsBooking.StadiumKafkaBookingSystem
 
@@ -166,8 +167,8 @@ let aggregateRowRefactoredTests =
  
     let stores =
         [
-            // (getStorageBasedStadiumBooking, "", ()); 
-            (getKafkaBasedStadiumBooking, "", ()); 
+            (getStorageBasedStadiumBooking, "", ()); 
+            // (getKafkaBasedStadiumBooking, "", ()); 
             // (getKafkaBasedStadiumBooking2, "", ()); 
         ]
         
@@ -464,7 +465,7 @@ let aggregateRowRefactoredTests =
             
             let rowId = Guid.NewGuid()
             let stadiumBookingSystem = bookingSystem ()
-            let middleSeatInvariant: Invariant  =
+            let middleSeatInvariant: Invariant<SeatsRow>  =
                 <@
                     fun (seatsRow: SeatsRow) ->
                         let seats: List<Seat> = seatsRow.Seats
@@ -558,7 +559,7 @@ let aggregateRowRefactoredTests =
             let rowId2 = Guid.NewGuid()
             let stadiumBookingSystem = bookingSystem ()
            
-            let middleSeatNotFreeRule: Invariant =
+            let middleSeatNotFreeRule: Invariant<SeatsRow> =
                 <@
                     fun (seatsRow: SeatsRow) ->
                         let seats: List<Seat> = seatsRow.Seats

@@ -5,13 +5,14 @@ open Sharpino
 open Sharpino.Core
 open System
 open Tonyx.SeatsBooking.SeatRow
+open Tonyx.SeatsBooking.Shared.Entities
 open Tonyx.SeatsBooking.RowAggregateEvent
 
 module RowAggregateCommand =
     type RowAggregateCommand =
-        | BookSeats of Seats.Booking
-        | AddSeat of Seats.Seat
-        | AddSeats of List<Seats.Seat>
+        | BookSeats of Booking
+        | AddSeat of Seat
+        | AddSeats of List<Seat>
         | AddInvariant of InvariantContainer
             interface Command<SeatsRow, RowAggregateEvent> with
                 member this.Execute (x: SeatsRow) =

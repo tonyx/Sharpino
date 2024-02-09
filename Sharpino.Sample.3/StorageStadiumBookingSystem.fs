@@ -8,6 +8,7 @@ open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
+open Tonyx.SeatsBooking.Shared.Entities
 open Tonyx.SeatsBooking
 open Sharpino.CommandHandler
 open Sharpino.Definitions
