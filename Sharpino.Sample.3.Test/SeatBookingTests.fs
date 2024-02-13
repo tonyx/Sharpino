@@ -245,7 +245,6 @@ let aggregateRowRefactoredTests =
             let seat = { Id = 1; State = Free; RowId = None}
             let seatAdded = stadiumBookingSystem.AddSeat rowId seat
             Expect.isOk seatAdded "should be ok"
-            
                     
             let retrievedRow = stadiumBookingSystem.GetRow rowId 
             Expect.isOk retrievedRow "should be ok"

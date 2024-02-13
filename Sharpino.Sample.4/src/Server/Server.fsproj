@@ -4,12 +4,23 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateProgramFile>false</GenerateProgramFile>
+
   </PropertyGroup>
   <ItemGroup>
-    <None Include="paket.references" />
-    <Compile Include="Server.fs" />
+      <None Include="paket.references" />
+      <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
+      <Compile Include="Rows/Rows.fs" />
+      <Compile Include="Rows/RowEvents.fs" />
+      <Compile Include="Rows/RowCommands.fs" />
+      <Compile Include="Stadium/Stadium.fs" />
+      <Compile Include="Stadium/StadiumEvents.fs" />
+      <Compile Include="Stadium/StadiumCommands.fs" />
+      <Compile Include="BookingSystem.fs" />
+      <Compile Include="Server.fs" />
   </ItemGroup>
   <ItemGroup>
+<!--    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
     <ProjectReference Include="..\Shared\Shared.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

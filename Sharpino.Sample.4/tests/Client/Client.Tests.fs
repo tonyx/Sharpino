@@ -6,8 +6,10 @@ open Index
 open Shared
 
 let client =
+
+    // todo adapt to new model
     testList "Client" [
-        testCase "Added todo"
+        ptestCase "Added todo"
         <| fun _ ->
             let newTodo = Todo.create "new todo"
             let model, _ = init ()

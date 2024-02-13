@@ -10,6 +10,7 @@ open Shared
 
 let shared =
     testList "Shared" [
+        // todo: adapt to new model, ditch the todos stuff
         testCase "Empty string is not a valid description"
         <| fun _ ->
             let expected = false

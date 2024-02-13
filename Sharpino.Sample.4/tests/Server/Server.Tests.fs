@@ -4,6 +4,7 @@ open Expecto
 
 open Shared
 open Server
+open SeatBookings.Tests.BookingTests
 
 let server =
     testList "Server" [
@@ -18,7 +19,11 @@ let server =
             Expect.contains Storage.todos validTodo "Storage should contain new todo"
     ]
 
-let all = testList "All" [ Shared.Tests.shared; server ]
+let all = testList "All"
+              [ Shared.Tests.shared
+                server
+                seatBookings
+                ]
 
 [<EntryPoint>]
 let main _ = runTestsWithCLIArgs [] [||] all

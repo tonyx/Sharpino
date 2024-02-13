@@ -1,1 +1,6 @@
 FSharp.Core
+FSharpPlus
+Newtonsoft.Json
+FsPickler
+FsPickler.Json
+Sharpino

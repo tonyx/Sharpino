@@ -1,3 +1,8 @@
 Saturn
 Fable.Remoting.Giraffe
 FSharp.Core
+FSharp.Quotations.Evaluator
+Newtonsoft.Json
+Sharpino
+FSharpPlus
+Sharpino.Core

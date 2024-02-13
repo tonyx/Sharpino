@@ -303,8 +303,5 @@ let storageEventsTests =
             seats2KafkaViewer.RefreshLoop() |> ignore
             let (_, stateRow2, _, _) = seats2KafkaViewer.State() |> Result.get
             Expect.equal stateRow2.Seats.Length 3 "should be equal"
-            
-            
-            
     ]
     |> testSequenced

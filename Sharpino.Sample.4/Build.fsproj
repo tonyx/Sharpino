@@ -4,12 +4,17 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Helpers.fs" />
     <Compile Include="Build.fs" />
       <None Include="paket.dependencies" />
       <None Include="paket.references" />
+      <Content Include="db\migrations\20240112053550_create_seat_row.sql" />
+      <Content Include="db\migrations\20240115084217_create_stadium.sql" />
+      <Content Include="db\migrations\20240115084835_alter_stadium.sql" />
+      <Content Include="db\schema.sql" />
   </ItemGroup>
   <Import Project=".paket\Paket.Restore.targets" />
 </Project>

@@ -1,3 +1,13 @@
 Fake.Core.Target
 Fake.IO.FileSystem
 Farmer
+FSharp.Quotations.Evaluator
+FSToolkit.ErrorHandling
+Newtonsoft.Json
+Sharpino
+FsPickler.Json
+FsPickler
+Expecto
+FSharpPlus
+Sharpino.Core
+Log4net
