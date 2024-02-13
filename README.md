@@ -159,6 +159,9 @@ __Faq__:
 - given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## News: 
+- Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
+it is going to be messy)
+ 
 - Version 1.5.1: - 
   - Added a new configuration file named appSettings.json in the root of the project with the following content:
 ```json
