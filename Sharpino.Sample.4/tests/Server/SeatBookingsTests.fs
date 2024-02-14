@@ -473,7 +473,7 @@ module BookingTests =
                 Expect.equal retrievedRow1.OkValue.Seats.Length 1 "should be equal"
                 Expect.equal retrievedRow2.OkValue.Seats.Length 2 "should be equal"
 
-            ftestCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" <| fun _ ->
+            testCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" <| fun _ ->
                 setUp()
 
                 // given

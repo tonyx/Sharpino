@@ -26,9 +26,9 @@ module StorageStadiumBookingSystem =
     type StadiumBookingSystem
         (storage: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
-        new(storage: IEventStore) =
+        new (storage: IEventStore) =
             StadiumBookingSystem(storage, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
-        new(storage: IEventStore, eventBroker: IEventBroker) =
+        new (storage: IEventStore, eventBroker: IEventBroker) =
             StadiumBookingSystem(storage, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
         member this.SetAggregateStateControlInOptimisticLock Version Name =
             ResultCE.result {
@@ -63,15 +63,15 @@ module StorageStadiumBookingSystem =
                 return result
             }
 
-        member this.BookSeatsNRows (rowAndbookings: List<Guid * Booking>) =
+        member this.BookSeatsNRows (rowsAndBookings: List<Guid * Booking>) =
             result {
                 let bookSeatsCommands =
-                    rowAndbookings
+                    rowsAndBookings
                     |>> fun (_, booking) -> (BookSeats booking):> Command<SeatsRow, RowAggregateEvent>
-                let rowIDs = rowAndbookings |>> fst
+                let rowIDs = rowsAndBookings |>> fst
                 // todo: should consider the total number of seats
                 let! mustBeLessThanThreeRows =
-                    rowAndbookings.Length < 3
+                    rowsAndBookings.Length < 3
                     |> boolToResult "Can only book up to 2 rows at a time"
                 let! result =
                     runNAggregateCommands<SeatsRow, RowAggregateEvent>
