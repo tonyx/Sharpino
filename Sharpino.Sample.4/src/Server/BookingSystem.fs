@@ -132,7 +132,6 @@ module StorageStadiumBookingSystem =
             }
 
         member this.GetAllRowsSeatsTo () =
-            printf "getAllRowsSeatsTo\n"
             let res =
                 result {
                     let! (_, stadiumState, _, _) = stadiumStateViewer ()
@@ -140,10 +139,8 @@ module StorageStadiumBookingSystem =
                     let! rowsTos =
                         rowReferences
                         |> List.traverseResultM (fun rowId -> this.GetSeatsRowTO rowId)
-                    printf "getAllRowsSeatsTo done\n"
                     return rowsTos
                 }
-            printf "getAllRowsSeatsTo: getting result %A\n" res
             res
 
         member this.GetAllRowReferences () =

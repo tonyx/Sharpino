@@ -15,6 +15,7 @@
       <Content Include="db\migrations\20240115084217_create_stadium.sql" />
       <Content Include="db\migrations\20240115084835_alter_stadium.sql" />
       <Content Include="db\schema.sql" />
+      <Content Include=".env" />
   </ItemGroup>
   <Import Project=".paket\Paket.Restore.targets" />
 </Project>

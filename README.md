@@ -172,7 +172,7 @@ it is going to be messy)
   }
 ```
 - Moreover, the specific variant of optimitic lock (classic or more permissive) can be changed by code (evenstore method).
-which means: possibilito to just reject any event that is generated from the same aggregate_state_id, which is the classic optimistic lock/
+which means: possibility to just reject any event that is generated from the same aggregate_state_id, which is the classic optimistic lock/
 - Added the possibility to make the optimistic lock for aggregates work as the classic one (so now it can handle multiple aggregate transactions properly).
 - See the sql script of sample 3: it includes the steps related to change "on the fly" (by application) the db level constraints that inhibit adding two events with the same aggregate stateid.
 - (in the same stream) in the event store.

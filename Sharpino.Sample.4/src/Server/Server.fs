@@ -10,32 +10,6 @@ open Sharpino.PgStorage
 open Sharpino.Storage
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
-module Storage =
-    let todos = ResizeArray()
-
-    let addTodo todo =
-        if Todo.isValid todo.Description then
-            todos.Add todo
-            Ok()
-        else
-            Error "Invalid todo"
-
-    do
-        addTodo (Todo.create "Create new SAFE project") |> ignore
-        addTodo (Todo.create "Write your app") |> ignore
-        addTodo (Todo.create "Ship it!!!") |> ignore
-
-let todosApi = {
-    getTodos = fun () -> async { return Storage.todos |> List.ofSeq }
-    addTodo =
-        fun todo -> async {
-            return
-                match Storage.addTodo todo with
-                | Ok() -> todo
-                | Error e -> failwith e
-        }
-}
-
 let connection =
     "Server=127.0.0.1;"+
     "Database=es_seat_booking;" +
@@ -97,7 +71,6 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
 let webApp =
     Remoting.createApi ()
     |> Remoting.withRouteBuilder Route.builder
-    // |> Remoting.fromValue todosApi
     |> Remoting.fromValue seatBookingSystemApi
     |> Remoting.buildHttpHandler
 
