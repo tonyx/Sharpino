@@ -98,6 +98,20 @@ module rec SeatRow =
                 let! checkInvariants = result |> checkInvariants
                 return result
             }
+        member this.RemoveSeat (seat: Seat): Result<SeatsRow, string> =
+            result {
+                let! belongsToMe =
+                    (seat.RowId.IsSome && seat.RowId.Value = this.Id) |> boolToResult "Seat does not belong to this row"
+                let! exists =
+                    this.Seats
+                    |> List.tryFind (fun x -> x.Id = seat.Id)
+                    |> Option.isSome
+                    |> boolToResult (sprintf "Seat with id '%d' does not exist" seat.Id)
+                let newSeats = this.Seats |> List.filter (fun x -> x.Id <> seat.Id)
+                let result = SeatsRow (newSeats, this.Id, this.Invariants)
+                let! checkInvariants = result |> checkInvariants
+                return result
+            }
         member this.AddInvariant (invariant: InvariantContainer) =
             SeatsRow (this.Seats, this.Id, invariant :: this.Invariants) |> Ok
 

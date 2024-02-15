@@ -106,6 +106,18 @@ module StorageStadiumBookingSystem =
                 return result
             }
 
+        member this.RemoveSeat  (seat: Seat) =
+            result {
+                let! rowId =
+                    seat.RowId |> Result.ofOption "Seat not assigned to a row"
+                let removeSeat =
+                    RowAggregateCommand.RemoveSeat seat
+                let! result =
+                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                        rowId storage eventBroker (fun () -> rowStateViewer rowId) removeSeat
+                return result
+            }
+
         member this.AddSeats (rowId: Guid) (seats: List<Seat>) =
             result {
                 let addSeats = RowAggregateCommand.AddSeats seats
@@ -138,7 +150,7 @@ module StorageStadiumBookingSystem =
                     let rowReferences = stadiumState.GetRowReferences ()
                     let! rowsTos =
                         rowReferences
-                        |> List.traverseResultM (fun rowId -> this.GetSeatsRowTO rowId)
+                        |> List.traverseResultM (fun  rowId -> this.GetSeatsRowTO rowId)
                     return rowsTos
                 }
             res

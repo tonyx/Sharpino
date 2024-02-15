@@ -61,6 +61,7 @@ module Services =
             BookSeatsNRows : List<Guid * Booking> -> Async<Result<unit, string>>
             // GetRowTO : Guid -> Async<Result<SeatsRowTO,string>>
             AddSeat: Guid * Seat -> Async<Result<unit, string>>
+            RemoveSeat: Seat -> Async<Result<unit, string>>
             AddSeats: Guid * List<Seat> -> Async<Result<unit, string>>
             GetAllRowReferences: unit -> Async<Result<List<Guid>,string>>
             GetAllRowTOs: unit -> Async<Result<List<SeatsRowTO>, string>>

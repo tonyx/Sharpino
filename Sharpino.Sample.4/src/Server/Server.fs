@@ -50,6 +50,12 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
         | Ok _ -> return Ok ()
         | Error e -> return Error e
     }
+    RemoveSeat = fun seat -> async {
+        let removed = stadiumBookingSystem.RemoveSeat seat
+        match removed with
+        | Ok _ -> return Ok ()
+        | Error e -> return Error e
+    }
     AddSeats = fun (rowId, seats) -> async {
         let added = stadiumBookingSystem.AddSeats rowId seats
         match added with

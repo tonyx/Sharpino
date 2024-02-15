@@ -13,6 +13,7 @@ module RowAggregateCommand =
         | BookSeats of Booking
         | AddSeat of Seat
         | AddSeats of List<Seat>
+        | RemoveSeat of Seat
         | AddInvariant of InvariantContainer
             interface Command<SeatsRow, RowAggregateEvent> with
                 member this.Execute (x: SeatsRow) =
@@ -23,6 +24,9 @@ module RowAggregateCommand =
                     | AddSeat seat ->
                         x.AddSeat seat
                         |> Result.map (fun _ -> [SeatAdded seat])
+                    | RemoveSeat seat ->
+                        x.RemoveSeat seat
+                        |> Result.map (fun _ -> [SeatRemoved seat])
                     | AddSeats seats ->
                         x.AddSeats seats
                         |> Result.map (fun _ -> [SeatsAdded seats])
