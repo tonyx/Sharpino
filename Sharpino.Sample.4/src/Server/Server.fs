@@ -2,13 +2,25 @@ module Server
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Saturn
+open System
 open Shared
 open FSharpPlus
 open Farmer
+open System.Collections
 open Shared.Services
+open Sharpino
 open Sharpino.PgStorage
+open Sharpino.CommandHandler
 open Sharpino.Storage
+open Sharpino.KafkaBroker
+open Sharpino.KafkaReceiver
+open Sharpino.ApplicationInstance
+open Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.RowAggregateEvent
+open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
+open Tonyx.SeatsBooking.Stadium
+open Tonyx.SeatsBooking.StadiumEvents
 
 let connection =
     "Server=127.0.0.1;"+
@@ -22,11 +34,43 @@ let doNothingBroker: IEventBroker =
         notifyAggregate = None
     }
 
-let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
+let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
+
+let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
+let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_row", "sharpinoRowClient") |> Result.get
+let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
+let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
+let kafkaBasedStadiumState: StateViewer<Stadium> =
+    fun () ->
+        kafkaStadiumViewer.RefreshLoop()
+        kafkaStadiumViewer.State()
+
+let kafkaRowViewer' rowSubscriber' =
+    fun (rowId: Guid) ->
+        mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+            rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
+
+let kafkarViewer = kafkaRowViewer' rowSubscriber
+
+let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<SeatsRow, RowAggregateEvent>>()
+
+let rowStateViewer: AggregateViewer<SeatsRow> =
+    fun (rowId: Guid) ->
+        let viewer = kafkarViewer rowId
+        let _ =
+            if not (viewers.ContainsKey rowId) then
+                viewers.Add(rowId, viewer)
+
+        viewer.RefreshLoop()
+        viewer.State()
+
+
+// let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
+// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
+let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {
-        let id = System.Guid.NewGuid()
         let added = stadiumBookingSystem.AddRowReference ()
         match added with
         | Ok _ -> return Ok ()

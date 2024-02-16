@@ -2,17 +2,31 @@ module Index
 
 open Elmish
 open System
+open Fable.Core
 open Fable.Remoting.Client
 open Shared
 open Shared.Entities
 open Shared.Services
 open Feliz.Bulma
+type Window =
+    // function description
+    abstract alert: ?message: string -> unit
+let [<Global>] window: Window = jsNative
+let mutable myAlert = fun x -> window.alert x
 
 type Model =
     { Rows: List<SeatsRowTO>
       Input: string
       SelectedRow: Option<Guid>
+      SelectedSeatPerRow: Map<Guid, List<int>>
       }
+let createBookingsFromSelected (model: Model) =
+    let bookingNumber = 1
+    let bookings =
+        model.SelectedSeatPerRow
+        |> Map.toList
+        |> List.map (fun (rowId, seats) -> (rowId, { Id = bookingNumber; SeatIds = seats }))
+    bookings
 
 type Msg =
     | GotRows of Result<List<SeatsRowTO>, string>
@@ -24,6 +38,9 @@ type Msg =
     | AddedRow of Result<unit, string>
     | GotRow of SeatsRowTO
     | SetInput of string
+    | TryBookSelected
+    | TriedBookings of Result<unit, string>
+    | TrySelectSeat of Guid * int
     | SelectRow of Guid
 
 let stadiumApi =
@@ -32,7 +49,7 @@ let stadiumApi =
     |> Remoting.buildProxy<IRestStadiumBookingSystem>
 
 let init () =
-    let model = { Rows = []; Input = ""; SelectedRow = None}
+    let model = { Rows = []; Input = ""; SelectedRow = None; SelectedSeatPerRow = [] |> Map.ofList }
     let cmd = Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
     model, cmd
 
@@ -63,6 +80,26 @@ let update msg model =
             model, cmd
         else
             model, Cmd.none
+    | TrySelectSeat (rowId, seatId) ->
+        let cmd = Cmd.none
+        let selectedSeatPerRow =
+            if (model.SelectedSeatPerRow.ContainsKey rowId |> not) then
+                model.SelectedSeatPerRow.Add(rowId, [seatId])
+            else
+                if (model.SelectedSeatPerRow.[rowId] |> List.contains seatId |> not) then
+                    let newList = model.SelectedSeatPerRow.[rowId] @ [seatId]
+                    let newMap = model.SelectedSeatPerRow.Add(rowId, newList)
+                    newMap
+                else
+                    let newList = model.SelectedSeatPerRow.[rowId] |> List.filter (fun x -> x <> seatId)
+                    let newMap = model.SelectedSeatPerRow.Add(rowId, newList)
+                    newMap
+        let newModel = { model with SelectedSeatPerRow = selectedSeatPerRow }
+        newModel, cmd
+    | TryBookSelected ->
+        let bookings = createBookingsFromSelected model
+        let cmd = Cmd.OfAsync.perform stadiumApi.BookSeatsNRows bookings TriedBookings
+        model, cmd
     | _ ->
         let cmd = Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
         model, cmd
@@ -95,25 +132,15 @@ let private rowsAction (model: Model) dispatch =
 ]
 
 let private rowsList (model: Model) dispatch =
-    let seatRender (row: SeatsRowTO) =
-        row.Seats
-        |> List.sortBy (fun x -> x.Id)
-        |> List.map (fun (x: Seat) -> (if x.State = SeatState.Free then "O" else "X") + " ")
-        |> String.concat ""
-
     let seatsAsCheckboxes (row: SeatsRowTO) =
         row.Seats
         |> List.sortBy (fun x -> x.Id)
         |> List.map (fun (x: Seat) ->
-            Html.div [
-                prop.className "flex"
-                prop.children [
-                    Bulma.input.checkbox [
-                        prop.name "options"
-                        prop.value (x.Id.ToString())
-                        // prop.onClick (fun _ -> dispatch (SelectRow row.Id))
-                    ]
-                ]
+            Bulma.input.checkbox [
+                prop.name "options"
+                prop.selected (model.SelectedSeatPerRow.ContainsKey row.Id && model.SelectedSeatPerRow.[row.Id] |> List.contains x.Id && x.State = SeatState.Free)
+                prop.disabled (x.State = SeatState.Booked)
+                prop.onClick (fun _ -> dispatch (TrySelectSeat (row.Id, x.Id)))
             ]
         )
         |> List.toArray
@@ -130,27 +157,8 @@ let private rowsList (model: Model) dispatch =
                         Html.li
                             [
                                 prop.className "my-1"
-                                prop.text
-                                    ((row |> seatRender) + " _ " + (row.Seats.Length.ToString()))
                                 prop.children (row |> seatsAsCheckboxes)
                             ]
-
-                        // Html.div [
-                        //     seatsAsCheckboxes row
-                        // ]
-
-                        // Bulma.input.checkbox [
-                        //     prop.name "options"
-                        //     prop.value (row.Id.ToString()+"0")
-                        //     // prop.onClick (fun _ -> dispatch (SelectRow row.Id))
-                        // ]
-
-                        // Bulma.input.checkbox [
-                        //     prop.name "options"
-                        //     prop.value (row.Id.ToString()+"1")
-                        //     // prop.onClick (fun _ -> dispatch (SelectRow row.Id))
-                        // ]
-                        // Html.li [ prop.className "my-1"; prop.text  ((row |> seatRender) + " _ " + (row.Seats.Length.ToString())) ]
                         Bulma.input.radio [
                            prop.name "options"
                            prop.value (row.Id.ToString())
@@ -165,6 +173,11 @@ let private rowsList (model: Model) dispatch =
                             prop.className "bg-red-600 text-white p-2 rounded-md ml-2"
                             prop.onClick (fun _ -> dispatch (RemoveSeatFromRow row))
                             prop.text "RemoveSeat"
+                        ]
+                        Html.button [
+                            prop.className "bg-blue-600 text-white p-2 rounded-md ml-2"
+                            prop.onClick (fun _ -> dispatch TryBookSelected)
+                            prop.text "BookSelected"
                         ]
                 ]
             ]

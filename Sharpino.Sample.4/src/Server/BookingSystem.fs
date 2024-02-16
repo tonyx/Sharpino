@@ -1,5 +1,6 @@
 namespace Tonyx.SeatsBooking
 open Shared.Entities
+open Sharpino.PgStorage
 open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
@@ -22,6 +23,11 @@ module StorageStadiumBookingSystem =
             notify = None
             notifyAggregate = None
         }
+    let connection =
+        "Server=127.0.0.1;"+
+        "Database=es_seat_booking;" +
+        "User Id=safe;"+
+        "Password=safe;"
 
     type StadiumBookingSystem
         (storage: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
@@ -144,16 +150,14 @@ module StorageStadiumBookingSystem =
             }
 
         member this.GetAllRowsSeatsTo () =
-            let res =
-                result {
-                    let! (_, stadiumState, _, _) = stadiumStateViewer ()
-                    let rowReferences = stadiumState.GetRowReferences ()
-                    let! rowsTos =
-                        rowReferences
-                        |> List.traverseResultM (fun  rowId -> this.GetSeatsRowTO rowId)
-                    return rowsTos
-                }
-            res
+            result {
+                let! (_, stadiumState, _, _) = stadiumStateViewer ()
+                let rowReferences = stadiumState.GetRowReferences ()
+                let! rowsTos =
+                    rowReferences
+                    |> List.traverseResultM (fun  rowId -> this.GetSeatsRowTO rowId)
+                return rowsTos
+            }
 
         member this.GetAllRowReferences () =
             result {

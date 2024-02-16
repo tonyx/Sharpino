@@ -4,7 +4,6 @@ Farmer
 FSharp.Quotations.Evaluator
 FSToolkit.ErrorHandling
 Newtonsoft.Json
-Sharpino
 FsPickler.Json
 FsPickler
 Expecto
