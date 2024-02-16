@@ -17,15 +17,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.2", "Sharpi
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.2.Test", "Sharpino.Sample.2.Test\Sharpino.Sample.2.Test.fsproj", "{0E6E837B-7160-4BC3-9ABC-22B1DC73B8BB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3", "Sharpino.Sample.3\Sharpino.Sample.3.fsproj", "{A4787F1B-4889-4309-BC4D-E616F6CF01C2}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3.Test", "Sharpino.Sample.3.Test\Sharpino.Sample.3.Test.fsproj", "{EB479E56-7615-4048-9832-BECC76BAC38C}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.Client", "Sharpino.Sample.Client", "{8ED7E64B-B5F1-4D6D-9BE9-0CA983A5C44A}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App", "Sharpino.Sample.Client\src\App.fsproj", "{D4C9757D-69AD-4975-92FA-0C507116929A}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3.Shared", "Sharpino.Sample.3.Shared\Sharpino.Sample.3.Shared.fsproj", "{70CED588-1E3F-4667-AA9C-EC61DA5FC9FC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.4", "Sharpino.Sample.4", "{3CCE7DE9-17BF-4137-B312-2F5456607B79}"
 EndProject
@@ -84,22 +78,10 @@ Global
 		{0E6E837B-7160-4BC3-9ABC-22B1DC73B8BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E6E837B-7160-4BC3-9ABC-22B1DC73B8BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0E6E837B-7160-4BC3-9ABC-22B1DC73B8BB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A4787F1B-4889-4309-BC4D-E616F6CF01C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A4787F1B-4889-4309-BC4D-E616F6CF01C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A4787F1B-4889-4309-BC4D-E616F6CF01C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A4787F1B-4889-4309-BC4D-E616F6CF01C2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EB479E56-7615-4048-9832-BECC76BAC38C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EB479E56-7615-4048-9832-BECC76BAC38C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EB479E56-7615-4048-9832-BECC76BAC38C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EB479E56-7615-4048-9832-BECC76BAC38C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D4C9757D-69AD-4975-92FA-0C507116929A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D4C9757D-69AD-4975-92FA-0C507116929A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D4C9757D-69AD-4975-92FA-0C507116929A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D4C9757D-69AD-4975-92FA-0C507116929A}.Release|Any CPU.Build.0 = Release|Any CPU
-		{70CED588-1E3F-4667-AA9C-EC61DA5FC9FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{70CED588-1E3F-4667-AA9C-EC61DA5FC9FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{70CED588-1E3F-4667-AA9C-EC61DA5FC9FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{70CED588-1E3F-4667-AA9C-EC61DA5FC9FC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A5BC2367-75DE-4E24-97F2-238C450F344F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A5BC2367-75DE-4E24-97F2-238C450F344F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A5BC2367-75DE-4E24-97F2-238C450F344F}.Release|Any CPU.ActiveCfg = Release|Any CPU

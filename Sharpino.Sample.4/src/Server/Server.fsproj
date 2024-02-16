@@ -20,7 +20,7 @@
       <Compile Include="Server.fs" />
   </ItemGroup>
   <ItemGroup>
-<!--    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />
     <ProjectReference Include="..\Shared\Shared.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

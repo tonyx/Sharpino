@@ -7,8 +7,10 @@ nuget Feliz.Bulma
 nuget FSharp.Core ~> 8
 nuget Fable.Remoting.Giraffe ~> 5
 nuget FSharp.Quotations.Evaluator
+nuget FSharpPlus
 nuget FsPickler.Json
 nuget FSToolkit.ErrorHandling
+nuget Log4net
 nuget Saturn ~> 0
 
 nuget Fable.Core ~> 4

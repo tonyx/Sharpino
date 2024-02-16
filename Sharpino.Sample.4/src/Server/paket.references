@@ -4,4 +4,4 @@ FSharp.Core
 FSharp.Quotations.Evaluator
 Newtonsoft.Json
 FSharpPlus
-Sharpino.Core
+Log4net

@@ -1,12 +1,6 @@
 namespace Shared
 
 open System
-open Newtonsoft.Json
-open MBrace.FsPickler.Json
-open Sharpino
-open Sharpino.Core
-open Sharpino.Utils
-open Sharpino.Lib.Core.Commons
 
 type Todo = { Id: Guid; Description: string }
 

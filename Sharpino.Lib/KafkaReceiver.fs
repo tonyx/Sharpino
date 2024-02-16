@@ -24,7 +24,7 @@ module KafkaReceiver =
             // if appSettings.json is missing
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
-
+            
     type KafkaSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
 
@@ -63,11 +63,61 @@ module KafkaReceiver =
                 KafkaSubscriber(bootStrapServer, version, name, groupId) |> Ok
             with 
             | _ as e -> Result.Error (e.Message)
+            
+    type GuidDeserializer() =
+        interface IDeserializer<Guid> with
+            member _.Deserialize(data: ReadOnlySpan<byte>, isNull: bool, context: SerializationContext) =
+                if isNull then Guid.Empty
+                else Guid(data.ToArray())
+
+// let _ = config.KeyDeserializer <- GuidDeserializer()            
+            
+    type KafkaAggregateSubscriber(bootStrapServer: string, version: string, name: string, groupId: string, aggregateId: Guid) =
+        let topic = name + "-" + version |> String.replace "_" ""
+
+        let config = ConsumerConfig()
+        let _ = config.GroupId <- groupId
+        let _ = config.BootstrapServers <- bootStrapServer
+        let _ = config.AutoOffsetReset <- AutoOffsetReset.Earliest
+        let _ = config.EnableAutoCommit <- false
+
+        let consumer = new ConsumerBuilder<Guid, string>(config)
+        let _ =
+            consumer.SetKeyDeserializer(GuidDeserializer())
+        let cons = consumer.Build ()
+        let _ = cons.Subscribe topic 
+        
+        member this.Assign(position: int64, partition: int) =
+            let partition = Partition(partition) 
+            cons.Assign [TopicPartitionOffset(topic, partition, position)]
+            () 
+
+        member this.Consume () =
+            let result = cons.Consume ()
+            result
+            
+        // too late to change the name
+        member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<AggregateId, string>, string> =
+            ResultCE.result {
+                try
+                    let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
+                    let result = cons.Consume cancellationTokenSource.Token
+                    return result
+                with 
+                | _ -> 
+                    return! "timeout" |> Result.Error
+            }            
+        static member Create(bootStrapServer: string, version: string, name: string, groupId: string, aggregateId: Guid) =
+            try
+                KafkaAggregateSubscriber(bootStrapServer, version, name, groupId, aggregateId) |> Ok
+            with 
+            | _ as e -> Result.Error (e.Message)
 
     // todo: unify with KafkaViewer
     type KafkaAggregateViewer<'A, 'E when 'E :> Event<'A>> 
         (aggregateId: Guid,
-        subscriber: KafkaSubscriber, 
+        subscriber: KafkaAggregateSubscriber, 
+        // subscriber: KafkaSubscriber, 
         sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
@@ -89,35 +139,46 @@ module KafkaReceiver =
             state
 
         member this.Refresh () =
+            printf "XXXX. refresh 100\n"
             let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
+                printf "XXXX. refresh (error) 200 %A\n" e
                 log.Error e
                 Result.Error e 
             | Ok msg ->
+                printf "XXXX. refresh (Ok) 300\n"
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
                     let eventId = newMessage.EventId
                     let! currentStateId, _, _, _ = this.State ()
+                    printf "XXXX. refresh (Ok) 400\n"
                     if eventId = currentStateId + 1 then
+                        printf "XXXX. refresh (Ok) 500\n"
                         let msgAppId = newMessage.ApplicationId
                         let msgAggregateId = newMessage.AggregateId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
                         let! (_, currentState, _, _) = this.State ()
                         if appId <> msgAppId || aggregateId <> msgAggregateId then
+                            printf "XXXX. refresh (<>) 600\n"
                             ()
                         else
+                            printf "XXXX. refresh (else) 700\n"
                             let! newState = evolve currentState [newEvent] 
                             state <- ( eventId, newState, None, None ) |> Result.Ok
                         return () |> Result.Ok
                     else
+                        printf "XXXX. refresh (else) 800\n"
                         let! _ = this.ForceSyncWithSourceOfTruth()
                         let! _, _, offset, partition = this.State ()
                         let _ =
+                            printf "XXXX. refresh (else) 900\n"
                             match offset, partition with
                             | Some off, Some part ->
+                                printf "XXXX. refresh (else) 1000\n"
                                 subscriber.Assign( off + 1L, part )
                             | _ -> 
+                                printf "XXXX. refresh (else) 1100\n"
                                 log.Error "Cannot assign offset and partition"
                                 ()
                         return () |> Result.Ok
@@ -250,9 +311,11 @@ module KafkaReceiver =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (aggregateId: Guid)
-        (subscriber: KafkaSubscriber) 
+        // (subscriber: KafkaSubscriber) 
+        (subscriber: KafkaAggregateSubscriber) 
         (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (applicationId: Guid) 
         =
+            printf "XXXXX. getting kafka aggregate state viewer \n"
             KafkaAggregateViewer<'A, 'E>(aggregateId, subscriber, sourceOfTruthStateViewer, applicationId)
 

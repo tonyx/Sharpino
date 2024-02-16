@@ -1,6 +1,7 @@
 module Server
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
+open Farmer.Builders
 open Saturn
 open System
 open Shared
@@ -37,7 +38,7 @@ let doNothingBroker: IEventBroker =
 let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
 
 let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
-let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_row", "sharpinoRowClient") |> Result.get
+let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
 let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
 let kafkaBasedStadiumState: StateViewer<Stadium> =
@@ -50,19 +51,32 @@ let kafkaRowViewer' rowSubscriber' =
         mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
             rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
 
-let kafkarViewer = kafkaRowViewer' rowSubscriber
+let kafkarViewer' =
+    fun myyid ->
+        let rowSubscriber =
+            try
+                KafkaAggregateSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient", myyid) |> Result.get
+            with e ->
+                printf "QQQQQ. Error creating subscriber %A\n" e
+                raise e
+
+        kafkaRowViewer' rowSubscriber
 
 let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<SeatsRow, RowAggregateEvent>>()
 
 let rowStateViewer: AggregateViewer<SeatsRow> =
     fun (rowId: Guid) ->
-        let viewer = kafkarViewer rowId
-        let _ =
-            if not (viewers.ContainsKey rowId) then
-                viewers.Add(rowId, viewer)
-
-        viewer.RefreshLoop()
-        viewer.State()
+        if viewers.ContainsKey(rowId) then
+            printf "QQQQq. got  viewer 1111111 %A \n" rowId
+            let viewer = viewers.[rowId]
+            viewer.RefreshLoop()
+            viewer.State()
+        else
+            let viewer = kafkarViewer' rowId rowId
+            viewers.Add (rowId, viewer)
+            printf "XXXXXXq. got  viewer 2222222 %A\n" rowId
+            viewer.RefreshLoop()
+            viewer.State()
 
 
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
