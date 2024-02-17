@@ -69,8 +69,6 @@ module KafkaReceiver =
             member _.Deserialize(data: ReadOnlySpan<byte>, isNull: bool, context: SerializationContext) =
                 if isNull then Guid.Empty
                 else Guid(data.ToArray())
-
-// let _ = config.KeyDeserializer <- GuidDeserializer()            
             
     type KafkaAggregateSubscriber(bootStrapServer: string, version: string, name: string, groupId: string, aggregateId: Guid) =
         let topic = name + "-" + version |> String.replace "_" ""
@@ -139,46 +137,35 @@ module KafkaReceiver =
             state
 
         member this.Refresh () =
-            printf "XXXX. refresh 100\n"
             let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
-                printf "XXXX. refresh (error) 200 %A\n" e
                 log.Error e
                 Result.Error e 
             | Ok msg ->
-                printf "XXXX. refresh (Ok) 300\n"
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
                     let eventId = newMessage.EventId
                     let! currentStateId, _, _, _ = this.State ()
-                    printf "XXXX. refresh (Ok) 400\n"
                     if eventId = currentStateId + 1 then
-                        printf "XXXX. refresh (Ok) 500\n"
                         let msgAppId = newMessage.ApplicationId
                         let msgAggregateId = newMessage.AggregateId
                         let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
                         let! (_, currentState, _, _) = this.State ()
                         if appId <> msgAppId || aggregateId <> msgAggregateId then
-                            printf "XXXX. refresh (<>) 600\n"
                             ()
                         else
-                            printf "XXXX. refresh (else) 700\n"
                             let! newState = evolve currentState [newEvent] 
                             state <- ( eventId, newState, None, None ) |> Result.Ok
                         return () |> Result.Ok
                     else
-                        printf "XXXX. refresh (else) 800\n"
                         let! _ = this.ForceSyncWithSourceOfTruth()
                         let! _, _, offset, partition = this.State ()
                         let _ =
-                            printf "XXXX. refresh (else) 900\n"
                             match offset, partition with
                             | Some off, Some part ->
-                                printf "XXXX. refresh (else) 1000\n"
                                 subscriber.Assign( off + 1L, part )
                             | _ -> 
-                                printf "XXXX. refresh (else) 1100\n"
                                 log.Error "Cannot assign offset and partition"
                                 ()
                         return () |> Result.Ok
@@ -316,6 +303,5 @@ module KafkaReceiver =
         (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (applicationId: Guid) 
         =
-            printf "XXXXX. getting kafka aggregate state viewer \n"
             KafkaAggregateViewer<'A, 'E>(aggregateId, subscriber, sourceOfTruthStateViewer, applicationId)
 

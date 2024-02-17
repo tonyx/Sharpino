@@ -43,11 +43,13 @@ let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > ev
 let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
 let kafkaBasedStadiumState: StateViewer<Stadium> =
     fun () ->
+        printf "getting kafka stadium viewer state\n"
         kafkaStadiumViewer.RefreshLoop()
         kafkaStadiumViewer.State()
 
 let kafkaRowViewer' rowSubscriber' =
     fun (rowId: Guid) ->
+        printf "getting kafka row viewer for %A\n" rowId
         mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
             rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
 
@@ -66,12 +68,12 @@ let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<S
 
 let rowStateViewer: AggregateViewer<SeatsRow> =
     fun (rowId: Guid) ->
-        if viewers.ContainsKey(rowId) then
-            printf "QQQQq. got  viewer 1111111 %A \n" rowId
-            let viewer = viewers.[rowId]
-            viewer.RefreshLoop()
-            viewer.State()
-        else
+        // if viewers.ContainsKey(rowId) then
+        //     printf "QQQQq. got  viewer 1111111 %A \n" rowId
+        //     let viewer = viewers.[rowId]
+        //     viewer.RefreshLoop()
+        //     viewer.State()
+        // else
             let viewer = kafkarViewer' rowId rowId
             viewers.Add (rowId, viewer)
             printf "XXXXXXq. got  viewer 2222222 %A\n" rowId
