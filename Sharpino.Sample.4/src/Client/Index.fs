@@ -56,10 +56,11 @@ let init () =
 let update msg model =
     match msg with
     | GotRows rows ->
-            match rows with
-            | Error _ -> model, Cmd.none
-            | Ok rows ->
-                { model with Rows = rows }, Cmd.none
+        match rows with
+        | Error x ->
+            model, Cmd.none
+        | Ok rows ->
+            { model with Rows = rows }, Cmd.none
     | SetInput value -> { model with Input = value }, Cmd.none
     | AddRow ->
         let cmd = Cmd.OfAsync.perform stadiumApi.AddRowReference () AddedRow
@@ -100,8 +101,17 @@ let update msg model =
         let bookings = createBookingsFromSelected model
         let cmd = Cmd.OfAsync.perform stadiumApi.BookSeatsNRows bookings TriedBookings
         model, cmd
+    | AddedRow rows ->
+        match rows with
+        | Error x ->
+            model, Cmd.none
+        | Ok _ ->
+            let cmd =
+                Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
+            model, cmd
     | _ ->
-        let cmd = Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
+        let cmd =
+            Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
         model, cmd
 
 open Feliz
@@ -144,7 +154,6 @@ let private rowsList (model: Model) dispatch =
             ]
         )
         |> List.toArray
-        // |> Html.div [ prop.children ]
 
     Html.div [
         prop.className "bg-white/80 rounded-md shadow-md p-4 w-5/6 lg:w-3/4 lg:max-w-2xl"
@@ -153,7 +162,6 @@ let private rowsList (model: Model) dispatch =
                 prop.className "list-decimal ml-6"
                 prop.children [
                     for row in model.Rows do
-                        // row |> seatsAsCheckboxes
                         Html.li
                             [
                                 prop.className "my-1"
@@ -182,7 +190,7 @@ let private rowsList (model: Model) dispatch =
                 ]
             ]
             Html.ol [
-                prop.text "olaXXX"
+                prop.text "selectet row id:"
                 match model.SelectedRow with
                 | Some x ->
                     prop.text ("selected" + (x.ToString()))

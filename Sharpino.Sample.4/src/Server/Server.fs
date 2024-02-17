@@ -43,15 +43,15 @@ let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > ev
 let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
 let kafkaBasedStadiumState: StateViewer<Stadium> =
     fun () ->
-        printf "getting kafka stadium viewer state\n"
-        kafkaStadiumViewer.RefreshLoop()
+        kafkaStadiumViewer.RefreshLoop() |> ignore
         kafkaStadiumViewer.State()
 
 let kafkaRowViewer' rowSubscriber' =
     fun (rowId: Guid) ->
-        printf "getting kafka row viewer for %A\n" rowId
-        mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
-            rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
+        let result =
+            mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+                rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
+        result
 
 let kafkarViewer' =
     fun myyid ->
@@ -59,7 +59,6 @@ let kafkarViewer' =
             try
                 KafkaAggregateSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient", myyid) |> Result.get
             with e ->
-                printf "QQQQQ. Error creating subscriber %A\n" e
                 raise e
 
         kafkaRowViewer' rowSubscriber
@@ -68,15 +67,15 @@ let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<S
 
 let rowStateViewer: AggregateViewer<SeatsRow> =
     fun (rowId: Guid) ->
-        // if viewers.ContainsKey(rowId) then
-        //     printf "QQQQq. got  viewer 1111111 %A \n" rowId
-        //     let viewer = viewers.[rowId]
-        //     viewer.RefreshLoop()
-        //     viewer.State()
-        // else
+        // todo: troubles here
+        if viewers.ContainsKey(rowId) then
+            let viewer = viewers.[rowId]
+            viewer.RefreshLoop()
+            viewer.State()
+        else
             let viewer = kafkarViewer' rowId rowId
-            viewers.Add (rowId, viewer)
-            printf "XXXXXXq. got  viewer 2222222 %A\n" rowId
+            // this will be a problem
+            // viewers.Add (rowId, viewer)
             viewer.RefreshLoop()
             viewer.State()
 
@@ -84,6 +83,7 @@ let rowStateViewer: AggregateViewer<SeatsRow> =
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
 let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {

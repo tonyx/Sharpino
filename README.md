@@ -133,8 +133,6 @@ This invariant rule must be preserved even if two concurrent transactions try to
 
 
 
-
-
 __Faq__: 
 - Why "Sharpino"? 
     - It's a mix of Sharp and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf". 
@@ -154,11 +152,16 @@ __Faq__:
     ```
 ## Roadmap:
 - (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
-- add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
-- select the type of lock per aggregate and context
-- given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
+- (done) add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
+- (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
+- (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## News: 
+- _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring__. That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies.
+I am able to do some heavy refactoring because I have finally, an elmish sample app for testing (and perhaps automated client tests on the same domain). An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
+- 
+- 
+
 - Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
 it is going to be messy)
  

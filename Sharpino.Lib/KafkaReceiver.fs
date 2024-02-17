@@ -213,12 +213,13 @@ module KafkaReceiver =
                 ()
 
         member this.State () =
+            // printf "getting state %A\n" (state |> serializer.Serialize)
             state
 
         member this.Refresh() =
             let result = subscriber.consume config.RefreshTimeout
             match result with
-            | Error e -> 
+            | Error e ->
                 log.Error e
                 Result.Error e 
             | Ok msg ->

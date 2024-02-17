@@ -1,5 +1,5 @@
 # Sharpino on SAFE Template
-A "walking skeleton" sample designed around classic SAFE template.
+A "walking skeleton" sample designed around classic SAFE template..
 The example is work in progress (not meant to be published yet).
 
 # SAFE Template
