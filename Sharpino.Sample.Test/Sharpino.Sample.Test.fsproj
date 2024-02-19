@@ -1,12 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-
   <ItemGroup>
     <compile Include="Shared.fs" />
     <Compile Include="contexts/Tags/entities/TagsTests.fs" />
@@ -21,7 +20,6 @@
     <Compile Include="KafkaStateKeeperTests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     <PackageReference Include="Expecto" Version="10.1.0" />
@@ -33,7 +31,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>

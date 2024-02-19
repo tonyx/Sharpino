@@ -31,7 +31,7 @@ Target.create "Bundle" (fun _ ->
 
 Target.create "Azure" (fun _ ->
     let web = webApp {
-        name "SAFE-App"
+        name "SHARPINO-App"
         operating_system OS.Linux
         runtime_stack (DotNet "8.0")
         zip_deploy "deploy"
@@ -42,7 +42,7 @@ Target.create "Azure" (fun _ ->
         add_resource web
     }
 
-    deployment |> Deploy.execute "SAFE-App" Deploy.NoParameters |> ignore)
+    deployment |> Deploy.execute "SHARPINO-App" Deploy.NoParameters |> ignore)
 
 Target.create "Run" (fun _ ->
     run dotnet [ "build" ] sharedPath

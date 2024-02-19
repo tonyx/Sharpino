@@ -10,6 +10,7 @@ open Farmer
 open System.Collections
 open Shared.Services
 open Sharpino
+open Sharpino.MemoryStorage
 open Sharpino.PgStorage
 open Sharpino.CommandHandler
 open Sharpino.Storage
@@ -29,6 +30,7 @@ let connection =
     "User Id=safe;"+
     "Password=safe;"
 let eventStore = PgEventStore connection
+let memoryStore = MemoryStorage()
 let doNothingBroker: IEventBroker =
     {
         notify = None
@@ -81,9 +83,9 @@ let rowStateViewer: AggregateViewer<SeatsRow> =
 
 
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
+let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
-let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
-
+// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {
