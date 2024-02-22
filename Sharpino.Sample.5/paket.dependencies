@@ -3,7 +3,6 @@ framework: net8.0
 storage: none
 
 nuget Expecto
-nuget Fable.Lit
 nuget Feliz.Bulma
 nuget FSharp.Core ~> 8
 nuget Fable.Remoting.Giraffe ~> 5

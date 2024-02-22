@@ -8,11 +8,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css">
 </head>
 <body>
-    <div id="elmish-app"></div>
-    <!-- Polyfill for remotedev -->
-    <script type="text/javascript">
-        var global = global || window;
-    </script>
-    <script type="module" src="/output/App.js"></script>
+
+<!--    <script src="https://apis.google.com/js/platform.js" async defer></script>-->
+<!--    <meta name="google-signin-client_id" content="542266218771-0o5vce7fooj9p3tu6gq8j5auk4adj8bf.apps.googleusercontent.com">-->
+<!--    <div class="g-signin2" data-onsuccess="onSignIn"></div>-->
+
+<!--    &lt;!&ndash; Polyfill for remotedev &ndash;&gt;-->
+<!--    <script type="text/javascript">-->
+<!--        console.log ('asdfsdfsdfasdfasdfsfsdf');-->
+<!--        function onSignIn(googleUser) {-->
+<!--            alert ('signed in');-->
+<!--            console.log ('signed in');-->
+
+<!--            // var id_token = googleUser.getAuthResponse().id_token;-->
+<!--            // console.log ('id_token', id_token);-->
+<!--            // var profile = googleUser.getBasicProfile();-->
+<!--            // // alert (profile.getName());-->
+<!--            // console.log('ID: ' + profile.getId()); // Do not send to your backend! Use an ID token instead.-->
+<!--            // console.log('Name: ' + profile.getName());-->
+<!--            // console.log('Image URL: ' + profile.getImageUrl());-->
+<!--            // console.log('Email: ' + profile.getEmail()); // This is null if the 'email' scope is not present-->
+<!--            // var xhr = new XMLHttpRequest();-->
+<!--            // xhr.open('POST', 'http://localhost:5000/api/IRestStadiumBookingSystem/Authenticate', true);-->
+<!--            // xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');-->
+<!--            // xhr.onload = function() {-->
+<!--            //     console.log('Signed in as: ' + xhr.responseText);-->
+<!--            // };-->
+<!--        }-->
+<!--    </script>-->
+
+<div id="sharpino-app"></div>
+
+<script type="text/javascript">
+    var global = global || window;
+    // var jOAuth = {
+    //     myAlert: function (message) {
+    //         alert(message);
+    //     },
+    //     onSignInX: function(googleUser)  {
+    //         alert ('signed in');
+    //     }
+    // }
+</script>
+
+<script type="module" src="/output/App.js"></script>
 </body>
 </html>
