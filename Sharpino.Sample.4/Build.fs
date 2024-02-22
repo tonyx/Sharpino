@@ -31,22 +31,21 @@ Target.create "Bundle" (fun _ ->
 
 Target.create "Azure" (fun _ ->
     let web = webApp {
-        name "SHARPINO-App"
+        name "SHARPINO-App2"
         operating_system OS.Linux
         runtime_stack (DotNet "8.0")
         zip_deploy "deploy"
     }
 
     let deployment = arm {
-        location Location.WestEurope
+        location Location.NorthEurope
         add_resource web
     }
 
-    deployment |> Deploy.execute "SHARPINO-App" Deploy.NoParameters |> ignore)
+    deployment |> Deploy.execute "SHARPINO-App2" Deploy.NoParameters |> ignore)
 
 Target.create "Run" (fun _ ->
     run dotnet [ "build" ] sharedPath
-
     [
         "server", dotnet [ "watch"; "run" ] serverPath
         "client", dotnet [ "fable"; "watch"; "-o"; "output"; "-s"; "--run"; "npx"; "vite" ] clientPath

@@ -34,4 +34,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample\Sharpino.Sample.fsproj" />
   </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

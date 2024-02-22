@@ -59,4 +59,5 @@ module Services =
             AddSeats: Guid * List<Seat> -> Async<Result<unit, string>>
             GetAllRowReferences: unit -> Async<Result<List<Guid>,string>>
             GetAllRowTOs: unit -> Async<Result<List<SeatsRowTO>, string>>
+            Authenticate: string -> Async<Result<unit, string>>
         }

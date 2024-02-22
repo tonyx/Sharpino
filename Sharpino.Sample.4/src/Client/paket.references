@@ -7,3 +7,6 @@ Fable.Remoting.Client
 Feliz
 FSharp.Core
 Feliz.Bulma
+Fable.Lit
+Fable.Lit.Elmish
+Fable.Lit.Test

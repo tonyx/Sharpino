@@ -4,15 +4,30 @@ open Elmish
 open System
 open Fable.Core
 open Fable.Remoting.Client
+open Browser
 open Shared
 open Shared.Entities
 open Shared.Services
 open Feliz.Bulma
+open Feliz
+open Lit
+
 type Window =
     // function description
     abstract alert: ?message: string -> unit
+
+type JOAuth =
+    abstract myAlert: ?message: string -> unit
+
 let [<Global>] window: Window = jsNative
+let [<Global>] jOAuth: JOAuth = jsNative
+
 let mutable myAlert = fun x -> window.alert x
+let mutable newAlert = fun x -> jOAuth.myAlert x
+
+let private hmr = HMR.createToken ()
+
+
 
 type Model =
     { Rows: List<SeatsRowTO>
@@ -49,9 +64,20 @@ let stadiumApi =
     |> Remoting.buildProxy<IRestStadiumBookingSystem>
 
 let init () =
+    myAlert "ola!"
+    newAlert "ola again!"
+    // newAlert "ola again!"
+    // let parsed = parseJson "{'name': 'John', 'age': 30, 'city': 'New York'}"
+    // console.log parsed
     let model = { Rows = []; Input = ""; SelectedRow = None; SelectedSeatPerRow = [] |> Map.ofList }
     let cmd = Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
     model, cmd
+
+[<HookComponent>]
+let myComponent() =
+    html $"""
+        <h1>My Component</h1>
+    """
 
 let update msg model =
     match msg with
@@ -156,11 +182,22 @@ let private rowsList (model: Model) dispatch =
         |> List.toArray
 
     Html.div [
+        // myComponent()
         prop.className "bg-white/80 rounded-md shadow-md p-4 w-5/6 lg:w-3/4 lg:max-w-2xl"
         prop.children [
             Html.ol [
                 prop.className "list-decimal ml-6"
                 prop.children [
+                    // Html.div [
+                    //     prop.innerHtml
+                    //         "bla bla bla bla"
+                    // ]
+                    Html.div [
+                        prop.innerHtml
+                            """
+                                <div class="g-signin2" data-onsuccess="onSignIn"></div>
+                            """
+                    ]
                     for row in model.Rows do
                         Html.li
                             [
@@ -201,6 +238,12 @@ let private rowsList (model: Model) dispatch =
         ]
     ]
 
+// let view2 (model: Model) dispatch =
+//     Hook.useHmr hmr
+//     html $"""
+//     <h1>My Component</h1>
+//     """
+
 let view (model: Model) dispatch =
     Html.section [
         prop.className "h-screen w-screen"
@@ -211,6 +254,11 @@ let view (model: Model) dispatch =
         ]
 
         prop.children [
+            // Html.div [
+            //     html $"""
+            //         <h1>My Component</h1>
+            //     """
+            // ]
             Html.a [
                 prop.href "https://safe-stack.github.io/"
                 prop.className "absolute block ml-12 h-12 w-12 bg-teal-300 hover:cursor-pointer hover:bg-teal-400"
@@ -229,3 +277,5 @@ let view (model: Model) dispatch =
             ]
         ]
     ]
+
+

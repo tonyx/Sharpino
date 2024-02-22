@@ -37,7 +37,7 @@ let doNothingBroker: IEventBroker =
         notifyAggregate = None
     }
 
-let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
+// let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
 
 let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
 let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
@@ -85,7 +85,7 @@ let rowStateViewer: AggregateViewer<SeatsRow> =
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
-// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+// let stadiumBookingSystem = StadiumBookingSystem (, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {
@@ -133,6 +133,13 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
         fun () -> async {
             let rowTOs = stadiumBookingSystem.GetAllRowsSeatsTo()
             return rowTOs
+        }
+    Authenticate =
+        fun token  -> async {
+            printf "Authenticated\n"
+            printf "token:\n"
+            printf "%s\n" token
+            return Ok ()
         }
 }
 

@@ -3,6 +3,9 @@ framework: net8.0
 storage: none
 
 nuget Expecto
+nuget Fable.Lit
+nuget Fable.Lit.Elmish
+nuget Fable.Lit.Test
 nuget Feliz.Bulma
 nuget FSharp.Core ~> 8
 nuget Fable.Remoting.Giraffe ~> 5
@@ -25,3 +28,4 @@ nuget Feliz ~> 2
 nuget Fake.Core.Target ~> 5
 nuget Fake.IO.FileSystem ~> 5
 nuget Farmer ~> 1
+nuget Sharpino
