@@ -1,4 +1,5 @@
 module Server
+open System.Threading
 open Fable.Remoting.Server
 open Fable.Remoting.Giraffe
 open Farmer.Builders
@@ -23,6 +24,10 @@ open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
+
+open Google.Apis.Auth.OAuth2;
+open Google.Apis.Services;
+open Google.Apis.Util.Store
 
 let connection =
     "Server=127.0.0.1;"+
@@ -94,6 +99,7 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
         | Ok _ -> return Ok ()
         | Error e -> return Error e
     }
+
     BookSeats = fun (rowId, booking) -> async {
         let booked = stadiumBookingSystem.BookSeats rowId booking
         match booked with
@@ -141,7 +147,28 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
             printf "%s\n" token
             return Ok ()
         }
-}
+    GetIdentity    =
+        fun () ->
+            let secrets = new ClientSecrets()
+            secrets.ClientId <- "542266218771-0o5vce7fooj9p3tu6gq8j5auk4adj8bf.apps.googleusercontent.com"
+            secrets.ClientSecret <- "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"
+            let user =
+                try
+                    (GoogleWebAuthorizationBroker.AuthorizeAsync( secrets, ["email"], "tonyx1@gmail.com", CancellationToken.None))
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Ok
+                with _ as ex   ->
+                    printf "error %A " ex
+                    "cant authorize user " |> Error
+            async {
+                return
+                    match user with
+                    | Ok u -> Ok u.UserId
+                    | Error e -> Error e
+            }
+        }
+
 
 let webApp =
     Remoting.createApi ()

@@ -60,4 +60,5 @@ module Services =
             GetAllRowReferences: unit -> Async<Result<List<Guid>,string>>
             GetAllRowTOs: unit -> Async<Result<List<SeatsRowTO>, string>>
             Authenticate: string -> Async<Result<unit, string>>
+            GetIdentity: unit -> Async<Result<string, string>>
         }

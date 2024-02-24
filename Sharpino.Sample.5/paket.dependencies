@@ -10,6 +10,7 @@ nuget FSharp.Quotations.Evaluator
 nuget FSharpPlus
 nuget FsPickler.Json
 nuget FSToolkit.ErrorHandling
+nuget Google.Apis.Auth
 nuget Log4net
 nuget Saturn ~> 0
 

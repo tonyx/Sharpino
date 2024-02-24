@@ -15,17 +15,18 @@ type Window =
     // function description
     abstract alert: ?message: string -> unit
 
-// type JOAuth =
-//     abstract myAlert: ?message: string -> unit
+type JOAuth =
+    abstract myAlert: ?message: string -> unit
+    abstract consoleLog: ?message: string -> unit
 
 let [<Global>] window: Window = jsNative
-// let [<Global>] jOAuth: JOAuth = jsNative
+let [<Global>] jOAuth: JOAuth = jsNative
 
 let mutable myAlert = fun x -> window.alert x
-// let mutable newAlert = fun x -> jOAuth.myAlert x
+let mutable newAlert = fun x -> jOAuth.myAlert x
+let mutable consoleLog = fun x -> jOAuth.consoleLog x
 
 // let private hmr = HMR.createToken ()
-
 
 
 type Model =
@@ -33,6 +34,7 @@ type Model =
       Input: string
       SelectedRow: Option<Guid>
       SelectedSeatPerRow: Map<Guid, List<int>>
+      UserIdentity: Option<string>
       }
 let createBookingsFromSelected (model: Model) =
     let bookingNumber = 1
@@ -45,6 +47,8 @@ let createBookingsFromSelected (model: Model) =
 type Msg =
     | GotRows of Result<List<SeatsRowTO>, string>
     | AddRow
+    | Authenticate
+    | Authenticated of Result<string,string>
     | AddSeatToRow of SeatsRowTO
     | RemoveSeatFromRow of SeatsRowTO
     | RemovedSeat of Result<unit, string>
@@ -65,7 +69,8 @@ let stadiumApi =
 let init () =
     // myAlert "ola!"
     // newAlert "ola again!"
-    let model = { Rows = []; Input = ""; SelectedRow = None; SelectedSeatPerRow = [] |> Map.ofList }
+    consoleLog "console log again!"
+    let model = { Rows = []; Input = ""; SelectedRow = None; SelectedSeatPerRow = [] |> Map.ofList ; UserIdentity = None }
     let cmd = Cmd.OfAsync.perform stadiumApi.GetAllRowTOs () GotRows
     model, cmd
 
@@ -81,6 +86,18 @@ let update msg model =
     | AddRow ->
         let cmd = Cmd.OfAsync.perform stadiumApi.AddRowReference () AddedRow
         { model with Input = "" }, cmd
+    | Authenticate ->
+        let cmd = Cmd.OfAsync.perform stadiumApi.GetIdentity () Authenticated
+        model, cmd
+    | Authenticated userResult ->
+        let user =
+            match userResult with
+            | Ok user -> user |> Some
+            | Error _ -> None
+        let model =
+            { model with UserIdentity = user }
+        model, Cmd.none
+
     | SelectRow id ->
         let cmd = Cmd.none
         { model with SelectedRow = Some id}, cmd
@@ -250,6 +267,18 @@ let view (model: Model) dispatch =
                     Html.h1 [
                         prop.className "text-center text-5xl font-bold text-white mb-3 rounded-md p-4"
                         prop.text "Sharpino.Sample._55"
+                    ]
+                    Html.h1 [
+                        prop.className "text-center text-2xl font-bold text-white mb-3 rounded-md p-4"
+                        let user = match model.UserIdentity with
+                                   | Some x -> x
+                                   | None -> "no user"
+                        prop.text (sprintf "user connected: %s" user)
+                    ]
+                    Html.button [
+                        prop.className "bg-teal-600 text-white p-2 rounded-md"
+                        prop.onClick (fun _ -> dispatch Authenticate)
+                        prop.text "CONNECT USER Identity"
                     ]
                     rowsList model dispatch
                 ]
