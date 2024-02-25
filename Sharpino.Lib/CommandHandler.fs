@@ -274,7 +274,7 @@ module CommandHandler =
             match (stateView, config.LockType) with
             |  Error e, _ -> Error e 
             |  _, Pessimistic ->
-                // consider that if stateView is error then we are not here (ouch!)
+                // todo: review this that is suspicious. However: not important as the only recommended lock is the optimistic one
                 let myLock =
                     stateView
                     |> Result.toOption

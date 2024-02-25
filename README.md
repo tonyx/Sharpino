@@ -173,7 +173,8 @@ I am ready to refactor now because I have an elmish sample app for (manual) test
  
 - Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
 it is going to be messy)
- 
+- Version 1.5.3: 
+  - Aggregate snapshots added (in addition to contexts snapshots)
 - Version 1.5.1: - 
   - Added a new configuration file named appSettings.json in the root of the project with the following content:
 ```json
