@@ -93,6 +93,32 @@ module CommandHandler =
             }
             |> Async.RunSynchronously
 
+    [<MethodImpl(MethodImplOptions.Synchronized)>]
+    let inline private mkAggregateSnapshot<'A, 'E
+        when 'A :> Aggregate 
+        and 'A :> Entity 
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> string)
+        > 
+        (storage: IEventStore) 
+        (aggregateId: AggregateId) =
+            let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E> storage
+            async {
+                return
+                    ResultCE.result
+                        {
+                            let! (eventId, state, _, _) = stateViewer aggregateId 
+                            let serState = state.Serialize serializer
+                            let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
+                            return! result 
+                        }
+            }
+            |> Async.RunSynchronously
+     
     let inline mkSnapshotIfIntervalPassed<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -122,7 +148,40 @@ module CommandHandler =
                                     () |> Ok
                         }
             }    
-            |> Async.RunSynchronously   
+            |> Async.RunSynchronously
+            
+    let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E
+        when 'A :> Aggregate 
+        and 'A :> Entity 
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member StorageName: string)
+        and 'A : (static member SnapshotsInterval : int)
+        and 'A : (static member Version: string) 
+        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> string)
+        >
+        (storage: IEventStore)
+        (aggregateId: AggregateId) =
+            log.Debug "mkAggregateSnapshotIfIntervalPassed"
+            async {
+                return
+                    ResultCE.result
+                        {
+                            let (lastEventId, _, _) = 
+                                storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName aggregateId
+                                |> Option.defaultValue (0, None, None)
+                            let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
+                            let result =
+                                if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
+                                    mkAggregateSnapshot<'A, 'E> storage aggregateId 
+                                else
+                                    () |> Ok
+                            return! result
+                        }
+            }
+            |> Async.RunSynchronously
+            
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
@@ -177,7 +236,8 @@ module CommandHandler =
         and 'E :> Event<'A>
         and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
-        and 'A : (static member Version: string) 
+        and 'A : (static member Version: string)
+        and 'A : (static member SnapshotsInterval: int)
         and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E : (member Serialize: ISerializer -> string)
         >
@@ -206,6 +266,7 @@ module CommandHandler =
                                 List.zip ids events'
                                 |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName 
                                 |> Result.toOption
+                            let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E> storage aggregateId    
                             return ([ids], [sent])
                         }
                 }
@@ -228,7 +289,9 @@ module CommandHandler =
         and 'A1 :> Entity
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: ISerializer -> string)
+        and 'E1 : (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -270,7 +333,7 @@ module CommandHandler =
                                 
                             let packParametersForDb =
                                 List.zip serializedEvents aggregateIdsWithStateIds
-                                |>> (fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)) // id must be aggregate state_version_id
+                                |>> (fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId))
 
                             let! idLists =
                                 storage.MultiAddAggregateEvents packParametersForDb
@@ -282,6 +345,11 @@ module CommandHandler =
                             let sent =
                                 kafkaParameters
                                 |>> (fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption)
+                                
+                            let _ =
+                                aggregateIds
+                                |> List.map (fun id -> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage id)
+                            
                             return (idLists, sent)
                         }
                 }

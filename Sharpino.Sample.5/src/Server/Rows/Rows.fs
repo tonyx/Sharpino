@@ -140,6 +140,7 @@ module rec SeatRow =
 
         static member Version = "_01"
         static member StorageName = "_seatrow"
+        static member SnapshotsInterval = 6
 
         interface Aggregate with
             member this.StateId = this.StateId
@@ -147,6 +148,7 @@ module rec SeatRow =
             member this.Serialize serializer =
                 this.Serialize serializer
             member this.Lock = this
+
         interface Entity with
             member this.Id = this.Id
 

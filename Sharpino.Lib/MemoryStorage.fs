@@ -351,6 +351,15 @@ module MemoryStorage =
                     snapshots_dic.[version].[name]
                     |> List.tryLast
                     |>> _.EventId 
+            member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
+                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                    None
+                else
+                    aggregate_snapshots_dic.[version].[name].[aggregateId]
+                    |> List.tryLast
+                    |>> (fun x -> x.EventId |> Option.get)
+                
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then

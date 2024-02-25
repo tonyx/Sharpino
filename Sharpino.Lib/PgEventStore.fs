@@ -314,7 +314,7 @@ module PgStorage =
 
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
-                let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@aggregate_id @event_id, @snapshot, @timestamp)" version name
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
                 let tryEvent = ((this :> IEventStore).TryGetEvent version eventId name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" eventId)
@@ -415,6 +415,24 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                 res
+            
+            member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
+                log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
+                let query = sprintf "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                try
+                    connection
+                    |> Sql.connect
+                    |> Sql.query query
+                    |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
+                    |> Sql.executeAsync (fun read -> read.int "event_id")
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                    |> Seq.tryHead
+                with
+                    | _ as ex ->
+                        log.Error (sprintf "TryGetLastAggregateSnapshotEventId an error occurred: %A" ex.Message)
+                        None
+                
             member this.SetPublished version name id kafkaOffset partition =
                 try
                     let streamName = version + name
@@ -589,7 +607,7 @@ module PgStorage =
                 |> Async.RunSynchronously
 
             member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * Json>,string> = 
-                log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A %d" version name aggregateId id)
+                // log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
                 try 
                     connection
