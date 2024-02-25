@@ -75,6 +75,7 @@ module Storage =
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
         abstract member TryGetLastSnapshotIdByAggregateId: Version -> Name -> Guid -> Option<Option<EventId> * SnapshotId>
+        abstract member TryGetLastAggregateSnapshotEventId: Version -> Name -> AggregateId -> Option<EventId>
 
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * Json>
         abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * Json>

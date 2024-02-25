@@ -5,8 +5,6 @@ Newtonsoft.Json
 FSharp.Quotations.Evaluator
 FSharpPlus
 Log4net
-Sharpino
 FSToolkit.ErrorHandling
-Sharpino.Core
 FsPickler.Json
 Google.Apis.Auth

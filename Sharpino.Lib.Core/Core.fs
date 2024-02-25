@@ -19,6 +19,7 @@ module Core =
         abstract member Id: Guid // use this one to be able to filter related events from same string
         abstract member Serialize: ISerializer -> string
         abstract member Lock: obj
+        // abstract member SnapshotInterval: int
     
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>

@@ -124,7 +124,6 @@ module StateView =
                             else
                                 let! (eventId, snapshot) = 
                                     tryGetAggregateSnapshot<'A> aggregateId lastSnapshotId version storageName storage 
-
                                 return (eventId , snapshot) |> Some 
                     }
             }
