@@ -150,8 +150,8 @@ let seatBookingSystemApi: IRestStadiumBookingSystem = {
     GetIdentity    =
         fun () ->
             let secrets = new ClientSecrets()
-            secrets.ClientId <- "542266218771-0o5vce7fooj9p3tu6gq8j5auk4adj8bf.apps.googleusercontent.com"
-            secrets.ClientSecret <- "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"
+            secrets.ClientId <- "XXXXXXX"
+            secrets.ClientSecret <- "YYYYYYYYY"
             let user =
                 try
                     (GoogleWebAuthorizationBroker.AuthorizeAsync( secrets, ["email"], "tonyx1@gmail.com", CancellationToken.None))
