@@ -21,8 +21,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.fsproj" />
-    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-    <ProjectReference Include="..\..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+
+<!--    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--    <ProjectReference Include="..\..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
+
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

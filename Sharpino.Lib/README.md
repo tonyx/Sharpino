@@ -161,7 +161,7 @@ __Faq__:
 ## News: 
 - Version 1.5.1: - 
   - Added a new configuration file named appSettings.json in the root of the project with the following content:
-```json
+```json[README.md](..%2FREADME.md)
   {
       "LockType":{"Case":"Optimistic"},
       "RefreshTimeout": 100,

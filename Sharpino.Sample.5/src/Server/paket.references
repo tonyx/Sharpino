@@ -8,3 +8,5 @@ Log4net
 FSToolkit.ErrorHandling
 FsPickler.Json
 Google.Apis.Auth
+Sharpino
+Sharpino.Core
