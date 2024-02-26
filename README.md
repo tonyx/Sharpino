@@ -175,7 +175,7 @@ __Faq__:
 ## News: 
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring__. That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies.
 I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
- 
+- Added SqlTempate dir with template examples for creating table relate to events and snapshots for aggregates and contexts.
 - Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
 it is going to be messy)
 - Version 1.5.3: 
