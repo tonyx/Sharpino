@@ -97,6 +97,11 @@ If you have Eventstore the standard configuration should work. (I have tested it
 ## SAMPLE 4 
 Sample 4 uses SAFE stack (Fable/Elmish). The aggregates are rows of seats that I can book. A skeleton of Elmish client is provided.
 
+## SAMPLE 5
+Sample 5 will just replace SAMPLE 4. uses SAFE stack (Fable/Elmish). Use the common SAFE stack basic operation for running and testing (under the directory Sharpino.Sample.5)
+Please just look at the domain, and don't care that much about the u.i. (Elmish part). 
+
+
 ## Tests on eventstoredb. EventStroreDb is not mantained that much at the moment
 
 The following line needs to stay commented out.
