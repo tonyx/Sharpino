@@ -1,6 +1,6 @@
 
 # Sharpino:
-Building example restaurant management system on top of SAFE stack
+booking system on SAFE stack
 
 # SAFE Template
 
