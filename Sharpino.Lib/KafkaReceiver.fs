@@ -251,11 +251,14 @@ module KafkaReceiver =
                 }
 
         member this.RefreshLoop() =
+            printf "refresh loop 100\n"
             let mutable result = this.Refresh ()
+            printf "refresh loop 200\n"
             while ( result |> Result.toOption ).IsSome do
                 result <- this.Refresh ()
                 ()
             ()
+            
         member this.ForceSyncWithSourceOfTruth() = 
             ResultCE.result {
                 let! newState = sourceOfTruthStateViewer ()
