@@ -150,7 +150,7 @@ module MemoryStorage =
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let addAggregateSnapshots version name aggregateId snapshot =
             log.Debug (sprintf "AddAggregateSnapshots %s %s" version name)
-            if (aggregate_snapshots_dic.ContainsKey version |> not || aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+            if (aggregate_snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<Name, Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>>()
                 let aggregateDic = Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>()
                 aggregateDic.Add(aggregateId, [snapshot])

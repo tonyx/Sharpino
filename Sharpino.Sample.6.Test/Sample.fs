@@ -1,38 +1,57 @@
 module Tests
 
 open Expecto
+open Sharpino.MemoryStorage
+open Sharpino.Storage
+open Tonyx.Sharpino.Pub
+open System
+open Sharpino.Utils
+open Sharpino
+open Sharpino.Cache
 
 [<Tests>]
 let tests =
-  testList "samples" [
-    testCase "true"
-      (fun _ -> Expect.isTrue true "I compute, therefore I am.")
-    // testCase "universe exists (╭ರᴥ•́)" <| fun _ ->
-    //   let subject = true
-    //   Expect.isTrue subject "I compute, therefore I am."
-    //
-    // testCase "when true is not (should fail)" <| fun _ ->
-    //   let subject = false
-    //   Expect.isTrue subject "I should fail because the subject is false"
-    //
-    // testCase "I'm skipped (should skip)" <| fun _ ->
-    //   Tests.skiptest "Yup, waiting for a sunny day..."
-    //
-    // testCase "I'm always fail (should fail)" <| fun _ ->
-    //   Tests.failtest "This was expected..."
-    //
-    // testCase "contains things" <| fun _ ->
-    //   Expect.containsAll [| 2; 3; 4 |] [| 2; 4 |]
-    //                      "This is the case; {2,3,4} contains {2,4}"
-    //
-    // testCase "contains things (should fail)" <| fun _ ->
-    //   Expect.containsAll [| 2; 3; 4 |] [| 2; 4; 1 |]
-    //                      "Expecting we have one (1) in there"
-    //
-    // testCase "Sometimes I want to ༼ノಠل͟ಠ༽ノ ︵ ┻━┻" <| fun _ ->
-    //   Expect.equal "abcdëf" "abcdef" "These should equal"
-    //
-    // test "I am (should fail)" {
-    //   "╰〳 ಠ 益 ಠೃ 〵╯" |> Expect.equal true false
-    // }
-  ]
+    let setUp () =
+        AggregateCache<Dish.Dish>.Instance.Clear()
+        StateCache<Kitchen.Kitchen>.Instance.Clear()
+
+    let memoryStorage: IEventStore = MemoryStorage()
+    let serializer = JsonSerializer(Utils.serSettings) :> ISerializer
+    let doNothingBroker =
+        {
+            notify = None
+            notifyAggregate = None
+        }
+    ftestList "sharpino kitchen examples" [
+        testCase "initial state of kitchen is with no dishes" <| fun _ ->
+            setUp ()
+            let pubSystem = PubSystem.PubSystem(memoryStorage, doNothingBroker)
+            let dishes = pubSystem.GetAllDishes()
+            Expect.isOk dishes "should be ok"
+            let result = dishes.OkValue
+            Expect.equal (result |> List.length) 0 "should be equal"
+
+        testCase "add a dish and retrieve it - OK" <| fun _ ->
+            setUp ()
+
+            let pubSystem = PubSystem.PubSystem(memoryStorage, doNothingBroker)
+            let dish = Dish.Dish(Guid.NewGuid(), "test", [])
+            let addDish = pubSystem.AddDish dish
+            Expect.isOk addDish "should be ok"
+            let retrievedDish = pubSystem.GetAllDishes()
+            Expect.isOk retrievedDish "should be ok"
+            let result = retrievedDish.OkValue
+            Expect.equal (result |> List.length) 1 "should be equal"
+            let (_, retrievedDish, _, _) = result |> List.head
+            Expect.equal retrievedDish.Id dish.Id "should be equal"
+
+        testCase "add an ingredient and retrieve it - OK" <| fun _ ->
+            setUp ()
+
+            let pubSystem = PubSystem.PubSystem(memoryStorage, doNothingBroker)
+            // let ingredient = Ingredient.Ingredient(Guid.NewGuid(), "testIngredient")
+            let addIngredient = pubSystem.AddIngredient (Guid.NewGuid(), "testIngredient")
+            Expect.isOk addIngredient "should be ok"
+    ]
+    |> testSequenced
+  
