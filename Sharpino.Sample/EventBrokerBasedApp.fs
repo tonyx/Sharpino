@@ -6,6 +6,7 @@ open Sharpino.Utils
 open Sharpino.CommandHandler
 open Sharpino.StateView
 
+open Sharpino
 open Sharpino.Storage
 open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Todos.TodoEvents
@@ -122,7 +123,7 @@ module EventBrokerBasedApp =
                     let! tagIdIsValid =    
                         (todo.TagIds.IsEmpty ||
                         todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! result =
                         todo
@@ -141,12 +142,12 @@ module EventBrokerBasedApp =
                     let! tagId1IsValid =  
                         (todo1.TagIds.IsEmpty ||
                         todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! tagId2IsValid =    
                         (todo2.TagIds.IsEmpty ||
                         todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! result =
                         (todo1, todo2)

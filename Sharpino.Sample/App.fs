@@ -98,7 +98,7 @@ module App =
                     let! tagIdIsValid =    
                         (todo.TagIds.IsEmpty ||
                         todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! result =
                         todo
@@ -117,12 +117,12 @@ module App =
                     let! tagId1IsValid =  
                         (todo1.TagIds.IsEmpty ||
                         todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! tagId2IsValid =    
                         (todo2.TagIds.IsEmpty ||
                         todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                        |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                        |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                     let! result =
                         (todo1, todo2)
@@ -274,12 +274,12 @@ module App =
                 let! tagIdIsValid =    
                     (todo.TagIds.IsEmpty ||
                     todo.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                    |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                    |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                 let! categoryIdIsValid =    
                     (todo.CategoryIds.IsEmpty ||
                     todo.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                    |> boolToResult "A category reference contained in the todo is related to a category that does not exist"
+                    |> Result.ofBool "A category reference contained in the todo is related to a category that does not exist"
 
                 let! result =
                     todo
@@ -299,22 +299,22 @@ module App =
                 let! categoryId1IsValid =    
                     (todo1.CategoryIds.IsEmpty ||
                     todo1.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                    |> boolToResult "A category reference contained in the todo is related to a category that does not exist"
+                    |> Result.ofBool "A category reference contained in the todo is related to a category that does not exist"
 
                 let! categoryId2IsValid =
                     (todo2.CategoryIds.IsEmpty ||
                     todo2.CategoryIds |> List.forall (fun x -> (categoryIds |> List.contains x)))
-                    |> boolToResult "A category reference contained in the todo is related to a category that does not exist" 
+                    |> Result.ofBool "A category reference contained in the todo is related to a category that does not exist" 
 
                 let! tagId1IsValid =    
                     (todo1.TagIds.IsEmpty ||
                     todo1.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                    |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                    |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                 let! tagId2IsValid =    
                     (todo2.TagIds.IsEmpty ||
                     todo2.TagIds |> List.forall (fun x -> (tagIds |> List.contains x)))
-                    |> boolToResult "A tag reference contained in the todo is related to a tag that does not exist"
+                    |> Result.ofBool "A tag reference contained in the todo is related to a tag that does not exist"
 
                 let! result =
                     (todo1, todo2)

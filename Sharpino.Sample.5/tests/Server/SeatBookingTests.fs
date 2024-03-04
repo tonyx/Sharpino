@@ -6,6 +6,7 @@ open Npgsql.FSharp
 open Npgsql
 open System
 open Sharpino
+open Sharpino.Result
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Utils
@@ -350,14 +351,14 @@ module BookingTests =
                     <@
                         fun (seatsRow: SeatsRow) ->
                             let seats: List<Seat> = seatsRow.Seats
-                            (
+                            ((
                                 seats.Length = 5 &&
                                 seats.[0].State = SeatState.Booked &&
                                 seats.[1].State = SeatState.Booked &&
                                 seats.[2].State = SeatState.Free &&
                                 seats.[3].State = SeatState.Booked &&
                                 seats.[4].State = SeatState.Booked)
-                            |> not
+                            |> not)
                             |> boolToResult "error: can't leave a single seat free in the middle"
                     @>
                 let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)

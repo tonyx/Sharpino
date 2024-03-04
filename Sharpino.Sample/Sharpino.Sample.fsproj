@@ -44,25 +44,27 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Fable.Core" Version="4.3.0" />
     <PackageReference Include="Fable.Remoting.Giraffe" Version="5.17.0" />
-    <PackageReference Include="Farmer" Version="1.8.6" />
-    <PackageReference Include="FSharpPlus" Version="1.6.0" />
+    <PackageReference Include="Farmer" Version="1.8.8" />
+    <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Saturn" Version="0.16.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Sharpino" Version="1.5.5" />
+    
+    <PackageReference Include="Sharpino" Version="1.5.6" />
 
     
     <!-- commend this when develp the lib-->
 <!--     <PackageReference Include="Sharpino" Version="1.5.2" /> -->
     <!-- commend this when you develp the lib-->
-    <!-- <PackageReference Include="Sharpino.Core" Version="1.0.8" /> -->
+<!--     <PackageReference Include="Sharpino.Core" Version="1.1.0" /> -->
 
   </ItemGroup>
   
 <!-- comment if get the lib from nuget-->  
+  
 <!--  <ItemGroup>-->
 <!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
 <!--  </ItemGroup>-->

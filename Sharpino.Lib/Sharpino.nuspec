@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>1.5.5</version>
+    <version>1.5.6</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -13,7 +13,7 @@
     <dependencies>
       <group targetFramework="net8.0">
         <dependency id="Confluent.Kafka" version="2.3.0" />
-        <dependency id="EventStore.Client.Grpc.Streams" version="23.1.0" />
+        <dependency id="EventStore.Client.Grpc.Streams" version="23.2.0" />
         <dependency id="Expecto" version="10.1.0" />
         <dependency id="Expecto.FsCheck" version="10.1.0" />
         <dependency id="FsCheck" version="2.16.6" />
@@ -29,15 +29,15 @@
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.8.6" />
+        <dependency id="Farmer" version="1.8.8" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.3.0" />
-        <dependency id="FSharpPlus" version="1.6.0" />
+        <dependency id="FSharpPlus" version="1.6.1" />
         <dependency id="Newtonsoft.Json" version="13.0.3" />
-        <dependency id="Npgsql" version="8.0.1" />
+        <dependency id="Npgsql" version="8.0.2" />
         <dependency id="Npgsql.FSharp" version="5.7.0" />
         <dependency id="System.collections" version="4.3.0" />
-        <dependency id="Sharpino.Core" version="1.0.9" />
+        <dependency id="Sharpino.Core" version="1.1.0" />
       </group>
     </dependencies>
   </metadata>

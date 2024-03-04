@@ -126,5 +126,5 @@ module TestUtils =
 module Result =
     let ofBool message x =
         match x with
-        | true -> Ok ()
+        | true ->  Ok ()
         | false -> Error message

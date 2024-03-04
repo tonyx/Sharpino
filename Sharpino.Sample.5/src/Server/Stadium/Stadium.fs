@@ -4,6 +4,7 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
 open Sharpino.Utils
+open Sharpino
 open System
 
 module Stadium =
@@ -36,7 +37,7 @@ module Stadium =
                     |>> snd
                     |> List.contains id
                     |> not
-                    |> boolToResult (sprintf "A row with id '%A' already exists" id)
+                    |> Result.ofBool (sprintf "A row with id '%A' already exists" id)
                 return {
                     this with
                         rowReferences = ((System.DateTime.Now), id) :: this.rowReferences
@@ -49,7 +50,7 @@ module Stadium =
                     this.rowReferences
                     |>> snd
                     |> List.contains id
-                    |> boolToResult (sprintf "A row with id '%A' does not exist" id)
+                    |> Result.ofBool (sprintf "A row with id '%A' does not exist" id)
                 return {
                     this with
                         rowReferences = this.rowReferences |> List.filter (fun (_, x) -> x <> id)
