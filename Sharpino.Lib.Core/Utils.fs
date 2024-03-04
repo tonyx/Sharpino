@@ -122,3 +122,9 @@ module TestUtils =
             )
             |> List.concat
         )
+        
+module Result =
+    let ofBool message x =
+        match x with
+        | true -> Ok ()
+        | false -> Error message

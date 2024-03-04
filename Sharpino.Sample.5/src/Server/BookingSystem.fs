@@ -8,6 +8,7 @@ open Tonyx.SeatsBooking.StadiumCommands
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
 open Tonyx.SeatsBooking
+open Sharpino
 open Sharpino.CommandHandler
 open Sharpino.Definitions
 open System
@@ -78,7 +79,7 @@ module StorageStadiumBookingSystem =
                 // todo: should consider the total number of seats
                 let! mustBeLessThanThreeRows =
                     rowsAndBookings.Length < 3
-                    |> boolToResult "Can only book up to 2 rows at a time"
+                    |> Result.ofBool "Can only book up to 2 rows at a time"
                 let! result =
                     runNAggregateCommands<SeatsRow, RowAggregateEvent>
                         rowIDs

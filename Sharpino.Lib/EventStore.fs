@@ -40,7 +40,7 @@ module Storage =
         AggregateId: Guid
         Snapshot: Json
         TimeStamp: System.DateTime
-        EventId: Option<int>
+        EventId: Option<EventId>
     }
 
     type StorageEvent<'E> =

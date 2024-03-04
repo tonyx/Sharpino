@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>1.0.9</Version>
+    <Version>1.1.0</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event Sourcing Library (Core)</Description>
     <ReleaseNotes>Minimal core for Sharpino, that can stay in the shared Client/Server folder in Fable Remoting style of application</ReleaseNotes> 
-    <Copyright>Copyright ©2023 Antonio Lucca</Copyright>
+    <Copyright>Copyright ©2023-2024 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#</PackageTags>
   </PropertyGroup>
 
@@ -28,9 +28,9 @@
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
     <PackageReference Include="Fable.Core" Version="4.3.0" />
-    <PackageReference Include="Farmer" Version="1.8.6" />
-    <PackageReference Include="FSharpPlus" Version="1.6.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.0" />
+    <PackageReference Include="Farmer" Version="1.8.8" />
+    <PackageReference Include="FSharpPlus" Version="1.6.1" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>

@@ -358,7 +358,14 @@ module MemoryStorage =
                 else
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryLast
-                    |>> (fun x -> x.EventId |> Option.get)
+                    |> tryLast
+                    |>> _.EventId 
+                    |> Option.bind (fun x -> x)
+
+                    // |> fun x -> 
+                    //     match x with
+                    //     | None -> None
+                    //     | Some x -> x
                 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)

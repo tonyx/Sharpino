@@ -52,6 +52,7 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Saturn" Version="0.16.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Sharpino" Version="1.5.5" />
 
     
     <!-- commend this when develp the lib-->
@@ -62,9 +63,9 @@
   </ItemGroup>
   
 <!-- comment if get the lib from nuget-->  
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup>-->
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />

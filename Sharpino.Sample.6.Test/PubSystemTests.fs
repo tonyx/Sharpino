@@ -1,0 +1,117 @@
+module Tests
+
+open Expecto
+open Sharpino.MemoryStorage
+open Sharpino.PgStorage
+open Sharpino.Storage
+open Sharpino.TestUtils
+open Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Ingredient
+open System
+open Sharpino.Utils
+open Sharpino.ApplicationInstance
+open Sharpino
+open Sharpino.Cache
+
+[<Tests>]
+let tests =
+    let connection =
+        "Server=127.0.0.1;"+
+        "Database=es_pub_system;" +
+        "User Id=safe;"+
+        "Password=safe;"
+    let memEventStore: IEventStore = MemoryStorage()
+    let pgEventStore: IEventStore = PgEventStore(connection)
+    let setUp () =
+        AggregateCache<Dish.Dish>.Instance.Clear()
+        StateCache<Kitchen.Kitchen>.Instance.Clear()
+        memEventStore.Reset "_01" "_kitchen"
+        memEventStore.ResetAggregateStream "_01" "_ingredient"
+        memEventStore.ResetAggregateStream "_01" "_dish"
+        pgEventStore.Reset "_01" "_kitchen"
+        pgEventStore.ResetAggregateStream "_01" "_ingredient"
+        pgEventStore.ResetAggregateStream "_01" "_dish"
+
+    // todo: check if you will need it in those tests
+    let serializer = JsonSerializer(Utils.serSettings) :> ISerializer
+    let doNothingBroker =
+        {
+            notify = None
+            notifyAggregate = None
+        }
+    let storages = [
+         (memEventStore, 0, 0)
+         (pgEventStore, 0, 0)
+    ]
+   
+    testList "sharpino kitchen examples" [
+        multipleTestCase "initial state of kitchen is with no dishes" storages  <| fun (eventStore, _, _) ->
+            setUp ()
+            
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let dishes = pubSystem.GetAllDishes()
+            Expect.isOk dishes "should be ok"
+            let result = dishes.OkValue
+            Expect.equal (result |> List.length) 0 "should be equal"
+
+        multipleTestCase "add a dish and retrieve it - OK" storages <| fun (eventStore, _, _) ->
+            setUp ()
+        
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let dish = Dish.Dish(Guid.NewGuid(), "test", [])
+            let addDish = pubSystem.AddDish dish
+            Expect.isOk addDish "should be ok"
+            let retrievedDish = pubSystem.GetAllDishes()
+            Expect.isOk retrievedDish "should be ok"
+            let result = retrievedDish.OkValue
+            Expect.equal (result |> List.length) 1 "should be equal"
+            let (_, retrievedDish, _, _) = result |> List.head
+            Expect.equal retrievedDish.Id dish.Id "should be equal"
+        
+        multipleTestCase "add an ingredient and check that it does exist - OK" storages <| fun (eventStore, _, _) ->
+            setUp ()
+        
+            let guid = Guid.NewGuid()
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let addIngredient = pubSystem.AddIngredient (guid, "testIngredient")
+            Expect.isOk addIngredient "should be ok"
+            let retrieved = pubSystem.GetAllIngredientReferences()
+            Expect.isOk retrieved "should be ok"
+            let retrieved' = retrieved.OkValue
+            Expect.equal 1 retrieved'.Length "should be equal"
+        
+            let retrievedIngredients = pubSystem.GetAllIngredients()
+            Expect.isOk retrievedIngredients "should be ok"
+            let retrievedIngredients' = retrievedIngredients.OkValue
+            Expect.equal 1 retrievedIngredients'.Length "should be equal"
+            let (_, ingredient, _, _) = retrievedIngredients'.[0]
+            Expect.equal ingredient.Name "testIngredient" "should be equal"
+            Expect.equal ingredient.Id guid "should be equal"
+        
+        multipleTestCase "add an ingredient and add a type to it - OK" storages <| fun (eventStore, _, _) ->
+            setUp ()
+        
+            let guid = Guid.NewGuid()
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let addIngredient = pubSystem.AddIngredient (guid, "testIngredient")
+            Expect.isOk addIngredient "should be ok"
+            let retrieved = pubSystem.GetAllIngredientReferences()
+            Expect.isOk retrieved "should be ok"
+            let retrieved' = retrieved.OkValue
+            Expect.equal retrieved'.Length 1 "should be equal"
+        
+            let addTypeToIngredient = pubSystem.AddTypeToIngredient (guid, IngredientType.Meat)
+            Expect.isOk addTypeToIngredient "should be ok"
+        
+            let retrievedIngredients = pubSystem.GetAllIngredients()
+            Expect.isOk retrievedIngredients "should be ok"
+            let retrievedIngredients' = retrievedIngredients.OkValue
+            Expect.equal retrievedIngredients'.Length 1 "should be equal"
+            let (_, ingredient, _, _) = retrievedIngredients'.[0]
+            Expect.equal ingredient.Name "testIngredient" "should be equal"
+            Expect.equal ingredient.Id guid "should be equal"
+            Expect.equal ingredient.IngredientTypes.Length 1 "should be equal"
+    ]
+    |> testSequenced
+        
+  

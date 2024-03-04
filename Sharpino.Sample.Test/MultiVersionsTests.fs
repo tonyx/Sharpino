@@ -51,7 +51,7 @@ let allVersions =
         // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
         // note that the by testing kafka you may experience some laggings.
 
-        (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
+        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
 
         // for the next eventBrokerStateBasedApp just use the tests in the file KafkaStateKeeperTest.fs
         // so don't enable the next line

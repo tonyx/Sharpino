@@ -5,6 +5,7 @@ open Sharpino.Utils
 open Shared.Entities
 open Sharpino
 open Sharpino.Core
+open Sharpino.Definitions
 open Sharpino.Storage
 open Sharpino.Lib.Core.Commons
 open Shared.Entities
@@ -60,13 +61,13 @@ module rec SeatRow =
                     this.Seats
                     |> List.filter (fun seat -> booking.SeatIds |> List.contains seat.Id)
                     |> List.forall (fun seat -> seat.State = SeatState.Free)
-                    |> boolToResult "Seat already booked"
+                    |> Result.ofBool "Seat already booked"
 
                 let! checkSeatsExist =
                     let thisSeatsIds = this.Seats |>> _.Id
                     booking.SeatIds
                     |> List.forall (fun seatId -> thisSeatsIds |> List.contains seatId)
-                    |> boolToResult "Seat not found"
+                    |> Result.ofBool "Seat not found"
 
                 let claimedSeats =
                     this.Seats
@@ -92,7 +93,7 @@ module rec SeatRow =
                     this.Seats
                     |> List.tryFind (fun x -> x.Id = seat.Id)
                     |> Option.isNone
-                    |> boolToResult (sprintf "Seat with id '%d' already exists" seat.Id)
+                    |> Result.ofBool (sprintf "Seat with id '%d' already exists" seat.Id)
                 let newSeats = seat :: this.Seats
                 let result = SeatsRow (newSeats, this.Id, this.Invariants)
                 let! checkInvariants = result |> checkInvariants
@@ -101,12 +102,13 @@ module rec SeatRow =
         member this.RemoveSeat (seat: Seat): Result<SeatsRow, string> =
             result {
                 let! belongsToMe =
-                    (seat.RowId.IsSome && seat.RowId.Value = this.Id) |> boolToResult "Seat does not belong to this row"
+                    (seat.RowId.IsSome && seat.RowId.Value = this.Id)
+                    |> Result.ofBool "Seat does not belong to this row"
                 let! exists =
                     this.Seats
                     |> List.tryFind (fun x -> x.Id = seat.Id)
                     |> Option.isSome
-                    |> boolToResult (sprintf "Seat with id '%d' does not exist" seat.Id)
+                    |> Result.ofBool (sprintf "Seat with id '%d' does not exist" seat.Id)
                 let newSeats = this.Seats |> List.filter (fun x -> x.Id <> seat.Id)
                 let result = SeatsRow (newSeats, this.Id, this.Invariants)
                 let! checkInvariants = result |> checkInvariants

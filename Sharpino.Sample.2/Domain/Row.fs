@@ -24,7 +24,7 @@ module Row =
                         |> List.filter (fun seat -> booking.seats |> List.contains seat.id)
                     seatsInvolved
                         |> List.forall (fun seat -> seat.State = Seats.SeatState.Free)
-                        |> boolToResult "Seat already booked"
+                        |> Result.ofBool "Seat already booked"
                 
                 let claimedSeats = 
                     seats
@@ -48,7 +48,7 @@ module Row =
                     potentialNewRowState.[3].State = Seats.SeatState.Booked &&
                     potentialNewRowState.[4].State = Seats.SeatState.Booked)
                     |> not
-                    |> boolToResult "error: can't leave a single seat free"
+                    |> Result.ofBool "error: can't leave a single seat free"
                 let! checkInvariant = theSeatInTheMiddleCantRemainFreeIfAllTheOtherAreClaimed
                 return
                     RowContext (potentialNewRowState)

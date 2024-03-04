@@ -4,6 +4,7 @@ open System
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Shared.Entities
+open Sharpino
 open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.Repositories
@@ -48,7 +49,7 @@ module TodosContext =
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
                 this.categories.GetCategories().Exists (fun x -> x.Id = c)
-                |> boolToResult (sprintf "A category with id '%A' does not exist" c)
+                |> Result.ofBool (sprintf "A category with id '%A' does not exist" c)
 
             result
                 {

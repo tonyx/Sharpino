@@ -4,6 +4,7 @@ open Sharpino.Utils
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Lib.Core.Commons
+open Sharpino
 open System
 open FsToolkit.ErrorHandling
 
@@ -36,14 +37,14 @@ module Repositories =
                     ResultCE.result {
                         let! notAlreadyExists = 
                             (this.Items |> List.tryFind (fun y -> y.Id = x.Id)).IsNone
-                            |> boolToResult msg
+                            |> Result.ofBool msg
                         return { this with Items = x::this.Items }
                     }
                 member this.AddWithPredicate (x: 'A, p: 'A -> bool, msg: string) =
                     ResultCE.result {
                         let! notAlreadyExists = 
                             (this.Items |> List.tryFind (fun y -> y.Id = x.Id || p(y))).IsNone
-                            |> boolToResult msg
+                            |> Result.ofBool msg
                         return { this with Items = x::this.Items }
                     }
 
@@ -51,7 +52,7 @@ module Repositories =
                     let notExists (t: 'A) =
                         this.Items |> List.exists (fun x -> x.Id = t.Id)
                         |> not
-                        |> boolToResult (msg t) 
+                        |> Result.ofBool (msg t) 
 
                     ResultCE.result {
                         let! doesNotExist =
@@ -65,7 +66,7 @@ module Repositories =
                     let notExists (t: 'A) =
                         this.Items |> List.exists (fun x -> x.Id = t.Id || p(x, t))
                         |> not
-                        |> boolToResult (msg t)
+                        |> Result.ofBool (msg t)
 
                     ResultCE.result {
                         let! doesNotExist =
