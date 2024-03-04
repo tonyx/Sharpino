@@ -172,7 +172,14 @@ __Faq__:
 - (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
 - (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
+## Useful info:
+Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
+
 ## News: 
+New sample: started an example of Restaurant/Pub management. (Sample 6) 
+
+- Version 1.5.5:
+- fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
 Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
 I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
