@@ -91,10 +91,12 @@ let rowStateViewer: AggregateViewer<SeatsRow> =
             viewer.State()
 
 
-// let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
+let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
-let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+
+// totos: this one that follows will exibit the build aggregate state problem
+// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {
