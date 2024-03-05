@@ -95,7 +95,7 @@ let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
 
-// totos: this one that follows will exibit the build aggregate state problem
+// todo: this one that follows will exibit the build aggregate state problem
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
