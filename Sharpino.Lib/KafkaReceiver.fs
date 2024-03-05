@@ -10,6 +10,7 @@ open Confluent.Kafka
 open Sharpino.Core
 open Sharpino.Utils
 open Sharpino.KafkaBroker
+open System.Collections
 open System
 open log4net
 open log4net.Config
@@ -110,8 +111,86 @@ module KafkaReceiver =
                 KafkaAggregateSubscriber(bootStrapServer, version, name, groupId, aggregateId) |> Ok
             with 
             | _ as e -> Result.Error (e.Message)
+    
+    type KafkaViewer<'A, 'E when 'E :> Event<'A>> 
+        (subscriber: KafkaSubscriber, 
+        sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
+        appId: Guid)
+        =
+        let mutable state = 
+            try
+                sourceOfTruthStateViewer ()
+            with
+            | e  -> 
+                "state error" |> Result.Error
 
-    // todo: unify with KafkaViewer
+        let _ =
+            match state with
+            | Ok ( _, _, Some offset, Some partition ) ->
+                subscriber.Assign (offset + 1L, partition)
+            | _ -> 
+                log.Info "Cannot assign offset and partition because they are None"
+                ()
+
+        member this.State () =
+            state
+
+        member this.Refresh() =
+            let result = subscriber.consume config.RefreshTimeout
+            match result with
+            | Error e ->
+                log.Error e
+                Result.Error e 
+            | Ok msg ->
+                ResultCE.result {
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
+                    let eventId = newMessage.EventId
+                    let! currentStateId, _, _, _ = this.State ()
+                    if eventId = currentStateId + 1 then
+                        let msgAppId = newMessage.ApplicationId
+                        let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
+                        let! _, currentState, _, _ = this.State ()
+                        if appId <> msgAppId then
+                            ()
+                        else
+                            let! newState = evolve currentState [newEvent] 
+                            state <- (eventId, newState, None, None) |> Result.Ok
+                        return () |> Result.Ok
+                    else
+                        let! _ = this.ForceSyncWithSourceOfTruth ()
+                        let! _, _, offset, partition = this.State ()
+                        let _ =
+                            match offset, partition with
+                            | Some off, Some part ->
+                                subscriber.Assign(off + 1L, part)
+                            | _ -> 
+                                log.Error "Cannot assign offset and partition"
+                                ()
+                        return () |> Result.Ok
+                }
+
+        member this.RefreshLoop() =
+            let mutable result = this.Refresh ()
+            while ( result |> Result.toOption ).IsSome do
+                result <- this.Refresh ()
+                ()
+            ()
+            
+        member this.ForceSyncWithSourceOfTruth() = 
+            ResultCE.result {
+                let! newState = sourceOfTruthStateViewer ()
+                state <- newState |> Result.Ok
+                let! _, _, offset, partition = this.State ()
+                match offset, partition with
+                | Some off, Some part ->
+                    subscriber.Assign ( off + 1L, part )
+                | _ ->
+                    log.Error "Cannot assign offset and partition"
+                    ()
+                return ()
+            }
+
+    // todo: need to be fixed (see open bug) 
     type KafkaAggregateViewer<'A, 'E when 'E :> Event<'A>> 
         (aggregateId: Guid,
         subscriber: KafkaAggregateSubscriber, 
@@ -119,12 +198,16 @@ module KafkaReceiver =
         sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
+        
+        // let states = Generic.Dictionary<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>>()
+        
         let mutable state = 
             try
                 sourceOfTruthStateViewer aggregateId 
             with
             | e  -> 
                 "state error" |> Result.Error
+                
         let _ =
             match state with
             | Ok ( _, _, Some offset, Some partition ) ->
@@ -191,88 +274,6 @@ module KafkaReceiver =
                     ()
                 return ()
             }
-    
-    type KafkaViewer<'A, 'E when 'E :> Event<'A>> 
-        (subscriber: KafkaSubscriber, 
-        sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
-        appId: Guid)
-        =
-        let mutable state = 
-            try
-                sourceOfTruthStateViewer ()
-            with
-            | e  -> 
-                "state error" |> Result.Error
-
-        let _ =
-            match state with
-            | Ok ( _, _, Some offset, Some partition ) ->
-                subscriber.Assign (offset + 1L, partition)
-            | _ -> 
-                log.Info "Cannot assign offset and partition because they are None"
-                ()
-
-        member this.State () =
-            // printf "getting state %A\n" (state |> serializer.Serialize)
-            state
-
-        member this.Refresh() =
-            let result = subscriber.consume config.RefreshTimeout
-            match result with
-            | Error e ->
-                log.Error e
-                Result.Error e 
-            | Ok msg ->
-                ResultCE.result {
-                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
-                    let eventId = newMessage.EventId
-                    let! currentStateId, _, _, _ = this.State ()
-                    if eventId = currentStateId + 1 then
-                        let msgAppId = newMessage.ApplicationId
-                        let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
-                        let! _, currentState, _, _ = this.State ()
-                        if appId <> msgAppId then
-                            ()
-                        else
-                            let! newState = evolve currentState [newEvent] 
-                            state <- (eventId, newState, None, None) |> Result.Ok
-                        return () |> Result.Ok
-                    else
-                        let! _ = this.ForceSyncWithSourceOfTruth ()
-                        let! _, _, offset, partition = this.State ()
-                        let _ =
-                            match offset, partition with
-                            | Some off, Some part ->
-                                subscriber.Assign(off + 1L, part)
-                            | _ -> 
-                                log.Error "Cannot assign offset and partition"
-                                ()
-                        return () |> Result.Ok
-                }
-
-        member this.RefreshLoop() =
-            printf "refresh loop 100\n"
-            let mutable result = this.Refresh ()
-            printf "refresh loop 200\n"
-            while ( result |> Result.toOption ).IsSome do
-                result <- this.Refresh ()
-                ()
-            ()
-            
-        member this.ForceSyncWithSourceOfTruth() = 
-            ResultCE.result {
-                let! newState = sourceOfTruthStateViewer ()
-                state <- newState |> Result.Ok
-                let! _, _, offset, partition = this.State ()
-                match offset, partition with
-                | Some off, Some part ->
-                    subscriber.Assign ( off + 1L, part )
-                | _ ->
-                    log.Error "Cannot assign offset and partition"
-                    ()
-                return ()
-            }
-
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)

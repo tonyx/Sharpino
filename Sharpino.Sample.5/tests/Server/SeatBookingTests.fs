@@ -6,18 +6,67 @@ open Npgsql.FSharp
 open Npgsql
 open System
 open Sharpino
+open Sharpino.CommandHandler
 open Sharpino.Result
 open Sharpino.Storage
 open Sharpino.Cache
+open Sharpino.KafkaBroker
+open Sharpino.KafkaReceiver
 open Sharpino.Utils
+open Sharpino.TestUtils
+open Sharpino.ApplicationInstance
 open Tonyx.SeatsBooking
 open Shared.Entities
+open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.SeatRow
+open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
 module BookingTests =
+    let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
+    let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
+    let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
+    let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
+    let kafkaBasedStadiumState: StateViewer<Stadium> =
+        printf "getting state\n"
+        fun () ->
+            kafkaStadiumViewer.RefreshLoop() |> ignore
+            kafkaStadiumViewer.State()
+    let kafkaRowViewer' rowSubscriber' =
+        fun (rowId: Guid) ->
+            let result =
+                mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
+                    rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
+            result
+    let kafkarViewer' =
+        fun myyid ->
+            let rowSubscriber =
+                try
+                    // KafkaAggregateSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient", myyid) |> Result.get
+                    KafkaAggregateSubscriber.Create("localhost:9092", "_01", "_seatrow", myyid.ToString() , myyid) |> Result.get
+                with e ->
+                    raise e
+
+            kafkaRowViewer' rowSubscriber
+    let rowStateViewer: AggregateViewer<SeatsRow> =
+        fun (rowId: Guid) ->
+            printf "getting row state for id %A\n" rowId
+            // todo: troubles here
+            if viewers.ContainsKey(rowId) then
+                printf "got viewer by keyid %A\n" rowId
+                let viewer = viewers.[rowId]
+                viewer.RefreshLoop()
+                viewer.State()
+            else
+                printf "creating new viewer for id %A\n" rowId
+                let viewer = kafkarViewer' rowId rowId
+                // this will be a problem
+                viewers.Add (rowId, viewer)
+                viewer.RefreshLoop()
+                viewer.State()
     let seatBookings =
+        let memoryStorage = MemoryStorage.MemoryStorage()
         let pgStorage = PgStorage.PgEventStore(connection)
         let setUp () =
             pgStorage.Reset "_01" "_seatrow"
@@ -67,78 +116,83 @@ module BookingTests =
             )
             |> Seq.toList
 
+        let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+        let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
+        let kafkaStadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+
+        let stadiumInstances =
+            [
+                stadiumSystem,0,0
+                // memoryStadiumSystem, 1, 1
+                // kafkaStadiumBookingSystem, 2, 2
+            ]
+
         testList "seat bookings" [
-            testCase "create a row with no seats and retrieve it - Ok" <| fun _ ->
+            pmultipleTestCase "create a row with no seats and retrieve it - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
-                // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
-                let rows = stadiumBookingSystem.GetAllRowReferences ()
+                let rows = stadiumSystem.GetAllRowReferences ()
 
                 // then
                 Expect.isOk rows "should be ok"
                 let result = rows |> Result.get
                 Expect.equal result.Length 0 "should be 0"
 
-            testCase "add a row reference to the stadium and retrieve it - Ok" <| fun _ ->
+            multipleTestCase "add a row reference to the stadium and retrieve it - Ok" stadiumInstances <| fun ( stadiumSystem,_ ,_ )  ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
-                let unSetStrickLockVersionControl = stadiumBookingSystem.UnSetAggregateStateControlInOptimisticLock "_01" "_seatrow"
+                let unSetStrickLockVersionControl = stadiumSystem.UnSetAggregateStateControlInOptimisticLock "_01" "_seatrow"
                 Expect.isOk unSetStrickLockVersionControl "should be ok"
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addRow = stadiumBookingSystem.AddRowReference rowId
+                let addRow = stadiumSystem.AddRowReference rowId
 
                 // then
                 Expect.isOk addRow "should be ok"
 
-            testCase "retrieve an unexisting row - Error" <| fun _ ->
+            multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+                // let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let row = stadiumBookingSystem.GetRow rowId
+                let row = stadiumSystem.GetRow rowId
 
                 // then
                 Expect.isError row "should be error"
 
-            testCase "add a row reference and a seat to it. Retrieve the seat - Ok" <| fun _ ->
+            // FOCUS!!!
+            multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem,_,_ ) ->
                 setUp()
-
-                // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addRow = stadiumBookingSystem.AddRowReference rowId
+                let addRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addRow "should be ok"
                 let seat = { Id = 1; State = Free; RowId = None }
-                let addSeat = stadiumBookingSystem.AddSeat rowId seat
+                let addSeat = stadiumSystem.AddSeat rowId seat
                 Expect.isOk addSeat "should be ok"
 
                 // then
-                let retrievedRow = stadiumBookingSystem.GetRow rowId
+                let retrievedRow = stadiumSystem.GetRow rowId
                 Expect.isOk retrievedRow "should be ok"
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 1 "should be 1"
 
-            testCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" <| fun _ ->
+            multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addRow = stadiumBookingSystem.AddRowReference rowId
+                let addRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addRow "should be ok"
                 let seat = { Id = 1; State = Free; RowId = None }
                 let seat2 = { Id = 2; State = Free; RowId = None }
@@ -147,28 +201,27 @@ module BookingTests =
                 let seat5 = { Id = 5; State = Free; RowId = None }
                 let seat6 = { Id = 6; State = Free; RowId = None }
 
-                let addSeat = stadiumBookingSystem.AddSeat rowId seat
-                let _ = stadiumBookingSystem.AddSeat rowId seat2
-                let _ = stadiumBookingSystem.AddSeat rowId seat3
-                let _ = stadiumBookingSystem.AddSeat rowId seat4
-                let _ = stadiumBookingSystem.AddSeat rowId seat5
-                let _ = stadiumBookingSystem.AddSeat rowId seat6
+                let addSeat = stadiumSystem.AddSeat rowId seat
+                let _ = stadiumSystem.AddSeat rowId seat2
+                let _ = stadiumSystem.AddSeat rowId seat3
+                let _ = stadiumSystem.AddSeat rowId seat4
+                let _ = stadiumSystem.AddSeat rowId seat5
+                let _ = stadiumSystem.AddSeat rowId seat6
                 Expect.isOk addSeat "should be ok"
 
                 // then
-                let retrievedRow = stadiumBookingSystem.GetRow rowId
+                let retrievedRow = stadiumSystem.GetRow rowId
                 Expect.isOk retrievedRow "should be ok"
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 6 "should be 1"
 
-            testCase "add a row reference and then some seats to it. Retrieve the seats - OK" <| fun _ ->
+            multipleTestCase "add a row reference and then some seats to it. Retrieve the seats - OK" stadiumInstances <| fun (stadiumSystem, _, _)  ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 let seats =
                     [
@@ -178,25 +231,24 @@ module BookingTests =
                         { Id = 4; State = Free; RowId = None }
                         { Id = 5; State = Free; RowId = None }
                     ]
-                let seatAdded = stadiumBookingSystem.AddSeats rowId seats
+                let seatAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatAdded "should be ok"
 
-                let retrievedRow = stadiumBookingSystem.GetRow rowId
+                let retrievedRow = stadiumSystem.GetRow rowId
                 Expect.isOk retrievedRow "should be ok"
 
                 let okRetrievedRow = retrievedRow.OkValue
                 Expect.equal okRetrievedRow.Seats.Length 5 "should be 5"
 
-            testCase "add two row references add a row reference and then some seats to it. Retrieve the seats then - Ok"  <| fun _ ->
+            multipleTestCase "add two row references add a row reference and then some seats to it. Retrieve the seats then - Ok" stadiumInstances  <| fun (stadiumSystem, _, _)  ->
                 setUp()
-                // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
 
                 let rowId2 = Guid.NewGuid()
-                let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+                let addedRow2 = stadiumSystem.AddRowReference rowId2
 
                 Expect.isOk addedRow2 "should be ok"
 
@@ -208,7 +260,7 @@ module BookingTests =
                     { Id = 4; State = Free; RowId = None }
                     { Id = 5; State = Free; RowId = None }
                 ]
-                let seatAdded = stadiumBookingSystem.AddSeats rowId seats
+                let seatAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatAdded "should be ok"
                 let seats2 = [
                             { Id = 6; State = Free; RowId = None }
@@ -217,135 +269,130 @@ module BookingTests =
                             { Id = 9; State = Free; RowId = None }
                             { Id = 10; State = Free; RowId = None }
                             ]
-                let seatsAdded2 = stadiumBookingSystem.AddSeats rowId2 seats2
+                let seatsAdded2 = stadiumSystem.AddSeats rowId2 seats2
                 Expect.isOk seatsAdded2 "should be ok"
 
                 // then
-                let retrievedRow = stadiumBookingSystem.GetRow rowId
+                let retrievedRow = stadiumSystem.GetRow rowId
                 Expect.isOk retrievedRow "should be ok"
                 let okRetrievedRow = retrievedRow.OkValue
                 Expect.equal 5 okRetrievedRow.Seats.Length "should be 1"
 
-                let retrievedRow2 = stadiumBookingSystem.GetRow rowId2
+                let retrievedRow2 = stadiumSystem.GetRow rowId2
                 Expect.isOk retrievedRow2 "should be ok"
                 let okRetrievedRow2 = retrievedRow2.OkValue
                 Expect.equal 5 okRetrievedRow2.Seats.Length "should be 1"
 
-            testCase "can't add a seat with the same id of another seat in the same row - Ok" <| fun _ ->
+            multipleTestCase "can't add a seat with the same id of another seat in the same row - Ok" stadiumInstances <| fun (stadiumSystem, _, _)  ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 // when
                 let seat =  { Id = 1; State = Free; RowId = None }
-                let seatAdded = stadiumBookingSystem.AddSeat rowId seat
+                let seatAdded = stadiumSystem.AddSeat rowId seat
                 Expect.isOk seatAdded "should be ok"
                 let seat2 = { Id = 1; State = Free; RowId = None }
-                let seatAdded2 = stadiumBookingSystem.AddSeat rowId seat2
+                let seatAdded2 = stadiumSystem.AddSeat rowId seat2
                 Expect.isError seatAdded2 "should be error"
 
-            testCase "add a booking on an unexisting row - Error"  <| fun _ ->
+            multipleTestCase "add a booking on an unexisting row - Error" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+                // let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 let booking = { Id = 1; SeatIds = [1]}
                 let rowId = Guid.NewGuid()
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isError tryBooking "should be error"
                 let (Error e ) = tryBooking
                 Expect.equal e (sprintf "There is no aggregate of version \"_01\", name \"_seatrow\" with id %A" rowId) "should be equal"
 
-            testCase "add a booking on an existing row and unexisting seat - Error"  <| fun _ ->
+            multipleTestCase "add a booking on an existing row and unexisting seat - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
                 let rowId = Guid.NewGuid()
 
                 // when
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 let booking = { Id = 1; SeatIds = [1]}
 
                 // then
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isError tryBooking "should be error"
                 let (Error e ) = tryBooking
                 Expect.equal e "Seat not found" "should be equal"
 
-            testCase "add a booking on a valid row and valid seat - Ok" <| fun _ ->
+            multipleTestCase "add a booking on a valid row and valid seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
 
                 // when
                 let seat = { Id = 1; State = Free; RowId = None }
-                let seatAdded = stadiumBookingSystem.AddSeat rowId seat
+                let seatAdded = stadiumSystem.AddSeat rowId seat
                 Expect.isOk seatAdded "should be ok"
                 let booking = { Id = 1; SeatIds = [1]}
 
                 // then
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
-            testCase "can't book an already booked seat - Error" <| fun _ ->
+            multipleTestCase "can't book an already booked seat - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+                let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 let seat = { Id = 1; State = Free; RowId = None }
-                let seatAdded = stadiumBookingSystem.AddSeat rowId seat
+                let seatAdded = stadiumSystem.AddSeat rowId seat
                 Expect.isOk seatAdded "should be ok"
                 let booking = { Id = 1; SeatIds = [1]}
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
                 // then
-                let tryBookingAgain = stadiumBookingSystem.BookSeats rowId booking
+                let tryBookingAgain = stadiumSystem.BookSeats rowId booking
                 Expect.isError tryBookingAgain "should be error"
                 let (Error e) = tryBookingAgain
                 Expect.equal e "Seat already booked" "should be equal"
 
-            testCase "add many seats and book one of them - Ok"  <| fun _ ->
+            multipleTestCase "add many seats and book one of them - Ok" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 let seats = [
                     { Id = 1; State = Free; RowId = None }
                     { Id = 2; State = Free; RowId = None }
                 ]
-                let seatsAdded = stadiumBookingSystem.AddSeats rowId seats
+                let seatsAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatsAdded "should be ok"
 
                 // then
                 let booking = { Id = 1; SeatIds = [1]}
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
-            testCase "violate the middle seat non empty constraint in one single booking - Ok"  <| fun _ ->
+            multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
                 let rowId = Guid.NewGuid()
                 let middleSeatInvariant: Invariant<SeatsRow>  =
                     <@
@@ -362,10 +409,10 @@ module BookingTests =
                             |> boolToResult "error: can't leave a single seat free in the middle"
                     @>
                 let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
 
-                let addedRule = stadiumBookingSystem.AddInvariant rowId middleSeatInvariantContainer
+                let addedRule = stadiumSystem.AddInvariant rowId middleSeatInvariantContainer
                 Expect.isOk addedRule "should be ok"
 
                 let seats = [
@@ -375,26 +422,25 @@ module BookingTests =
                     { Id = 4; State = Free; RowId = None }
                     { Id = 5; State = Free; RowId = None }
                 ]
-                let seatsAdded = stadiumBookingSystem.AddSeats rowId seats
+                let seatsAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatsAdded "should be ok"
                 let booking = { Id = 1; SeatIds = [1;2;4;5]}
 
                 // when
                 let booking = { Id = 1; SeatIds = [1;2;4;5]}
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
 
                 // then
                 Expect.isError tryBooking "should be error"
                 let (Error e) = tryBooking
                 Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
 
-            testCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok"  <| fun _ ->
+            multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
 
-                // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+
                 let rowId = Guid.NewGuid()
-                let addedRow = stadiumBookingSystem.AddRowReference rowId
+                let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
                 let seats = [
                     { Id = 1; State = Free; RowId = None }
@@ -403,20 +449,20 @@ module BookingTests =
                     { Id = 4; State = Free; RowId = None }
                     { Id = 5; State = Free; RowId = None }
                 ]
-                let seatsAdded = stadiumBookingSystem.AddSeats rowId seats
+                let seatsAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatsAdded "should be ok"
                 let booking = { Id = 1; SeatIds = [1;2;4;5]}
                 // when
                 let booking = { Id = 1; SeatIds = [1;2;4;5]}
-                let tryBooking = stadiumBookingSystem.BookSeats rowId booking
+                let tryBooking = stadiumSystem.BookSeats rowId booking
 
                 // then
                 Expect.isOk tryBooking "should be ok"
 
-            testCase "book free seats among two rows, one fails, so it makes fail them all - Error"  <| fun _ ->
+            multipleTestCase "book free seats among two rows, one fails, so it makes fail them all - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+
                 let rowId1 = Guid.NewGuid()
                 let rowId2 = Guid.NewGuid()
                 let middleSeatNotFreeRule: Invariant<SeatsRow> =
@@ -435,16 +481,16 @@ module BookingTests =
                     @>
                 let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
 
-                let addedRow1 = stadiumBookingSystem.AddRowReference rowId1
+                let addedRow1 = stadiumSystem.AddRowReference rowId1
                 Expect.isOk addedRow1 "should be ok"
 
-                let addInvariantToRow1 = stadiumBookingSystem.AddInvariant rowId1 invariantContainer
+                let addInvariantToRow1 = stadiumSystem.AddInvariant rowId1 invariantContainer
                 Expect.isOk addInvariantToRow1 "should be ok"
 
-                let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+                let addedRow2 = stadiumSystem.AddRowReference rowId2
                 Expect.isOk addedRow2 "should be ok"
 
-                let addInvariantToRow2 = stadiumBookingSystem.AddInvariant rowId2 invariantContainer
+                let addInvariantToRow2 = stadiumSystem.AddInvariant rowId2 invariantContainer
                 Expect.isOk addInvariantToRow2 "should be ok"
                 let seats1 = [
                     { Id = 1; State = Free; RowId = None }
@@ -453,7 +499,7 @@ module BookingTests =
                     { Id = 4; State = Free; RowId = None }
                     { Id = 5; State = Free; RowId = None }
                 ]
-                let seatsAdded1 = stadiumBookingSystem.AddSeats rowId1 seats1
+                let seatsAdded1 = stadiumSystem.AddSeats rowId1 seats1
                 Expect.isOk seatsAdded1 "should be ok"
                 let seats2 = [
                     { Id = 6; State = Free; RowId = None }
@@ -462,12 +508,12 @@ module BookingTests =
                     { Id = 9; State = Free; RowId = None }
                     { Id = 10; State = Free; RowId = None }
                 ]
-                let seatsAdded2 = stadiumBookingSystem.AddSeats rowId2 seats2
+                let seatsAdded2 = stadiumSystem.AddSeats rowId2 seats2
                 Expect.isOk seatsAdded2 "should be ok"
 
                 let booking1 = { Id = 1; SeatIds = [1;2;4;5]} // invariant violated
                 let booking2 = { Id = 2; SeatIds = [6;7;8;9;10]}
-                let tryMultiBooking = stadiumBookingSystem.BookSeatsNRows [(rowId1, booking1); (rowId2, booking2)]
+                let tryMultiBooking = stadiumSystem.BookSeatsNRows [(rowId1, booking1); (rowId2, booking2)]
                 Expect.isError tryMultiBooking "should be error"
                 let (Error e) = tryMultiBooking
                 Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
@@ -475,20 +521,20 @@ module BookingTests =
                 // now make a valid booking on both
                 let newBooking1 = {Id = 1; SeatIds = [1; 4; 5]}
                 let newBooking2 = {Id = 2; SeatIds = [6; 7; 8; 9; 10]}
-                let tryMultiBookingAgain = stadiumBookingSystem.BookSeatsNRows [(rowId1, newBooking1); (rowId2, newBooking2)]
+                let tryMultiBookingAgain = stadiumSystem.BookSeatsNRows [(rowId1, newBooking1); (rowId2, newBooking2)]
                 Expect.isOk tryMultiBookingAgain "should be ok"
 
-            testCase "add a seats in one row and two seat in another row - Ok" <| fun _ ->
+            multipleTestCase "add a seats in one row and two seat in another row - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 // given
                 setUp()
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+
                 let rowId1 = Guid.NewGuid()
                 let rowId2 = Guid.NewGuid()
 
-                let addedRow1 = stadiumBookingSystem.AddRowReference rowId1
+                let addedRow1 = stadiumSystem.AddRowReference rowId1
                 Expect.isOk addedRow1 "should be ok"
 
-                let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+                let addedRow2 = stadiumSystem.AddRowReference rowId2
                 Expect.isOk addedRow2 "should be ok"
 
                 let seat1 = { Id = 1; State = Free; RowId = None }
@@ -496,28 +542,28 @@ module BookingTests =
                 let seat3 = { Id = 7; State = Free; RowId = None }
 
                 // when
-                let addAllSeats = stadiumBookingSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
+                let addAllSeats = stadiumSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
                 Expect.isOk addAllSeats "should be ok"
 
                 // then
-                let retrievedRow1 = stadiumBookingSystem.GetRow rowId1
-                let retrievedRow2 = stadiumBookingSystem.GetRow rowId2
+                let retrievedRow1 = stadiumSystem.GetRow rowId1
+                let retrievedRow2 = stadiumSystem.GetRow rowId2
 
                 Expect.equal retrievedRow1.OkValue.Seats.Length 1 "should be equal"
                 Expect.equal retrievedRow2.OkValue.Seats.Length 2 "should be equal"
 
-            testCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" <| fun _ ->
+            multipleTestCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+
+
                 setUp()
 
-                // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
                 let rowId1 = Guid.NewGuid()
                 let rowId2 = Guid.NewGuid()
 
-                let addedRow1 = stadiumBookingSystem.AddRowReference rowId1
+                let addedRow1 = stadiumSystem.AddRowReference rowId1
                 Expect.isOk addedRow1 "should be ok"
 
-                let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+                let addedRow2 = stadiumSystem.AddRowReference rowId2
                 Expect.isOk addedRow2 "should be ok"
 
                 let seat1 = { Id = 1; State = Free; RowId = None }
@@ -526,33 +572,33 @@ module BookingTests =
 
                 let seat4 = { Id = 2; State = Free; RowId = None }
 
-                let addAllSeats = stadiumBookingSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
+                let addAllSeats = stadiumSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
                 Expect.isOk addAllSeats "should be Ok"
 
                 // when
-                let addSingleSeatAgain = stadiumBookingSystem.AddSeat rowId1 seat4
+                let addSingleSeatAgain = stadiumSystem.AddSeat rowId1 seat4
                 Expect.isOk addSingleSeatAgain "should be Ok"
 
                 // then
-                let retrievedRow1 = stadiumBookingSystem.GetRow rowId1
-                let retrievedRow2 = stadiumBookingSystem.GetRow rowId2
+                let retrievedRow1 = stadiumSystem.GetRow rowId1
+                let retrievedRow2 = stadiumSystem.GetRow rowId2
 
                 Expect.equal retrievedRow1.OkValue.Seats.Length 2 "should be equal"
                 Expect.equal retrievedRow2.OkValue.Seats.Length 2 "should be equal"
 
-            testCase "A single booking cannot book all seats involving three rows or more - Error"  <| fun _ ->
+            multipleTestCase "A single booking cannot book all seats involving three rows or more - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+
                 let rowId1 = Guid.NewGuid()
                 let rowId2 = Guid.NewGuid()
                 let rowId3 = Guid.NewGuid()
 
-                let addedRow1 = stadiumBookingSystem.AddRowReference rowId1
+                let addedRow1 = stadiumSystem.AddRowReference rowId1
                 Expect.isOk addedRow1 "should be ok"
-                let addedRow2 = stadiumBookingSystem.AddRowReference rowId2
+                let addedRow2 = stadiumSystem.AddRowReference rowId2
                 Expect.isOk addedRow2 "should be ok"
-                let addRow3 = stadiumBookingSystem.AddRowReference rowId3
+                let addRow3 = stadiumSystem.AddRowReference rowId3
                 Expect.isOk addRow3 "should be ok"
                 let seats1 = [
                     { Id = 1; State = Free; RowId = None }
@@ -561,7 +607,7 @@ module BookingTests =
                     { Id = 4; State = Free; RowId = None }
                     { Id = 5; State = Free; RowId = None }
                 ]
-                let seatsAdded1 = stadiumBookingSystem.AddSeats rowId1 seats1
+                let seatsAdded1 = stadiumSystem.AddSeats rowId1 seats1
                 Expect.isOk seatsAdded1 "should be ok"
                 let seats2 = [
                     { Id = 6; State = Free; RowId = None }
@@ -570,7 +616,7 @@ module BookingTests =
                     { Id = 9; State = Free; RowId = None }
                     { Id = 10; State = Free; RowId = None }
                 ]
-                let seatsAdded2 = stadiumBookingSystem.AddSeats rowId2 seats2
+                let seatsAdded2 = stadiumSystem.AddSeats rowId2 seats2
                 Expect.isOk seatsAdded2 "should be ok"
 
                 let seats3 = [
@@ -580,26 +626,26 @@ module BookingTests =
                     { Id = 14; State = Free; RowId = None }
                     { Id = 15; State = Free; RowId = None }
                 ]
-                let seatsAdded3 = stadiumBookingSystem.AddSeats rowId3 seats3
+                let seatsAdded3 = stadiumSystem.AddSeats rowId3 seats3
                 Expect.isOk seatsAdded3 "should be ok"
                 let booking1 = { Id = 1; SeatIds = [1;2;3;4;5]}
                 let booking2 = { Id = 2; SeatIds = [6;7;8;9;10]}
                 let booking3 = { Id = 3; SeatIds = [11;12;13;14;15]}
 
-                let tryMultiBooking = stadiumBookingSystem.BookSeatsNRows [(rowId1, booking1); (rowId2, booking2); (rowId3, booking3)]
+                let tryMultiBooking = stadiumSystem.BookSeatsNRows [(rowId1, booking1); (rowId2, booking2); (rowId3, booking3)]
                 // now make a valid booking on both
                 Expect.isError tryMultiBooking "should be error"
 
             testCase "the classic optimistic lock is unset, so I can store events with the same version Id in the aggregate events table, and events will be processed - OK"  <| fun _ ->
                 setUp()
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+                let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
                 let rowId = Guid.NewGuid()
-                let addRow = stadiumBookingSystem.AddRowReference rowId
+                let addRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addRow "should be ok"
-                let addSeat = stadiumBookingSystem.AddSeat rowId { Id = 1; State = Free; RowId = None }
+                let addSeat = stadiumSystem.AddSeat rowId { Id = 1; State = Free; RowId = None }
                 Expect.isOk addSeat "should be ok"
-                let unsetLockConstraint = stadiumBookingSystem.UnSetAggregateStateControlInOptimisticLock "_01" "_seatrow"
+                let unsetLockConstraint = stadiumSystem.UnSetAggregateStateControlInOptimisticLock "_01" "_seatrow"
                 Expect.isOk unsetLockConstraint "should be ok"
 
                 let retrieved = retrieveLastAggregateVersionId "_01" "_seatrow"
@@ -613,7 +659,7 @@ module BookingTests =
                 Expect.isOk stored "should be ok"
 
                 // then
-                let row = stadiumBookingSystem.GetRow rowId  |> Result.get
+                let row = stadiumSystem.GetRow rowId  |> Result.get
                 let seats = row.Seats
 
                 Expect.equal seats.Length 2 "should be equal"
@@ -622,13 +668,13 @@ module BookingTests =
                 setUp()
 
                 // given
-                let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
+                let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
                 let rowId = Guid.NewGuid()
-                let addRow = stadiumBookingSystem.AddRowReference rowId
+                let addRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addRow "should be ok"
-                let addSeat = stadiumBookingSystem.AddSeat rowId { Id = 1; State = Free; RowId = None }
+                let addSeat = stadiumSystem.AddSeat rowId { Id = 1; State = Free; RowId = None }
                 Expect.isOk addSeat "should be ok"
-                let unsetLockConstraint = stadiumBookingSystem.SetAggregateStateControlInOptimisticLock "_01" "_seatrow"
+                let unsetLockConstraint = stadiumSystem.SetAggregateStateControlInOptimisticLock "_01" "_seatrow"
                 Expect.isOk unsetLockConstraint "should be ok"
 
                 let retrieved = retrieveLastAggregateVersionId "_01" "_seatrow"
@@ -641,7 +687,7 @@ module BookingTests =
                 Expect.isError stored "should be error"
 
                 // then
-                let row = stadiumBookingSystem.GetRow rowId  |> Result.get
+                let row = stadiumSystem.GetRow rowId  |> Result.get
                 let seats = row.Seats
                 Expect.equal seats.Length 1 "should be equal"
 

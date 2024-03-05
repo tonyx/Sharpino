@@ -86,17 +86,17 @@ let rowStateViewer: AggregateViewer<SeatsRow> =
             printf "creating new viewer for id %A\n" rowId
             let viewer = kafkarViewer' rowId rowId
             // this will be a problem
-            viewers.Add (rowId, viewer)
+            // viewers.Add (rowId, viewer)
             viewer.RefreshLoop()
             viewer.State()
 
 
-let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
+// let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 // let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
 
 // todo: this one that follows will exibit the build aggregate state problem
-// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {
