@@ -33,7 +33,7 @@ module TagCommands =
                     (fun (_: TagsContext) ->
                         fun (x': TagsContext) ->
                             x'.RemoveTag t.Id 
-                            |> Result.map (fun _ -> [TagAdded t])
+                            |> Result.map (fun _ -> [TagRemoved t.Id])
                         |> Ok
                     )
                     |> Some
