@@ -21,9 +21,6 @@ packages/
 **/*.nupkg
 *.env
 **/.env
-Sharpino.Sample.6
-Sharpino.Sample.6/*
-Sharpino.Sample.6/**/**
 Sharpino.Lib/lib/Sharpino.Lib.dll
 Sharpino.Lib/lib/Sharpino.Lib.xml
 **/Sharpino.Lib.Core.dll

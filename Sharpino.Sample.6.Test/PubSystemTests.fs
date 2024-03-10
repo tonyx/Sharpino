@@ -7,6 +7,7 @@ open Sharpino.Storage
 open Sharpino.TestUtils
 open Tonyx.Sharpino.Pub
 open Tonyx.Sharpino.Pub.Ingredient
+open Tonyx.Sharpino.Pub.Supplier
 open System
 open Sharpino.Utils
 open Sharpino.ApplicationInstance
@@ -111,6 +112,42 @@ let tests =
             Expect.equal ingredient.Name "testIngredient" "should be equal"
             Expect.equal ingredient.Id guid "should be equal"
             Expect.equal ingredient.IngredientTypes.Length 1 "should be equal"
+       
+        multipleTestCase "sugar can be measured in term of teaspoon" storages <| fun (eventStore, _, _) ->
+            setUp ()
+            
+            let guid = Guid.NewGuid()
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let addIngredient = pubSystem.AddIngredient (guid, "sugar")
+            Expect.isOk addIngredient "should be ok"
+            let retrieved = pubSystem.GetAllIngredientReferences()
+            Expect.isOk retrieved "should be ok"
+            let retrieved' = retrieved.OkValue
+            Expect.equal retrieved'.Length 1 "should be equal"
+            Expect.isTrue true "true"
+            
+            let addTypeToIngredient = pubSystem.AddMeasureType (guid, MeasureType.Teaspoons)
+            Expect.isOk addTypeToIngredient "should be ok"
+            let retrievedIngredients = pubSystem.GetIngredient guid
+            Expect.isOk retrievedIngredients "should be ok"
+            let retrievedIngredients' = retrievedIngredients.OkValue
+            Expect.equal retrievedIngredients'.Id guid "should be equal"
+            let measures = retrievedIngredients'.MeasureTypes
+            Expect.equal measures.Length 1 "should be equal"
+        
+        multipleTestCase "add and retrieve a new supplier" storages <| fun (eventStore, _, _) ->
+            setUp ()
+            
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let guid = Guid.NewGuid()
+            let supplier = Supplier(guid, "testSupplier", "testAddress@me.com", "123-456-7890")
+            let addSupplier = pubSystem.AddSupplier supplier
+            
+            let suppliers  = pubSystem.GetAllSuppliers ()
+            Expect.isOk suppliers "should be ok"
+            let suppliers' = suppliers.OkValue
+            Expect.equal suppliers'.Length 1 "should be equal"
+            
     ]
     |> testSequenced
         

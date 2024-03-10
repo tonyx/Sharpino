@@ -230,6 +230,36 @@ module CommandHandler =
                     command()
             | _ ->
                 command()
+    
+    let inline commandInitContextAggregate<'A, 'E, 'A1
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member Lock: obj)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        and 'A1:> Aggregate
+        and 'A1 : (static member StorageName: string) 
+        and 'A1 : (static member Version: string)
+        >
+        (storage: IEventStore)
+        (eventBroker: IEventBroker)
+        (stateViewer: StateViewer<'A>)
+        (initialInstance: 'A1)
+        (command: Command<'A, 'E>)
+        =
+            ResultCE.result {
+                let initSnapshot = initialInstance.Serialize serializer
+                let! stored = storage.SetInitialAggregateState initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initSnapshot
+                let! result = runCommand<'A, 'E> storage eventBroker stateViewer command
+                return result
+            }
+        
+    
     let inline runAggregateCommand<'A, 'E
         when 'A :> Aggregate 
         and 'A :> Entity 
