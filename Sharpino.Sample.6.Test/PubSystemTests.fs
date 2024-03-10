@@ -147,7 +147,6 @@ let tests =
             Expect.isOk suppliers "should be ok"
             let suppliers' = suppliers.OkValue
             Expect.equal suppliers'.Length 1 "should be equal"
-            
     ]
     |> testSequenced
         

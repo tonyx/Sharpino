@@ -68,7 +68,7 @@ module CommandHandler =
             Conf.defaultConf
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
-    let inline private mksnapshot<'A, 'E
+    let inline private mkSnapshot<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -143,7 +143,7 @@ module CommandHandler =
                             let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                             return! 
                                 if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
-                                    mksnapshot<'A, 'E> storage
+                                    mkSnapshot<'A, 'E> storage
                                 else
                                     () |> Ok
                         }
@@ -211,7 +211,7 @@ module CommandHandler =
                                 |> command.Execute
                             let events' =
                                 events 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName 
                             let sent =
@@ -231,7 +231,7 @@ module CommandHandler =
             | _ ->
                 command()
     
-    let inline commandInitContextAggregate<'A, 'E, 'A1
+    let inline runInitAndCommand<'A, 'E, 'A1
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -274,10 +274,12 @@ module CommandHandler =
         (aggregateId: Guid)
         (storage: IEventStore)
         (eventBroker: IEventBroker)
-        (stateViewer: StateViewer<'A>)
+        (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
         =
-            let stateView = stateViewer()
+            // todo: stateViewer should not be a lambda anymore: just use aggregateId
+            // let stateView = stateViewer()
+            let stateView = stateViewer aggregateId
             log.Debug (sprintf "runAggregateCommand %A" command)
             let command = fun () ->
                 async {
@@ -289,7 +291,7 @@ module CommandHandler =
                                 |> command.Execute
                             let events' =
                                 events 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
                             let sent =
@@ -328,7 +330,7 @@ module CommandHandler =
         (aggregateIds: List<Guid>)
         (storage: IEventStore)
         (eventBroker: IEventBroker)
-        (stateViewers: List<StateViewer<'A1>>)
+        (stateViewer: AggregateViewer<'A1>)
         (commands: List<Command<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
@@ -337,48 +339,47 @@ module CommandHandler =
                     return
                         result {
                             let! states =
-                                stateViewers
-                                |>> (fun x -> x())
-                                |> List.traverseResultM id
-
+                                aggregateIds
+                                |> List.traverseResultM stateViewer
+                                
                             let states' = 
                                 states 
-                                |>> (fun (_, state, _, _) -> state)
+                                |>> fun (_, state, _, _) -> state
 
                             let statesAndCommands =
                                 List.zip states' commands
 
                             let! events =
                                 statesAndCommands
-                                |>> (fun (state, command) -> command.Execute state)
+                                |>> fun (state, command) -> command.Execute state
                                 |> List.traverseResultM id
 
                             let serializedEvents =
                                 events 
-                                |>> (fun x -> x |>> fun (z: 'E1) -> z.Serialize serializer )
+                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize serializer 
                             
                             let aggregateIdsWithStateIds =
                                 List.zip aggregateIds states'
-                                |>> (fun (id, state ) -> (id, state.StateId))    
+                                |>> fun (id, state ) -> (id, state.StateId)
                                 
                             let packParametersForDb =
                                 List.zip serializedEvents aggregateIdsWithStateIds
-                                |>> (fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId))
+                                |>> fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)
 
                             let! idLists =
                                 storage.MultiAddAggregateEvents packParametersForDb
 
                             let kafkaParameters =
                                  List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) idLists serializedEvents
-                                 |>>  (fun (idList, serializedEvents) -> List.zip idList serializedEvents)
+                                 |>> fun (idList, serializedEvents) -> List.zip idList serializedEvents
 
                             let sent =
                                 kafkaParameters
-                                |>> (fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption)
+                                |>> fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption
                                 
                             let _ =
                                 aggregateIds
-                                |> List.map (fun id -> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage id)
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage
                             
                             return (idLists, sent)
                         }
@@ -440,10 +441,10 @@ module CommandHandler =
 
                             let events1' =
                                 events1 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
                             let events2' =
                                 events2 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
 
                             let! idLists =
                                 storage.MultiAddEvents 
@@ -535,13 +536,13 @@ module CommandHandler =
 
                             let events1' =
                                 events1 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
                             let events2' =
                                 events2 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
                             let events3' =
                                 events3 
-                                |>> (fun x -> x.Serialize serializer)
+                                |>> fun x -> x.Serialize serializer
 
                             let! idLists =
                                 storage.MultiAddEvents 

@@ -177,7 +177,9 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## News: 
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
-
+- Version 1.5.7: 
+- Added _runInitAndCommand that create a new aggregate and a command context in a single transaction.
+- Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)
 - Version 1.5.5:
 - fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
