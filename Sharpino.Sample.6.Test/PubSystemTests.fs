@@ -6,6 +6,8 @@ open Sharpino.PgStorage
 open Sharpino.Storage
 open Sharpino.TestUtils
 open Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Dish
+open Tonyx.Sharpino.Pub.Kitchen
 open Tonyx.Sharpino.Pub.Ingredient
 open Tonyx.Sharpino.Pub.Supplier
 open System
@@ -25,13 +27,13 @@ let tests =
     let pgEventStore: IEventStore = PgEventStore(connection)
     let setUp () =
         AggregateCache<Dish.Dish>.Instance.Clear()
-        StateCache<Kitchen.Kitchen>.Instance.Clear()
-        memEventStore.Reset "_01" "_kitchen"
-        memEventStore.ResetAggregateStream "_01" "_ingredient"
-        memEventStore.ResetAggregateStream "_01" "_dish"
-        pgEventStore.Reset "_01" "_kitchen"
-        pgEventStore.ResetAggregateStream "_01" "_ingredient"
-        pgEventStore.ResetAggregateStream "_01" "_dish"
+        StateCache<Kitchen>.Instance.Clear()
+        memEventStore.Reset Kitchen.Version Kitchen.StorageName
+        memEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
+        memEventStore.ResetAggregateStream Dish.Version Dish.StorageName
+        pgEventStore.Reset Kitchen.Version Kitchen.StorageName
+        pgEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
+        pgEventStore.ResetAggregateStream Dish.Version Dish.StorageName
 
     // todo: check if you will need it in those tests
     let serializer = JsonSerializer(Utils.serSettings) :> ISerializer
