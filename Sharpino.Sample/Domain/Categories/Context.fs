@@ -11,8 +11,9 @@ open Sharpino.Sample.Shared.Entities
 open System
 
 module CategoriesContext =
-
-    type CategoriesContext(categories: Categories) =
+    type CategoriesContext (categories: Categories) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.Categories = categories
         static member Zero =
             CategoriesContext Categories.Zero

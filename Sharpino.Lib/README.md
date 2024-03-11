@@ -12,30 +12,33 @@
 ## What is it?
 
 Support for Event-sourcing in F#.
-No sensible data (GDPR) support.
 
 ## Features
-- Support in memory and Postgres storage. Support Eventstoredb (only for the LightCommandHandler).
-- Support publishing events to Kafka.
+- Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
+- Support publishing events to Apache Kafka Event Broker.
 - Example application with tests including Kafka subscriber.
-- Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events
-- A specific practice to refactor context and test context refactoring
+- Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
+- Aggregates are the same as contexts with many instances identified by Id (Guid).
+- A specific technique helps refactoring (migration) between different versions of the application.
+
+## Absent features (for now)
+- Sensible data (GDPR) 
+- ...
 
 
-## Projects
+## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
 __Sharpino.Lib.Core__:
 
-- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if storage lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error if there are some events that cannot be applied to the current state of the context. The latter just skip those events.
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if the used event store lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error in processing invalid events.  The latter just skip those events. Some other types and functions are defined here. In a "SAFE stack" like project we may "safely" include the Core in a shared project (Fable Remoting style) in the sense that Fable can transpile it to JavaScript.
 
 __Sharpino.Lib__:
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, executes commands, produces and stores events using an event store that supports pub/sub model ( Eventstoredb ).
-- [DbStorage.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory. 
-- [Cache.fs](Sharpino.Lib/Cache.fs). Cache current state.
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): Gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
+- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, executes commands, produces and stores events using an event store that supports publish/subscribe ( EventStoreDB).
+- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory respectively.
+- [Cache.fs](Sharpino.Lib/Cache.fs). Caches the current state of contexts or aggregates. 
 
-
-__Sharpino.Sample__
+__Sharpino.Sample__:
 You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
@@ -52,11 +55,14 @@ __Commands__ defines also _undoers_ are functions that can undo the commands to 
 - The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more clusters by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
 - An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
 
+- __aggregates__ works as context and I can handle multiple instances of an aggregate identified by Id (Guid). The example is in the sample application 4 (see below).
+
 __Sharpino.Sample.tests__
 - tests for the sample application
-
+[Sharpino.Lib.fsproj](Sharpino.Lib%2FSharpino.Lib.fsproj)
 __Sharpino.Sample.Kafka__
-- scripts to setup a Kafka topics corresponding to the contexts of the sample application
+- scripts to set up Kafka topics corresponding to the contexts of the sample application.
+
 
 ## How to use it
 - You can run the sample application as a rest service by running the following command from Sharpino.Sample folder:
@@ -69,7 +75,6 @@ dotnet run
 npm install
 npm start
 ```
-
 
 - Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
 ```bash
@@ -88,6 +93,14 @@ dbmate -e up
 ```
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
 If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).
+
+## SAMPLE 4 
+Sample 4 uses SAFE stack (Fable/Elmish). The aggregates are rows of seats that I can book. A skeleton of Elmish client is provided.
+
+## SAMPLE 5
+Sample 5 will just replace SAMPLE 4. uses SAFE stack (Fable/Elmish). Use the common SAFE stack basic operation for running and testing (under the directory Sharpino.Sample.5)
+Please just look at the domain, and don't care that much about the u.i. (Elmish part). 
+
 
 ## Tests on eventstoredb. EventStroreDb is not mantained that much at the moment
 
@@ -132,48 +145,73 @@ This invariant rule must be preserved even if two concurrent transactions try to
    Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
 
-
-
+## Sample application 4
+The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
+Invariants can be represented by quoted expressions so that, ideally, this may allow us to move toward a DSL (Example: "no booking can end up in leaving the only middle seat free in a row").
 
 __Faq__: 
-- Why "Sharpino"? 
-    - It's a mix of Sharp and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf". 
+- Why the name "Sharpino"? 
+    - It's a mix of "Sharp" (as the '#' of  C# or F#) and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf". 
 - Why another event-sourcing library?
     - I wanted to study the subject and it ended up in a tiny little framework.
 - Why F#?  
-    - Any functional language from the ML family language in my opinion is a good fit for the following reasons:
+    - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
         - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
-    - add the nuget package Sharpino to your project (current version 1.4.1)
+    - add the nuget package Sharpino to your project. 
     - note: on my side, when I added Sharpino as a library into a web app, then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 ## Roadmap:
 - (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
-- add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
-- select the type of lock per aggregate and context
-- given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
+- (done) add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
+- (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
+- (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
+
+## Useful info:
+Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## News: 
+
+New sample: started an example of Restaurant/Pub management. (Sample 6) 
+- Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
+- Version 1.5.7: 
+- Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
+- Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)
+- Version 1.5.5:
+- fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
+- _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
+Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
+I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
+- Added SqlTempate dir with template examples for creating table relate to events and snapshots for aggregates and contexts.
+- Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
+it is going to be messy)
+- Version 1.5.4 Replaces version 1.5.3 (that was deprecated )
+    - Aggregate snapshots added (in addition to contexts snapshots)
+
+- Version 1.5.3 (don't use it: it is deprecated: missing packages)
+ 
 - Version 1.5.1: - 
   - Added a new configuration file named appSettings.json in the root of the project with the following content:
-```json[README.md](..%2FREADME.md)
+```json
   {
       "LockType":{"Case":"Optimistic"},
       "RefreshTimeout": 100,
       "CacheAggregateSize": 100
   }
 ```
-- Added the possibility to make the optimistic lock for aggregates work as the classic one (so now it can handle multiple aggregate transactions properly).
-- See the sql script of sample 3: it includes the steps related to change "on the fly" (by application) the db level constraints that inhibit adding two events with the same aggregate stateid.
+- Moreover, the specific variant of optimitic lock (classic or more permissive) can be changed by code (evenstore method).
+The "more permissive" optmistic lock will skip aggregate state version control so it allows that events generated in the same moment can be stored and published. Nevertheless if they end up in a violation of the invariant rule the core will skip them anyway.
+__The more permissive optimistic lock cannot ensure that multiple aggregate transactions are handled properly__: if I book seats from multiple rows it is theoretically possible that only seats from one row are booked.
+
+- See the sql script of sample 4: it includes the steps related to change "on the fly" (by application) the db level constraints that inhibit adding two events with the same aggregate stateid.
 - (in the same stream) in the event store.
- 
 - Current version 1.5.0: - Kafka integration for fine-grained aggregates (identified by Id) is included. 
-- Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample3 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
+- Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample4 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
 
 - Booking seat example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
 - Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync events).
@@ -185,7 +223,7 @@ See the new four last alter_ Db script in Sharpino.Sample app. This feature is _
 (Error handling can be improved in writing/reading Kafka event info there).
 Those data will be used in the future to feed the "kafkaViewer" on initialization.
 
-- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer. The one for Broker based is coming soon)
+- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer.)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 

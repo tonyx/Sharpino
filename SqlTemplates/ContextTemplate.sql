@@ -43,18 +43,19 @@ ALTER TABLE ONLY public.snapshots{Version}{ContextStorageName}
 
 
 CREATE OR REPLACE FUNCTION insert{Version}{ContextStorageName}_event_and_return_id(
-    IN event_in TEXT
+    IN event_in TEXT,
+    IN context_state_id uuid
 )
 RETURNS int
        
 LANGUAGE plpgsql
 AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
 BEGIN
-INSERT INTO events{Version}{ContextStorageName}(event, timestamp)
-VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events{Version}{ContextStorageName}(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    return inserted_id;
 
 END;
 $$

@@ -2,11 +2,11 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino.Core</id>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <title>Sharpino.Core</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event Sourcing Library (Core)</description>
-    <copyright>Copyright ©2023 Antonio Lucca</copyright>
+    <copyright>Copyright ©2023-2024 Antonio Lucca</copyright>
     <projectUrl>https://github.com/tonyx/Sharpino</projectUrl>
     <license type="expression">MIT</license>
     <readme>README.md</readme>

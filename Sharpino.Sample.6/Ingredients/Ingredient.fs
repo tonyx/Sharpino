@@ -40,7 +40,7 @@ module Ingredient =
         | Rice
         | Other of string
     
-    type Ingredient(id: Guid, name: String, ingredientTypes: List<IngredientType>, measureTypes: List<MeasureType>) =
+    type Ingredient (id: Guid, name: String, ingredientTypes: List<IngredientType>, measureTypes: List<MeasureType>) =
         let stateId = Guid.NewGuid()
         member this.StateId = stateId
         member this.Id = id

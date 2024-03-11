@@ -8,6 +8,8 @@ open System
 
 module Stadium =
     type Stadium (rowReferences: List<DateTime * Guid>) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.rowReferences = rowReferences
         static member Zero =
             Stadium []

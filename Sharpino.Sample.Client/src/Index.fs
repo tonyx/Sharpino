@@ -13,8 +13,6 @@ open Fable.React.Props
 open Fable.Core.JsInterop
 open Fable
 open System
-open System.Reflection.Emit
-open System.Reflection
 open Feliz
 open Feliz.Bulma
 

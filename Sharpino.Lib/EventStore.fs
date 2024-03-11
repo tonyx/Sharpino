@@ -1,10 +1,6 @@
 namespace Sharpino
 open System
-// open Sharpino.Utils
-// open Sharpino.Core
 open Sharpino.Definitions
-// open Sharpino.Lib.Core.Commons
-// open FsToolkit.ErrorHandling
 open log4net
 
 module Storage =
@@ -83,11 +79,11 @@ module Storage =
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>
         abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> Json ->  Result<unit, string>
-        abstract member AddEvents: Version -> Name -> List<Json> -> Result<List<int>, string>
+        abstract member AddEvents: Version -> Name -> ContextStateId -> List<Json> -> Result<List<int>, string>
 
         abstract member AddAggregateEvents: Version -> Name -> AggregateId -> AggregateStateId -> List<Json> -> Result<List<EventId>, string>
 
-        abstract member MultiAddEvents:  List<List<Json> * Version * Name>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddEvents:  List<List<Json> * Version * Name * ContextStateId>  -> Result<List<List<EventId>>, string>
         abstract member MultiAddAggregateEvents:  List<List<Json> * Version * Name * AggregateId * AggregateStateId>  -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * Json >, string >

@@ -9,9 +9,11 @@ open Row
 module Row2Context =
     open System
     type Row2 (rowContext: RowContext) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
 
         static member Zero =
-            Row2 (RowContext(row2Seats))
+            Row2 (RowContext row2Seats)
 
         static member StorageName =
             "_row2"
@@ -32,7 +34,7 @@ module Row2Context =
             }
         member this.GetAvailableSeats () =
             rowContext.GetAvailableSeats ()
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize (serializer: ISerializer) =
             this
             |> serializer.Serialize
         static member Deserialize (serializer: ISerializer, json: string)=

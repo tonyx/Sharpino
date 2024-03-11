@@ -72,6 +72,23 @@ $$;
 
 
 --
+-- Name: insert_01_stadium_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_stadium_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_01_stadium(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: set_classic_optimistic_lock_01_seatrow(); Type: PROCEDURE; Schema: public; Owner: -
 --
 
@@ -169,7 +186,8 @@ CREATE TABLE public.events_01_stadium (
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    context_state_id uuid
 );
 
 
@@ -330,4 +348,5 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 INSERT INTO public.schema_migrations (version) VALUES
     ('20240112053550'),
     ('20240115084217'),
-    ('20240115084835');
+    ('20240115084835'),
+    ('20240311195007');

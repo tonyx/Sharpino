@@ -22,8 +22,8 @@
   <ItemGroup>
       <!-- note to myself: when you deploy to azure, you need to add lib by paket, not by external project -->
       <!-- therefore the following MUST be commented out AND reference to Shrpino lib must be done via paket instad-->
-<!--    <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
-    <ProjectReference Include="..\Shared\Shared.fsproj" />
+      <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+      <ProjectReference Include="..\Shared\Shared.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

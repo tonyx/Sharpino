@@ -109,6 +109,23 @@ $$;
 
 
 --
+-- Name: insert_01_kitchen_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_01_kitchen(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: insert_01_supplier_aggregate_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -382,7 +399,8 @@ CREATE TABLE public.events_01_kitchen (
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    context_state_id uuid
 );
 
 
@@ -707,4 +725,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240304172119'),
     ('20240304172910'),
     ('20240309151856'),
-    ('20240309152430');
+    ('20240309152430'),
+    ('20240311195419');

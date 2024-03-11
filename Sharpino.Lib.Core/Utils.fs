@@ -14,6 +14,7 @@ module Definitions =
     type SnapshotId = int
     type AggregateId = Guid
     type AggregateStateId = Guid
+    type ContextStateId = Guid
 
 module ApplicationInstance =
     type ApplicationInstance() =

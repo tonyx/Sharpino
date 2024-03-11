@@ -140,6 +140,7 @@ module rec SeatRow =
 
         static member Version = "_01"
         static member StorageName = "_seatrow"
+        static member SnapshotsInterval = 15
 
         interface Aggregate with
             member this.StateId = this.StateId

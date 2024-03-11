@@ -176,7 +176,9 @@ __Faq__:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## News: 
+
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
+- Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 
 - Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
 - Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)

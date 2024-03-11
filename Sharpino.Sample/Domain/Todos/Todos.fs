@@ -8,13 +8,15 @@ open Sharpino.Sample.Shared.Entities
 
 module Todos =
 
-    type Todos (todos: IRepository<Todo>)=
+    type Todos (todos: IRepository<Todo>) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.Todos = todos
         with
             static member Zero =
-                Todos(todos = ListRepository<Todo>.Zero)
+                Todos (todos = ListRepository<Todo>.Zero)
             static member FromList (xs: List<Todo>) =
-                Todos(todos = ListRepository<Todo>.Create xs)
+                Todos (todos = ListRepository<Todo>.Create xs)
 
             member this.AddTodo (t: Todo) =
                 result {

@@ -1,12 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <GenerateProgramFile>false</GenerateProgramFile> 
+    <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
-    
   <ItemGroup>
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Domain/Categories/Categories.fs" />
@@ -18,12 +17,10 @@
     <Compile Include="Domain/Tags/Context.fs" />
     <Compile Include="Domain/Tags/Events.fs" />
     <Compile Include="Domain/Tags/Commands.fs" />
-
     <Compile Include="Domain/Categories/Context.fs" />
     <Compile Include="Domain/Categories/Events.fs" />
     <Compile Include="Domain/Categories/Commands.fs" />
     <Compile Include="reports/TodosReport.fs" />
-
     <Compile Include="JSON/Converters.fs" />
     <Compile Include="App.fs" />
     <Compile Include="EventBrokerBasedApp.fs" />
@@ -31,15 +28,10 @@
     <Compile Include="AppVersions.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>
-
   <!-- uncomment this while developing the library -->
-
-<ItemGroup>
-  <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
-</ItemGroup>
-  
-
   <ItemGroup>
+    <PackageReference Include="FsPickler" Version="5.3.2" />
+    <PackageReference Include="FsPickler.Json" Version="5.3.2" />
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Fable.Core" Version="4.3.0" />
@@ -47,30 +39,23 @@
     <PackageReference Include="Farmer" Version="1.8.8" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
-    
     <PackageReference Include="Log4net" Version="2.0.15" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Saturn" Version="0.16.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-    
-    <PackageReference Include="Sharpino" Version="1.5.6" />
-
-    
-    <!-- commend this when develp the lib-->
-<!--     <PackageReference Include="Sharpino" Version="1.5.2" /> -->
-    <!-- commend this when you develp the lib-->
-<!--     <PackageReference Include="Sharpino.Core" Version="1.1.0" /> -->
-
+    <!-- <PackageReference Include="Sharpino" Version="1.5.7" /> -->
+    <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
-  
-<!-- comment if get the lib from nuget-->  
-  
-<!--  <ItemGroup>-->
-<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
-<!--  </ItemGroup>-->
 
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup>
+
+  <!-- comment if get the lib from nuget-->
+  <!--  <ItemGroup>-->
+  <!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+  <!--  </ItemGroup>-->
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />
   </ItemGroup>
-
 </Project>

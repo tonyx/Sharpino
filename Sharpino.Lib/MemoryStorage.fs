@@ -233,10 +233,10 @@ module MemoryStorage =
                 this.Reset version name
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents version name xs: Result<List<int>, string> = 
+            member this.AddEvents version name contextStateId xs: Result<List<int>, string> = 
                 log.Debug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
-                    [for e in xs do
+                    [ for e in xs do
                         yield {
                             Id = next_event_id version name
                             JsonEvent = e
@@ -266,13 +266,13 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents (arg: List<List<Json> * Version * Name>) =
+            member this.MultiAddEvents (arg: List<List<Json> * Version * Name * ContextStateId >) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
                     |> List.map 
-                        (fun (xs, version, name) ->
-                            (this :> IEventStore).AddEvents version name xs |> Result.get
+                        (fun (xs, version, name, contextStateId) ->
+                            (this :> IEventStore).AddEvents version name contextStateId xs |> Result.get
                         ) 
                 cmds |> Ok
 

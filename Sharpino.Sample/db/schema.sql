@@ -34,6 +34,23 @@ $$;
 
 
 --
+-- Name: insert_01_tags_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_tags_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_01_tags(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: insert_01_todo_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -45,6 +62,23 @@ DECLARE
 BEGIN
     INSERT INTO events_01_todo(event, timestamp)
     VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_01_todo_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_todo_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_01_todo(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -68,6 +102,23 @@ $$;
 
 
 --
+-- Name: insert_02_categories_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_02_categories_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_02_categories(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: insert_02_todo_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -79,6 +130,23 @@ DECLARE
 BEGIN
     INSERT INTO events_02_todo(event, timestamp)
     VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_02_todo_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_02_todo_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+BEGIN
+    INSERT INTO events_02_todo(event, timestamp, context_state_id)
+    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -115,7 +183,8 @@ CREATE TABLE public.events_01_tags (
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
-    kafkapartition integer
+    kafkapartition integer,
+    context_state_id uuid
 );
 
 
@@ -143,7 +212,8 @@ CREATE TABLE public.events_01_todo (
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
-    kafkapartition integer
+    kafkapartition integer,
+    context_state_id uuid
 );
 
 
@@ -171,7 +241,8 @@ CREATE TABLE public.events_02_categories (
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
-    kafkapartition integer
+    kafkapartition integer,
+    context_state_id uuid
 );
 
 
@@ -199,7 +270,8 @@ CREATE TABLE public.events_02_todo (
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
-    kafkapartition integer
+    kafkapartition integer,
+    context_state_id uuid
 );
 
 
@@ -456,4 +528,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20231216070623'),
     ('20231216070924'),
     ('20231216071037'),
-    ('20231216071515');
+    ('20231216071515'),
+    ('20240311163944'),
+    ('20240311164334'),
+    ('20240311164540'),
+    ('20240311164703');

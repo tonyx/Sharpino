@@ -65,7 +65,7 @@ module StorageStadiumBookingSystem =
                 let bookSeat = RowAggregateCommand.BookSeats booking
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) bookSeat
+                        rowId storage eventBroker rowStateViewer bookSeat
                 return result
             }
 
@@ -84,7 +84,7 @@ module StorageStadiumBookingSystem =
                         rowIDs
                         storage
                         eventBroker
-                        (rowIDs |>> (fun rowId -> fun () -> rowStateViewer rowId))
+                        rowStateViewer
                         bookSeatsCommands
                 return result
             }
@@ -108,7 +108,7 @@ module StorageStadiumBookingSystem =
                     RowAggregateCommand.AddSeat {seat with RowId = rowId |> Some}
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeat
+                        rowId storage eventBroker rowStateViewer addSeat
                 return result
             }
 
@@ -120,7 +120,7 @@ module StorageStadiumBookingSystem =
                     RowAggregateCommand.RemoveSeat seat
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) removeSeat
+                        rowId storage eventBroker rowStateViewer removeSeat
                 return result
             }
 
@@ -129,7 +129,7 @@ module StorageStadiumBookingSystem =
                 let addSeats = RowAggregateCommand.AddSeats seats
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addSeats
+                        rowId storage eventBroker rowStateViewer addSeats
                 return result
             }
 
@@ -144,7 +144,7 @@ module StorageStadiumBookingSystem =
                         rowIDs
                         storage
                         eventBroker
-                        (rowIDs |>> (fun rowId -> fun () -> rowStateViewer rowId))
+                        rowStateViewer
                         addSeatsCommands
                 return result
             }
@@ -170,6 +170,6 @@ module StorageStadiumBookingSystem =
             result {
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId storage eventBroker (fun () -> rowStateViewer rowId) addInvariant
+                        rowId storage eventBroker rowStateViewer addInvariant
                 return result
             }

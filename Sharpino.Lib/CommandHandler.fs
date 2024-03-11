@@ -184,6 +184,7 @@ module CommandHandler =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
+        and 'A:  (member StateId: Guid)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
@@ -208,7 +209,7 @@ module CommandHandler =
                                 events 
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
-                                events' |> storage.AddEvents 'A.Version 'A.StorageName 
+                                events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
                             let sent =
                                 List.zip ids events'
                                 |> tryPublish eventBroker 'A.Version 'A.StorageName
@@ -234,6 +235,7 @@ module CommandHandler =
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
+        and 'A: (member StateId: Guid)
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
@@ -391,6 +393,7 @@ module CommandHandler =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (member StateId: Guid)
         and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
@@ -402,6 +405,7 @@ module CommandHandler =
         and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (static member Lock: obj)
         and 'A2: (static member SnapshotsInterval : int)
+        and 'A2: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
@@ -444,8 +448,8 @@ module CommandHandler =
                             let! idLists =
                                 storage.MultiAddEvents 
                                     [
-                                        (events1', 'A1.Version, 'A1.StorageName)
-                                        (events2', 'A2.Version, 'A2.StorageName)
+                                        (events1', 'A1.Version, 'A1.StorageName, state1.StateId)
+                                        (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
                             let sent =
                                 let idAndEvents1 = List.zip idLists.[0] events1'
@@ -471,14 +475,17 @@ module CommandHandler =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (member StateId: Guid)
         and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
         and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (member StateId: Guid)
         and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
         and 'A3: (member Serialize: ISerializer -> string)
+        and 'A2: (member StateId: Guid)
         and 'A3: (static member Deserialize: ISerializer -> Json -> Result<'A3, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
@@ -489,6 +496,7 @@ module CommandHandler =
         and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (static member SnapshotsInterval : int)
         and 'A3: (static member SnapshotsInterval : int)
+        and 'A3: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E3 :> Event<'A3>
@@ -542,9 +550,9 @@ module CommandHandler =
                             let! idLists =
                                 storage.MultiAddEvents 
                                     [
-                                        (events1', 'A1.Version, 'A1.StorageName)
-                                        (events2', 'A2.Version, 'A2.StorageName)
-                                        (events3', 'A3.Version, 'A2.StorageName)
+                                        (events1', 'A1.Version, 'A1.StorageName, state1.StateId)
+                                        (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
+                                        (events3', 'A3.Version, 'A2.StorageName, state3.StateId)
                                     ]
                             
                             let sent =

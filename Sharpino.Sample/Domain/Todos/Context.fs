@@ -16,6 +16,8 @@ module TodosContext =
 
     [<CurrentVersion>]
     type TodosContext(todos: Todos, categories: Categories) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.Todos = todos
         member this.Categories = categories
         static member Zero =
@@ -105,6 +107,8 @@ module TodosContext =
     [<UpgradedVersion>]
 
     type TodosContextUpgraded(todos: Todos) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.todos = todos
         static member Zero =
             TodosContextUpgraded(Todos.Zero)

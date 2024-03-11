@@ -11,14 +11,12 @@ open System
 open FsToolkit.ErrorHandling
 
 module TagsContext =
-    type TagsContext =
-        {
-            Tags: Tags
-        }
+    type TagsContext (tags: Tags) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
+        member this.Tags = tags
         static member Zero =
-            {
-                Tags = Tags.Zero
-            }
+            TagsContext (Tags.Zero)
         static member StorageName =
             "_tags"
         static member Version =
@@ -36,11 +34,7 @@ module TagsContext =
         member this.AddTag (t: Tag) =
             result {
                 let! tags = this.Tags.AddTag t 
-                return
-                    {
-                        this with
-                            Tags = tags
-                    }
+                return TagsContext tags
             }
 
         member this.GetTag (id: Guid) =
@@ -49,11 +43,7 @@ module TagsContext =
         member this.RemoveTag (id: Guid) =
             result {
                 let! tags = this.Tags.RemoveTag id 
-                return
-                    {
-                        this with
-                            Tags = tags
-                    }
+                return TagsContext tags  
             }
         member this.GetTags() = this.Tags.GetTags()
 

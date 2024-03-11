@@ -174,9 +174,9 @@ let testCoreEvolve =
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
             // I am adding the same event twice and the "evolve" will ignore it
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName )
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName)
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName, Guid.NewGuid()  )
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer], TodosContext.StorageName, Guid.NewGuid() )
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
             let todos = ap.getAllTodos()
 
@@ -187,11 +187,11 @@ let testCoreEvolve =
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName)
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName)
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize  serializer], TodosContext.StorageName, Guid.NewGuid())
 
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
@@ -204,14 +204,14 @@ let testCoreEvolve =
             let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
             let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
 
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ],  TodosContext.StorageName) 
-            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ],  TodosContext.StorageName) 
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ], TodosContext.StorageName, Guid.NewGuid()) 
+            let _ = ap._addEvents (TodosContext.Version, [ event.Serialize serializer ], TodosContext.StorageName, Guid.NewGuid()) 
 
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ],  TodosContextUpgraded.StorageName)
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ],  TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
-            let _ = ap._addEvents (TodosContext.Version,  [ event2.Serialize serializer ], TodosContext.StorageName)
-            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event2.Serialize serializer ], TodosContextUpgraded.StorageName)
+            let _ = ap._addEvents (TodosContext.Version,  [ event2.Serialize serializer ], TodosContext.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (TodosContextUpgraded.Version, [ event2.Serialize serializer ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
             let todos = ap.getAllTodos()
 

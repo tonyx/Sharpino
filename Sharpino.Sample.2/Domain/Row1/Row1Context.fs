@@ -10,6 +10,8 @@ module Row1Context =
     open Row
 
     type Row1(rowContext: RowContext) =
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
 
         static member Zero =
             Row1(RowContext(row1Seats))

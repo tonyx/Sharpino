@@ -5,4 +5,4 @@ FSharp.Quotations.Evaluator
 Newtonsoft.Json
 FSharpPlus
 Log4net
-Sharpino
+FSToolkit.ErrorHandling

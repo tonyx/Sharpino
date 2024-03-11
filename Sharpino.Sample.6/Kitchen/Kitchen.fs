@@ -8,6 +8,8 @@ open System
 
 module Kitchen =
     type Kitchen (dishReferences: List<DateTime * Guid>, ingredientReferences: List<DateTime * Guid>, supplierReferences: List<DateTime * Guid>)=
+        let stateId = Guid.NewGuid()
+        member this.StateId = stateId
         member this.dishReferences = dishReferences
         member this.ingredientReferences = ingredientReferences
         member this.supplierReferences = supplierReferences
