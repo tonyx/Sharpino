@@ -70,7 +70,7 @@ module PubSystem =
             member this.GetAllSuppliers ()      =
                 ResultCE.result {
                     let! (_, kitchen , _, _) = kitchenStateViewer ()
-                    let suppliersRefs = kitchen.suppliersReferences |>> snd
+                    let suppliersRefs = kitchen.supplierReferences |>> snd
                     return suppliersRefs
                 }
                 
@@ -111,8 +111,7 @@ module PubSystem =
             member this.AddTypeToIngredient ( guid: Guid, ingredientType: IngredientType) =
                 ResultCE.result {
                     let! ingredient = this.GetIngredient guid
-                    let addIngredientType = IngredientCommands.AddIngredientType ingredientType
-                    // let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker (fun _ -> ingredientStateViewer guid) addIngredientType 
+                    let addIngredientType = IngredientCommands.AddIngredientType ingredientType 
                     let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker ingredientStateViewer addIngredientType 
                     return result
                 }
@@ -120,7 +119,6 @@ module PubSystem =
                 ResultCE.result {
                     let! ingredient = this.GetIngredient guid
                     let addMeasureType = IngredientCommands.AddMeasureType measureType
-                    // let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker (fun _ -> ingredientStateViewer guid) addMeasureType 
                     let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker ingredientStateViewer addMeasureType 
                     return result
                 }     

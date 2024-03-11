@@ -12,14 +12,10 @@ open System
 
 module CategoriesContext =
 
-    type CategoriesContext =
-        {
-            Categories: Categories
-        }
+    type CategoriesContext(categories: Categories) =
+        member this.Categories = categories
         static member Zero =
-            {
-                Categories = Categories.Zero
-            }
+            CategoriesContext Categories.Zero
         static member StorageName =
             "_categories"
         static member Version =
@@ -38,28 +34,17 @@ module CategoriesContext =
             result {
                 let! categories = this.Categories.AddCategory c 
                 return
-                    {
-                        this with
-                            Categories = categories
-                    }
+                        CategoriesContext categories
             }
         member this.RemoveCategory (id: Guid) =
             result {
                 let! categories = this.Categories.RemoveCategory id 
-                return
-                    {
-                        this with
-                            Categories = categories
-                    }
+                return CategoriesContext categories
             }
         member this.AddCategories (cs: List<Category>) =
             result {
                 let! categories = this.Categories.AddCategories cs 
-                return
-                    {
-                        this with
-                            Categories = categories
-                    }
+                return CategoriesContext categories
             }
         member this.GetCategories() = this.Categories.GetCategories().GetAll()
 

@@ -2,12 +2,9 @@
 namespace Sharpino
 
 open System
-open FSharpPlus.Data
 
 open FSharp.Core
-open FSharp.Data
 open FSharpPlus
-open FSharpPlus.Operators
 
 open Sharpino.Conf
 open Sharpino.Core
@@ -41,8 +38,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >(eventStore: IEventStore) =
-            let result = fun () -> getFreshState<'A, 'E> eventStore
-            result
+            fun () -> getFreshState<'A, 'E> eventStore
 
     let inline getAggregateStorageFreshStateViewer<'A, 'E
         when 'A :> Aggregate 
@@ -55,8 +51,7 @@ module CommandHandler =
         >
         (eventStore: IEventStore) 
         =
-            let result = fun (id: Guid) -> getAggregateFreshState<'A, 'E> id eventStore 
-            result
+            fun (id: Guid) -> getAggregateFreshState<'A, 'E> id eventStore 
 
     let config = 
         try

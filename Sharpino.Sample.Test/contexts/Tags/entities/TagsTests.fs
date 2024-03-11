@@ -19,7 +19,7 @@ let tagModelTests =
             let tags = Tags.Zero.AddTag tag
             Expect.isOk tags "should be ok"
             let result = tags.OkValue
-            Expect.equal (result.tags.GetAll() |> List.length) 1 "should be equal"
+            Expect.equal (result.Tags.GetAll() |> List.length) 1 "should be equal"
 
         testCase "add and remove a tag - Ok" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue
@@ -27,7 +27,7 @@ let tagModelTests =
             let tags' = tags.RemoveTag tag.Id
             Expect.isOk tags' "should be ok"
             let result = tags'.OkValue
-            Expect.equal (result.tags.GetAll() |> List.length) 0 "should be equal"
+            Expect.equal (result.Tags.GetAll() |> List.length) 0 "should be equal"
 
         testCase "try removing an unexisting tag - Ko" <| fun _ ->
             let tag = mkTag (Guid.NewGuid()) "test" Color.Blue

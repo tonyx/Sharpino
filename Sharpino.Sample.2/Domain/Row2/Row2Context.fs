@@ -8,10 +8,10 @@ open Row
 // I call it context but it works as an aggregate. Need to fix it in library, docs ...
 module Row2Context =
     open System
-    type Row2(rowContext: RowContext) =
+    type Row2 (rowContext: RowContext) =
 
         static member Zero =
-            Row2(RowContext(row2Seats))
+            Row2 (RowContext(row2Seats))
 
         static member StorageName =
             "_row2"
@@ -30,7 +30,6 @@ module Row2Context =
                 let! rowContext' = rowContext.BookSeats booking
                 return Row2(rowContext')
             }
-
         member this.GetAvailableSeats () =
             rowContext.GetAvailableSeats ()
         member this.Serialize(serializer: ISerializer) =

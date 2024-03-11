@@ -1,13 +1,6 @@
 namespace Tonyx.Sharpino.Pub
 
 open Sharpino.Definitions
-open System
-open FSharpPlus.Operators
-open FsToolkit.ErrorHandling
-open Sharpino
-open Sharpino.Lib.Core.Commons
-open System.Text.RegularExpressions
-open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
 open Tonyx.Sharpino.Pub.Supplier

@@ -15,16 +15,11 @@ open FsToolkit.ErrorHandling
 module TodosContext =
 
     [<CurrentVersion>]
-    type TodosContext =
-        {
-            todos: Todos
-            categories: Categories
-        }
+    type TodosContext(todos: Todos, categories: Categories) =
+        member this.Todos = todos
+        member this.Categories = categories
         static member Zero =
-            {
-                todos = Todos.Zero
-                categories = Categories.Zero
-            }
+            TodosContext(Todos.Zero, Categories.Zero)
         static member StorageName =
             "_todo"
         static member Version =
@@ -40,52 +35,38 @@ module TodosContext =
             |> serializer.Serialize
 
         member this.Ping(): Result<TodosContext,string> =
-            result
-                {
-                    return
-                        this
-                }
+            this |> Ok
 
         member this.AddTodo (t: Todo) =
             let checkCategoryExists (c: Guid ) =
-                this.categories.GetCategories().Exists (fun x -> x.Id = c)
+                this.Categories.GetCategories().Exists (fun x -> x.Id = c)
                 |> Result.ofBool (sprintf "A category with id '%A' does not exist" c)
 
             result
                 {
                     let! categoriesMustExist = t.CategoryIds |> List.traverseResultM checkCategoryExists
-                    let! todos = this.todos.AddTodo t
+                    let! todos = this.Todos.AddTodo t
                     return 
-                        {
-                            this with
-                                todos = todos
-                        }
+                        TodosContext (todos, categories)
                 }
         member this.RemoveTodo (id: Guid) =
             result
                 {
-                    let todos = this.todos.RemoveTodo id
-                    let! todos = todos
+                    let! todos = this.Todos.RemoveTodo id
                     return
-                        {
-                            this with
-                                todos = todos
-                        }
+                        TodosContext (todos, categories)
                 }
-        member this.GetTodos() = this.todos.GetTodos()
+        member this.GetTodos() = this.Todos.GetTodos()
         member this.AddCategory (c: Category) =
             result
                 {
-                    let! categories = this.categories.AddCategory c
+                    let! categories = this.Categories.AddCategory c
                     return
-                        {
-                            this with
-                                categories = categories
-                        }
+                        TodosContext (this.Todos, categories)
                 }
         member this.RemoveCategory (id: Guid) = 
             let removeReferenceOfCategoryToTodos (id: Guid) =
-                this.todos.todos.GetAll()
+                this.Todos.Todos.GetAll()
                 |>>
                 (fun x -> 
                     { x with 
@@ -96,18 +77,13 @@ module TodosContext =
             
             result
                 {
-                    let! categories = this.categories.RemoveCategory id
+                    let! categories = this.Categories.RemoveCategory id
                     return
-                        {
-                            this with
-                                categories = categories
-                                todos = 
-                                    (removeReferenceOfCategoryToTodos id) |> Todos.FromList
-                        }
+                        TodosContext (removeReferenceOfCategoryToTodos id |> Todos.FromList, categories)
                 }   
         member this.RemoveTagReference (id: Guid) =
             let removeReferenceOfTagToAllTodos (id: Guid) =
-                this.todos.todos.GetAll()
+                this.Todos.Todos.GetAll()
                 |>> 
                 (fun x -> 
                     { x with 
@@ -118,15 +94,9 @@ module TodosContext =
             result
                 {
                     return
-                        {
-                            this with
-                                todos = 
-                                    (removeReferenceOfTagToAllTodos id) |> Todos.FromList
-
-
-                        }
+                        TodosContext((removeReferenceOfTagToAllTodos id) |> Todos.FromList, this.Categories)
                 }
-        member this.GetCategories() = this.categories.GetCategories().GetAll()
+        member this.GetCategories() = this.Categories.GetCategories().GetAll()
 
         // assume this should me moved but atm doesn't work in a separate module
 
@@ -134,14 +104,10 @@ module TodosContext =
 // what follows is the same code as above, but with the new version of the context
     [<UpgradedVersion>]
 
-    type TodosContextUpgraded =
-        {
-            todos: Todos
-        }
+    type TodosContextUpgraded(todos: Todos) =
+        member this.todos = todos
         static member Zero =
-            {
-                todos = Todos.Zero
-            }
+            TodosContextUpgraded(Todos.Zero)
         // storagename _MUST_ be unique for each context and the relative lock object 
         // must be added in syncobjects map in Conf.fs
         static member StorageName =
@@ -154,30 +120,20 @@ module TodosContext =
             new Object()
 
         member this.Ping(): Result<TodosContextUpgraded,string> =
-            result
-                {
-                    return
-                        this
-                }
+            this |> Ok
         member this.AddTodo (t: Todo) =
             result
                 {
                     let! todos = this.todos.AddTodo t
                     return
-                        {
-                            this with
-                                todos = todos
-                        }
+                        TodosContextUpgraded(todos)
                 }
         member this.RemoveTodo (id: Guid) =
             result
                 {
                     let! todos = this.todos.RemoveTodo id
                     return
-                        {
-                            this with
-                                todos = todos
-                        }
+                        TodosContextUpgraded(todos)
                 }
 
         member this.AddTodos (ts: List<Todo>) =
@@ -185,17 +141,14 @@ module TodosContext =
                 {
                     let! todos = this.todos.AddTodos ts
                     return
-                        {
-                            this with
-                                todos = todos
-                        }
+                        TodosContextUpgraded(todos)
                 }
 
         member this.GetTodos() = this.todos.GetTodos()
 
         member this.RemoveCategoryReference (id: Guid) =
             let removeReferenceOfCategoryToTodos (id: Guid) =
-                this.todos.todos.GetAll()
+                this.todos.Todos.GetAll()
                 |>>
                 (fun x -> 
                     { x with 
@@ -207,16 +160,12 @@ module TodosContext =
             result
                 {
                     return
-                        {
-                            this with
-                                todos = 
-                                    (removeReferenceOfCategoryToTodos id) |> Todos.FromList
-                        }
+                        TodosContextUpgraded((removeReferenceOfCategoryToTodos id) |> Todos.FromList)
                 }
 
         member this.RemoveTagReference (id: Guid) =
             let removeReferenceOfTagToAllTodos (id: Guid) =
-                this.todos.todos.GetAll() 
+                this.todos.Todos.GetAll() 
                 |>> 
                 (fun x -> 
                     { x with 
@@ -227,11 +176,7 @@ module TodosContext =
             result
                 {
                     return
-                        {
-                            this with
-                                todos = 
-                                    (removeReferenceOfTagToAllTodos id) |> Todos.FromList
-                        }
+                        TodosContextUpgraded((removeReferenceOfTagToAllTodos id) |> Todos.FromList)
                 }
         member this.Serialize(serializer: ISerializer) =
             this |> serializer.Serialize

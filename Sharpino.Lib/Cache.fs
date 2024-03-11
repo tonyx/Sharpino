@@ -20,7 +20,6 @@ module Cache =
             log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
             Conf.defaultConf
 
-    // probably the size of this cache can be just 1 because I need to keep only the current state. 
     type StateCache<'A > private () =
         let dic = Generic.Dictionary<EventId, Result<'A, string>>()
         let queue = Generic.Queue<EventId>()
@@ -32,7 +31,7 @@ module Cache =
             try
                 dic.Add(arg, res)
                 queue.Enqueue arg
-                // I guess I can keep only the last state
+                // I guess I can keep only the only one latest state
                 if (queue.Count > 1) then
                     let removed = queue.Dequeue()
                     dic.Remove removed |> ignore

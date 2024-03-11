@@ -34,9 +34,9 @@
 
   <!-- uncomment this while developing the library -->
 
-<!--<ItemGroup>-->
-<!--   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
-<!-- </ItemGroup> -->
+<ItemGroup>
+  <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+</ItemGroup>
   
 
   <ItemGroup>

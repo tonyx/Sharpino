@@ -65,7 +65,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
 
                 // then
-                Expect.equal (todosKafkaViewerState.todos.todos.GetAll()) [todo] "should be equal"
+                Expect.equal (todosKafkaViewerState.Todos.Todos.GetAll()) [todo] "should be equal"
 
             testCase "retrieve event and build current state by KafkaStateViewer (different order of assignment) - OK" <| fun _ ->
                 // given
@@ -88,7 +88,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 todoSubscriber.Assign(position, partition)
 
                 // then
-                Expect.equal (todosKafkaViewerState.todos.todos.GetAll()) [todo] "should be equal"
+                Expect.equal (todosKafkaViewerState.Todos.Todos.GetAll()) [todo] "should be equal"
 
             testCase "add many events and build current state by KafkaStateViewer - OK" <| fun _ ->
                 // given
@@ -111,7 +111,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 todosKafkaViewer.Refresh() |> ignore
                 let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 
@@ -139,7 +139,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 todosKafkaViewer.Refresh() |> ignore
                 let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 
@@ -171,7 +171,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 
@@ -203,14 +203,14 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 
                 let todo4 = mkTodo (Guid.NewGuid()) "testX4" [] []
                 let todo4Added = app.addTodo todo4
                 let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3; todo4] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 
@@ -242,7 +242,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 
                 let todosKafkaViewerState = currentStateViewer() |> Result.get |> fun (_, b, _, _) -> b
 
-                let actual = todosKafkaViewerState.todos.todos.GetAll() |> Set.ofList
+                let actual = todosKafkaViewerState.Todos.Todos.GetAll() |> Set.ofList
                 let expected = [todo; todo2; todo3] |> Set.ofList
                 Expect.equal actual expected "should be equal"
 

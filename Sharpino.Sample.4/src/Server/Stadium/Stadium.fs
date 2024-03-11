@@ -7,14 +7,10 @@ open Sharpino.Utils
 open System
 
 module Stadium =
-    type Stadium =
-        {
-            rowReferences: List<DateTime * Guid>
-        }
+    type Stadium (rowReferences: List<DateTime * Guid>) =
+        member this.rowReferences = rowReferences
         static member Zero =
-            {
-                rowReferences = []
-            }
+            Stadium []
         static member StorageName =
             "_stadium"
         static member Version =
@@ -37,10 +33,8 @@ module Stadium =
                     |> List.contains id
                     |> not
                     |> boolToResult (sprintf "A row with id '%A' already exists" id)
-                return {
-                    this with
-                        rowReferences = ((System.DateTime.Now), id) :: this.rowReferences
-                }
+                return
+                    Stadium ((System.DateTime.Now, id) :: this.rowReferences)
             }
 
         member this.RemoveRowReference (id: Guid) =
@@ -50,10 +44,8 @@ module Stadium =
                     |>> snd
                     |> List.contains id
                     |> boolToResult (sprintf "A row with id '%A' does not exist" id)
-                return {
-                    this with
-                        rowReferences = this.rowReferences |> List.filter (fun (_, x) -> x <> id)
-                }
+                return
+                    Stadium (this.rowReferences |> List.filter (fun (_, x) -> x <> id))
             }
 
         member this.GetRowReferences () =

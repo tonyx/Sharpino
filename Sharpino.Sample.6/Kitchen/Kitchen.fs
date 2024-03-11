@@ -3,21 +3,17 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
 open Sharpino.Utils
+open Sharpino
 open System
 
 module Kitchen =
-    type Kitchen =
-        {
-            dishReferences: List<DateTime * Guid>
-            ingredientReferences: List<DateTime * Guid>
-            suppliersReferences: List<DateTime * Guid>
-        }
+    type Kitchen (dishReferences: List<DateTime * Guid>, ingredientReferences: List<DateTime * Guid>, supplierReferences: List<DateTime * Guid>)=
+        member this.dishReferences = dishReferences
+        member this.ingredientReferences = ingredientReferences
+        member this.supplierReferences = supplierReferences
+
         static member Zero =
-            {
-                dishReferences = []
-                ingredientReferences = []
-                suppliersReferences = [] 
-            }
+            Kitchen ([], [], [])
         static member StorageName =
             "_kitchen"
         static member Version =
@@ -40,11 +36,9 @@ module Kitchen =
                     |>> snd
                     |> List.contains id
                     |> not
-                    |> boolToResult (sprintf "A dish with id '%A' already exists" id)
-                return {
-                    this with
-                        dishReferences = ((System.DateTime.Now), id) :: this.dishReferences
-                }
+                    |> Result.ofBool (sprintf "A dish with id '%A' already exists" id)    
+                return 
+                    Kitchen ((System.DateTime.Now, id) :: this.dishReferences, this.ingredientReferences, this.supplierReferences)
             }
         member this.AddIngredientReference (id: Guid) =
             result {
@@ -53,11 +47,8 @@ module Kitchen =
                     |>> snd
                     |> List.contains id
                     |> not
-                    |> boolToResult (sprintf "An ingredient with id '%A' already exists" id)
-                return {
-                    this with
-                        ingredientReferences = ((System.DateTime.Now), id) :: this.ingredientReferences
-                }
+                    |> Result.ofBool (sprintf "An ingredient with id '%A' already exists" id)
+                return Kitchen (this.dishReferences, ((System.DateTime.Now, id) :: this.ingredientReferences), this.supplierReferences)
             }
         member this.RemoveIngredientReference (id: Guid) =
             result {
@@ -65,11 +56,8 @@ module Kitchen =
                     this.ingredientReferences
                     |>> snd
                     |> List.contains id
-                    |> boolToResult (sprintf "An ingredient with id '%A' does not exist" id)
-                return {
-                    this with
-                        ingredientReferences = this.ingredientReferences |> List.filter (fun (_, x) -> x <> id)
-                }
+                    |> Result.ofBool (sprintf "An ingredient with id '%A' does not exist" id)
+                return Kitchen (this.dishReferences, this.ingredientReferences |> List.filter (fun (_, x) -> x <> id), this.supplierReferences)
             }
 
         member this.RemoveDishReference (id: Guid) =
@@ -78,37 +66,29 @@ module Kitchen =
                     this.dishReferences
                     |>> snd
                     |> List.contains id
-                    |> boolToResult (sprintf "A dish with id '%A' does not exist" id)
-                return {
-                    this with
-                        dishReferences = this.dishReferences |> List.filter (fun (_, x) -> x <> id)
-                }
+                    |> Result.ofBool (sprintf "A dish with id '%A' does not exist" id)
+                return Kitchen (this.dishReferences |> List.filter (fun (_, x) -> x <> id), this.ingredientReferences, this.supplierReferences)
             }
             
         member this.AddSupplierReference (id: Guid) =
             result {
                 let! notAlreadyExists =
-                    this.suppliersReferences
+                    this.supplierReferences
                     |>> snd
                     |> List.contains id
                     |> not
-                    |> boolToResult (sprintf "A supplier with id '%A' already exists" id)
-                return {
-                    this with
-                        suppliersReferences = ((System.DateTime.Now), id) :: this.suppliersReferences
-                }
+                    |> Result.ofBool (sprintf "A supplier with id '%A' already exists" id)
+                return Kitchen (this.dishReferences, this.ingredientReferences, ((System.DateTime.Now, id) :: this.supplierReferences))
             }
         member this.RemoveSupplierReference (id: Guid) =
             result {
                 let! chckExists =
-                    this.suppliersReferences
+                    this.supplierReferences
                     |>> snd
                     |> List.contains id
-                    |> boolToResult (sprintf "A supplier with id '%A' does not exist" id)
-                return {
-                    this with
-                        suppliersReferences = this.suppliersReferences |> List.filter (fun (_, x) -> x <> id)
-                }
+                    |> Result.ofBool (sprintf "A supplier with id '%A' does not exist" id)
+                return 
+                    Kitchen (this.dishReferences, this.ingredientReferences, this.supplierReferences |> List.filter (fun (_, x) -> x <> id))
             }    
         member this.GetDishReferences () =
             this.dishReferences |>> snd
