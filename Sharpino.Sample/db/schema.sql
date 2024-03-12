@@ -169,6 +169,126 @@ END;
 $$;
 
 
+--
+-- Name: set_classic_optimistic_lock_01_categories(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_01_categories()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_categories_context_state_id_unique') THEN
+ALTER TABLE events_01_categories
+    ADD CONSTRAINT context_events_01_categories_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
+-- Name: set_classic_optimistic_lock_01_tags(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_01_tags()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_tags_context_state_id_unique') THEN
+ALTER TABLE events_01_tags
+    ADD CONSTRAINT context_events_01_tags_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
+-- Name: set_classic_optimistic_lock_01_todo(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_01_todo()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_todo_context_state_id_unique') THEN
+ALTER TABLE events_01_todo
+    ADD CONSTRAINT context_events_01_todo_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
+-- Name: set_classic_optimistic_lock_02_todo(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_02_todo()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_02_todo_context_state_id_unique') THEN
+ALTER TABLE events_02_todo
+    ADD CONSTRAINT context_events_02_todo_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_01_categories(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_categories()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ALTER TABLE events_01_categories
+DROP CONSTRAINT IF EXISTS context_events_01_categories_context_state_id_unique;
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_01_tags(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_tags()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ALTER TABLE events_01_tags
+DROP CONSTRAINT IF EXISTS context_events_01_tags_context_state_id_unique;
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_01_todo(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_todo()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ALTER TABLE events_01_todo
+DROP CONSTRAINT IF EXISTS context_events_01_todo_context_state_id_unique;
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_02_todo(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_02_todo()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ALTER TABLE events_02_todo
+DROP CONSTRAINT IF EXISTS context_events_02_todo_context_state_id_unique;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;

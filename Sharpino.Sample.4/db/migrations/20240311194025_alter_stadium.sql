@@ -17,6 +17,22 @@ BEGIN
     VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
-$$
+$$;
+
+CREATE OR REPLACE PROCEDURE set_classic_optimistic_lock_01_stadium() AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_stadium_context_state_id_unique') THEN
+ALTER TABLE events_01_stadium
+    ADD CONSTRAINT context_events_01_stadium_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE PROCEDURE un_set_classic_optimistic_lock_01_stadium() AS $$
+BEGIN
+    ALTER TABLE events_01_stadium
+    DROP CONSTRAINT IF EXISTS context_events_01_stadium_context_state_id_unique;
+END;
+$$ LANGUAGE plpgsql;
 -- migrate:down
 

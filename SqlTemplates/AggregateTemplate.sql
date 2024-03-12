@@ -114,8 +114,8 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE PROCEDURE un_set_classic_optimistic_lock{Version}{AggregateStorageName}() AS $$
 BEGIN
-ALTER TABLE aggregate_events{Version}{AggregateStorageName}
-DROP CONSTRAINT IF EXISTS aggregate_events{Version}{AggregateStorageName}_aggregate_id_state_id_unique; 
+    ALTER TABLE aggregate_events{Version}{AggregateStorageName}
+    DROP CONSTRAINT IF EXISTS aggregate_events{Version}{AggregateStorageName}_aggregate_id_state_id_unique; 
     -- You can have more SQL statements as needed
 END;
 $$ LANGUAGE plpgsql;

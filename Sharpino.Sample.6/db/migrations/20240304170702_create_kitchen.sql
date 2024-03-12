@@ -52,12 +52,14 @@ AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_kitchen(event, timestamp)
-VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events_01_kitchen(event, timestamp)
+    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
 
 END;
 $$
+
+
 
 
 -- migrate:down

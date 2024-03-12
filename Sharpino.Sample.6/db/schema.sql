@@ -100,9 +100,9 @@ CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text) RETU
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_kitchen(event, timestamp)
-VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events_01_kitchen(event, timestamp)
+    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    return inserted_id;
 
 END;
 $$;
@@ -195,6 +195,22 @@ $$;
 
 
 --
+-- Name: set_classic_optimistic_lock_01_kitchen(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_01_kitchen()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_kitchen_context_state_id_unique') THEN
+ALTER TABLE aggregate_events_01_kitchen
+    ADD CONSTRAINT context_events_01_kitchen_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
 -- Name: set_classic_optimistic_lock_01_supplier(); Type: PROCEDURE; Schema: public; Owner: -
 --
 
@@ -235,6 +251,21 @@ CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_ingredient()
 BEGIN
 ALTER TABLE aggregate_events_01_ingredient
 DROP CONSTRAINT IF EXISTS aggregate_events_01_ingredient_aggregate_id_state_id_unique;
+    -- You can have more SQL statements as needed
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_01_kitchen(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_kitchen()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+ALTER TABLE aggregate_events_01_kitchen
+DROP CONSTRAINT IF EXISTS context_events_01_kitchen_context_state_id_unique;
     -- You can have more SQL statements as needed
 END;
 $$;
