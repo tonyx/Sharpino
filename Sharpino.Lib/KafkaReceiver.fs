@@ -190,6 +190,11 @@ module KafkaReceiver =
                 return ()
             }
 
+
+
+
+
+
     // todo: need to be fixed (see open bug) 
     type KafkaAggregateViewer<'A, 'E when 'E :> Event<'A>> 
         (aggregateId: Guid,
@@ -198,8 +203,6 @@ module KafkaReceiver =
         sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
-        
-        // let states = Generic.Dictionary<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>>()
         
         let mutable state = 
             try
@@ -274,6 +277,90 @@ module KafkaReceiver =
                     ()
                 return ()
             }
+
+    // make this work for any aggregate
+    type KafkaAggregateViewer2<'A, 'E when 'E :> Event<'A>> 
+        (subscriber: KafkaAggregateSubscriber, 
+        sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
+        appId: Guid)
+        =
+        
+        // let states: Map<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>> = Map.empty
+        let states = Generic.Dictionary<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>>()
+
+        member this.State (aggregateId: AggregateId) = 
+            match states.TryGetValue aggregateId with
+            | (true, res) -> res
+            | _ -> 
+                let state = 
+                    try
+                        sourceOfTruthStateViewer aggregateId 
+                    with
+                    | e  -> 
+                        "state error" |> Result.Error
+                states.Add(aggregateId, state) |> ignore
+                state
+
+        member this.Refresh () =
+            let result = subscriber.consume config.RefreshTimeout
+            match result with
+            | Error e -> 
+                log.Error e
+                Result.Error e 
+            | Ok msg ->
+                ResultCE.result {
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
+                    let eventId = newMessage.EventId
+                    let aggregateId = newMessage.AggregateId
+                    let! currentStateId, _, _, _ = this.State aggregateId 
+                    if eventId = currentStateId + 1 then
+                        let msgAppId = newMessage.ApplicationId
+                        let msgAggregateId = newMessage.AggregateId
+                        let! newEvent = newMessage.Event |> serializer.Deserialize<'E>
+                        let! (_, currentState, _, _) = this.State aggregateId 
+
+                        if appId <> msgAppId  then //|| aggregateId <> msgAggregateId then
+                            ()
+                        else
+                            let! newState = evolve currentState [newEvent] 
+                            states.[aggregateId] <- ( eventId, newState, None, None ) |> Result.Ok
+                        return () |> Result.Ok
+                    else
+                        return () |> Result.Ok
+                        // focus todo don't forget!!!!!!!! 
+
+                        // let! _ = this.ForceSyncWithSourceOfTruth()
+                        // let! _, _, offset, partition = this.State ()
+                        // let _ =
+                        //     match offset, partition with
+                        //     | Some off, Some part ->
+                        //         subscriber.Assign( off + 1L, part )
+                        //     | _ -> 
+                        //         log.Error "Cannot assign offset and partition"
+                        //         ()
+                        // return () |> Result.Ok
+                }
+                
+        member this.RefreshLoop () =
+            let mutable result = this.Refresh ()
+            while (result |> Result.toOption).IsSome do
+                result <- this.Refresh()
+                ()
+            ()
+
+        // member this.ForceSyncWithSourceOfTruth() = 
+        //     ResultCE.result {
+        //         let! newState = sourceOfTruthStateViewer aggregateId
+        //         state <- newState |> Result.Ok
+        //         let! _, _, offset, partition = this.State ()
+        //         match offset, partition with
+        //         | Some off, Some part ->
+        //             subscriber.Assign ( off + 1L, part )
+        //         | _ ->
+        //             log.Error "Cannot assign offset and partition"
+        //             ()
+        //         return ()
+        //     }
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -309,4 +396,21 @@ module KafkaReceiver =
         (applicationId: Guid) 
         =
             KafkaAggregateViewer<'A, 'E>(aggregateId, subscriber, sourceOfTruthStateViewer, applicationId)
+
+    let inline mkKafkaAggregateViewer2<'A, 'E
+        when 'A:> Aggregate
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> string)
+        >
+        (subscriber: KafkaAggregateSubscriber) 
+        (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
+        (applicationId: Guid) 
+        =
+            KafkaAggregateViewer2<'A, 'E>(subscriber, sourceOfTruthStateViewer, applicationId)
+
 

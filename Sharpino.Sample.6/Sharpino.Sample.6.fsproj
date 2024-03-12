@@ -33,7 +33,7 @@
     <PackageReference Include="Expecto" Version="10.1.0" />
     <PackageReference Include="Farmer" Version="1.8.8" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
-    <PackageReference Include="Log4net" Version="2.0.15" />
+    <PackageReference Include="Log4net" Version="2.0.16" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 <!--    <PackageReference Include="Sharpino" Version="1.5.6" />-->
   </ItemGroup>
