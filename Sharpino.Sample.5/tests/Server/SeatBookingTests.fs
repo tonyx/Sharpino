@@ -118,13 +118,13 @@ module BookingTests =
 
         let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
         let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
-        let kafkaStadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer)
+        let kafkaStadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer2)
 
         let stadiumInstances =
             [
-                stadiumSystem,0,0
+                // stadiumSystem,0,0
                 // memoryStadiumSystem, 1, 1
-                // kafkaStadiumBookingSystem, 2, 2
+                kafkaStadiumBookingSystem, 2, 2
             ]
 
         testList "seat bookings" [
@@ -184,6 +184,53 @@ module BookingTests =
                 Expect.isOk retrievedRow "should be ok"
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 1 "should be 1"
+
+            ftestCase "add a row reference and a seat to it. Retrieve the event by the subscriber - Ok"   <| fun _ ->
+                setUp()
+
+                // when
+                let rowId = Guid.NewGuid()
+                let addRow = kafkaStadiumBookingSystem.AddRowReference rowId
+                Expect.isOk addRow "should be ok"
+                let seat = { Id = 1; State = Free; RowId = None }
+                let addSeat = kafkaStadiumBookingSystem.AddSeat rowId seat
+                Expect.isOk addSeat "should be ok"
+                let deliveryResult = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
+                let position = deliveryResult.Offset
+                let partition = deliveryResult.Partition
+
+                rowSubscriber'.Assign (position, partition)
+
+                let consumed = rowSubscriber'.consume 10000
+                printf "consumed %A" consumed
+                let okConsumed = consumed |> Result.get
+                okConsumed.Message.Value |> printf "consumed message %A"
+                let deserialized = okConsumed.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
+                Expect.isOk deserialized "should be ok"
+                let deserialized' = deserialized |> Result.get
+                let event = deserialized'.Event |> serializer.Deserialize<RowAggregateEvent>
+                Expect.isOk event "should be ok"
+                let event' = event |> Result.get
+                printf "event %A" event'
+
+                let expected = SeatAdded { Id = 1; State = Free; RowId = rowId |> Some }
+                Expect.equal event' expected "should be equal"
+
+
+                // printf "GOING TO GET ROW REFERENCE\n"
+                // let row = rowStateViewer2 rowId
+                // Expect.isOk row "should be ok"
+                // let actualRow: SeatsRow = row.OkValue |> fun (a, b, c, d) -> b
+
+                // Expect.equal actualRow.Seats.Length 1  "should be 1"
+
+
+
+                // // then
+                // let retrievedRow = stadiumSystem.GetRow rowId
+                // Expect.isOk retrievedRow "should be ok"
+                // let result = retrievedRow.OkValue
+                // Expect.equal result.Seats.Length 1 "should be 1"
 
             multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()

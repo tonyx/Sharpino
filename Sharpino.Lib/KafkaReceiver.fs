@@ -71,7 +71,7 @@ module KafkaReceiver =
                 if isNull then Guid.Empty
                 else Guid(data.ToArray())
             
-    type KafkaAggregateSubscriber(bootStrapServer: string, version: string, name: string, groupId: string, aggregateId: Guid) =
+    type KafkaAggregateSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
 
         let config = ConsumerConfig()
@@ -83,6 +83,7 @@ module KafkaReceiver =
         let consumer = new ConsumerBuilder<Guid, string>(config)
         let _ =
             consumer.SetKeyDeserializer(GuidDeserializer())
+
         let cons = consumer.Build ()
         let _ = cons.Subscribe topic 
         
@@ -108,7 +109,12 @@ module KafkaReceiver =
             }            
         static member Create(bootStrapServer: string, version: string, name: string, groupId: string, aggregateId: Guid) =
             try
-                KafkaAggregateSubscriber(bootStrapServer, version, name, groupId, aggregateId) |> Ok
+                KafkaAggregateSubscriber(bootStrapServer, version, name, groupId) |> Ok
+            with 
+            | _ as e -> Result.Error (e.Message)
+        static member Create2(bootStrapServer: string, version: string, name: string, groupId: string) =
+            try
+                KafkaAggregateSubscriber(bootStrapServer, version, name, groupId) |> Ok
             with 
             | _ as e -> Result.Error (e.Message)
     
@@ -279,25 +285,34 @@ module KafkaReceiver =
             }
 
     // make this work for any aggregate
-    type KafkaAggregateViewer2<'A, 'E when 'E :> Event<'A>> 
+    type KafkaAggregateViewer2<'A, 'E when 
+        'E :> Event<'A> and
+        'A :> Aggregate> 
         (subscriber: KafkaAggregateSubscriber, 
         sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
-        
         // let states: Map<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>> = Map.empty
         let states = Generic.Dictionary<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>>()
 
         member this.State (aggregateId: AggregateId) = 
+            // this.RefreshLoop()
             match states.TryGetValue aggregateId with
-            | (true, res) -> res
+            | (true, res) -> 
+                printf "getting state 1000\n"
+                res
             | _ -> 
                 let state = 
+                    printf "getting state 2000\n"
                     try
                         sourceOfTruthStateViewer aggregateId 
                     with
                     | e  -> 
                         "state error" |> Result.Error
+                printf "this is the state\n"
+                let agggState = state |> Result.get |> fun (a, b, c, d) -> b
+                printf "this is the state retrieved %A\n" (agggState.Serialize serializer)
+
                 states.Add(aggregateId, state) |> ignore
                 state
 
@@ -305,12 +320,16 @@ module KafkaReceiver =
             let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
+                printf "no message\n"
                 log.Error e
                 Result.Error e 
             | Ok msg ->
                 ResultCE.result {
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
                     let eventId = newMessage.EventId
+
+                    printf "XXXXXX refresh - getting event 100: %A\n" newMessage.Event
+
                     let aggregateId = newMessage.AggregateId
                     let! currentStateId, _, _, _ = this.State aggregateId 
                     if eventId = currentStateId + 1 then
@@ -342,6 +361,7 @@ module KafkaReceiver =
                 }
                 
         member this.RefreshLoop () =
+            printf "Refresh loop\n"
             let mutable result = this.Refresh ()
             while (result |> Result.toOption).IsSome do
                 result <- this.Refresh()

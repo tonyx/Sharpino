@@ -23,7 +23,7 @@ Support for Event-sourcing in F#.
 
 ## Absent features (for now)
 - Sensible data (GDPR) 
-- ...
+- Stable and working integration with an Event Broker (Apache Kafka)
 
 
 ## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
@@ -174,6 +174,9 @@ __Faq__:
 
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
+
+## help wanted:
+- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
 

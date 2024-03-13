@@ -173,7 +173,7 @@ NUGET
       System.Management (>= 7.0.2)
     Google.Apis.Core (1.67)
       Newtonsoft.Json (>= 13.0.3)
-    log4net (2.0.15)
+    log4net (2.0.16)
       System.Configuration.ConfigurationManager (>= 4.5)
     Microsoft.AspNetCore.Authentication.JwtBearer (8.0.2)
       Microsoft.IdentityModel.Protocols.OpenIdConnect (>= 7.1.2)

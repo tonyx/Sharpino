@@ -91,6 +91,7 @@ module KafkaBroker =
                     let sent =
                         message.Key <- null
                         message.Value <- brokerMessage |> serializer.Serialize
+                        printf "XXXX sending message: %A" message.Value
                         p.ProduceAsync(topic, message)
                         |> Async.AwaitTask 
                         |> Async.RunSynchronously
