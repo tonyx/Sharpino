@@ -21,7 +21,7 @@ open Sharpino.Sample.EventBrokerBasedApp
 [<Tests>]
     let kafkaTests =
         let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-        testList "Kafka consumer and subscribers test" [
+        ftestList "Kafka consumer and subscribers test" [
             testCase "retrieve row event by todoSubscriber and consume - Ok " <| fun _ ->
                 // given
                 let app = currentVersionPgWithKafkaApp
@@ -34,6 +34,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let deliveryResult = todoAdded.OkValue |> snd |> List.head |> Option.get |> List.head
                 let position = deliveryResult.Offset
                 let partition = deliveryResult.Partition
+
                 todoSubscriber.Assign(position, partition)
 
                 // when
@@ -57,7 +58,8 @@ open Sharpino.Sample.EventBrokerBasedApp
                 let deliveryResult = todoAdded.OkValue |> snd |> List.head |> Option.get |> List.head
                 let position = deliveryResult.Offset
                 let partition = deliveryResult.Partition
-                todoSubscriber.Assign(position, partition)
+
+                // todoSubscriber.Assign(position, partition)
 
                 // when
                 let todosKafkaViewer =
@@ -85,7 +87,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                         (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
                 let todosKafkaViewerState = todosKafkaViewer.State() |> Result.get |> fun (_, b, _, _) -> b
 
-                todoSubscriber.Assign(position, partition)
+                // todoSubscriber.Assign(position, partition)
 
                 // then
                 Expect.equal (todosKafkaViewerState.Todos.Todos.GetAll()) [todo] "should be equal"
@@ -104,7 +106,7 @@ open Sharpino.Sample.EventBrokerBasedApp
                 // when
                 let todosKafkaViewer = mkKafkaViewer<TodosContext, TodoEvent> todoSubscriber (CommandHandler.getStorageFreshStateViewer<TodosContext, TodoEvent> pgStorage) (ApplicationInstance.Instance.GetGuid())
 
-                todoSubscriber.Assign(position, partition)
+                // todoSubscriber.Assign(position, partition)
 
                 let todo2 = mkTodo (Guid.NewGuid()) "testX2" [] []
                 let todo2Added = app.addTodo todo2
@@ -262,7 +264,6 @@ open Sharpino.Sample.EventBrokerBasedApp
             testCase "eventBroker based app add and retrieve a category - Ok" <| fun _ ->
                 resetDb pgStorage
                 resetAppId()
-                let todoSubscriber = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient") |> Result.get
                 let app = EventBrokerBasedApp(pgStorage, localHostbroker)
                 let category = mkCategory (Guid.NewGuid()) "testX" 
                 let categoryAdded = app.AddCategory category

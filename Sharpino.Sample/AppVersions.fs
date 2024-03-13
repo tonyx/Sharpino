@@ -92,22 +92,23 @@ module AppVersions =
 
     type IApplication =
         {
-            _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>    
+            // _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>    
+            _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<string, string>>, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         Version * List<Json> * Name * ContextStateId -> unit
-            _pingTodo:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            _pingCategories:    unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            _pingTags:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            _pingTodo:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            _pingCategories:    unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            _pingTags:          unit -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
             getAllTodos:        unit -> Result<List<Todo>, string>
-            addTodo:            Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            add2Todos:          Todo * Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            removeTodo:         Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            addTodo:            Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            add2Todos:          Todo * Todo -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            removeTodo:         Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
             getAllCategories:   unit -> Result<List<Category>, string> 
-            addCategory:        Category -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            removeCategory:     Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            addTag:             Tag -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
-            removeTag:          Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<Null, string>>>>, string>
+            addCategory:        Category -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            removeCategory:     Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            addTag:             Tag -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
+            removeTag:          Guid -> Result< List<List<int>> * List<Option<List<DeliveryResult<string, string>>>>, string>
             getAllTags:         unit -> Result<List<Tag>, string>
             todoReport:         DateTime -> DateTime -> Result<TodosEvents, string>
         }

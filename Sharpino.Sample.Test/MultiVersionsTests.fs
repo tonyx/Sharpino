@@ -104,14 +104,14 @@ let listenForEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, timeout: 
         return deserialized'.Event
     }    
 
-let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
+let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
     receiver.Assign (position.Value, partition.Value)
     listenForEvent (appId, receiver)
 
-let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>) =
+let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
@@ -120,14 +120,14 @@ let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults:
     let second = listenForEvent (appId, receiver)
     (first, second)
 
-let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
+let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>, timeout: int) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition
     receiver.Assign (position.Value, partition.Value)
     listenForEventWithRetries (appId, receiver, timeout)
     
-let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>>>, timeout: int) =
+let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>, timeout: int) =
     let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
     let position = deliveryResult.Offset
     let partition = deliveryResult.Partition

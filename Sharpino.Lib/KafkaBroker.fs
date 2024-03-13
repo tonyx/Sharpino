@@ -42,9 +42,15 @@ module KafkaBroker =
         try 
             let config = ProducerConfig()
             config.BootstrapServers <- bootStrapServer
-            let producer = ProducerBuilder<Null, string>(config)
+            let producer = ProducerBuilder<string, string>(config)
             let p = producer.Build()
-            let message = Message<Null, string>()
+
+            let aggregateProducer = ProducerBuilder<Null, string>(config)
+            let aggregateP = aggregateProducer.Build()
+
+
+            let message = Message<string, string>()
+            let aggregatemessage = Message<Null, string>()
 
             let notifyAggregateMessage  (version: string) (name: string) (aggregateId: Guid) (msg: int * Json) =
                 let topic = name + "-" + version |> String.replace "_" ""
@@ -58,9 +64,9 @@ module KafkaBroker =
 
                 try
                     let sent =
-                        message.Key <- null
-                        message.Value <- brokerMessage |> serializer.Serialize
-                        p.ProduceAsync(topic, message)
+                        aggregatemessage.Key <- null
+                        aggregatemessage.Value <- brokerMessage |> serializer.Serialize
+                        aggregateP.ProduceAsync(topic, aggregatemessage)
                         |> Async.AwaitTask 
                         |> Async.RunSynchronously
 
@@ -89,9 +95,8 @@ module KafkaBroker =
 
                 try
                     let sent =
-                        message.Key <- null
+                        message.Key <- topic
                         message.Value <- brokerMessage |> serializer.Serialize
-                        printf "XXXX sending message: %A" message.Value
                         p.ProduceAsync(topic, message)
                         |> Async.AwaitTask 
                         |> Async.RunSynchronously

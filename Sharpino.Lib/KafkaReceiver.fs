@@ -35,7 +35,8 @@ module KafkaReceiver =
         let _ = config.AutoOffsetReset <- AutoOffsetReset.Earliest
         let _ = config.EnableAutoCommit <- false
 
-        let consumer = new ConsumerBuilder<Null, string>(config)
+        // let consumer = new ConsumerBuilder<Null, string>(config)
+        let consumer = new ConsumerBuilder<string, string>(config)
         let cons = consumer.Build () 
         let _ = cons.Subscribe topic 
         
@@ -49,7 +50,7 @@ module KafkaReceiver =
             result
             
         // too late to change the name
-        member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<Null, string>, string> =
+        member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<string, string>, string> =
             ResultCE.result {
                 try
                     let cancellationTokenSource = new System.Threading.CancellationTokenSource(timeoutMilliseconds)
