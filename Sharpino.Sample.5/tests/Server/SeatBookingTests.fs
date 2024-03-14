@@ -453,7 +453,7 @@ module BookingTests =
                                 seats.[3].State = SeatState.Booked &&
                                 seats.[4].State = SeatState.Booked)
                             |> not)
-                            |> boolToResult "error: can't leave a single seat free in the middle"
+                            |> Result.ofBool "error: can't leave a single seat free in the middle"
                     @>
                 // let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)
                 let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
@@ -525,7 +525,7 @@ module BookingTests =
                                 seats.[3].State = SeatState.Booked &&
                                 seats.[4].State = SeatState.Booked)
                             |> not
-                            |> boolToResult "error: can't leave a single seat free in the middle"
+                            |> Result.ofBool "error: can't leave a single seat free in the middle"
                     @>
                 // let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
                 let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
