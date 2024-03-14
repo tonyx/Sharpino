@@ -157,9 +157,6 @@ module BookingTests =
             multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
-                // given
-                // let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
-
                 // when
                 let rowId = Guid.NewGuid()
                 let row = stadiumSystem.GetRow rowId
@@ -187,6 +184,7 @@ module BookingTests =
 
             ptestCase "add a row reference and a seat to it. Retrieve the event by the subscriber - Ok"   <| fun _ ->
                 setUp()
+                // this test in in progress and is ignored
 
                 // when
                 let rowId = Guid.NewGuid()
@@ -348,7 +346,6 @@ module BookingTests =
             multipleTestCase "add a booking on an unexisting row - Error" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
                 // given
-                // let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 let booking = { Id = 1; SeatIds = [1]}
                 let rowId = Guid.NewGuid()
@@ -455,7 +452,6 @@ module BookingTests =
                             |> not)
                             |> Result.ofBool "error: can't leave a single seat free in the middle"
                     @>
-                // let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)
                 let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
                 let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
@@ -527,7 +523,6 @@ module BookingTests =
                             |> not
                             |> Result.ofBool "error: can't leave a single seat free in the middle"
                     @>
-                // let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
                 let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
                 let addedRow1 = stadiumSystem.AddRowReference rowId1
