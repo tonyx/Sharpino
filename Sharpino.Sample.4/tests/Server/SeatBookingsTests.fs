@@ -324,7 +324,8 @@ module BookingTests =
                                 seats.[1].State = SeatState.Booked &&
                                 seats.[2].State = SeatState.Free &&
                                 seats.[3].State = SeatState.Booked &&
-                                seats.[4].State = SeatState.Booked)
+                                seats.[4].State = SeatState.Booked
+                            )
                             |> not
                             |> boolToResult "error: can't leave a single seat free in the middle"
                     @>

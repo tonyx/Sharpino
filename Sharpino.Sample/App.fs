@@ -63,7 +63,7 @@ module App =
         member this.PingTodo() =
             result {
                 let! result =
-                    TodoCommand.Ping()
+                    TodoCommand.Ping ()
                     |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                 return result
             }
@@ -90,7 +90,7 @@ module App =
             }
 
         member this.AddTodo todo =
-            lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
+            // lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
                     let! (_, tagState, _, _) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -106,7 +106,7 @@ module App =
                         |> runCommand<TodosContext, TodoEvent> storage eventBroker todosStateViewer
                     return result
                 }
-            )
+            // )
 
         member this.Add2Todos (todo1, todo2) =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 

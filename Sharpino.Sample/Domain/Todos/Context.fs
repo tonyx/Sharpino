@@ -36,7 +36,7 @@ module TodosContext =
             this
             |> serializer.Serialize
 
-        member this.Ping(): Result<TodosContext,string> =
+        member this.Ping(): Result<TodosContext, string> =
             this |> Ok
 
         member this.AddTodo (t: Todo) =
@@ -46,7 +46,9 @@ module TodosContext =
 
             result
                 {
-                    let! categoriesMustExist = t.CategoryIds |> List.traverseResultM checkCategoryExists
+                    let! categoriesMustExist = 
+                        t.CategoryIds 
+                        |> List.traverseResultM checkCategoryExists
                     let! todos = this.Todos.AddTodo t
                     return 
                         TodosContext (todos, categories)

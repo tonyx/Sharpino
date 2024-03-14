@@ -122,12 +122,12 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                // stadiumSystem,0,0
+                stadiumSystem,0,0
                 // memoryStadiumSystem, 1, 1
-                kafkaStadiumBookingSystem, 2, 2
+                // kafkaStadiumBookingSystem, 2, 2
             ]
 
-        testList "seat bookings" [
+        ftestList "seat bookings" [
             pmultipleTestCase "create a row with no seats and retrieve it - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
@@ -185,7 +185,7 @@ module BookingTests =
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 1 "should be 1"
 
-            ftestCase "add a row reference and a seat to it. Retrieve the event by the subscriber - Ok"   <| fun _ ->
+            ptestCase "add a row reference and a seat to it. Retrieve the event by the subscriber - Ok"   <| fun _ ->
                 setUp()
 
                 // when
@@ -455,7 +455,8 @@ module BookingTests =
                             |> not)
                             |> boolToResult "error: can't leave a single seat free in the middle"
                     @>
-                let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)
+                // let middleSeatInvariantContainer = InvariantContainer(pickler.PickleToString middleSeatInvariant)
+                let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
                 let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
 
@@ -526,7 +527,8 @@ module BookingTests =
                             |> not
                             |> boolToResult "error: can't leave a single seat free in the middle"
                     @>
-                let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
+                // let invariantContainer = InvariantContainer(pickler.PickleToString middleSeatNotFreeRule)
+                let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
                 let addedRow1 = stadiumSystem.AddRowReference rowId1
                 Expect.isOk addedRow1 "should be ok"

@@ -182,14 +182,13 @@ module PgStorage =
                             let ids =
                                 eventsAndStatesIds
                                 |>>
-                                    (
-                                        fun (event, contextStateId) -> 
-                                            let command' = new NpgsqlCommand(command, conn)
-                                            command'.Parameters.AddWithValue("event", event ) |> ignore
-                                            command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
-                                            let result = command'.ExecuteScalar() 
-                                            result :?> int
-                                    )
+                                    fun (event, contextStateId) -> 
+                                        let command' = new NpgsqlCommand(command, conn)
+                                        command'.Parameters.AddWithValue("event", event ) |> ignore
+                                        command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
+                                        let result = command'.ExecuteScalar() 
+                                        result :?> int
+                                    
                             transaction.Commit()
                             conn.Close()
                             ids |> Ok
@@ -211,30 +210,25 @@ module PgStorage =
                             let cmdList = 
                                 arg 
                                 |>>
-                                    (
-                                        fun (events, version,  name, contextStateId) -> 
-                                            let stream_name = version + name
-                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
-                                            let uniqueContextStateIds =
-                                                [  
-                                                    for i in 1..events.Length -> 
-                                                        if i = 1 then contextStateId
-                                                        else System.Guid.NewGuid()
-                                                ]
-                                            let eventsAndStatesIds = List.zip events uniqueContextStateIds
-                                            // events
-                                            eventsAndStatesIds
-                                            |>> 
-                                            (
-                                                fun (event, contextStateId) ->
-                                                    (
-                                                        command.Parameters.AddWithValue("event", event ) |> ignore
-                                                        command.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
-                                                        let result = command.ExecuteScalar() 
-                                                        result :?> int
-                                                    )
-                                            )
-                                    )
+                                    fun (events, version,  name, contextStateId) -> 
+                                        let stream_name = version + name
+                                        let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
+                                        let uniqueContextStateIds =
+                                            [  
+                                                for i in 1..events.Length -> 
+                                                    if i = 1 then contextStateId
+                                                    else System.Guid.NewGuid()
+                                            ]
+                                        let eventsAndStatesIds = List.zip events uniqueContextStateIds
+                                        // events
+                                        eventsAndStatesIds
+                                        |>> 
+                                            fun (event, contextStateId) ->
+                                                command.Parameters.AddWithValue("event", event ) |> ignore
+                                                command.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
+                                                let result = command.ExecuteScalar() 
+                                                result :?> int
+                                    
                             transaction.Commit()    
                             conn.Close()
                             cmdList |> Ok

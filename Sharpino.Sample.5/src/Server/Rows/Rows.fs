@@ -35,6 +35,9 @@ module rec SeatRow =
         member this.Invariant = invariant
         member this.UnPickled () =
             pickler.UnPickleOfString invariant
+        static member Build (invariant: Invariant<SeatsRow>) =
+            let pickled = pickler.PickleToString (invariant :> Quotations.Expr<SeatsRow -> Result<bool, string>>)
+            InvariantContainer pickled
 
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
         let stateId = Guid.NewGuid()
