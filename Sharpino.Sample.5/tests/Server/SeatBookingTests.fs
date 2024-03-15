@@ -127,7 +127,7 @@ module BookingTests =
                 kafkaStadiumBookingSystem, 2, 2
             ]
 
-        ftestList "seat bookings" [
+        testList "seat bookings" [
             pmultipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
@@ -153,7 +153,7 @@ module BookingTests =
                 // then
                 Expect.isOk addRow "should be ok"
 
-            multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            fmultipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // when
