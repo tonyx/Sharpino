@@ -122,15 +122,14 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                stadiumSystem,0,0
+                // stadiumSystem,0,0
                 // memoryStadiumSystem, 1, 1
-                // kafkaStadiumBookingSystem, 2, 2
+                kafkaStadiumBookingSystem, 2, 2
             ]
 
         ftestList "seat bookings" [
-            pmultipleTestCase "create a row with no seats and retrieve it - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            pmultipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
-
 
                 // when
                 let rows = stadiumSystem.GetAllRowReferences ()
