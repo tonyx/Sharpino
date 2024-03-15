@@ -122,9 +122,9 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                // stadiumSystem,0,0
+                stadiumSystem,0,0
                 // memoryStadiumSystem, 1, 1
-                kafkaStadiumBookingSystem, 2, 2
+                // kafkaStadiumBookingSystem, 2, 2
             ]
 
         ftestList "seat bookings" [

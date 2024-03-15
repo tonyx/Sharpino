@@ -14,6 +14,7 @@ open System.Collections
 open System
 open log4net
 open log4net.Config
+
 module KafkaReceiver =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
@@ -196,10 +197,6 @@ module KafkaReceiver =
                     ()
                 return ()
             }
-
-
-
-
 
 
     // todo: need to be fixed (see open bug) 
