@@ -82,7 +82,6 @@ let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<S
 
 let rowStateViewer2: AggregateViewer<SeatsRow> =
     fun (rowId: Guid) ->
-        printf "XXXx. rowId %A\n" rowId
         kafkaRowViewer2.RefreshLoop() |> ignore
         kafkaRowViewer2.State rowId
 

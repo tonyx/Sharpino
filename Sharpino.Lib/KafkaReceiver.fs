@@ -15,6 +15,7 @@ open System
 open log4net
 open log4net.Config
 module KafkaReceiver =
+    // WORK IN PROGRESS
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     let config = 
@@ -48,7 +49,13 @@ module KafkaReceiver =
         member this.Consume () =
             let result = cons.Consume ()
             result
-            
+        member this.Reset() =
+            let _ = cons.Close()
+            let _ = cons.Dispose()
+            let consumer = new ConsumerBuilder<string, string>(config)
+            let cons = consumer.Build () 
+            let _ = cons.Subscribe topic 
+            ()
         // too late to change the name
         member this.consume(timeoutMilliseconds: int): Result<ConsumeResult<string, string>, string> =
             ResultCE.result {
@@ -232,6 +239,7 @@ module KafkaReceiver =
         member this.Refresh () =
             let result = subscriber.consume config.RefreshTimeout
             match result with
+            
             | Error e -> 
                 log.Error e
                 Result.Error e 
@@ -295,33 +303,33 @@ module KafkaReceiver =
         =
         // let states: Map<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>> = Map.empty
         let states = Generic.Dictionary<AggregateId, Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>>()
+        member this.States = states
 
         member this.State (aggregateId: AggregateId) = 
             // this.RefreshLoop()
             match states.TryGetValue aggregateId with
             | (true, res) -> 
-                printf "getting state 1000\n"
                 res
             | _ -> 
                 let state = 
-                    printf "getting state 2000\n"
                     try
                         sourceOfTruthStateViewer aggregateId 
                     with
                     | e  -> 
                         "state error" |> Result.Error
-                printf "this is the state\n"
-                let agggState = state |> Result.get |> fun (a, b, c, d) -> b
-                printf "this is the state retrieved %A\n" (agggState.Serialize serializer)
-
-                states.Add(aggregateId, state) |> ignore
-                state
-
+                match state with
+                | Ok _ -> 
+                    states.Add(aggregateId, state) |> ignore
+                    state
+                | Error e ->
+                    state
+        member this.Assign (position: int64, partition: int) =
+            subscriber.Assign(position, partition)
+            ()
         member this.Refresh () =
             let result = subscriber.consume config.RefreshTimeout
             match result with
             | Error e -> 
-                printf "no message\n"
                 log.Error e
                 Result.Error e 
             | Ok msg ->
@@ -329,7 +337,6 @@ module KafkaReceiver =
                     let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerAggregateMessage>
                     let eventId = newMessage.EventId
 
-                    printf "XXXXXX refresh - getting event 100: %A\n" newMessage.Event
 
                     let aggregateId = newMessage.AggregateId
                     let! currentStateId, _, _, _ = this.State aggregateId 
@@ -346,30 +353,33 @@ module KafkaReceiver =
                             states.[aggregateId] <- ( eventId, newState, None, None ) |> Result.Ok
                         return () |> Result.Ok
                     else
+                        let _ =
+                            let state = 
+                                try
+                                    sourceOfTruthStateViewer aggregateId 
+                                with
+                                | e  -> 
+                                    "state error" |> Result.Error
+                            match state with
+                            | Ok _ -> 
+                                if states.ContainsKey(aggregateId) then
+                                    states.[aggregateId] <- state
+                                else
+                                    states.Add(aggregateId, state) |> ignore
+                                state
+                            | Error e ->
+                                state
                         return () |> Result.Ok
-                        // focus todo don't forget!!!!!!!! 
-
-                        // let! _ = this.ForceSyncWithSourceOfTruth()
-                        // let! _, _, offset, partition = this.State ()
-                        // let _ =
-                        //     match offset, partition with
-                        //     | Some off, Some part ->
-                        //         subscriber.Assign( off + 1L, part )
-                        //     | _ -> 
-                        //         log.Error "Cannot assign offset and partition"
-                        //         ()
-                        // return () |> Result.Ok
                 }
                 
         member this.RefreshLoop () =
-            printf "Refresh loop\n"
             let mutable result = this.Refresh ()
             while (result |> Result.toOption).IsSome do
                 result <- this.Refresh()
                 ()
             ()
 
-        // member this.ForceSyncWithSourceOfTruth() = 
+        // member this.ForceSyncWithSourceOfTruth aggregateId = 
         //     ResultCE.result {
         //         let! newState = sourceOfTruthStateViewer aggregateId
         //         state <- newState |> Result.Ok
@@ -382,6 +392,7 @@ module KafkaReceiver =
         //             ()
         //         return ()
         //     }
+
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
