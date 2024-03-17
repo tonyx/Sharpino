@@ -36,6 +36,7 @@ let allVersions =
         // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
         // enable if you had setup postgres (see dbmate scripts):
         
+        // disable only if you have your postgres configured
         (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
         (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
         (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)

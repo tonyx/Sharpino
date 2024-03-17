@@ -21,7 +21,8 @@ open Sharpino.Sample.EventBrokerBasedApp
 [<Tests>]
     let kafkaTests =
         let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-        testList "Kafka consumer and subscribers test" [
+        // enable only if you have your kafka properly working and configured
+        ptestList "Kafka consumer and subscribers test" [
             testCase "retrieve row event by todoSubscriber and consume - Ok " <| fun _ ->
                 // given
                 let app = currentVersionPgWithKafkaApp

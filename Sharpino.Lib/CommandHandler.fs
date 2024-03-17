@@ -363,22 +363,33 @@ module CommandHandler =
                                 List.zip serializedEvents aggregateIdsWithStateIds
                                 |>> fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)
 
-                            let! idLists =
+                            let! eventIdsLists =
                                 storage.MultiAddAggregateEvents packParametersForDb
 
+                            let aggregateIdsWithEventIdsLists =
+                                List.zip aggregateIds eventIdsLists
+
                             let kafkaParameters =
-                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) idLists serializedEvents
-                                 |>> fun (idList, serializedEvents) -> List.zip idList serializedEvents
+                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) eventIdsLists serializedEvents
+                                |>> fun (idList, serializedEvents) -> List.zip idList serializedEvents
+
+                            let kafkaParameters2 =
+                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIdsLists serializedEvents
+                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+
+                            // let sent =
+                            //     kafkaParameters
+                            //     |>> fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption
 
                             let sent =
-                                kafkaParameters
-                                |>> fun x -> tryPublish eventBroker 'A1.Version 'A1.StorageName x |> Result.toOption
+                                kafkaParameters2
+                                |>> fun (id, x) -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> Result.toOption
                                 
                             let _ =
                                 aggregateIds
                                 |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage
                             
-                            return (idLists, sent)
+                            return (eventIdsLists, sent)
                         }
                 }
                 |> Async.RunSynchronously 
