@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>1.5.8</Version>
+    <Version>1.5.9</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -41,8 +41,8 @@
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.2.1" />
-    <PackageReference Include="Expecto" Version="10.1.0" />
-    <PackageReference Include="Expecto.FsCheck" Version="10.1.0" />
+    <PackageReference Include="Expecto" Version="10.2.1" />
+    <PackageReference Include="Expecto.FsCheck" Version="10.2.1" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
     <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
@@ -54,6 +54,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Sharpino.Core" Version="1.1.2" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
@@ -61,14 +62,14 @@
 
     <PackageReference Include="Farmer" Version="1.8.8" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
-    <PackageReference Include="FSharp.Data" Version="6.3.0" />
+    <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Npgsql" Version="8.0.2" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
     
-    <PackageReference Include="Sharpino.Core" Version="1.1.1" />
+    <!-- <PackageReference Include="Sharpino.Core" Version="1.1.2" /> -->
     
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
@@ -76,8 +77,8 @@
   <!-- needed if you are developing the core: -->
 <!--  -->
  
-<!-- 
-<ItemGroup>
+
+<!-- <ItemGroup>
   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
 </ItemGroup> -->
 
