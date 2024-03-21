@@ -23,8 +23,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App", "Sharpino.Sample.Clie
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6", "Sharpino.Sample.6\Sharpino.Sample.6.fsproj", "{859F2D9B-F434-4A4D-9097-8D281DF05BA0}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6.Test", "Sharpino.Sample.6.Test\Sharpino.Sample.6.Test.fsproj", "{747E857D-283F-434A-B88C-2F8181B82E5E}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.5", "Sharpino.Sample.5", "{BCFFFB02-65D8-4C90-82DB-A8DAB42488A0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BCF4FE6F-89B9-4025-8DB5-42763681ED8A}"
@@ -60,6 +58,8 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Client.Tests", "Sharpino.Sample.4\tests\Client\Client.Tests.fsproj", "{9A739399-3B9F-4557-97A0-DA08060FE69E}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shared.Tests", "Sharpino.Sample.4\tests\Shared\Shared.Tests.fsproj", "{1ECBB994-9532-42A5-A013-368A8B6AB3EE}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6.Test", "Sharpino.Sample.6.Test\Sharpino.Sample.6.Test.fsproj", "{D29CC28F-EB83-4940-AC6B-09D033E4D664}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -106,10 +106,6 @@ Global
 		{859F2D9B-F434-4A4D-9097-8D281DF05BA0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{859F2D9B-F434-4A4D-9097-8D281DF05BA0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{859F2D9B-F434-4A4D-9097-8D281DF05BA0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{747E857D-283F-434A-B88C-2F8181B82E5E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{747E857D-283F-434A-B88C-2F8181B82E5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{747E857D-283F-434A-B88C-2F8181B82E5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{747E857D-283F-434A-B88C-2F8181B82E5E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{91ABF59E-0B3C-41AF-B67B-AD4658F45763}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{91ABF59E-0B3C-41AF-B67B-AD4658F45763}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{91ABF59E-0B3C-41AF-B67B-AD4658F45763}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -158,6 +154,10 @@ Global
 		{1ECBB994-9532-42A5-A013-368A8B6AB3EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1ECBB994-9532-42A5-A013-368A8B6AB3EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1ECBB994-9532-42A5-A013-368A8B6AB3EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D29CC28F-EB83-4940-AC6B-09D033E4D664}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D29CC28F-EB83-4940-AC6B-09D033E4D664}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D29CC28F-EB83-4940-AC6B-09D033E4D664}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D29CC28F-EB83-4940-AC6B-09D033E4D664}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D4C9757D-69AD-4975-92FA-0C507116929A} = {8ED7E64B-B5F1-4D6D-9BE9-0CA983A5C44A}

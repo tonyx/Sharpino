@@ -11,17 +11,19 @@ open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
 open System
+open Tonyx.Sharpino.Pub.Ingredient
 
 module Dish =
     open Sharpino.Lib.Core.Commons
-    type Dish(id: Guid, name: String, ingredients: List<Guid>) =
+    type Dish(id: Guid, name: String, ingredients: List<Guid>, ingredientReceiptItems: List<IngredientReceiptItem>) =
         let stateId = Guid.NewGuid()
         let ingredients = ingredients
-
+        let ingredientReceiptItems = ingredientReceiptItems
+        
         member this.StateId = stateId
         member this.Id = id
         member this.Name = name
-
+        member this.IngredientReceiptItems = ingredientReceiptItems
 
         member this.AddIngredient (id: Guid) =
             result {
@@ -31,9 +33,38 @@ module Dish =
                     |> not
                     |> Result.ofBool (sprintf "An ingredient with id '%A' already exists" id)
                 let newIgredients = id :: this.Ingredients
-                return Dish(this.Id, this.Name, newIgredients)
+                return Dish(this.Id, this.Name, newIgredients, ingredientReceiptItems)
             }
-
+        member this.AddIngredientReceiptItem (ingredientReceiptItem: IngredientReceiptItem) =
+            result {
+                let! noAlreadyExists =
+                    this.IngredientReceiptItems
+                    |> List.exists (fun x -> x.IngredientId = ingredientReceiptItem.IngredientId)
+                    |> not
+                    |> Result.ofBool (sprintf "An ingredient receipt item with id '%A' already exists" ingredientReceiptItem.IngredientId)
+                let newIgredients = ingredientReceiptItem :: this.IngredientReceiptItems
+                return Dish(this.Id, this.Name, ingredients, newIgredients)
+            }
+        
+        member this.RemoveIngredientReceiptItem (id: Guid) =
+            result {
+                let! chckExists =
+                    this.IngredientReceiptItems
+                    |> List.exists (fun x -> x.IngredientId = id)
+                    |> Result.ofBool (sprintf "An ingredient receipt item with id '%A' does not exist" id)
+                let newIgredients = this.IngredientReceiptItems |> List.filter (fun x -> x.IngredientId <> id)
+                return Dish(this.Id, this.Name, ingredients, newIgredients)
+            }
+        member this.UpdateIngredientReceiptItem (ingredientReceiptItem: IngredientReceiptItem) =
+            result {
+                let! chckExists =
+                    this.IngredientReceiptItems
+                    |> List.exists (fun x -> x.IngredientId = ingredientReceiptItem.IngredientId)
+                    |> Result.ofBool (sprintf "An ingredient receipt item with id '%A' does not exist" ingredientReceiptItem.IngredientId)
+                let newIgredients = this.IngredientReceiptItems |> List.map (fun x -> if x.IngredientId = ingredientReceiptItem.IngredientId then ingredientReceiptItem else x)
+                return Dish(this.Id, this.Name, ingredients, newIgredients)
+            }     
+            
         member this.RemoveIngredient (id: Guid) =
             result {
                 let! chckExists =
@@ -41,7 +72,7 @@ module Dish =
                     |> List.contains id
                     |> Result.ofBool (sprintf "An ingredient with id '%A' does not exist" id)
                 let newIgredients = this.Ingredients |> List.filter (fun x -> x <> id)
-                return Dish(this.Id, this.Name, newIgredients)
+                return Dish(this.Id, this.Name, newIgredients, ingredientReceiptItems)
             }
 
 

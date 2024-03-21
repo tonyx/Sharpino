@@ -45,7 +45,7 @@ module StateView =
         when 'A :> Aggregate and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (aggregateId: Guid)
+        (aggregateId: AggregateId)
         (id: int)
         (version: string)
         (storageName: string)
@@ -102,7 +102,7 @@ module StateView =
         when 'A :> Aggregate and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (aggregateId: Guid)
+        (aggregateId: AggregateId)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
@@ -225,7 +225,7 @@ module StateView =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >
-        (id: Guid)
+        (id: AggregateId)
         (storage: IEventStore)
         : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)

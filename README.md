@@ -9,6 +9,8 @@
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+
+
 ## What is it?
 
 Support for Event-sourcing in F#.
@@ -25,6 +27,7 @@ Support for Event-sourcing in F#.
 - Sensible data (GDPR) 
 - Stable and working integration with an Event Broker (Apache Kafka)
 
+<img src="img/Sharpinomap.jpg" alt="drawing" width="500"/>
 
 ## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
 __Sharpino.Lib.Core__:
