@@ -166,7 +166,7 @@ let tests =
             let suppliers' = suppliers.OkValue
             Expect.equal suppliers'.Length 1 "should be equal"
            
-        fmultipleTestCase "can add an ingredient of a certain measure to a receipt if that measeure is part of that ingredient - Ok " storages <| fun (eventStore, _, _) ->
+        multipleTestCase "can add an ingredient of a certain measure to a receipt if that measeure is part of that ingredient - Ok " storages <| fun (eventStore, _, _) ->
             setUp ()
             
             // given
@@ -200,6 +200,33 @@ let tests =
             Expect.equal retrievedIngredientReceiptItem.IngredientId tomatoGuid "should be equal"
             Expect.equal retrievedIngredientReceiptItem.Quantity.Value.Quantity 100.0 "should be equal"
             
+        multipleTestCase "can't add an ingredient of a certain measure to a receipt if that measure is not part of that ingredient - Ok " storages <| fun (eventStore, _, _) ->
+            setUp ()
+            
+            // given
+            let pubSystem = PubSystem.PubSystem(eventStore, doNothingBroker)
+            let tomatoGuid = Guid.NewGuid()
+            let addIngredient = pubSystem.AddIngredient (tomatoGuid, "tomato")
+            Expect.isOk addIngredient "should be ok"
+            let addTypeToIngredient = pubSystem.AddMeasureType (tomatoGuid, MeasureType.Milliliters)
+            Expect.isOk addTypeToIngredient "should be ok"
+            
+            let spaghettiGuid = Guid.NewGuid()
+            let addDish = pubSystem.AddDish (Dish.Dish(spaghettiGuid, "spaghetti", [], []))
+            Expect.isOk addDish "should be ok"
+            
+            // when
+            // let oneGlass: MeasureQuantity = { MeasureType = MeasureType.Milliliters; Quantity = 100.0 }
+            let onePiece: MeasureQuantity = { MeasureType = MeasureType.Pieces; Quantity = 1.00 }
+            let oneGlassOfTomato =
+                {
+                    IngredientId = tomatoGuid
+                    Quantity = onePiece |> Some
+                }
+            
+            // then    
+            let addIngredientToDish = pubSystem.AddIngredientReceiptItem (spaghettiGuid, oneGlassOfTomato)
+            Expect.isError addIngredientToDish "should be error"
             
     ]
     |> testSequenced

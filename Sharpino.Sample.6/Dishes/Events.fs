@@ -11,8 +11,6 @@ open Tonyx.Sharpino.Pub.Ingredient
 
 module DishEvents =
     type DishEvents =
-        // | IngredientAdded of Guid
-        // | IngredientRemoved of Guid
         | IngredientReceiptItemAdded of IngredientReceiptItem
         | IngredientReceiptItemRemoved of Guid
         | IngredientReceiptItemUpdated of IngredientReceiptItem

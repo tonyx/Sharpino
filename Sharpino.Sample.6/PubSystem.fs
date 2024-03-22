@@ -70,6 +70,20 @@ module PubSystem =
                 }
             member this.AddIngredientReceiptItem (dishId: Guid, ingredientReceiptItem: IngredientReceiptItem) =
                 ResultCE.result {
+                    let ingredientId = ingredientReceiptItem.IngredientId
+                    let! (_, ingredient, _, _) = ingredientStateViewer ingredientId
+                    let ingredientMeasureTypes = ingredient.MeasureTypes
+                    let receiptItemMeasureType = ingredientReceiptItem.Quantity
+                    
+                    let measureTypeMatches = 
+                        match receiptItemMeasureType with
+                        | None ->
+                            () |> Result.Ok
+                        | Some measureTypes when ingredientMeasureTypes |> List.contains measureTypes.MeasureType ->
+                            () |> Result.Ok
+                        | _ ->
+                            Result.Error "receipt assumes a measure type that is not in the ingredient measure types"
+                    let! measureTypeMatches = measureTypeMatches         
                     let addIngredientReceiptItem = DishCommands.AddIngredientReceiptItem ingredientReceiptItem
                     let! result = runAggregateCommand<Dish, DishEvents> dishId storage eventBroker dishStateViewer addIngredientReceiptItem
                     return result
