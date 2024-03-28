@@ -182,8 +182,10 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
+- [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 
-New sample: started an example of Restaurant/Pub management. (Sample 6) 
+- New example _in progress with some issues_: [book wishlist](https://github.com/tonyx/SAFE-BookStore) (forked from https://github.com/SAFE-Stack/SAFE-BookStore). I replaced the book store logic with a context (the library) and an aggregate (the withList).
+- New example: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 
 - Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
