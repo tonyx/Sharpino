@@ -11,7 +11,7 @@ module Core =
     type AggregateId = Guid
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
-    log4net.Config.BasicConfigurator.Configure() |> ignore
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
     // adding types for object based (no class level) aggregate type
     
     type Aggregate =
@@ -55,14 +55,12 @@ module Core =
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
         | Ok state, e::es ->
-            printf "evolveSkippingErrorsX 200\n"
             let newGuard =
                 try
                     state |> (e :> Event<'A>).Process
                 with
                 | ex ->
                     Error (sprintf "error processing event %A: %A" e ex)
-            printf "newGuard %A\n" newGuard
             match newGuard with
             | Error err -> 
                 log.Info (sprintf "warning 3: %A" err)

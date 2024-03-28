@@ -147,9 +147,7 @@ module StateView =
             return
                 result {
                     let! (eventId, state) = getLastSnapshotOrStateCache<'A> storage
-                    printf "going to get events after id\n"
                     let! events = storage.GetEventsAfterId 'A.Version eventId 'A.StorageName
-                    printf "got events after id\n"
                     let result =
                         (eventId, state, events)
                     return result

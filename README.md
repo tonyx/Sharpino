@@ -183,7 +183,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## News: 
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
-
+- [New classic example: counter](https://github.com/tonyx/SharpinoCounter)
 - New example _in progress with some issues_: [book wishlist](https://github.com/tonyx/SAFE-BookStore) (forked from https://github.com/SAFE-Stack/SAFE-BookStore). I replaced the book store logic with a context (the library) and an aggregate (the withList).
 - New example: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
@@ -191,7 +191,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
 - Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)
 - Version 1.5.5:
-- fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
+- fixed a key problem in dictionary[README.md](README.md) keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
 Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
 I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
