@@ -24,6 +24,8 @@ module CommandHandler =
     open Sharpino.Lib.Core.Commons
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
+
     type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
     type AggregateViewer<'A> = Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
 
@@ -184,7 +186,7 @@ module CommandHandler =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
-        and 'A:  (member StateId: Guid)
+        and 'A: (member StateId: Guid)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
@@ -249,6 +251,7 @@ module CommandHandler =
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
         =
+            log.Debug (sprintf "runInitAndCommand %A" command)
             ResultCE.result {
                 let initSnapshot = initialInstance.Serialize serializer
                 let! stored = storage.SetInitialAggregateState initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initSnapshot

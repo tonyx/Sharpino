@@ -9,9 +9,9 @@ open Sharpino.Utils
 
 module Core =
     type AggregateId = Guid
-    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
+    log4net.Config.BasicConfigurator.Configure() |> ignore
     // adding types for object based (no class level) aggregate type
     
     type Aggregate =
@@ -40,28 +40,38 @@ module Core =
 
     [<TailCall>]
     let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
+        log.Info (sprintf "evolveSkippingErrors %A %A %A" acc events guard)
         match acc, events with
         // if the accumulator is an error then skip it, and use the guard instead which was the 
         // latest valid value of the accumulator
-        | Error err, _::es -> 
-            // log.Info (sprintf "warning 1: %A" err)
+        | Error err, _::es ->
+            log.Info (sprintf "warning 1: %A" err)
             evolveSkippingErrors (guard |> Ok) es guard
         // if the accumulator is error and the list is empty then we are at the end, and so we just
         // get the guard as the latest valid value of the accumulator
         | Error err, [] -> 
-            // log.Info (sprintf "warning 2: %An" err)
+            log.Info (sprintf "warning 2: %An" err)
             guard |> Ok
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
         | Ok state, e::es ->
-            let newGuard = state |> (e :> Event<'A>).Process
+            printf "evolveSkippingErrorsX 200\n"
+            let newGuard =
+                try
+                    state |> (e :> Event<'A>).Process
+                with
+                | ex ->
+                    Error (sprintf "error processing event %A: %A" e ex)
+            printf "newGuard %A\n" newGuard
             match newGuard with
             | Error err -> 
-                // log.Info (sprintf "warning 3: %A" err)
+                log.Info (sprintf "warning 3: %A" err)
                 evolveSkippingErrors (guard |> Ok) es guard
             | Ok h' ->
                 evolveSkippingErrors (h' |> Ok) es h'
-        | Ok h, [] -> h |> Ok
+        | Ok h, [] ->
+            h |> Ok
 
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
-        evolveSkippingErrors (h |> Ok) events h 
+        let result = evolveSkippingErrors (h |> Ok) events h
+        result

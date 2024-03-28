@@ -78,8 +78,8 @@
 <!--  -->
  
 
-<!-- <ItemGroup>
+<ItemGroup>
   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
-</ItemGroup> -->
+</ItemGroup> 
 
 </Project>

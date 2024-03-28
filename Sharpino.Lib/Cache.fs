@@ -37,8 +37,7 @@ module Cache =
                     dic.Remove removed |> ignore
                 ()
             with :? _ as e -> 
-                printf "error: cache is doing something wrong. Resetting. %A\n" e   
-                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
+                log.Error(sprintf "error: State cache is doing something wrong. Resetting. %A\n" e)    
                 dic.Clear()
                 queue.Clear()
                 ()
@@ -85,8 +84,7 @@ module Cache =
                     dic.Remove removed |> ignore
                 ()
             with :? _ as e -> 
-                printf "error: cache is doing something wrong. Resetting. %A\n" e   
-                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
+                log.Error(sprintf "error: aggregate cache is doing something wrong. Resetting. %A\n" e)    
                 dic.Clear()
                 queue.Clear()
                 ()
