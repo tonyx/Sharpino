@@ -182,6 +182,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
+- [New classic example: counter (with Kafka)](https://github.com/tonyx/SharpinoCounter2)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - [New classic example: counter](https://github.com/tonyx/SharpinoCounter)
 - New example _in progress with some issues_: [book wishlist](https://github.com/tonyx/SAFE-BookStore) (forked from https://github.com/SAFE-Stack/SAFE-BookStore). I replaced the book store logic with a context (the library) and an aggregate (the withList).
@@ -230,7 +231,7 @@ __The more permissive optimistic lock cannot ensure that multiple aggregate tran
 See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
 (Error handling can be improved in writing/reading Kafka event info there).
 Those data will be used in the future to feed the "kafkaViewer" on initialization.
-
+[CommandHandler.fs](Sharpino.Lib%2FCommandHandler.fs)
 - From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer.)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
