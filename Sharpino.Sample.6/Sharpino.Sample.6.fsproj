@@ -30,7 +30,7 @@
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
-    <PackageReference Include="Expecto" Version="10.1.0" />
+<!--    <PackageReference Include="Expecto" Version="10.2.0" />-->
     <PackageReference Include="Farmer" Version="1.8.8" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Log4net" Version="2.0.16" />

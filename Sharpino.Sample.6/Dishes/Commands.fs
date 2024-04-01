@@ -8,19 +8,26 @@ open Sharpino.Definitions
 open Sharpino.Utils
 open Sharpino.Core
 open System
+open Tonyx.Sharpino.Pub.Ingredient
 
 module DishCommands =
     type DishCommands =
-        | AddIngredient of Guid
-        | RemoveIngredient of Guid
+        | AddIngredientReceiptItem of IngredientReceiptItem
+        | RemoveIngredientReceiptItem of Guid
+        | UpdateIngredientReceiptItem of IngredientReceiptItem
+        
             interface Command<Dish, DishEvents> with
                 member this.Execute (x: Dish) =
                     match this with
-                    | AddIngredient id ->
-                        x.AddIngredient id
-                        |> Result.map (fun _ -> [DishEvents.IngredientAdded id])
-                    | RemoveIngredient id ->
-                        x.RemoveIngredient id
-                        |> Result.map (fun _ -> [DishEvents.IngredientRemoved id])
+                    | AddIngredientReceiptItem ingredientReceiptitem ->
+                        x.AddIngredientReceiptItem ingredientReceiptitem
+                        |> Result.map (fun _ -> [DishEvents.IngredientReceiptItemAdded ingredientReceiptitem])
+                    | RemoveIngredientReceiptItem id ->
+                        x.RemoveIngredientReceiptItem id
+                        |> Result.map (fun _ -> [DishEvents.IngredientReceiptItemRemoved id])
+                    | UpdateIngredientReceiptItem ingredientReceiptItem ->
+                        x.UpdateIngredientReceiptItem ingredientReceiptItem
+                        |> Result.map (fun _ -> [DishEvents.IngredientReceiptItemUpdated ingredientReceiptItem])
+                            
                 member this.Undoer = None
 

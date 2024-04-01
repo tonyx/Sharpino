@@ -1,10 +1,12 @@
 namespace Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Ingredient
 open Tonyx.Sharpino.Pub.Kitchen
 open Tonyx.Sharpino.Pub.KitchenEvents
 open Tonyx.Sharpino.Pub.Supplier
 
 open Tonyx.Sharpino.Pub.KitchenCommands
 open Tonyx.Sharpino.Pub.Dish
+open Tonyx.Sharpino.Pub.SupplierEvents
 open Sharpino.CommandHandler
 open Sharpino.Definitions
 open System
@@ -14,7 +16,6 @@ open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
 open System
-open Tonyx.Sharpino.Pub.SupplierEvents
 
 module PubSystem =
     open DishEvents
@@ -67,6 +68,26 @@ module PubSystem =
                     let! result = runInitAndCommand<Kitchen, KitchenEvents, Supplier> storage eventBroker kitchenStateViewer supplier addSupplierReference
                     return result
                 }
+            member this.AddIngredientReceiptItem (dishId: Guid, ingredientReceiptItem: IngredientReceiptItem) =
+                ResultCE.result {
+                    let ingredientId = ingredientReceiptItem.IngredientId
+                    let! (_, ingredient, _, _) = ingredientStateViewer ingredientId
+                    let ingredientMeasureTypes = ingredient.MeasureTypes
+                    let receiptItemMeasureType = ingredientReceiptItem.Quantity
+                    
+                    let measureTypeMatches = 
+                        match receiptItemMeasureType with
+                        | None ->
+                            () |> Result.Ok
+                        | Some measureTypes when ingredientMeasureTypes |> List.contains measureTypes.MeasureType ->
+                            () |> Result.Ok
+                        | _ ->
+                            Result.Error "receipt assumes a measure type that is not in the ingredient measure types"
+                    let! measureTypeMatches = measureTypeMatches         
+                    let addIngredientReceiptItem = DishCommands.AddIngredientReceiptItem ingredientReceiptItem
+                    let! result = runAggregateCommand<Dish, DishEvents> dishId storage eventBroker dishStateViewer addIngredientReceiptItem
+                    return result
+                }    
             member this.GetAllSuppliers ()      =
                 ResultCE.result {
                     let! (_, kitchen , _, _) = kitchenStateViewer ()
@@ -88,6 +109,11 @@ module PubSystem =
                         |> List.traverseResultM dishStateViewer
                     return dishes
                 }
+            member this.GetDish (guid: Guid) =
+                ResultCE.result {
+                    let! (_, dish, _, _) = dishStateViewer guid
+                    return dish
+                }     
             member this.GetAllIngredientReferences () =
                 ResultCE.result {
                     let! (_, kitchen , _, _) = kitchenStateViewer ()

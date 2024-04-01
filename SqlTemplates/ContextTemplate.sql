@@ -6,6 +6,7 @@ CREATE TABLE public.events{Version}{ContextStorageName} (
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,
+                                          context_state_id uuid,
                                           "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -62,14 +63,14 @@ $$;
 
 CREATE OR REPLACE PROCEDURE set_classic_optimistic_lock{Version}{ContextStorageName}() AS $$
 BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_02_todo_context_state_id_unique') THEN
-ALTER TABLE events{Version}{ContextStorageName} _02_todo
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events{Version}{ContextStorageName}_context_state_id_unique') THEN
+ALTER TABLE events{Version}{ContextStorageName}
     ADD CONSTRAINT context_events{Version}{ContextStorageName}_context_state_id_unique UNIQUE (context_state_id);
 END IF;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE PROCEDURE un_set_classic_optimistic_lockcontext_events{Version}{ContextStorageName}() AS $$
+CREATE OR REPLACE PROCEDURE un_set_classic_optimistic_lock{Version}{ContextStorageName}() AS $$
 BEGIN
     ALTER TABLE eventscontext_events{Version}{ContextStorageName}
     DROP CONSTRAINT IF EXISTS context_eventscontext_events{Version}{ContextStorageName}_context_state_id_unique; 

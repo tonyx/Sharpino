@@ -28,6 +28,7 @@ module StateView =
         >
         (id: int)
         (storage: IEventStore) =
+            log.Debug (sprintf "tryGetSnapshotByIdAndDeserialize %s - %s" 'A.Version 'A.StorageName)
             let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
             match snapshot |>> snd with
             | Some snapshot' ->
@@ -45,7 +46,7 @@ module StateView =
         when 'A :> Aggregate and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (aggregateId: Guid)
+        (aggregateId: AggregateId)
         (id: int)
         (version: string)
         (storageName: string)
@@ -86,7 +87,7 @@ module StateView =
                         if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                             return (0, 'A.Zero)
                         else
-                            if lastCacheEventId >= snapshotEventId then
+                            if lastCacheEventId > snapshotEventId then
                                 let! state = 
                                     Cache.StateCache<'A>.Instance.GestState lastCacheEventId
                                 return (lastCacheEventId, state)
@@ -102,7 +103,7 @@ module StateView =
         when 'A :> Aggregate and
         'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (aggregateId: Guid)
+        (aggregateId: AggregateId)
         (version: string)
         (storageName: string)
         (storage: IEventStore) 
@@ -205,12 +206,13 @@ module StateView =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize (serializer, x))
-                        let! newState = 
+                        let newState =
                             deserEvents |> evolve<'A, 'E> state
+                        let! newState = newState
                         return newState
                     }
             let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
-            let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
+            let state = computeNewState ()
             match state with
             | Ok state' -> 
                 (lastEventId, state', kafkaOffSet, kafkaPartition) |> Ok
@@ -225,7 +227,7 @@ module StateView =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >
-        (id: Guid)
+        (id: AggregateId)
         (storage: IEventStore)
         : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)

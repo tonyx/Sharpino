@@ -109,3 +109,14 @@ module Ingredient =
                 this.Serialize serializer
         interface Entity with
             member this.Id = this.Id
+    
+    type MeasureQuantity =
+        {
+            MeasureType: MeasureType
+            Quantity: float
+        }
+    type IngredientReceiptItem  =
+        {
+            IngredientId: Guid
+            Quantity: Option<MeasureQuantity>
+        }

@@ -9,6 +9,8 @@
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+
+
 ## What is it?
 
 Support for Event-sourcing in F#.
@@ -25,6 +27,7 @@ Support for Event-sourcing in F#.
 - Sensible data (GDPR) 
 - Stable and working integration with an Event Broker (Apache Kafka)
 
+<img src="img/Sharpinomap.jpg" alt="drawing" width="700"/>
 
 ## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
 __Sharpino.Lib.Core__:
@@ -179,14 +182,17 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
-
-New sample: started an example of Restaurant/Pub management. (Sample 6) 
+- [New classic example: counter (with Kafka)](https://github.com/tonyx/SharpinoCounter2)
+- [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
+- [New classic example: counter](https://github.com/tonyx/SharpinoCounter)
+- New example _in progress with some issues_: [book wishlist](https://github.com/tonyx/SAFE-BookStore) (forked from https://github.com/SAFE-Stack/SAFE-BookStore). I replaced the book store logic with a context (the library) and an aggregate (the withList).
+- New example: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 
 - Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
 - Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)
 - Version 1.5.5:
-- fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
+- fixed a key problem in dictionary[README.md](README.md) keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
 Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
 I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
@@ -225,7 +231,7 @@ __The more permissive optimistic lock cannot ensure that multiple aggregate tran
 See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
 (Error handling can be improved in writing/reading Kafka event info there).
 Those data will be used in the future to feed the "kafkaViewer" on initialization.
-
+[CommandHandler.fs](Sharpino.Lib%2FCommandHandler.fs)
 - From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer.)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
 - Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
