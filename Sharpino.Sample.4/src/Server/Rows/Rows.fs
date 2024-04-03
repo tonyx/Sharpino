@@ -26,7 +26,6 @@ module rec SeatRow =
     // due to serialization issues, we need to wrap the invariant in a container as a string.
     // the pickler will then be able to serialize and deserialize the invariant
     // type Invariant = Quotations.Expr<(SeatsRow -> Result<bool, string>)>
-    // type Invariant = Quotations.Expr<(SeatsRow -> Result<bool, string>)>
 
     type Invariant<'A> = Quotations.Expr<('A -> Result<bool, string>)>
 

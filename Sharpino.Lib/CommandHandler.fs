@@ -176,7 +176,6 @@ module CommandHandler =
                         }
             }
             |> Async.RunSynchronously
-            
 
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
