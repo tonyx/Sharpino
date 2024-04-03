@@ -22,19 +22,6 @@ module TodosContext =
         member this.Categories = categories
         static member Zero =
             TodosContext(Todos.Zero, Categories.Zero)
-        static member StorageName =
-            "_todo"
-        static member Version =
-            "_01"
-        static member SnapshotsInterval =
-            15 
-        static member Lock =
-            new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosContext, string>  =
-            serializer.Deserialize<TodosContext> json
-        member this.Serialize(serializer: ISerializer) =
-            this
-            |> serializer.Serialize
 
         member this.Ping(): Result<TodosContext, string> =
             this |> Ok
@@ -103,6 +90,19 @@ module TodosContext =
         member this.GetCategories() = this.Categories.GetCategories().GetAll()
 
         // assume this should me moved but atm doesn't work in a separate module
+        static member StorageName =
+            "_todo"
+        static member Version =
+            "_01"
+        static member SnapshotsInterval =
+            15 
+        static member Lock =
+            new Object()
+        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosContext, string>  =
+            serializer.Deserialize<TodosContext> json
+        member this.Serialize(serializer: ISerializer) =
+            this
+            |> serializer.Serialize
 
 
 // what follows is the same code as above, but with the new version of the context
@@ -116,14 +116,6 @@ module TodosContext =
             TodosContextUpgraded(Todos.Zero)
         // storagename _MUST_ be unique for each context and the relative lock object 
         // must be added in syncobjects map in Conf.fs
-        static member StorageName =
-            "_todo"
-        static member Version =
-            "_02"
-        static member SnapshotsInterval =
-            15
-        static member Lock = 
-            new Object()
 
         member this.Ping(): Result<TodosContextUpgraded,string> =
             this |> Ok
@@ -189,3 +181,11 @@ module TodosContext =
 
         static member Deserialize (serializer: ISerializer, json: Json)=
             serializer.Deserialize<TodosContextUpgraded> json
+        static member StorageName =
+            "_todo"
+        static member Version =
+            "_02"
+        static member SnapshotsInterval =
+            15
+        static member Lock = 
+            new Object()

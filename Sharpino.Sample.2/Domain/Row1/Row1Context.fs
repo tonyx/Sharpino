@@ -11,19 +11,9 @@ module Row1Context =
 
     type Row1(rowContext: RowContext) =
         let stateId = Guid.NewGuid()
-        member this.StateId = stateId
 
         static member Zero =
             Row1(RowContext(row1Seats))
-
-        static member StorageName =
-            "_row1"
-        static member Version =
-            "_01"
-        static member SnapshotsInterval =
-            15
-        static member Lock =
-            new Object()
 
         member this.IsAvailable (seatId: Seats.Id) =
             rowContext.IsAvailable seatId
@@ -42,3 +32,12 @@ module Row1Context =
         static member Deserialize (serializer: ISerializer, json: string)=
             serializer.Deserialize<Row1> json
 
+        member this.StateId = stateId
+        static member StorageName =
+            "_row1"
+        static member Version =
+            "_01"
+        static member SnapshotsInterval =
+            15
+        static member Lock =
+            new Object()

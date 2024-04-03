@@ -17,14 +17,6 @@ module TagsContext =
         member this.Tags = tags
         static member Zero =
             TagsContext (Tags.Zero)
-        static member StorageName =
-            "_tags"
-        static member Version =
-            "_01"
-        static member SnapshotsInterval =
-            15
-        static member Lock =
-            new Object()
         member this.Ping(): Result<TagsContext,string> =
             result
                 {
@@ -53,3 +45,11 @@ module TagsContext =
 
         static member Deserialize (serializer: ISerializer, json: Json) =
             serializer.Deserialize<TagsContext> json
+        static member StorageName =
+            "_tags"
+        static member Version =
+            "_01"
+        static member SnapshotsInterval =
+            15
+        static member Lock =
+            new Object()

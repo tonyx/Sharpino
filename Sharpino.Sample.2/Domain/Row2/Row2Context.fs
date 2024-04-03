@@ -15,14 +15,6 @@ module Row2Context =
         static member Zero =
             Row2 (RowContext row2Seats)
 
-        static member StorageName =
-            "_row2"
-        static member Version =
-            "_01"
-        static member SnapshotsInterval =
-            15
-        static member Lock =
-            new Object()
 
         member this.IsAvailable (seatId: Seats.Id) =
             rowContext.IsAvailable seatId
@@ -39,3 +31,11 @@ module Row2Context =
             |> serializer.Serialize
         static member Deserialize (serializer: ISerializer, json: string)=
             serializer.Deserialize<Row2> json
+        static member StorageName =
+            "_row2"
+        static member Version =
+            "_01"
+        static member SnapshotsInterval =
+            15
+        static member Lock =
+            new Object()

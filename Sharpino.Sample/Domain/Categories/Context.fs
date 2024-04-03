@@ -17,14 +17,6 @@ module CategoriesContext =
         member this.Categories = categories
         static member Zero =
             CategoriesContext Categories.Zero
-        static member StorageName =
-            "_categories"
-        static member Version =
-            "_02"
-        static member SnapshotsInterval =
-            15
-        static member Lock =
-            new Object()
         member this.Ping(): Result<CategoriesContext, string> =
             result
                 {
@@ -54,3 +46,11 @@ module CategoriesContext =
             |> serializer.Serialize
         static member Deserialize (serializer: ISerializer, json: Json)=
             serializer.Deserialize<CategoriesContext> json
+        static member StorageName =
+            "_categories"
+        static member Version =
+            "_02"
+        static member SnapshotsInterval =
+            15
+        static member Lock =
+            new Object()

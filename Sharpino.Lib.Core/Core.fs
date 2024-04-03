@@ -19,7 +19,6 @@ module Core =
         abstract member Id: Guid // use this one to be able to filter related events from same string
         abstract member Serialize: ISerializer -> string
         abstract member Lock: obj
-        // abstract member SnapshotInterval: int
     
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
@@ -39,7 +38,7 @@ module Core =
                 )
             ) (h |> Ok)
 
-    // [<TailCall>]
+    [<TailCall>]
     let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
         match acc, events with
         // if the accumulator is an error then skip it, and use the guard instead which was the 

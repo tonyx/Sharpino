@@ -79,7 +79,9 @@ module KafkaReceiver =
             member _.Deserialize(data: ReadOnlySpan<byte>, isNull: bool, context: SerializationContext) =
                 if isNull then Guid.Empty
                 else Guid(data.ToArray())
+          
             
+    // TODO: rewrite this         
     type KafkaAggregateSubscriber(bootStrapServer: string, version: string, name: string, groupId: string) =
         let topic = name + "-" + version |> String.replace "_" ""
 

@@ -33,7 +33,7 @@ module rec SeatRow =
 
     type InvariantContainer (invariant: string) =
         member this.Invariant = invariant
-        member this.UnPickled () =
+        member this.UnPickled ()
             pickler.UnPickleOfString invariant
         static member Build (invariant: Invariant<SeatsRow>) =
             let pickled = pickler.PickleToString (invariant: Invariant<SeatsRow>)
