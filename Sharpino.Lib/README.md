@@ -16,17 +16,17 @@ Support for Event-sourcing in F#.
 ## Features
 - Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
 - Support publishing events to Apache Kafka Event Broker.
-- Example application with tests including Kafka subscriber.
+- Example application with tests including Kafka subscriber. (unstable at the moment)
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
 - A specific technique helps refactoring (migration) between different versions of the application.
 
 ## Absent features (for now)
 - Sensible data (GDPR) 
-- ...
+- Stable and working integration with an Event Broker (Apache Kafka)
 
 
-## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
+## Projects
 __Sharpino.Lib.Core__:
 
 - [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if the used event store lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error in processing invalid events.  The latter just skip those events. Some other types and functions are defined here. In a "SAFE stack" like project we may "safely" include the Core in a shared project (Fable Remoting style) in the sense that Fable can transpile it to JavaScript.
@@ -175,8 +175,12 @@ __Faq__:
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
+## help wanted:
+- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
+
 ## News: 
 
+- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 

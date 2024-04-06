@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>1.5.9</version>
+    <version>1.6.0</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -19,19 +19,19 @@
         <dependency id="FsCheck" version="2.16.6" />
         <dependency id="FsToolkit.ErrorHandling" version="4.15.1" />
         <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
-        <dependency id="Log4net" version="2.0.16" />
+        <dependency id="Log4net" version="2.0.17" />
         <dependency id="Microsoft.Extensions.Configuration" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="1.1.2" />
+        <dependency id="Sharpino.Core" version="1.1.4" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.8.8" />
+        <dependency id="Farmer" version="1.8.9" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />
