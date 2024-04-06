@@ -37,54 +37,12 @@ let doNothingBroker: IEventBroker =
         notifyAggregate = None
     }
 
-// let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
-
 let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
 let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
 let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
-// let kafkaBasedStadiumState: StateViewer<Stadium> =
-//     fun () ->
-//         kafkaStadiumViewer.RefreshLoop() |> ignore
-//         kafkaStadiumViewer.State()
-let kafkaRowViewer' rowSubscriber' =
-    fun (rowId: Guid) ->
-        let result =
-            mkKafkaAggregateViewer<SeatsRow, RowAggregateEvent>
-                rowId rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
-        result
 
-let kafkarViewer' =
-    fun myyid ->
-        let rowSubscriber =
-            try
-                KafkaAggregateSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient", myyid) |> Result.get
-            with e ->
-                raise e
-
-        kafkaRowViewer' rowSubscriber
-
-let viewers = System.Collections.Generic.Dictionary<Guid, KafkaAggregateViewer<SeatsRow, RowAggregateEvent>>()
-
-let rowStateViewer: AggregateViewer<SeatsRow> =
-    fun (rowId: Guid) ->
-        // todo: troubles here
-        if viewers.ContainsKey(rowId) then
-            let viewer = viewers.[rowId]
-            viewer.RefreshLoop()
-            viewer.State()
-        else
-            let viewer = kafkarViewer' rowId rowId
-            // this will be a problem
-            // viewers.Add (rowId, viewer)
-            viewer.RefreshLoop()
-            viewer.State()
-
-
-// let stadiumBookingSystem = StadiumBookingSystem (eventStore, doNothingBroker)
 let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
-// let stadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker)
-// let stadiumBookingSystem = StadiumBookingSystem (, eventBroker, kafkaBasedStadiumState, rowStateViewer)
 
 let seatBookingSystemApi: IRestStadiumBookingSystem = {
     AddRowReference = fun () -> async {

@@ -86,9 +86,7 @@ module StorageStadiumBookingSystem =
 
         member this.GetRow id =
             result {
-                printf "10000\n"
                 let! (_, rowState, _, _) = rowStateViewer id
-                printf "10010\n"
                 return rowState
             }
         member this.GetSeatsRowTO (id: Guid) =

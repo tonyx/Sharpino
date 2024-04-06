@@ -51,21 +51,6 @@ module BookingTests =
             )
             |> Seq.tryHead
 
-        let retrieveAggregateIdsAndAggregateStatesIds version name =
-            let streamName  = sprintf "aggregate_events%s%s" version name
-            let query = sprintf "SELECT id, aggregate_id, aggregate_state_id FROM %s" streamName
-            connection
-            |> Sql.connect
-            |> Sql.query query
-            |> Sql.execute (fun reader ->
-                (
-                    reader.int "id",
-                    reader.uuid "aggregate_id",
-                    reader.uuid "aggregate_state_id"
-                )
-            )
-            |> Seq.toList
-
         testList "seat bookings" [
             testCase "create a row with no seats and retrieve it - Ok" <| fun _ ->
                 setUp ()
@@ -80,6 +65,7 @@ module BookingTests =
                 Expect.isOk rows "should be ok"
                 let result = rows |> Result.get
                 Expect.equal result.Length 0 "should be 0"
+
             testCase "add a row reference to the stadium and retrieve it - Ok" <| fun _ ->
                 setUp()
 

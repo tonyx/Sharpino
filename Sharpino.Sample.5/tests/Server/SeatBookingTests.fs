@@ -25,25 +25,7 @@ open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
 module BookingTests =
 
-    let getDeliveryResult (deliveryResult: Result<list<List<Definitions.EventId>> * list<option<List<Confluent.Kafka.DeliveryResult<'A,string>>>>,string>) =
-        result {
-            let! deliveryResult = deliveryResult
-            let result =
-                match deliveryResult with
-                | (_, (Some (H::[])::_)) -> H |> Ok
-                | _ -> Error "error getting delivery result"
-            return! result
-        }
-
     let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
-    let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
-
-    let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
-    let kafkaBasedStadiumState: StateViewer<Stadium> =
-        printf "getting state\n"
-        fun () ->
-            kafkaStadiumViewer.RefreshLoop() |> ignore
-            kafkaStadiumViewer.State()
 
     let seatBookings =
         let memoryStorage = MemoryStorage.MemoryStorage()
@@ -75,45 +57,7 @@ module BookingTests =
             )
             |> Seq.tryHead
 
-        let retrieveAggregateIdsAndAggregateStatesIds version name =
-            let streamName  = sprintf "aggregate_events%s%s" version name
-            let query = sprintf "SELECT id, aggregate_id, aggregate_state_id FROM %s" streamName
-            connection
-            |> Sql.connect
-            |> Sql.query query
-            |> Sql.execute (fun reader ->
-                (
-                    reader.int "id",
-                    reader.uuid "aggregate_id",
-                    reader.uuid "aggregate_state_id"
-                )
-            )
-            |> Seq.toList
-
-        let kafkaRowViewer2 =
-            mkKafkaAggregateViewer2<SeatsRow, RowAggregateEvent>
-                rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
-
-        let rowStateViewer3: AggregateViewer<SeatsRow> =
-            fun (rowId: Guid) ->
-                kafkaRowViewer2.RefreshLoop() |> ignore
-                kafkaRowViewer2.State rowId
-
-        let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
         let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
-
-        let rowSubscriber'' = KafkaAggregateSubscriber.Create2("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
-
-        let kafkaRowViewer3 =
-            mkKafkaAggregateViewer2<SeatsRow, RowAggregateEvent>
-                rowSubscriber'' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
-
-        let rowStateViewer3: AggregateViewer<SeatsRow> =
-            fun (rowId: Guid) ->
-                kafkaRowViewer3.RefreshLoop() |> ignore
-                kafkaRowViewer3.State rowId
-
-        let mutable kafkaStadiumBookingSystemX = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer3)
 
         let setUp () =
             pgStorage.Reset "_01" "_seatrow"
@@ -125,16 +69,15 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                stadiumSystem,0,0
+                // stadiumSystem,0,0
                 memoryStadiumSystem, 1, 1
             ]
 
         // everything is in progress here:
-        ptestList "seat bookings" [
+        ftestList "seat bookings" [
             multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
-                // stadiumSubscriber.Reset()
                 // when
                 let rows = stadiumSystem.GetAllRowReferences ()
                 // then
@@ -176,12 +119,6 @@ module BookingTests =
                 let seat = { Id = 1; State = Free; RowId = None }
                 let addSeat = stadiumSystem.AddSeat rowId seat
                 Expect.isOk addSeat "should be ok"
-                let deliveryResult = getDeliveryResult addSeat
-                let _ =
-                    match deliveryResult with
-                    |  Ok deliveryResult -> kafkaRowViewer3.Assign (deliveryResult.Offset, deliveryResult.Partition)
-                    | _ -> ()
-                Expect.isOk addSeat "should be ok"
 
                 // then
 
@@ -189,45 +126,6 @@ module BookingTests =
                 Expect.isOk retrievedRow "should be ok"
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 1 "should be 1"
-
-            testCase "add a row reference and a seat to it. Retrieve the seat directly using subscriber. 2 - Ok"  <| fun _ ->
-                setUp()
-
-                let rowSubscriber' = KafkaAggregateSubscriber.Create2("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
-
-                let kafkaRowViewer2 =
-                    mkKafkaAggregateViewer2<SeatsRow, RowAggregateEvent>
-                        rowSubscriber' (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore) (ApplicationInstance.Instance.GetGuid())
-
-                let rowStateViewer2: AggregateViewer<SeatsRow> =
-                    fun (rowId: Guid) ->
-                        kafkaRowViewer2.RefreshLoop() |> ignore
-                        kafkaRowViewer2.State rowId
-                let kafkaStadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer2)
-
-                // when
-                let rowId = Guid.NewGuid()
-                let addRow = kafkaStadiumBookingSystem.AddRowReference rowId
-                Expect.isOk addRow "should be ok"
-
-                let seat = { Id = 1; State = Free; RowId = None }
-                let addSeat = kafkaStadiumBookingSystem.AddSeat rowId seat
-                Expect.isOk addSeat "should be ok"
-                let deliveryResult = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
-                rowSubscriber'.Assign (deliveryResult.Offset, deliveryResult.Partition)
-
-                let deliveryResult = addSeat.OkValue |> snd |> List.head |> Option.get |> List.head
-                kafkaRowViewer2.Assign (deliveryResult.Offset, deliveryResult.Partition)
-
-                // let _ = kafkaRowViewer2.Refresh()
-
-                // then
-
-                let retrievedRow = kafkaStadiumBookingSystem.GetRow rowId
-                Expect.isOk retrievedRow "should be ok"
-                let result = retrievedRow.OkValue
-                Expect.equal result.Seats.Length 1 "should be 1"
-
 
             pmultipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
@@ -247,18 +145,12 @@ module BookingTests =
 
                 let addSeat = stadiumSystem.AddSeat rowId seat
                 Expect.isOk addSeat "should be ok"
-                let deliveryResult = getDeliveryResult addSeat
-                let _ =
-                    match deliveryResult with
-                    |  Ok deliveryResult -> kafkaRowViewer3.Assign (deliveryResult.Offset, deliveryResult.Partition)
-                    | _ -> ()
 
                 let _ = stadiumSystem.AddSeat rowId seat2
                 let _ = stadiumSystem.AddSeat rowId seat3
                 let _ = stadiumSystem.AddSeat rowId seat4
                 let _ = stadiumSystem.AddSeat rowId seat5
                 let _ = stadiumSystem.AddSeat rowId seat6
-
 
                 // then
                 let retrievedRow = stadiumSystem.GetRow rowId
@@ -276,7 +168,7 @@ module BookingTests =
                 Expect.isOk addedRow "should be ok"
                 let seats =
                     [
-                        { Id = 1; State = Free; RowId = None  }
+                        { Id = 1; State = Free; RowId = None }
                         { Id = 2; State = Free; RowId = None }
                         { Id = 3; State = Free; RowId = None }
                         { Id = 4; State = Free; RowId = None }
@@ -284,12 +176,6 @@ module BookingTests =
                     ]
                 let seatAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatAdded "should be ok"
-                let deliveryResult = getDeliveryResult seatAdded
-
-                let _ =
-                    match deliveryResult with
-                    |  Ok deliveryResult -> kafkaRowViewer3.Assign (deliveryResult.Offset, deliveryResult.Partition)
-                    | _ -> ()
 
                 let retrievedRow = stadiumSystem.GetRow rowId
                 Expect.isOk retrievedRow "should be ok"
@@ -318,12 +204,6 @@ module BookingTests =
                     { Id = 5; State = Free; RowId = None }
                 ]
                 let seatAdded = stadiumSystem.AddSeats rowId seats
-                let deliveryResult = getDeliveryResult seatAdded
-
-                let _ =
-                    match deliveryResult with
-                    |  Ok deliveryResult -> kafkaRowViewer3.Assign (deliveryResult.Offset, deliveryResult.Partition)
-                    | _ -> ()
 
                 Expect.isOk seatAdded "should be ok"
                 let seats2 = [
@@ -501,7 +381,6 @@ module BookingTests =
             multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
 
-
                 let rowId = Guid.NewGuid()
                 let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
@@ -606,14 +485,6 @@ module BookingTests =
 
                 // when
                 let addAllSeats = stadiumSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
-
-                let deliveryResult = getDeliveryResult addAllSeats
-
-                // let _ =
-                //     match deliveryResult with
-                //     |  Ok deliveryResult -> kafkaRowViewer3.Assign (deliveryResult.Offset, deliveryResult.Partition)
-                //     | _ -> ()
-                // Expect.isOk addAllSeats "should be ok"
 
                 // then
                 let retrievedRow1 = stadiumSystem.GetRow rowId1

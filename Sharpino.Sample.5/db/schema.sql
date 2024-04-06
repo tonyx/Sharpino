@@ -105,6 +105,22 @@ $$;
 
 
 --
+-- Name: set_classic_optimistic_lock_01_stadium(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.set_classic_optimistic_lock_01_stadium()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_stadium_context_state_id_unique') THEN
+ALTER TABLE events_01_stadium
+    ADD CONSTRAINT context_events_01_stadium_context_state_id_unique UNIQUE (context_state_id);
+END IF;
+END;
+$$;
+
+
+--
 -- Name: un_set_classic_optimistic_lock_01_seatrow(); Type: PROCEDURE; Schema: public; Owner: -
 --
 
@@ -115,6 +131,20 @@ BEGIN
     ALTER TABLE aggregate_events_01_seatrow
     DROP CONSTRAINT IF EXISTS aggregate_events_01_seatrow_aggregate_id_state_id_unique;
     -- You can have more SQL statements as needed
+END;
+$$;
+
+
+--
+-- Name: un_set_classic_optimistic_lock_01_stadium(); Type: PROCEDURE; Schema: public; Owner: -
+--
+
+CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_stadium()
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    ALTER TABLE events_01_stadium
+    DROP CONSTRAINT IF EXISTS context_events_01_stadium_context_state_id_unique;
 END;
 $$;
 

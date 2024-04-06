@@ -24,16 +24,11 @@ module rec SeatRow =
         |> List.traverseResultM
             (fun ch -> ch row)
 
-    // due to serialization issues, we need to wrap the invariant in a container as a string.
-    // the pickler will then be able to serialize and deserialize the invariant
-    // type Invariant = Quotations.Expr<(SeatsRow -> Result<bool, string>)>
-    // type Invariant = Quotations.Expr<(SeatsRow -> Result<bool, string>)>
-
     type Invariant<'A> = Quotations.Expr<('A -> Result<unit, string>)>
 
     type InvariantContainer (invariant: string) =
         member this.Invariant = invariant
-        member this.UnPickled ()
+        member this.UnPickled () =
             pickler.UnPickleOfString invariant
         static member Build (invariant: Invariant<SeatsRow>) =
             let pickled = pickler.PickleToString (invariant: Invariant<SeatsRow>)
