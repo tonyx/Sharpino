@@ -30,12 +30,12 @@
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.3.0" />
-    <PackageReference Include="Expecto" Version="10.1.0" />
-    <PackageReference Include="Farmer" Version="1.8.8" />
+    <PackageReference Include="Expecto" Version="10.2.1" />
+    <PackageReference Include="Farmer" Version="1.8.9" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
-    <PackageReference Include="Log4net" Version="2.0.16" />
+    <PackageReference Include="Log4net" Version="2.0.17" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-<!--    <PackageReference Include="Sharpino" Version="1.5.6" />-->
+<!--    <PackageReference Include="Sharpino" Version="1.5.9" />-->
   </ItemGroup>
 
 </Project>
