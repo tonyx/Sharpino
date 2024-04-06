@@ -34,7 +34,7 @@ module CommandHandler =
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member Lock: obj)
-        and 'E :> Event<'A>
+        and 'E:> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >(eventStore: IEventStore) =

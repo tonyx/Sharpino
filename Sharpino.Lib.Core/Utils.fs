@@ -84,11 +84,11 @@ module TestUtils =
         testList name (
             par
             |> List.map 
-                (fun (app,  upgd, shdTstUpgrd) ->
-                testParam (app,  upgd, shdTstUpgrd) [
-                        (app.ToString()) + (upgd.ToString()), 
-                            fun (app, upgd, shdTstUpgrd) () ->
-                                myTest(app, upgd, shdTstUpgrd)
+                (fun x  ->
+                testParam x [
+                        (x.ToString().Substring(0, 5)), 
+                            fun x () ->
+                                myTest x
                 ]
                 |> List.ofSeq
             )
@@ -99,11 +99,11 @@ module TestUtils =
         ftestList name (
             cnf
             |> List.map 
-                (fun (ap,  upgd, upgrader) ->
-                testParam (ap,  upgd, upgrader ) [
-                        (ap.ToString()) + (upgd.ToString()), 
-                            fun (ap,  upgd, upgrader) () ->
-                                myTest(ap, upgd, upgrader)
+                (fun x ->
+                testParam x [
+                        (x.ToString().Substring(0, 5)),
+                            fun x () ->
+                                myTest x
                 ]
                 |> List.ofSeq
             )
@@ -113,11 +113,11 @@ module TestUtils =
         ptestList name (
             cnf
             |> List.map 
-                (fun (ap, upgd, upgrader) ->
-                testParam (ap, upgd, upgrader) [
-                        (ap.ToString()) + (upgd.ToString()),
-                            fun (ap, upgd, upgrader) () ->
-                                test(ap, upgd, upgrader)
+                (fun x ->
+                testParam x [
+                        (x.ToString()),
+                            fun x () ->
+                                test x
                 ]
                 |> List.ofSeq
             )
