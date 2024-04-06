@@ -24,7 +24,6 @@ open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
 module BookingTests =
-    // EVERYTHING IS IN PROGRESS HERE
 
     let getDeliveryResult (deliveryResult: Result<list<List<Definitions.EventId>> * list<option<List<Confluent.Kafka.DeliveryResult<'A,string>>>>,string>) =
         result {
@@ -39,8 +38,6 @@ module BookingTests =
     let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
     let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
 
-    // let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
-
     let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
     let kafkaBasedStadiumState: StateViewer<Stadium> =
         printf "getting state\n"
@@ -51,13 +48,6 @@ module BookingTests =
     let seatBookings =
         let memoryStorage = MemoryStorage.MemoryStorage()
         let pgStorage = PgStorage.PgEventStore(connection)
-
-        // let setUp () =
-        //     pgStorage.Reset "_01" "_seatrow"
-        //     pgStorage.Reset "_01" "_stadium"
-        //     pgStorage.ResetAggregateStream "_01" "_seatrow"
-        //     AggregateCache<SeatsRow>.Instance.Clear()
-        //     StateCache<Stadium>.Instance.Clear()
 
         let doNothingBroker: IEventBroker =
             {
@@ -111,7 +101,6 @@ module BookingTests =
 
         let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
         let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
-        let kafkaStadiumBookingSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer3)
 
         let rowSubscriber'' = KafkaAggregateSubscriber.Create2("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 
@@ -132,34 +121,16 @@ module BookingTests =
             pgStorage.ResetAggregateStream "_01" "_seatrow"
             AggregateCache<SeatsRow>.Instance.Clear()
             StateCache<Stadium>.Instance.Clear()
-
-            // let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
-            // let kafkaBasedStadiumState: StateViewer<Stadium> =
-            //     fun () ->
-            //         kafkaStadiumViewer.RefreshLoop() |> ignore
-            //         kafkaStadiumViewer.State()
-
-            // let rowStateViewer3: AggregateViewer<SeatsRow> =
-            //     fun (rowId: Guid) ->
-            //         kafkaRowViewer2.RefreshLoop() |> ignore
-            //         kafkaRowViewer2.State rowId
-
-            // let eventBroker = getKafkaBroker ("localhost:9092",  eventStore)
-
-            // kafkaStadiumBookingSystemX <- StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer3)
             ApplicationInstance.Instance.ResetGuid()
 
         let stadiumInstances =
             [
                 stadiumSystem,0,0
-                // memoryStadiumSystem, 1, 1
-                // kafkaStadiumBookingSystem, 2, 2
-                kafkaStadiumBookingSystemX, 3, 3
+                memoryStadiumSystem, 1, 1
             ]
 
         // everything is in progress here:
         ptestList "seat bookings" [
-            // questo e' un altro problema
             multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
@@ -264,7 +235,6 @@ module BookingTests =
                 // given
 
                 // when
-                // let stadiumSystem = StadiumBookingSystem (eventStore, eventBroker, kafkaBasedStadiumState, rowStateViewer2)
                 let rowId = Guid.NewGuid()
                 let addRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addRow "should be ok"

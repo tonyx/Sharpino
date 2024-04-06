@@ -43,11 +43,10 @@ let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadiu
 let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
 let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
-let kafkaBasedStadiumState: StateViewer<Stadium> =
-    fun () ->
-        kafkaStadiumViewer.RefreshLoop() |> ignore
-        kafkaStadiumViewer.State()
-
+// let kafkaBasedStadiumState: StateViewer<Stadium> =
+//     fun () ->
+//         kafkaStadiumViewer.RefreshLoop() |> ignore
+//         kafkaStadiumViewer.State()
 let kafkaRowViewer' rowSubscriber' =
     fun (rowId: Guid) ->
         let result =

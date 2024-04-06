@@ -18,14 +18,10 @@ module Server =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     log.Debug "starting server"
 
-
     // those are the three options for the app to be used in the server
 
     // let app = currentPostgresApp
-    // let app = currentMemoryApp
-    // let app = eventBrokerStateBasedApp
-    // let app = currentVersionPgWithKafkaApp 
-    let app = eventBrokerStateBasedApp 
+    let app = currentMemoryApp
 
     let todosApi: ITodosApi =
         {

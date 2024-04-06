@@ -41,27 +41,12 @@ module AppVersions =
 
     let pgStorage = PgStorage.PgEventStore(connection)
 
-
-    // if kafka doesn't run this will give some annoying messages
-    let localHostbroker = KafkaBroker.getKafkaBroker("localhost:9092", pgStorage)
-
     let memoryStorage = MemoryStorage.MemoryStorage()
     let currentPgApp = App.CurrentVersionApp(pgStorage)
-
-    // I had to comment this out because it gives annoying messages when kafka is not enabled
-    let currentPgAppWithKafka = App.CurrentVersionApp(pgStorage, localHostbroker)
 
     let upgradedPgApp = App.UpgradedApp(pgStorage)
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
     let upgradedMemApp = App.UpgradedApp(memoryStorage)
-
-    let eventStoreBridge = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-    let evStoreApp = EventStoreApp(EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer))
-
-    let mutable eventBrokerBasedApp = EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
-
-    let resetEventBrokerBasedApp() =
-        eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
 
     let resetAppId() =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
@@ -79,20 +64,8 @@ module AppVersions =
         db.Reset CategoriesContext.Version CategoriesContext.StorageName
         StateCache<CategoriesContext>.Instance.Clear()
 
-    let resetEventStore() =
-
-        eventStoreBridge.ResetSnapshots "_01" "_tags"
-        eventStoreBridge.ResetEvents "_01"  "_tags"
-        eventStoreBridge.ResetSnapshots "_01" "_todo"
-        eventStoreBridge.ResetEvents "_01" "_todo"
-        eventStoreBridge.ResetSnapshots "_02" "_todo"
-        eventStoreBridge.ResetEvents "_02" "_todo"
-        eventStoreBridge.ResetSnapshots "_01" "_categories"
-        eventStoreBridge.ResetEvents "_01" "_categories"
-
     type IApplication =
         {
-            // _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>    
             _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<string, string>>, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
@@ -196,33 +169,6 @@ module AppVersions =
             todoReport =        currentMemApp.TodoReport
         }
 
-    [<CurrentVersion>]
-    let currentVersionPgWithKafkaApp =
-        {
-            _notify =           currentPgAppWithKafka._eventBroker.notify
-            _migrator =         None
-            _reset =            fun () -> 
-                                    resetDb pgStorage
-                                    resetAppId()
-            _addEvents =        fun (version, e: List<string>, name, contextStateId ) -> 
-                                    let deser = e
-                                    (pgStorage :> IEventStore).AddEvents version name (Guid.Empty) deser |> ignore
-            _pingTodo =         currentPgAppWithKafka.PingTodo
-            _pingCategories =   currentPgAppWithKafka.PingCategory
-            _pingTags =         currentPgAppWithKafka.PingTag
-            getAllTodos =       currentPgAppWithKafka.GetAllTodos
-            addTodo =           currentPgAppWithKafka.AddTodo
-            add2Todos =         currentPgAppWithKafka.Add2Todos
-            removeTodo =        currentPgAppWithKafka.RemoveTodo
-            getAllCategories =  currentPgAppWithKafka.GetAllCategories
-            addCategory =       currentPgAppWithKafka.AddCategory
-            removeCategory =    currentPgAppWithKafka.RemoveCategory
-            addTag =            currentPgAppWithKafka.AddTag
-            removeTag =         currentPgAppWithKafka.RemoveTag
-            getAllTags =        currentPgAppWithKafka.GetAllTags
-            todoReport =        currentPgAppWithKafka.TodoReport
-        }
-
     [<UpgradedVersion>]
     let upgradedMemoryApp =
         {
@@ -250,66 +196,4 @@ module AppVersions =
             todoReport =        upgradedMemApp.TodoReport
         }
 
-    let eventBrokerStateBasedApp =
-        {
-            _notify =           eventBrokerBasedApp._eventBroker.notify
-            _migrator =         None
-            _reset =            fun () -> 
-                                    printf "doing reset\n"
-                                    resetDb pgStorage
-                                    resetAppId()
-                                    // eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, localHostbroker)
-                                    let broker = KafkaBroker.getKafkaBroker("localhost:9092", pgStorage)
-                                    eventBrokerBasedApp <- EventBrokerBasedApp.EventBrokerBasedApp(pgStorage, broker)
-                                    // resetEventBrokerBasedApp()
-                                    // eventBrokerBasedApp._setApplId(ApplicationInstance.ApplicationInstance.Instance.GetGuid())
-                                    // eventBrokerBasedApp._refreshStateViewers()
-            _addEvents =        fun (version, e: List<string>, name, contextStateId) -> 
-                                    let deser = e
-                                    (pgStorage :> IEventStore).AddEvents version name Guid.Empty deser |> ignore
-            _pingTodo =         eventBrokerBasedApp.PingTodo
-            _pingCategories =   eventBrokerBasedApp.PingCategory
-            _pingTags =         eventBrokerBasedApp.PingTag
-            getAllTodos =       eventBrokerBasedApp.GetAllTodos
-            addTodo =           eventBrokerBasedApp.AddTodo
-            add2Todos =         eventBrokerBasedApp.Add2Todos
-            removeTodo =        eventBrokerBasedApp.RemoveTodo
-            getAllCategories =  eventBrokerBasedApp.GetAllCategories
-            addCategory =       eventBrokerBasedApp.AddCategory
-            removeCategory =    eventBrokerBasedApp.RemoveCategory
-            addTag =            eventBrokerBasedApp.AddTag
-            removeTag =         eventBrokerBasedApp.RemoveTag
-            getAllTags =        eventBrokerBasedApp.GetAllTags
-            todoReport =        eventBrokerBasedApp.TodoReport
-        }
 
-    // [<CurrentVersion>]
-    // are we going to remove totally eventstoredb support? 
-    // let evSApp =
-    //     {
-    //         _notify =           None
-    //         _migrator =         None
-    //         _reset =            fun () -> 
-    //                                 resetEventStore()
-    //                                 resetAppId()
-    //         _addEvents =        fun (version, e: List<string>, name) -> 
-    //                                 let eventStore = Sharpino.EventStore.EventStoreStorage(eventStoreConnection, jsonSerializer) :> ILightStorage
-    //                                 let deser = e |> List.map (fun x -> x |> jsonSerializer.Deserialize  |> Result.get)
-    //                                 async {
-    //                                     let result = eventStore.AddEvents version deser name
-    //                                     return result
-    //                                 }
-    //                                 |> Async.RunSynchronously
-    //                                 |> ignore
-    //         getAllTodos =       evStoreApp.GetAllTodos
-    //         addTodo =           evStoreApp.AddTodo
-    //         add2Todos =         evStoreApp.Add2Todos
-    //         removeTodo =        evStoreApp.RemoveTodo
-    //         getAllCategories =  evStoreApp.GetAllCategories
-    //         addCategory =       evStoreApp.AddCategory
-    //         removeCategory =    evStoreApp.RemoveCategory
-    //         addTag =            evStoreApp.AddTag
-    //         removeTag =         evStoreApp.RemoveTag
-    //         getAllTags =        evStoreApp.GetAllTags
-    //         todoReport =        evStoreApp.TodoReport
-    //     }

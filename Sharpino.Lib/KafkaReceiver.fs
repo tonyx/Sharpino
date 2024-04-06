@@ -37,7 +37,6 @@ module KafkaReceiver =
         let _ = config.AutoOffsetReset <- AutoOffsetReset.Earliest
         let _ = config.EnableAutoCommit <- false
 
-        // let consumer = new ConsumerBuilder<Null, string>(config)
         let consumer = new ConsumerBuilder<string, string>(config)
         let cons = consumer.Build () 
         let _ = cons.Subscribe topic 
@@ -212,7 +211,6 @@ module KafkaReceiver =
     type KafkaAggregateViewer<'A, 'E when 'E :> Event<'A>> 
         (aggregateId: Guid,
         subscriber: KafkaAggregateSubscriber, 
-        // subscriber: KafkaSubscriber, 
         sourceOfTruthStateViewer: AggregateId -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>,
         appId: Guid)
         =
@@ -378,20 +376,6 @@ module KafkaReceiver =
                 ()
             ()
 
-        // member this.ForceSyncWithSourceOfTruth aggregateId = 
-        //     ResultCE.result {
-        //         let! newState = sourceOfTruthStateViewer aggregateId
-        //         state <- newState |> Result.Ok
-        //         let! _, _, offset, partition = this.State ()
-        //         match offset, partition with
-        //         | Some off, Some part ->
-        //             subscriber.Assign ( off + 1L, part )
-        //         | _ ->
-        //             log.Error "Cannot assign offset and partition"
-        //             ()
-        //         return ()
-        //     }
-
     let inline mkKafkaViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -421,7 +405,6 @@ module KafkaReceiver =
         and 'E: (member Serialize: ISerializer -> string)
         >
         (aggregateId: Guid)
-        // (subscriber: KafkaSubscriber) 
         (subscriber: KafkaAggregateSubscriber) 
         (sourceOfTruthStateViewer: Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 
         (applicationId: Guid) 

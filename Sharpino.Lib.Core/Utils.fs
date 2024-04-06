@@ -86,7 +86,7 @@ module TestUtils =
             |> List.map 
                 (fun x  ->
                 testParam x [
-                        (x.ToString().Substring(0, 5)), 
+                        (x.ToString().Substring(0, 5)+System.Guid.NewGuid().ToString().Substring(0, 5)), 
                             fun x () ->
                                 myTest x
                 ]
@@ -101,7 +101,7 @@ module TestUtils =
             |> List.map 
                 (fun x ->
                 testParam x [
-                        (x.ToString().Substring(0, 5)),
+                        (x.ToString().Substring(0, 5)+System.Guid.NewGuid().ToString().Substring(0, 5)), 
                             fun x () ->
                                 myTest x
                 ]
@@ -115,7 +115,7 @@ module TestUtils =
             |> List.map 
                 (fun x ->
                 testParam x [
-                        (x.ToString()),
+                        (x.ToString().Substring(0, 5)+System.Guid.NewGuid().ToString().Substring(0, 5)), 
                             fun x () ->
                                 test x
                 ]

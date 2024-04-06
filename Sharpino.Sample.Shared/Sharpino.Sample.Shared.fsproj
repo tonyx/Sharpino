@@ -14,9 +14,8 @@
   </ItemGroup> 
 
   <ItemGroup>
-    <PackageReference Include="Log4net" Version="2.0.16" />
+    <PackageReference Include="Log4net" Version="2.0.17" />
     <PackageReference Include="Fable.Core" Version="4.3.0" />
-<!--    <PackageReference Include="Sharpino.Core" Version="1.0.9" />-->
   </ItemGroup>
 
 </Project>

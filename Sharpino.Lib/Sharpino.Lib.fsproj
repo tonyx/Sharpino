@@ -48,7 +48,7 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
 
-    <PackageReference Include="Log4net" Version="2.0.16" />
+    <PackageReference Include="Log4net" Version="2.0.17" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
@@ -60,7 +60,7 @@
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.8.8" />
+    <PackageReference Include="Farmer" Version="1.8.9" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />

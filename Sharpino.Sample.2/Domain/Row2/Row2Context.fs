@@ -5,7 +5,6 @@ open Sharpino.Utils
 open Row2
 open Row
 
-// I call it context but it works as an aggregate. Need to fix it in library, docs ...
 module Row2Context =
     open System
     type Row2 (rowContext: RowContext) =
