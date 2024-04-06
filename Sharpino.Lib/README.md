@@ -179,7 +179,8 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
-
+ 
+- added an [example of many counter as aggregates referenced by a single context](https://github.com/tonyx/SharpinoCounter3.git)
 - version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
