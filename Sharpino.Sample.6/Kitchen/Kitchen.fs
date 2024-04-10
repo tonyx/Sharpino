@@ -16,21 +16,6 @@ module Kitchen =
 
         static member Zero =
             Kitchen ([], [], [])
-        static member StorageName =
-            "_kitchen"
-        static member Version =
-            "_01"
-        static member SnapshotsInterval =
-            15
-        static member Lock =
-            new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Kitchen, string>  =
-            serializer.Deserialize<Kitchen> json
-
-        member this.Serialize (serializer: ISerializer) =
-            this
-            |> serializer.Serialize
-
         member this.AddDishReference (id: Guid) =
             result {
                 let! notAlreadyExists =
@@ -98,4 +83,19 @@ module Kitchen =
         member this.GetIngredientReferences () =
             this.ingredientReferences |>> snd
 
+        
+        static member StorageName =
+            "_kitchen"
+        static member Version =
+            "_01"
+        static member SnapshotsInterval =
+            15
+        static member Lock =
+            new Object()
+        static member Deserialize (serializer: ISerializer, json: Json): Result<Kitchen, string>  =
+            serializer.Deserialize<Kitchen> json
+
+        member this.Serialize (serializer: ISerializer) =
+            this
+            |> serializer.Serialize
 

@@ -254,7 +254,6 @@ module CommandHandler =
                 let! result = runCommand<'A, 'E> storage eventBroker stateViewer command
                 return result
             }
-        
     
     let inline runAggregateCommand<'A, 'E
         when 'A :> Aggregate 

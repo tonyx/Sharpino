@@ -39,7 +39,7 @@ module PgStorage =
                     | _ as e -> failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
-        member this.ResetAggregateStream version name =         
+        member this.ResetAggregateStream version name =
             if (Conf.isTestEnv) then
                 try
                     let res1 =
@@ -289,7 +289,6 @@ module PgStorage =
 
             member this.SetInitialAggregateState aggregateId aggregateStateId version name json =
                 log.Debug "entered in setSnapshot"
-                // todo: fix correct aggregatestateid
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" version name
                 let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" version name
                 try
