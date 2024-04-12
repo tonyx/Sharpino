@@ -6,6 +6,7 @@ CREATE TABLE public.events{Version}{ContextStorageName} (
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,
+                                          context_state_id uuid NOT NULL,
                                           "timestamp" timestamp without time zone NOT NULL
 );
 
