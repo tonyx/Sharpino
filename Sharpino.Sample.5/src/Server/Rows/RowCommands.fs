@@ -15,6 +15,7 @@ module RowAggregateCommand =
         | AddSeats of List<Seat>
         | RemoveSeat of Seat
         | AddInvariant of InvariantContainer
+        | RemoveInvariant of InvariantContainer
             interface Command<SeatsRow, RowAggregateEvent> with
                 member this.Execute (x: SeatsRow) =
                     match this with
@@ -33,6 +34,9 @@ module RowAggregateCommand =
                     | AddInvariant invariant ->
                         x.AddInvariant invariant
                         |> Result.map (fun _ -> [InvariantAdded invariant])
+                    | RemoveInvariant invariant ->
+                        x.RemoveInvariant invariant
+                        |> Result.map (fun _ -> [InvariantRemoved invariant])
                 member this.Undoer =
                     None
 

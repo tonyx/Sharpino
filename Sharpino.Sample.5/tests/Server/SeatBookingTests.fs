@@ -58,6 +58,7 @@ module BookingTests =
             |> Seq.tryHead
 
         let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
+        let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
         let setUp () =
             pgStorage.Reset "_01" "_seatrow"
@@ -69,12 +70,12 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                // stadiumSystem,0,0
-                memoryStadiumSystem, 1, 1
+                stadiumSystem,0,0
+                // memoryStadiumSystem, 1, 1
             ]
 
         // everything is in progress here:
-        ftestList "seat bookings" [
+        testList "seat bookings" [
             multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp ()
 
@@ -127,7 +128,7 @@ module BookingTests =
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 1 "should be 1"
 
-            pmultipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
@@ -158,11 +159,9 @@ module BookingTests =
                 let result = retrievedRow.OkValue
                 Expect.equal result.Seats.Length 6 "should be 6"
 
-            pmultipleTestCase "add a row reference and then some seats to it. Retrieve the seats - OK" stadiumInstances <| fun (stadiumSystem, _, _)  ->
+            multipleTestCase "add a row reference and then some seats to it. Retrieve the seats - OK" stadiumInstances <| fun (stadiumSystem, _, _)  ->
                 setUp()
-                // given
 
-                // when
                 let rowId = Guid.NewGuid()
                 let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
@@ -332,25 +331,30 @@ module BookingTests =
                 let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
-            pmultipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
                 let rowId = Guid.NewGuid()
+                let invariantId = Guid.NewGuid()
                 let middleSeatInvariant: Invariant<SeatsRow>  =
-                    <@
-                        fun (seatsRow: SeatsRow) ->
-                            let seats: List<Seat> = seatsRow.Seats
-                            ((
-                                seats.Length = 5 &&
-                                seats.[0].State = SeatState.Booked &&
-                                seats.[1].State = SeatState.Booked &&
-                                seats.[2].State = SeatState.Free &&
-                                seats.[3].State = SeatState.Booked &&
-                                seats.[4].State = SeatState.Booked)
-                            |> not)
-                            |> Result.ofBool "error: can't leave a single seat free in the middle"
-                    @>
+                    {
+                        Id = invariantId
+                        Expression =
+                            <@
+                                fun (seatsRow: SeatsRow) ->
+                                    let seats: List<Seat> = seatsRow.Seats
+                                    ((
+                                        seats.Length = 5 &&
+                                        seats.[0].State = SeatState.Booked &&
+                                        seats.[1].State = SeatState.Booked &&
+                                        seats.[2].State = SeatState.Free &&
+                                        seats.[3].State = SeatState.Booked &&
+                                        seats.[4].State = SeatState.Booked)
+                                    |> not)
+                                    |> Result.ofBool "error: can't leave a single seat free in the middle"
+                            @>
+                    }
                 let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
                 let addedRow = stadiumSystem.AddRowReference rowId
                 Expect.isOk addedRow "should be ok"
@@ -367,16 +371,70 @@ module BookingTests =
                 ]
                 let seatsAdded = stadiumSystem.AddSeats rowId seats
                 Expect.isOk seatsAdded "should be ok"
-                let booking = { Id = 1; SeatIds = [1;2;4;5]}
 
                 // when
-                let booking = { Id = 1; SeatIds = [1;2;4;5]}
+                let booking = { Id = 1; SeatIds = [1; 2; 4; 5]}
                 let tryBooking = stadiumSystem.BookSeats rowId booking
 
                 // then
                 Expect.isError tryBooking "should be error"
                 let (Error e) = tryBooking
                 Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
+
+            multipleTestCase "add an invariant then remove it - OK" stadiumInstances <| fun (stadumSyse, _, _ ) ->
+                setUp()
+
+                // given
+                let rowId = Guid.NewGuid()
+                let invariantId = Guid.NewGuid()
+                let middleSeatInvariant: Invariant<SeatsRow>  =
+                    {
+                        Id = invariantId
+                        Expression =
+                            <@
+                                fun (seatsRow: SeatsRow) ->
+                                    let seats: List<Seat> = seatsRow.Seats
+                                    ((
+                                        seats.Length = 5 &&
+                                        seats.[0].State = SeatState.Booked &&
+                                        seats.[1].State = SeatState.Booked &&
+                                        seats.[2].State = SeatState.Free &&
+                                        seats.[3].State = SeatState.Booked &&
+                                        seats.[4].State = SeatState.Booked)
+                                    |> not)
+                                    |> Result.ofBool "error: can't leave a single seat free in the middle"
+                            @>
+                    }
+                let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
+                let addedRow = stadiumSystem.AddRowReference rowId
+                Expect.isOk addedRow "should be ok"
+
+                let addedRule = stadiumSystem.AddInvariant rowId middleSeatInvariantContainer
+                Expect.isOk addedRule "should be ok"
+
+                let removedRule = stadiumSystem.RemoveInvariant rowId middleSeatInvariantContainer
+                Expect.isOk removedRule "should be ok"
+
+                let seats = [
+                    { Id = 1; State = Free; RowId = None }
+                    { Id = 2; State = Free; RowId = None }
+                    { Id = 3; State = Free; RowId = None }
+                    { Id = 4; State = Free; RowId = None }
+                    { Id = 5; State = Free; RowId = None }
+                ]
+                let seatsAdded = stadiumSystem.AddSeats rowId seats
+                Expect.isOk seatsAdded "should be ok"
+
+                // when
+                let booking = { Id = 1; SeatIds = [1; 2; 4; 5]}
+                let tryBooking = stadiumSystem.BookSeats rowId booking
+
+                // then
+                Expect.isOk tryBooking "should be ok"
+                // Expect.isError tryBooking "should be error"
+                // let (Error e) = tryBooking
+                // Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
+
 
             multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, _, _) ->
                 setUp()
@@ -407,20 +465,25 @@ module BookingTests =
 
                 let rowId1 = Guid.NewGuid()
                 let rowId2 = Guid.NewGuid()
+                let invariantId = Guid.NewGuid()
                 let middleSeatNotFreeRule: Invariant<SeatsRow> =
-                    <@
-                        fun (seatsRow: SeatsRow) ->
-                            let seats: List<Seat> = seatsRow.Seats
-                            (
-                                seats.Length = 5 &&
-                                seats.[0].State = SeatState.Booked &&
-                                seats.[1].State = SeatState.Booked &&
-                                seats.[2].State = SeatState.Free &&
-                                seats.[3].State = SeatState.Booked &&
-                                seats.[4].State = SeatState.Booked)
-                            |> not
-                            |> Result.ofBool "error: can't leave a single seat free in the middle"
-                    @>
+                    {
+                        Id = invariantId
+                        Expression =
+                            <@
+                                fun (seatsRow: SeatsRow) ->
+                                    let seats: List<Seat> = seatsRow.Seats
+                                    (
+                                        seats.Length = 5 &&
+                                        seats.[0].State = SeatState.Booked &&
+                                        seats.[1].State = SeatState.Booked &&
+                                        seats.[2].State = SeatState.Free &&
+                                        seats.[3].State = SeatState.Booked &&
+                                        seats.[4].State = SeatState.Booked)
+                                    |> not
+                                    |> Result.ofBool "error: can't leave a single seat free in the middle"
+                            @>
+                    }
                 let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
                 let addedRow1 = stadiumSystem.AddRowReference rowId1

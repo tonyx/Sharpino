@@ -20,11 +20,18 @@ module rec SeatRow =
     let pickler = FsPickler.CreateJsonSerializer(indent = false)
     let checkInvariants (row: SeatsRow) =
         row.Invariants
-        |>> (fun (inv: InvariantContainer) -> (inv.UnPickled () :> Invariant<SeatsRow>).Compile())
+        // |>> (fun (inv: InvariantContainer) -> (inv.UnPickled () :> Invariant<SeatsRow>).Compile())
+        |>> (fun (inv: InvariantContainer) -> (inv.UnPickled ()).Expression.Compile())
         |> List.traverseResultM
             (fun ch -> ch row)
 
-    type Invariant<'A> = Quotations.Expr<('A -> Result<unit, string>)>
+    // type Invariant<'A> = Quotations.Expr<('A -> Result<unit, string>)>
+
+    type Invariant<'A> =
+        {
+            Id: Guid
+            Expression: Quotations.Expr<('A -> Result<unit, string>)>
+        }
 
     type InvariantContainer (invariant: string) =
         member this.Invariant = invariant
@@ -114,6 +121,18 @@ module rec SeatRow =
             }
         member this.AddInvariant (invariant: InvariantContainer) =
             SeatsRow (this.Seats, this.Id, invariant :: this.Invariants) |> Ok
+
+        member this.RemoveInvariant (invariant: InvariantContainer) =
+            result
+                {
+                    let! exists =
+                        this.Invariants
+                        |> List.tryFind (fun x -> x.UnPickled().Id = invariant.UnPickled().Id)
+                        |> Option.isSome
+                        |> Result.ofBool "Invariant does not exist"
+                    let result = SeatsRow (this.Seats, this.Id, this.Invariants |> List.filter (fun x -> x.UnPickled().Id <> invariant.UnPickled().Id))
+                    return result
+                }
 
         member this.AddSeats (seats: List<Seat>): Result<SeatsRow, string> =
             let newSeats = this.Seats @ seats

@@ -17,6 +17,7 @@ module RowAggregateEvent =
         | SeatsAdded of List<Seat>
         | SeatRemoved of Seat
         | InvariantAdded of InvariantContainer
+        | InvariantRemoved of InvariantContainer
             interface Event<SeatsRow> with
                 member this.Process (x: SeatsRow) =
                     match this with
@@ -30,6 +31,8 @@ module RowAggregateEvent =
                         x.AddSeats seats
                     | InvariantAdded invariant ->
                         x.AddInvariant invariant
+                    | InvariantRemoved invariant ->
+                        x.RemoveInvariant invariant
 
         member this.Serialize(serializer: ISerializer) =
             this
