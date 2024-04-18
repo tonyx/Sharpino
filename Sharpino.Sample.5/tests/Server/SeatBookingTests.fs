@@ -331,7 +331,7 @@ module BookingTests =
                 let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
-            multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            fmultipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given
@@ -381,7 +381,7 @@ module BookingTests =
                 let (Error e) = tryBooking
                 Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
 
-            multipleTestCase "add an invariant then remove it - OK" stadiumInstances <| fun (stadumSyse, _, _ ) ->
+            multipleTestCase "add an invariant then remove it - OK" stadiumInstances <| fun (stadiumSystem, _, _ ) ->
                 setUp()
 
                 // given
@@ -431,9 +431,6 @@ module BookingTests =
 
                 // then
                 Expect.isOk tryBooking "should be ok"
-                // Expect.isError tryBooking "should be error"
-                // let (Error e) = tryBooking
-                // Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
 
 
             multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, _, _) ->

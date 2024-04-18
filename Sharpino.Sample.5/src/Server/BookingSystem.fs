@@ -37,13 +37,13 @@ module StorageStadiumBookingSystem =
             StadiumBookingSystem(eventStore, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore)
         new (eventStore: IEventStore, eventBroker: IEventBroker) =
             StadiumBookingSystem(eventStore, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore)
-        member this.SetAggregateStateControlInOptimisticLock Version Name =
+        member this.SetAggregateStateControlInOptimisticLock version name =
             ResultCE.result {
-                return! eventStore.SetClassicOptimisticLock Version Name
+                return! eventStore.SetClassicOptimisticLock version name
             }
-        member this.UnSetAggregateStateControlInOptimisticLock Version Name =
+        member this.UnSetAggregateStateControlInOptimisticLock version name =
             ResultCE.result {
-                return! eventStore.UnSetClassicOptimisticLock Version Name
+                return! eventStore.UnSetClassicOptimisticLock version name
             }
         member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {

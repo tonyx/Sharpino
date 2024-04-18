@@ -20,12 +20,9 @@ module rec SeatRow =
     let pickler = FsPickler.CreateJsonSerializer(indent = false)
     let checkInvariants (row: SeatsRow) =
         row.Invariants
-        // |>> (fun (inv: InvariantContainer) -> (inv.UnPickled () :> Invariant<SeatsRow>).Compile())
         |>> (fun (inv: InvariantContainer) -> (inv.UnPickled ()).Expression.Compile())
         |> List.traverseResultM
             (fun ch -> ch row)
-
-    // type Invariant<'A> = Quotations.Expr<('A -> Result<unit, string>)>
 
     type Invariant<'A> =
         {
@@ -120,7 +117,14 @@ module rec SeatRow =
                 return result
             }
         member this.AddInvariant (invariant: InvariantContainer) =
-            SeatsRow (this.Seats, this.Id, invariant :: this.Invariants) |> Ok
+            result {
+                let! exists =
+                    this.Invariants
+                    |> List.tryFind (fun x -> x.UnPickled().Id = invariant.UnPickled().Id)
+                    |> Option.isNone
+                    |> Result.ofBool "Invariant already exists"
+                return SeatsRow (this.Seats, this.Id, invariant :: this.Invariants)
+            }
 
         member this.RemoveInvariant (invariant: InvariantContainer) =
             result
