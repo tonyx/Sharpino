@@ -70,7 +70,7 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                stadiumSystem,0,0
+                stadiumSystem, 0, 0
                 // memoryStadiumSystem, 1, 1
             ]
 
@@ -331,7 +331,7 @@ module BookingTests =
                 let tryBooking = stadiumSystem.BookSeats rowId booking
                 Expect.isOk tryBooking "should be ok"
 
-            fmultipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 setUp()
 
                 // given

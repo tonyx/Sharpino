@@ -27,6 +27,21 @@ module CommandHandler =
     type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
     type AggregateViewer<'A> = Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
 
+    type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
+
+    let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
+        let rec loop() =
+            async {
+                let! (statement, replyChannel) = inbox.Receive()
+                let result = statement()
+                replyChannel.Reply result
+                do! loop()
+            }
+        loop()
+    )
+    let postToProcessor f =
+        processor.PostAndAsyncReply(fun rc -> f, rc)
+        |> Async.RunSynchronously
     let inline getStorageFreshStateViewer<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -209,12 +224,15 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
-                            let sent =
-                                List.zip ids events'
-                                |> tryPublish eventBroker 'A.Version 'A.StorageName
-                                |> Result.toOption
+                            let f =
+                                fun () ->
+                                    List.zip ids events'
+                                    |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                    |> ignore
+                            f |> postToProcessor |>  ignore
+
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
-                            return ([ids], [sent])
+                            return [ids]
                         }
                 }
                 |> Async.RunSynchronously 
@@ -272,8 +290,6 @@ module CommandHandler =
         (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
         =
-            // todo: stateViewer should not be a lambda anymore: just use aggregateId
-            // let stateView = stateViewer()
             let stateView = stateViewer aggregateId
             log.Debug (sprintf "runAggregateCommand %A" command)
             let command = fun () ->
@@ -289,12 +305,15 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
-                            let sent =
-                                List.zip ids events'
-                                |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName 
-                                |> Result.toOption
+                            let f =
+                                fun () ->    
+                                    List.zip ids events'
+                                    |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
+                                    |> ignore
+                            f |> postToProcessor |> ignore
+                            
                             let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E> storage aggregateId    
-                            return ([ids], [sent])
+                            return [ids]
                         }
                 }
                 |> Async.RunSynchronously 
@@ -372,15 +391,16 @@ module CommandHandler =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                            let sent =
+                            let _ =
                                 kafkaParameters
-                                |>> fun (id, x) -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> Result.toOption
-                                
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
+
                             let _ =
                                 aggregateIds
                                 |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage
                             
-                            return (eventIds, sent)
+                            return eventIds
                         }
                 }
                 |> Async.RunSynchronously 
@@ -453,15 +473,17 @@ module CommandHandler =
                                         (events1', 'A1.Version, 'A1.StorageName, state1.StateId)
                                         (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
-                            let sent =
+
+                            let _ = 
                                 let idAndEvents1 = List.zip idLists.[0] events1'
                                 let idAndEvents2 = List.zip idLists.[1] events2'
-                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
-                                [ sent1; sent2 ]
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                ()
+
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
-                            return (idLists, sent)
+                            return idLists
                         } 
                     }
                 |> Async.RunSynchronously
@@ -557,20 +579,21 @@ module CommandHandler =
                                         (events3', 'A3.Version, 'A2.StorageName, state3.StateId)
                                     ]
                             
-                            let sent =
+                            let _ =
                                 let idAndEvents1 = List.zip idLists.[0] events1'
                                 let idAndEvents2 = List.zip idLists.[1] events2'
                                 let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                let sent1 = tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> Result.toOption
-                                let sent2 = tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> Result.toOption
-                                let sent3 = tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> Result.toOption
-                                [ sent1, sent2, sent3 ]
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                                ()
+
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
                             let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
 
-                            return (idLists, sent)
+                            return idLists
                         } 
                 }
                 |> Async.RunSynchronously
@@ -581,18 +604,3 @@ module CommandHandler =
                     command()
             | _ ->
                 command()
-
-    type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
-
-    // by using this light processor we process the events in a single thread. It is not always needed but at the moment we stick to it
-    // note: I guess this is too strict, and it is almost always _not_ needed. Keep it for now but should not use it.
-    let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
-        let rec loop() =
-            async {
-                let! (statement, replyChannel) = inbox.Receive()
-                let result = statement()
-                replyChannel.Reply result
-                do! loop()
-            }
-        loop()
-    )

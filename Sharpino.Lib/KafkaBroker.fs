@@ -216,8 +216,6 @@ module KafkaBroker =
                     [] |> Ok
         }
         |> Async.StartAsTask
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
     
     let tryPublishAggregateEvent eventBroker aggregateId version name idAndEvents =
         async {
@@ -230,5 +228,3 @@ module KafkaBroker =
                     [] |> Ok
         }
         |> Async.StartAsTask
-        |> Async.AwaitTask
-        |> Async.RunSynchronously

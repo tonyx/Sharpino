@@ -62,78 +62,6 @@ let allVersions =
 
 let currentTestConfs = allVersions
 
-let listenForEvent (appId: Guid, receiver: KafkaSubscriber) =
-    result {
-        let received = receiver.Consume()
-        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-        let mutable deserialized' = deserialized
-        let mutable found = deserialized'.ApplicationId = appId
-
-        while (not found) do
-            let received = receiver.Consume()
-            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-            deserialized' <- deserialized
-            found <- deserialized'.ApplicationId = appId
-        return deserialized'.Event
-    }
-    
-let listenForEventWithRetries (appId: Guid, receiver: KafkaSubscriber, timeout: int) =
-    result {
-        let received = receiver.Consume()
-        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-        let mutable deserialized' = deserialized
-        let mutable found = deserialized'.ApplicationId = appId
-
-        let mutable counter = 0
-        while (not found) && (counter < timeout) do
-            let received = receiver.Consume()
-            let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-            deserialized' <- deserialized
-            found <- deserialized'.ApplicationId = appId
-            counter <- counter + 1
-        return deserialized'.Event
-    }
-    
-let listenForEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, timeout: int) =
-    result {
-        let! received = receiver.consume(timeout) 
-        let! deserialized = received.Message.Value |> serializer.Deserialize<BrokerMessage> 
-        let mutable deserialized' = deserialized
-        let mutable found = deserialized'.ApplicationId = appId
-        if (not found) then
-            return! Error "not found"
-        return deserialized'.Event
-    }    
-
-let listenForSingleEvent (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>) =
-    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
-    let position = deliveryResult.Offset
-    let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition.Value)
-    listenForEvent (appId, receiver)
-
-let listenForTwoEvents (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>) =
-    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
-    let position = deliveryResult.Offset
-    let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition.Value)
-    let first = listenForEvent (appId, receiver)
-    let second = listenForEvent (appId, receiver)
-    (first, second)
-
-let listenForSingleEventWithRetries (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>, timeout: int) =
-    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
-    let position = deliveryResult.Offset
-    let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition.Value)
-    listenForEventWithRetries (appId, receiver, timeout)
-    
-let rec listenForSingleEventWithTimeout (appId: Guid, receiver: KafkaSubscriber, deliveryResults: List<Option<List<Confluent.Kafka.DeliveryResult<string, string>>>>, timeout: int) =
-    let deliveryResult = deliveryResults |> List.head |> Option.get |> List.head 
-    let position = deliveryResult.Offset
-    let partition = deliveryResult.Partition
-    receiver.Assign (position.Value, partition.Value)
-    listenForEventWithTimeout (appId, receiver, timeout)
 
 [<Tests>]
 let utilsTests =
@@ -260,13 +188,6 @@ let multiVersionsTests =
 
             Expect.isError result "should be error"
 
-            if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
-                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okAdded |> snd))
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo
-                Expect.equal expected received' "should be equal"
-
         multipleTestCase "add a todo - Ok" currentTestConfs <| fun (ap, _, _) ->
             let _ = ap._reset()
             let initialTodos = ap.getAllTodos() |> Result.get
@@ -279,14 +200,6 @@ let multiVersionsTests =
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue) [todo] "should be equal"
 
-            let deliveryResults = okResult |> snd
-            if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
-                let received = listenForSingleEvent (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, deliveryResults)
-                Expect.isOk received "should be ok"
-                let receivedOk = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo
-                Expect.equal expected receivedOk "should be equal"
-
         multipleTestCase "add two todos - Ok" currentTestConfs <| fun (ap, _, _) -> 
             let _ = ap._reset()
             let todo1 = mkTodo (Guid.NewGuid()) "zakakakak" [] []
@@ -297,11 +210,6 @@ let multiVersionsTests =
             let todos = ap.getAllTodos()
             Expect.isOk todos "should be ok"
             Expect.equal (todos.OkValue |> List.length) 2 "should be equal"
-            if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
-                let received = listenForTwoEvents (ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okResult |> snd))
-                let received1 = received |> fst |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let received2 = received |> snd |> Result.get |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                Expect.equal received1 (TodoEvents.TodoAdded todo1) "should be equal"
 
         multipleTestCase "add two todos, one has an unexisting category - Ko" currentTestConfs <| fun (ap, upgd, shdTstUpgrd) -> // this is for checking the case of a command returning two events
             let _ = ap._reset()
@@ -337,22 +245,9 @@ let multiVersionsTests =
             let result = ap.addTag tag
             Expect.isOk result "should be ok"
             let okResult = result.OkValue
-            if ap._notify.IsSome && (tagsReceiver |> Result.isOk) then
-                let received = listenForSingleEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), tagsReceiver.OkValue, (okResult |> snd))
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TagsEvents.TagEvent> |> Result.get
-                let expected = TagEvent.TagAdded tag
-                Expect.equal expected received' "should be equal"
-
             let todo = mkTodo id1 "test" [] [id2]
             let result = ap.addTodo todo
             let okResult = result.OkValue
-            if ap._notify.IsSome && (todoReceiver |> Result.isOk) then
-                let received = listenForSingleEvent (ApplicationInstance.ApplicationInstance.Instance.GetGuid(), todoReceiver.OkValue, (okResult |> snd))
-                Expect.isOk received "should be ok"
-                let received' = received.OkValue |> serializer.Deserialize<TodoEvents.TodoEvent> |> Result.get
-                let expected = TodoEvents.TodoAdded todo
-                Expect.equal expected received' "should be equal"
 
             Expect.isOk result "should be ok"
 

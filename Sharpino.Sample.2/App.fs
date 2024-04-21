@@ -5,18 +5,22 @@ open Sharpino.CommandHandler
 
 module App =
     open Sharpino.Storage
-    let doNothingBroker: IEventBroker = 
-        {
-            notify = None
-            notifyAggregate = None 
-        }
+    // let doNothingBroker: IEventBroker = 
+    //     {
+    //         notify = None
+    //         notifyAggregate = None 
+    //     }
+
+
     type App(storage: IEventStore, eventBroker: IEventBroker) =
+        // let BootstrapServers = "localhost:9092"
+        // let doNothingBroker = Sharpino.KafkaBroker.getKafkaBroker(BootstrapServers, storage)
         let row1StateViewer =
             getStorageFreshStateViewer< Row1Context.Row1, Row1Events.Row1Events > storage
             
         let row2StateViewer =
             getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events > storage
-        new(storage: IEventStore) = App(storage, doNothingBroker)
+        new(storage: IEventStore) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {
