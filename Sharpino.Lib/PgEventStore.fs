@@ -137,6 +137,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
+
             member this.TryGetEvent version id name =
                 log.Debug (sprintf "TryGetEvent %s %s" version name)
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name

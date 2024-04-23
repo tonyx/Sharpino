@@ -198,7 +198,7 @@ module CommandHandler =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'A: (member Serialize: ISerializer -> string)
-        and 'A:  (member StateId: Guid)
+        and 'A: (member StateId: Guid)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
@@ -224,13 +224,14 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
-                            let f =
-                                fun () ->
-                                    List.zip ids events'
-                                    |> tryPublish eventBroker 'A.Version 'A.StorageName
-                                    |> ignore
-                            f |> postToProcessor |> ignore
 
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return [ids]
                         }
@@ -305,12 +306,13 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
-                            let f =
-                                fun () ->    
-                                    List.zip ids events'
-                                    |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
-                                    |> ignore
-                            f |> postToProcessor |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                let f =
+                                    fun () ->    
+                                        List.zip ids events'
+                                        |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
                             
                             let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E> storage aggregateId    
                             return [ids]
@@ -391,7 +393,7 @@ module CommandHandler =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                            let _ =
+                            if (eventBroker.notifyAggregate.IsSome) then
                                 kafkaParameters
                                 |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
                                 |> ignore
@@ -474,7 +476,7 @@ module CommandHandler =
                                         (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
 
-                            let _ = 
+                            if (eventBroker.notify.IsSome) then
                                 let idAndEvents1 = List.zip idLists.[0] events1'
                                 let idAndEvents2 = List.zip idLists.[1] events2'
                                 postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
@@ -579,7 +581,7 @@ module CommandHandler =
                                         (events3', 'A3.Version, 'A2.StorageName, state3.StateId)
                                     ]
                             
-                            let _ =
+                            if (eventBroker.notify.IsSome) then
                                 let idAndEvents1 = List.zip idLists.[0] events1'
                                 let idAndEvents2 = List.zip idLists.[1] events2'
                                 let idAndEvents3 = List.zip idLists.[2] events3'
