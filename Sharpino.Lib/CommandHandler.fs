@@ -229,7 +229,7 @@ module CommandHandler =
                                     List.zip ids events'
                                     |> tryPublish eventBroker 'A.Version 'A.StorageName
                                     |> ignore
-                            f |> postToProcessor |>  ignore
+                            f |> postToProcessor |> ignore
 
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
                             return [ids]

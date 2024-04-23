@@ -19,9 +19,9 @@ module BookingTests =
     let seatBookings =
         let pgStorage = PgStorage.PgEventStore(connection)
         let setUp () =
-            pgStorage.Reset "_01" "_seatrow"
-            pgStorage.Reset "_01" "_stadium"
-            pgStorage.ResetAggregateStream "_01" "_seatrow"
+            pgStorage.Reset SeatsRow.Version SeatsRow.StorageName
+            pgStorage.Reset Stadium.Version Stadium.StorageName
+            pgStorage.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
             AggregateCache<SeatsRow>.Instance.Clear()
             StateCache<Stadium>.Instance.Clear()
 
@@ -125,7 +125,7 @@ module BookingTests =
                 Expect.isOk addedRow "should be ok"
                 let seats =
                     [
-                        { Id = 1; State = Free; RowId = None  }
+                        { Id = 1; State = Free; RowId = None }
                         { Id = 2; State = Free; RowId = None }
                         { Id = 3; State = Free; RowId = None }
                         { Id = 4; State = Free; RowId = None }
