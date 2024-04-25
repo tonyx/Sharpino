@@ -160,6 +160,7 @@ module MemoryStorage =
                 let dic = aggregate_snapshots_dic.[version]
                 if (dic.ContainsKey name |> not) then
                     let aggregateDic = Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>()
+                    aggregateDic.Add(aggregateId, [snapshot])
                     dic.Add(name, aggregateDic)
                 else
                     if (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
@@ -335,9 +336,11 @@ module MemoryStorage =
                         Some (x.Id, x.EventId, x.Snapshot)
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
+                log.Debug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || 
+                   (aggregate_snapshots_dic.[version].ContainsKey name |> not) || 
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
-                    None
+                        None
                 else
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryLast
@@ -361,11 +364,6 @@ module MemoryStorage =
                     |> tryLast
                     |>> _.EventId 
                     |> Option.bind (fun x -> x)
-
-                    // |> fun x -> 
-                    //     match x with
-                    //     | None -> None
-                    //     | Some x -> x
                 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)

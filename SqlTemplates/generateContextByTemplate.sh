@@ -1,4 +1,3 @@
-echo $1
 
 ## give the versiona as first parameter and storagename as second parameter
 
