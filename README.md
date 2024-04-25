@@ -179,8 +179,18 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News: 
+- added some videos (in Italian) about the library and the sample applications.
+https://youtu.be/OQKD5uluFPc
+https://youtu.be/ToZ_I_xRA-g
+https://youtu.be/WtGEQqznPnQ
+https://youtu.be/j2XoLkCt31c
 
-- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore based state viewers instead.
+
+
+- added a few new examples (can be used for dojos)
+[pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
+
+- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 
