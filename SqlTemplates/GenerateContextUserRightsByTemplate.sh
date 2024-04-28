@@ -1,0 +1,1 @@
+cat AlterUserRightsContext.sql | sed -e "s/{ContextVersion}/$1/g" | sed -e "s/{ContextName}/$2/g"

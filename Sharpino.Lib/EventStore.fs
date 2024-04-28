@@ -78,8 +78,10 @@ module Storage =
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
         abstract member SetSnapshot: Version -> EventId * Json -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * Json -> Name -> Result<unit, string>
+
         abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> Json ->  Result<unit, string>
         abstract member AddEvents: Version -> Name -> ContextStateId -> List<Json> -> Result<List<int>, string>
+        abstract member SetInitialAggregateStateAndAddEvents: AggregateId -> AggregateStateId -> Version -> Name -> Json -> Version -> Name -> ContextStateId -> List<Json> -> Result<List<int>, string>
 
         abstract member AddAggregateEvents: Version -> Name -> AggregateId -> AggregateStateId -> List<Json> -> Result<List<EventId>, string>
 

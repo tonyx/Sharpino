@@ -250,6 +250,19 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> _.Id 
                 ids |> Ok
+            member this.SetInitialAggregateStateAndAddEvents aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+                let initialState =
+                    {
+                        Id = next_snapshot_id aggregateVersion aggregatename
+                        AggregateId = aggregateId
+                        Snapshot = json
+                        TimeStamp = DateTime.Now
+                        EventId = None
+                    }
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add (aggregateId, [initialState])
+                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
+                (this:> IEventStore).AddEvents contextVersion contextName contextStateId events
                 
             member this.SetClassicOptimisticLock version name =
                 // nothing to do with memory db (or maybe yes?)

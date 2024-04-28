@@ -211,7 +211,7 @@ module CommandHandler =
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
-            let command = fun () ->
+            let delayedCommand = fun () ->
                 async {
                     return
                         result {
@@ -241,9 +241,9 @@ module CommandHandler =
             match config.LockType with
             | Pessimistic ->
                 lock 'A.Lock <| fun () ->
-                    command()
+                    delayedCommand()
             | _ ->
-                command()
+                delayedCommand()
     
     let inline runInitAndCommand<'A, 'E, 'A1
         when 'A: (static member Zero: 'A)
@@ -267,13 +267,40 @@ module CommandHandler =
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
         =
-            ResultCE.result {
-                let initSnapshot = initialInstance.Serialize serializer
-                let! stored = storage.SetInitialAggregateState initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initSnapshot
-                let! result = runCommand<'A, 'E> storage eventBroker stateViewer command
-                return result
-            }
-    
+            log.Debug (sprintf "runInitAndCommand %A %A" 'A1.StorageName command)
+            let delayedCommand = fun () ->
+                async {
+                    return
+                        result {
+                            let! (_, state, _, _) = stateViewer ()
+                            let! events = 
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> fun x -> x.Serialize serializer
+                            let! ids =
+                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName (initialInstance.Serialize serializer) 'A.Version 'A.StorageName state.StateId
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
+                            return [ids]
+                        }
+                }
+                |> Async.RunSynchronously
+
+            match config.LockType with
+            | Pessimistic ->
+                lock ('A.Lock, initialInstance.Lock) <| fun () ->
+                    delayedCommand()
+            | _ ->
+                delayedCommand()
+
     let inline runAggregateCommand<'A, 'E
         when 'A :> Aggregate 
         and 'A :> Entity 
@@ -293,7 +320,7 @@ module CommandHandler =
         =
             let stateView = stateViewer aggregateId
             log.Debug (sprintf "runAggregateCommand %A" command)
-            let command = fun () ->
+            let delayedCommand = fun () ->
                 async {
                     return
                         result {
@@ -328,9 +355,9 @@ module CommandHandler =
                     |> Result.toOption
                     |> Option.map (fun (_, s, _, _) -> s.Lock)
                 lock myLock <| fun () ->
-                    command()
+                    delayedCommand()
             | _, _ ->
-                command()
+                delayedCommand()
 
     let inline runNAggregateCommands<'A1, 'E1
         when 'A1 :> Aggregate
@@ -350,7 +377,7 @@ module CommandHandler =
         (commands: List<Command<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
-            let command = fun () ->
+            let delayedCommand = fun () ->
                 async {
                     return
                         result {
@@ -408,10 +435,10 @@ module CommandHandler =
                 |> Async.RunSynchronously 
             match config.LockType with
             | Optimistic ->
-                command()
+                delayedCommand()
             | _ ->
                 log.Warn "locktype is pessimistic, but we are not using it in runNAggregateCommands"
-                command()
+                delayedCommand()
                         
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
         when 'A1: (static member Zero: 'A1)
@@ -447,7 +474,7 @@ module CommandHandler =
 
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            let command = fun () ->
+            let delayedCommand = fun () ->
                 async {
                     return
                         result {
@@ -493,9 +520,9 @@ module CommandHandler =
             match config.LockType with
             | Pessimistic ->
                 lock ('A1.Lock, 'A2.Lock) <| fun () ->
-                    command()
+                    delayedCommand()
             | _ ->
-                command()
+                delayedCommand()
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
         when 'A1: (static member Zero: 'A1)
@@ -544,7 +571,7 @@ module CommandHandler =
             =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            let command = fun () ->
+            let delayedCommand = fun () ->
                 async {
                     return
                         result {
@@ -603,6 +630,6 @@ module CommandHandler =
             match config.LockType with
             | Pessimistic ->
                 lock ('A1.Lock, 'A2.Lock, 'A3.Lock) <| fun () ->
-                    command()
+                    delayedCommand()
             | _ ->
-                command()
+                delayedCommand()

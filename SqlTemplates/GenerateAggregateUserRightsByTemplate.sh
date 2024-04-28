@@ -1,0 +1,1 @@
+cat AlterUserRightsAggregate.sql | sed -e "s/{AggregateVersion}/$1/g" | sed -e "s/{AggregateStorageName}/$2/g"

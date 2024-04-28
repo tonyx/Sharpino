@@ -323,6 +323,67 @@ module PgStorage =
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
 
+            member this.SetInitialAggregateStateAndAddEvents aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+                log.Debug "entered in setSnapshot"
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" aggregateVersion aggregatename
+                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" aggregateVersion aggregatename
+                let command3 = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" (contextVersion + contextName)
+                let conn = new NpgsqlConnection(connection)
+                let uniqueStateIds =
+                    [  
+                        for i in 1..events.Length -> 
+                            if i = 1 then contextStateId
+                            else System.Guid.NewGuid()
+                    ]
+                let eventsAndStatesIds = List.zip events uniqueStateIds
+                conn.Open()
+                async {
+                    return
+                        try
+                            let transaction = conn.BeginTransaction() 
+                            let ids =
+                                eventsAndStatesIds
+                                |>>
+                                    fun (event, contextStateId) -> 
+                                        let command' = new NpgsqlCommand(command3, conn)
+                                        command'.Parameters.AddWithValue("event", event ) |> ignore
+                                        command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
+                                        let result = command'.ExecuteScalar() 
+                                        result :?> int
+                            let _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.executeTransactionAsync
+                                    [
+                                        command,
+                                            [
+                                                [
+                                                    ("@aggregate_id", Sql.uuid aggregateId);
+                                                    ("aggregate_state_id", Sql.uuid aggregateStateId);
+                                                    ("snapshot",  Sql.jsonb json);
+                                                    ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                ]
+                                            ]
+                                        command2,
+                                            [
+                                                [
+                                                    ("@aggregate_id", Sql.uuid aggregateId)
+                                                    ("aggregate_state_id", Sql.uuid aggregateStateId)
+                                                ]
+                                            ]
+                                    ]
+                                |> Async.AwaitTask
+                                |> Async.RunSynchronously
+                            transaction.Commit()
+                            conn.Close()
+                            ids |> Ok
+                        with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                ex.Message |> Error
+                }
+                |> Async.RunSynchronously
+
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
