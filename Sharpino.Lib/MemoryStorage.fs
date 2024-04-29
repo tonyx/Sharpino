@@ -226,7 +226,7 @@ module MemoryStorage =
             aggregate_events_dic.Clear()
             aggregate_snapshots_dic.Clear()
             
-        interface IEventStore with
+        interface IEventStore<string> with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.Reset version name =
                 this.Reset version name
@@ -262,7 +262,7 @@ module MemoryStorage =
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
-                (this:> IEventStore).AddEvents contextVersion contextName contextStateId events
+                (this:> IEventStore<string>).AddEvents contextVersion contextName contextStateId events
                 
             member this.SetClassicOptimisticLock version name =
                 // nothing to do with memory db (or maybe yes?)
@@ -286,7 +286,7 @@ module MemoryStorage =
                     arg 
                     |> List.map 
                         (fun (xs, version, name, contextStateId) ->
-                            (this :> IEventStore).AddEvents version name contextStateId xs |> Result.get
+                            (this :> IEventStore<string>).AddEvents version name contextStateId xs |> Result.get
                         ) 
                 cmds |> Ok
 
@@ -445,7 +445,7 @@ module MemoryStorage =
                     arg
                     |> List.map
                         (fun (xs, version, name, aggregateId, aggregateVersionId) ->
-                            (this :> IEventStore).AddAggregateEvents version name aggregateId aggregateVersionId xs |> Result.get
+                            (this :> IEventStore<string>).AddAggregateEvents version name aggregateId aggregateVersionId xs |> Result.get
                         )
                 cmds |> Ok        
 

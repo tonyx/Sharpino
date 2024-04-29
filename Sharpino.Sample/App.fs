@@ -43,7 +43,7 @@ module App =
         }
     [<CurrentVersion>]
     type CurrentVersionApp
-        (storage: IEventStore, eventBroker: IEventBroker) =
+        (storage: IEventStore<string>, eventBroker: IEventBroker) =
         let todosStateViewer =
             getStorageFreshStateViewer<TodosContext, TodoEvent> storage
             
@@ -56,7 +56,7 @@ module App =
         let upgradeTodoStateViewer =
             getStorageFreshStateViewer<TodosContextUpgraded, TodoEvent'> storage
 
-        new(storage: IEventStore) = CurrentVersionApp(storage, doNothingBroker)
+        new(storage: IEventStore<string>) = CurrentVersionApp(storage, doNothingBroker)
         member this._eventBroker = eventBroker
 
         // must be storage based
@@ -219,7 +219,7 @@ module App =
             }
 
     [<UpgradedVersion>]
-    type UpgradedApp(storage: IEventStore, eventBroker: IEventBroker) =
+    type UpgradedApp(storage: IEventStore<string>, eventBroker: IEventBroker) =
         let todosStateViewer =
             getStorageFreshStateViewer<TodosContextUpgraded, TodoEvent'> storage
         let tagsStateViewer =
@@ -228,7 +228,7 @@ module App =
         let categoryStateViewer =
             getStorageFreshStateViewer<CategoriesContext, CategoryEvent> storage
 
-        new(storage: IEventStore) = UpgradedApp(storage, doNothingBroker)
+        new(storage: IEventStore<string>) = UpgradedApp(storage, doNothingBroker)
 
         member this._eventBroker = eventBroker
 

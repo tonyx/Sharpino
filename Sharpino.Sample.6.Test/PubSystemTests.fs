@@ -23,8 +23,8 @@ let tests =
         "Database=es_pub_system;" +
         "User Id=safe;"+
         "Password=safe;"
-    let memEventStore: IEventStore = MemoryStorage()
-    let pgEventStore: IEventStore = PgEventStore(connection)
+    let memEventStore: IEventStore<string> = MemoryStorage()
+    let pgEventStore: IEventStore<string> = PgEventStore(connection)
     let setUp () =
         AggregateCache<Dish.Dish>.Instance.Clear()
         StateCache<Kitchen>.Instance.Clear()

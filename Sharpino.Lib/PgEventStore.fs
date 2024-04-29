@@ -61,7 +61,7 @@ module PgStorage =
             else
                 failwith "operation allowed only in test db"
                 
-        interface IEventStore with
+        interface IEventStore<string> with
             // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
                 this.Reset version name
@@ -274,7 +274,7 @@ module PgStorage =
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IEventStore).TryGetEvent version id name)
+                let tryEvent = ((this :> IEventStore<string>).TryGetEvent version id name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" id)
                 | Some event -> 
@@ -395,7 +395,7 @@ module PgStorage =
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IEventStore).TryGetEvent version eventId name)
+                let tryEvent = ((this :> IEventStore<string>).TryGetEvent version eventId name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" eventId)
                 | Some event -> 

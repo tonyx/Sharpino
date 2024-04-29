@@ -38,7 +38,7 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore) =
+    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore<string>) =
         try 
             let config = ProducerConfig()
             config.BootstrapServers <- bootStrapServer

@@ -52,7 +52,7 @@ module CommandHandler =
         and 'E:> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
-        >(eventStore: IEventStore) =
+        >(eventStore: IEventStore<string>) =
             fun () -> getFreshState<'A, 'E> eventStore
 
     let inline getAggregateStorageFreshStateViewer<'A, 'E
@@ -64,7 +64,7 @@ module CommandHandler =
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         >
-        (eventStore: IEventStore) 
+        (eventStore: IEventStore<string>) 
         =
             fun (id: Guid) -> getAggregateFreshState<'A, 'E> id eventStore 
 
@@ -89,7 +89,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         > 
-        (storage: IEventStore) =
+        (storage: IEventStore<string>) =
             let stateViewer = getStorageFreshStateViewer<'A, 'E> storage
             async {
                 return
@@ -114,7 +114,7 @@ module CommandHandler =
         and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E : (member Serialize: ISerializer -> string)
         > 
-        (storage: IEventStore) 
+        (storage: IEventStore<string>) 
         (aggregateId: AggregateId) =
             let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E> storage
             async {
@@ -141,7 +141,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore) =
+        (storage: IEventStore<string>) =
             log.Debug "mkSnapshotIfIntervalPassed"
             async {
                 return
@@ -171,7 +171,7 @@ module CommandHandler =
         and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E : (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         (aggregateId: AggregateId) =
             log.Debug "mkAggregateSnapshotIfIntervalPassed"
             async {
@@ -205,7 +205,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore) 
+        (storage: IEventStore<string>) 
         (eventBroker: IEventBroker) 
         (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>) =
@@ -261,7 +261,7 @@ module CommandHandler =
         and 'A1 : (static member StorageName: string) 
         and 'A1 : (static member Version: string)
         >
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         (eventBroker: IEventBroker)
         (stateViewer: StateViewer<'A>)
         (initialInstance: 'A1)
@@ -313,7 +313,7 @@ module CommandHandler =
         and 'E : (member Serialize: ISerializer -> string)
         >
         (aggregateId: Guid)
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         (eventBroker: IEventBroker)
         (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
@@ -371,7 +371,7 @@ module CommandHandler =
         and 'A1 : (static member Version: string)
         >
         (aggregateIds: List<Guid>)
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         (eventBroker: IEventBroker)
         (stateViewer: AggregateViewer<'A1>)
         (commands: List<Command<'A1, 'E1>>)
@@ -461,7 +461,7 @@ module CommandHandler =
         >
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         (eventBroker: IEventBroker)
         (stateViewer1: AggregateViewer<'A1>)
         (stateViewer2: AggregateViewer<'A2>)
@@ -607,7 +607,7 @@ module CommandHandler =
         and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
         and 'E2: (member Serialize: ISerializer -> string)
         >
-            (storage: IEventStore)
+            (storage: IEventStore<string>)
             (eventBroker: IEventBroker) 
 
             (command1: Command<'A1, 'E1>) 
@@ -703,7 +703,7 @@ module CommandHandler =
         and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
         and 'E3: (member Serialize: ISerializer -> string)
         > 
-            (storage: IEventStore)
+            (storage: IEventStore<string>)
             (eventBroker: IEventBroker) 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 

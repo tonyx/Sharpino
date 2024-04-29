@@ -27,7 +27,7 @@ module StateView =
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
         (id: int)
-        (storage: IEventStore) =
+        (storage: IEventStore<string>) =
             let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
             match snapshot |>> snd with
             | Some snapshot' ->
@@ -49,7 +49,7 @@ module StateView =
         (id: int)
         (version: string)
         (storageName: string)
-        (storage: IEventStore) 
+        (storage: IEventStore<string>) 
         =
             let snapshot = storage.TryGetAggregateSnapshotById version storageName aggregateId id
             match snapshot |>> snd with
@@ -76,7 +76,7 @@ module StateView =
         and 'A: (member Serialize: ISerializer -> string)
         and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
         >
-        (storage: IEventStore) =
+        (storage: IEventStore<string>) =
             log.Debug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
             async {
                 return
@@ -105,7 +105,7 @@ module StateView =
         (aggregateId: Guid)
         (version: string)
         (storageName: string)
-        (storage: IEventStore) 
+        (storage: IEventStore<string>) 
         =
             log.Debug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             async {
@@ -140,7 +140,7 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore) = 
+        (storage: IEventStore<string>) = 
         log.Debug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
         async {
             return
@@ -160,7 +160,7 @@ module StateView =
         'A: (static member StorageName: string) and
         'A: (static member Version: string)>
         (id: Guid)
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         = 
         log.Debug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         async {
@@ -195,7 +195,7 @@ module StateView =
         and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
         and 'E: (member Serialize: ISerializer -> string)
         >
-        (storage: IEventStore): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
+        (storage: IEventStore<string>): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
             log.Debug (sprintf "getFreshState %s - %s" 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
@@ -226,7 +226,7 @@ module StateView =
         and 'A: (static member Version: string)
         >
         (id: Guid)
-        (storage: IEventStore)
+        (storage: IEventStore<string>)
         : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
