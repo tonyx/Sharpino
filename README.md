@@ -189,6 +189,25 @@ https://youtu.be/j2XoLkCt31c
 
 - added a few new examples (can be used for dojos)
 [pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
+- version 1.6.6: can use plain text instead of JSON data type for database (see scripts in SqlTemplate dir). The appSettings has a new settings for it:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"}
+}
+```
+
+The other option is:
+```
+    "PgSqlJsonFormat":{"Case":"PgJson"}
+```    
+the tables should be coherent: use PlainText when json fields are of type text and PgJson when they are of type json or jsonb.
+Why bother? In this example I use FsPickler to serialize/deserialize https://github.com/tonyx/shoppingCartWithSharpino
+It won't work with jsonb fields because it needs the same order of fields in the json string whereas json/jsonb fields are stored in a way that doesn't preserve the order of fields.
+
+
 
 - version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
