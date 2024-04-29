@@ -2,7 +2,7 @@
 
 CREATE TABLE public.events{Version}{ContextStorageName} (
                                           id integer NOT NULL,
-                                          event json NOT NULL,
+                                          event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,
@@ -28,7 +28,7 @@ CREATE SEQUENCE public.snapshots{Version}{ContextStorageName}_id_seq
 
 CREATE TABLE public.snapshots{Version}{ContextStorageName} (
                                              id integer DEFAULT nextval('public.snapshots{Version}{ContextStorageName}_id_seq'::regclass) NOT NULL,
-                                             snapshot json NOT NULL,
+                                             snapshot {Format} NOT NULL,
                                              event_id integer NOT NULL,
                                              "timestamp" timestamp without time zone NOT NULL
 );
@@ -55,7 +55,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events{Version}{ContextStorageName}(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::{Format}, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;

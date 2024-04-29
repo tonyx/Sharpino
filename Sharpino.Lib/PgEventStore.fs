@@ -13,11 +13,19 @@ open log4net
 open log4net.Config
 
 module PgStorage =
+    open Conf
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgEventStore(connection: string) =
+
+        let config = Conf.config ()
+        let sqlJson = 
+            match config.PgSqlJsonFormat with
+            | PgSqlJson.PlainText -> Sql.text
+            | PgSqlJson.PgJson -> Sql.jsonb
+
         member this.Reset version name = 
             if (Conf.isTestEnv) then
                 try
@@ -279,7 +287,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@event_id", Sql.int event.Id);
-                                            ("snapshot",  Sql.jsonb snapshot);
+                                            ("snapshot",  sqlJson snapshot);
                                             ("timestamp", Sql.timestamp event.Timestamp)
                                         ]
                                     ]
@@ -303,7 +311,7 @@ module PgStorage =
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                            ("snapshot",  Sql.jsonb json);
+                                            ("snapshot",  sqlJson json);
                                             ("timestamp", Sql.timestamp System.DateTime.Now)
                                         ]
                                     ]
@@ -360,7 +368,7 @@ module PgStorage =
                                                 [
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                                    ("snapshot",  Sql.jsonb json);
+                                                    ("snapshot",  sqlJson json);
                                                     ("timestamp", Sql.timestamp System.DateTime.Now)
                                                 ]
                                             ]
@@ -402,7 +410,7 @@ module PgStorage =
                                             [
                                                 ("@aggregate_id", Sql.uuid aggregateId);
                                                 ("@event_id", Sql.int event.Id);
-                                                ("snapshot",  Sql.jsonb snapshot);
+                                                ("snapshot",  sqlJson snapshot);
                                                 ("timestamp", Sql.timestamp event.Timestamp)
                                             ]
                                         ]

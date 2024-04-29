@@ -415,7 +415,6 @@ module CommandHandler =
                             let aggregateIdsWithEventIds =
                                 List.zip aggregateIds eventIds
 
-                            // dependency inversion principle or not? 🤔 
                             let kafkaParameters =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
