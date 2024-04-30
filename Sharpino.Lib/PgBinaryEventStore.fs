@@ -1,4 +1,5 @@
 
+
 namespace Sharpino
 
 open FsToolkit.ErrorHandling
@@ -8,38 +9,21 @@ open FSharpPlus
 open FSharpPlus.Operators
 open Sharpino
 open Sharpino.Storage
+open Sharpino.PgStorage
 open Sharpino.Definitions
 open log4net
 open log4net.Config
 
-module PgStorage =
+module PgBinaryStore =
     open Conf
-
-    // type eventDataFormat = Js | Bin
-    let config = Conf.config ()
-    let sqlJson = 
-        match config.PgSqlJsonFormat with
-        | PgSqlJson.PlainText -> Sql.text
-        | PgSqlJson.PgJson -> Sql.jsonb
-        // | PgSqlJson.Binary -> Sql.bytea
-
-    let sqlBinary = Sql.bytea
-
-    let readAsText<'F> = fun (r: RowReader) -> r.text 
-    // let readAsText:RowReaderByFormat<'F> = fun (r: RowReader) -> r.text
-    let readAsBinary:RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
-
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // enable for quick debugging
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
-    type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
-    // , redAsText:RowReaderByFormat<'F>) =
 
-    //     new (connection: string) =
-    //         PgEventStore<'F>(connection, readAsText)
 
-        new (connection: string) =
-            PgEventStore(connection, readAsText)
+    type PgBinaryStore(connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+
+        // let connection = new NpgsqlConnection(connection)
+        // let readAsBinary = readAsBinary
+        new (connection: string) = PgBinaryStore(connection, readAsBinary)
 
         member this.Reset version name = 
             if (Conf.isTestEnv) then
@@ -76,7 +60,7 @@ module PgStorage =
             else
                 failwith "operation allowed only in test db"
                 
-        interface IEventStore<string> with
+        interface IEventStore<byte array> with
             // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
                 this.Reset version name
@@ -95,7 +79,8 @@ module PgStorage =
                                 (
                                     read.int "id",
                                     read.int "event_id",
-                                    readAsText read "snapshot"
+                                    // readAsText read "snapshot"
+                                    readAsBinary read "snapshot"
                                 )
                             )
                             |> Async.AwaitTask
@@ -170,13 +155,16 @@ module PgStorage =
                 |> Sql.executeAsync
                     (
                         fun read ->
-                        {
-                            Id = read.int "id"
-                            JsonEvent = readAsText read "event"
-                            KafkaOffset = read.int64OrNone "kafkaoffset"
-                            KafkaPartition = read.intOrNone "kafkapartition"
-                            Timestamp = read.dateTime "timestamp"
-                        }
+                            let result: StoragePgEvent<byte array> = 
+                                {
+                                    Id = read.int "id"
+                                    // JsonEvent = readAsText read "event"
+                                    JsonEvent = readAsBinary read "event"
+                                    KafkaOffset = read.int64OrNone "kafkaoffset"
+                                    KafkaPartition = read.intOrNone "kafkapartition"
+                                    Timestamp = read.dateTime "timestamp"
+                                }
+                            result
                     )
                     |> Async.AwaitTask
                     |> Async.RunSynchronously
@@ -222,7 +210,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddEvents(arg: List<List<Json> * Version * Name * ContextStateId>) =
+            member this.MultiAddEvents(arg: List<List<byte array> * Version * Name * ContextStateId>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -273,7 +261,8 @@ module PgStorage =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            readAsText read "event"
+                            // readAsText read "event"
+                            readAsBinary read "event"
                         )
                     )
                     |> Async.AwaitTask
@@ -285,10 +274,10 @@ module PgStorage =
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
 
-            member this.SetSnapshot version (id: int, snapshot: Json) name =
+            member this.SetSnapshot version (id: int, snapshot: byte array) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IEventStore<string>).TryGetEvent version id name)
+                let tryEvent = ((this :> IEventStore<byte array>).TryGetEvent version id name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" id)
                 | Some event -> 
@@ -301,7 +290,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@event_id", Sql.int event.Id);
-                                            ("snapshot",  sqlJson snapshot);
+                                            ("snapshot",  sqlBinary snapshot);
                                             ("timestamp", Sql.timestamp event.Timestamp)
                                         ]
                                     ]
@@ -325,7 +314,8 @@ module PgStorage =
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                            ("snapshot",  sqlJson json);
+                                            // ("snapshot",  sqlJson json);
+                                            ("snapshot",  sqlBinary json);
                                             ("timestamp", Sql.timestamp System.DateTime.Now)
                                         ]
                                     ]
@@ -382,7 +372,8 @@ module PgStorage =
                                                 [
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                                    ("snapshot",  sqlJson json);
+                                                    // ("snapshot",  sqlJson json);
+                                                    ("snapshot",  sqlBinary json);
                                                     ("timestamp", Sql.timestamp System.DateTime.Now)
                                                 ]
                                             ]
@@ -406,10 +397,10 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
+            member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: byte array) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IEventStore<string>).TryGetEvent version eventId name)
+                let tryEvent = ((this :> IEventStore<byte array>).TryGetEvent version eventId name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" eventId)
                 | Some event -> 
@@ -424,7 +415,8 @@ module PgStorage =
                                             [
                                                 ("@aggregate_id", Sql.uuid aggregateId);
                                                 ("@event_id", Sql.int event.Id);
-                                                ("snapshot",  sqlJson snapshot);
+                                                // ("snapshot",  sqlJson snapshot);
+                                                ("snapshot",  sqlBinary snapshot);
                                                 ("timestamp", Sql.timestamp event.Timestamp)
                                             ]
                                         ]
@@ -448,7 +440,8 @@ module PgStorage =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            readAsText read "event"
+                            // readAsText read "event"
+                            readAsBinary read "event"
                         )
                     )
                     |> Async.AwaitTask
@@ -483,7 +476,8 @@ module PgStorage =
                     |> Sql.executeAsync (fun read ->
                         (
                             read.int "event_id",
-                            readAsText read "snapshot"
+                            // readAsText read "snapshot"
+                            readAsBinary read "snapshot"
                         )
                     )
                     |> Async.AwaitTask
@@ -502,7 +496,8 @@ module PgStorage =
                     |> Sql.executeAsync (fun read ->
                         (
                             read.intOrNone "event_id",
-                            readAsText read "snapshot"
+                            // readAsText read "snapshot"
+                            readAsBinary read "snapshot"
                         )
                     )
                     |> Async.AwaitTask
@@ -630,7 +625,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
                 
-            member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (aggregateStateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
+            member this.AddAggregateEvents(version: Version) (name: Name) (aggregateId: System.Guid) (aggregateStateId: System.Guid) (events: List<byte array>): Result<List<int>,string> =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name
@@ -669,7 +664,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * System.Guid * System.Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<List<byte array> * Version * Name * System.Guid * System.Guid>) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -713,7 +708,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * byte array>,string> = 
                 // log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
                 try 
@@ -724,7 +719,8 @@ module PgStorage =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            readAsText read "event"
+                            // readAsText read "event"
+                            readAsBinary read "event"
                         )
                     )
                     |> Async.AwaitTask
@@ -735,7 +731,7 @@ module PgStorage =
                 | _ as ex -> 
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
-            member this.GetAggregateEvents version name aggregateId: Result<List<EventId * Json>,string> = 
+            member this.GetAggregateEvents version name aggregateId: Result<List<EventId * byte array>, string> = 
                 log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
                 try 
@@ -746,7 +742,8 @@ module PgStorage =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            readAsText read "event"
+                            // readAsText read "event"
+                            readAsBinary read "event"
                         )
                     )
                     |> Async.AwaitTask

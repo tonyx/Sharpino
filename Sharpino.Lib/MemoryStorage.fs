@@ -22,7 +22,7 @@ module MemoryStorage =
         let event_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
         let event_aggregate_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,Generic.Dictionary<AggregateId,int>>>()
         let snapshot_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
-        let events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageEventJson>>>()
+        let events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StoragePgEvent<_>>>>()
         let aggregate_events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>>()
         let snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageSnapshot>>>()
         let aggregate_snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>>>()
@@ -101,7 +101,7 @@ module MemoryStorage =
         let storeEvents version name events =
             log.Debug (sprintf "storeEvents %s %s" version name)
             if (events_dic.ContainsKey version |> not) then
-                let dic = new Generic.Dictionary<string, List<StorageEventJson>>()
+                let dic = new Generic.Dictionary<string, List<StoragePgEvent<_>>>()
                 dic.Add(name, events)
                 events_dic.Add(version, dic)
             else

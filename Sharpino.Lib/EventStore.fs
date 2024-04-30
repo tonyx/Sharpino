@@ -4,14 +4,22 @@ open Sharpino.Definitions
 open log4net
 
 module Storage =
-    type StorageEventJson =
+    type StoragePgEvent<'T> =
         {
-            JsonEvent: Json
+            JsonEvent: 'T
             Id: int
             KafkaOffset: Option<int64>
             KafkaPartition: Option<int>
             Timestamp: System.DateTime
         }
+    // type StorageEventBinary =
+    //     {
+    //         JsonEvent: byte array
+    //         Id: int
+    //         KafkaOffset: Option<int64>
+    //         KafkaPartition: Option<int>
+    //         Timestamp: System.DateTime
+    //     }
         
     type StorageEventJsonRef =
         {
@@ -76,7 +84,8 @@ module Storage =
 
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * 'F>
         abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * 'F>
-        abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
+        // abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
+        abstract member TryGetEvent: Version -> EventId -> Name -> Option<StoragePgEvent<'F>>
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
@@ -103,3 +112,4 @@ module Storage =
             notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
         }
 
+    type RowReaderByFormat<'F> = RowReader -> string ->'F

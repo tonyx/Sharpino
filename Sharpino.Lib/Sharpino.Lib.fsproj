@@ -25,6 +25,7 @@
     <Compile Include="EventStore.fs" />
     <Compile Include="ListRepository.fs" />
     <Compile Include="PgEventStore.fs" />
+    <Compile Include="PgBinaryEventStore.fs" />
     <Compile Include="KafkaBroker.fs" />
     <Compile Include="MemoryStorage.fs" />
     <Compile Include="EventStoreStorage.fs" />
