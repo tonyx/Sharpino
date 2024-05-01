@@ -42,31 +42,31 @@ module CommandHandler =
     let postToProcessor f =
         processor.PostAndAsyncReply(fun rc -> f, rc)
         |> Async.RunSynchronously
-    let inline getStorageFreshStateViewer<'A, 'E
+    let inline getStorageFreshStateViewer<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
         and 'A: (static member Lock: obj)
         and 'E:> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        >(eventStore: IEventStore<string>) =
-            fun () -> getFreshState<'A, 'E> eventStore
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> 'F)
+        >(eventStore: IEventStore<'F>) =
+            fun () -> getFreshState<'A, 'E, 'F> eventStore
 
-    let inline getAggregateStorageFreshStateViewer<'A, 'E
-        when 'A :> Aggregate 
+    let inline getAggregateStorageFreshStateViewer<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
         and 'A :> Entity 
-        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
         >
-        (eventStore: IEventStore<string>) 
+        (eventStore: IEventStore<'F>) 
         =
-            fun (id: Guid) -> getAggregateFreshState<'A, 'E> id eventStore 
+            fun (id: Guid) -> getAggregateFreshState<'A, 'E, 'F> id eventStore 
 
     let config = 
         try
@@ -78,19 +78,19 @@ module CommandHandler =
             Conf.defaultConf
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
-    let inline private mkSnapshot<'A, 'E
+    let inline private mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> 'F)
         > 
-        (storage: IEventStore<string>) =
-            let stateViewer = getStorageFreshStateViewer<'A, 'E> storage
+        (storage: IEventStore<'F>) =
+            let stateViewer = getStorageFreshStateViewer<'A, 'E, 'F> storage
             async {
                 return
                     ResultCE.result
@@ -104,19 +104,19 @@ module CommandHandler =
             |> Async.RunSynchronously
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]
-    let inline private mkAggregateSnapshot<'A, 'E
-        when 'A :> Aggregate 
+    let inline private mkAggregateSnapshot<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
         and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
-        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> string)
+        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> 'F)
         > 
-        (storage: IEventStore<string>) 
+        (storage: IEventStore<'F>) 
         (aggregateId: AggregateId) =
-            let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E> storage
+            let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E, 'F> storage
             async {
                 return
                     ResultCE.result
@@ -129,19 +129,19 @@ module CommandHandler =
             }
             |> Async.RunSynchronously
      
-    let inline mkSnapshotIfIntervalPassed<'A, 'E
+    let inline mkSnapshotIfIntervalPassed<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> 'F)
         >
-        (storage: IEventStore<string>) =
+        (storage: IEventStore<'F>) =
             log.Debug "mkSnapshotIfIntervalPassed"
             async {
                 return
@@ -153,25 +153,25 @@ module CommandHandler =
                             let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                             return! 
                                 if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
-                                    mkSnapshot<'A, 'E> storage
+                                    mkSnapshot<'A, 'E, 'F> storage
                                 else
                                     () |> Ok
                         }
             }    
             |> Async.RunSynchronously
             
-    let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E
-        when 'A :> Aggregate 
+    let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
         and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string)
         and 'A : (static member SnapshotsInterval : int)
         and 'A : (static member Version: string) 
-        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> string)
+        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> 'F)
         >
-        (storage: IEventStore<string>)
+        (storage: IEventStore<'F>)
         (aggregateId: AggregateId) =
             log.Debug "mkAggregateSnapshotIfIntervalPassed"
             async {
@@ -184,7 +184,7 @@ module CommandHandler =
                             let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
                             let result =
                                 if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
-                                    mkAggregateSnapshot<'A, 'E> storage aggregateId 
+                                    mkAggregateSnapshot<'A, 'E, 'F > storage aggregateId 
                                 else
                                     () |> Ok
                             return! result
@@ -192,20 +192,20 @@ module CommandHandler =
             }
             |> Async.RunSynchronously
 
-    let inline runCommand<'A, 'E
+    let inline runCommand<'A, 'E, 'F 
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> string)
+        and 'A: (member Serialize: ISerializer -> 'F)
         and 'A: (member StateId: Guid)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> 'F)
         >
-        (storage: IEventStore<string>) 
+        (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker) 
         (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>) =
@@ -225,14 +225,16 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
 
-                            if (eventBroker.notify.IsSome) then
-                                let f =
-                                    fun () ->
-                                        List.zip ids events'
-                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
-                                        |> ignore
-                                f |> postToProcessor |> ignore
-                            let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
+                            // todo: reintroduce
+                            // if (eventBroker.notify.IsSome) then
+                            //     let f =
+                            //         fun () ->
+                            //             List.zip ids events'
+                            //             |> tryPublish eventBroker 'A.Version 'A.StorageName
+                            //             |> ignore
+                            //     f |> postToProcessor |> ignore
+
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                             return [ids]
                         }
                 }
@@ -245,23 +247,23 @@ module CommandHandler =
             | _ ->
                 delayedCommand()
     
-    let inline runInitAndCommand<'A, 'E, 'A1
+    let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (member StateId: Guid)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
-        and 'A1:> Aggregate
+        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'A1:> Aggregate<'F>
         and 'A1 : (static member StorageName: string) 
         and 'A1 : (static member Version: string)
         >
-        (storage: IEventStore<string>)
+        (storage: IEventStore<'F>)
         (eventBroker: IEventBroker)
         (stateViewer: StateViewer<'A>)
         (initialInstance: 'A1)
@@ -280,15 +282,16 @@ module CommandHandler =
                                 events 
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
-                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName (initialInstance.Serialize serializer) 'A.Version 'A.StorageName state.StateId
-                            if (eventBroker.notify.IsSome) then
-                                let f =
-                                    fun () ->
-                                        List.zip ids events'
-                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
-                                        |> ignore
-                                f |> postToProcessor |> ignore
-                            let _ = mkSnapshotIfIntervalPassed<'A, 'E> storage
+                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName (initialInstance.Serialize<'F> serializer) 'A.Version 'A.StorageName state.StateId
+
+                            // if (eventBroker.notify.IsSome) then
+                            //     let f =
+                            //         fun () ->
+                            //             List.zip ids events'
+                            //             |> tryPublish eventBroker 'A.Version 'A.StorageName
+                            //             |> ignore
+                            //     f |> postToProcessor |> ignore
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                             return [ids]
                         }
                 }
@@ -301,19 +304,19 @@ module CommandHandler =
             | _ ->
                 delayedCommand()
 
-    let inline runAggregateCommand<'A, 'E
-        when 'A :> Aggregate 
+    let inline runAggregateCommand<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
         and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> Json -> Result<'A, string>) 
+        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string)
         and 'A : (static member SnapshotsInterval: int)
-        and 'E : (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> string)
+        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E : (member Serialize: ISerializer -> 'F)
         >
         (aggregateId: Guid)
-        (storage: IEventStore<string>)
+        (storage: IEventStore<'F>)
         (eventBroker: IEventBroker)
         (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
@@ -333,15 +336,17 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize serializer
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
-                            if (eventBroker.notifyAggregate.IsSome) then
-                                let f =
-                                    fun () ->    
-                                        List.zip ids events'
-                                        |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
-                                        |> ignore
-                                f |> postToProcessor |> ignore
+
+                            // todo: adapt event broker 
+                            // if (eventBroker.notifyAggregate.IsSome) then
+                            //     let f =
+                            //         fun () ->    
+                            //             List.zip ids events'
+                            //             |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
+                            //             |> ignore
+                            //     f |> postToProcessor |> ignore
                             
-                            let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E> storage aggregateId    
+                            let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId    
                             return [ids]
                         }
                 }
@@ -359,19 +364,19 @@ module CommandHandler =
             | _, _ ->
                 delayedCommand()
 
-    let inline runNAggregateCommands<'A1, 'E1
-        when 'A1 :> Aggregate
+    let inline runNAggregateCommands<'A1, 'E1, 'F
+        when 'A1 :> Aggregate<'F>
         and 'A1 :> Entity
         and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: ISerializer -> string)
-        and 'E1 : (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'E1 : (member Serialize: ISerializer -> 'F)
+        and 'E1 : (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
         (aggregateIds: List<Guid>)
-        (storage: IEventStore<string>)
+        (storage: IEventStore<'F>)
         (eventBroker: IEventBroker)
         (stateViewer: AggregateViewer<'A1>)
         (commands: List<Command<'A1, 'E1>>)
@@ -415,18 +420,20 @@ module CommandHandler =
                             let aggregateIdsWithEventIds =
                                 List.zip aggregateIds eventIds
 
-                            let kafkaParameters =
-                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
-                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                            // todo: reintroduce
+                            // let kafkaParameters =
+                            //     List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
+                            //     |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                            if (eventBroker.notifyAggregate.IsSome) then
-                                kafkaParameters
-                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                                |> ignore
+                            // todo: reintroduce
+                            // if (eventBroker.notifyAggregate.IsSome) then
+                            //     kafkaParameters
+                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                            //     |> ignore
 
                             let _ =
                                 aggregateIds
-                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
                             
                             return eventIds
                         }
@@ -439,29 +446,29 @@ module CommandHandler =
                 log.Warn "locktype is pessimistic, but we are not using it in runNAggregateCommands"
                 delayedCommand()
 
-    let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2
-        when 'A1 :> Aggregate
+    let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 :> Aggregate<'F>
         and 'A1 :> Entity
         and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: ISerializer -> string)
-        and 'E1 : (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'E1 : (member Serialize: ISerializer -> 'F)
+        and 'E1 : (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate
+        and 'A2 :> Aggregate<'F>
         and 'A2 :> Entity
         and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: ISerializer -> string)
-        and 'E2 : (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'E2 : (member Serialize: ISerializer -> 'F)
+        and 'E2 : (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
-        (storage: IEventStore<string>)
+        (storage: IEventStore<'F>)
         (eventBroker: IEventBroker)
         (stateViewer1: AggregateViewer<'A1>)
         (stateViewer2: AggregateViewer<'A2>)
@@ -553,22 +560,23 @@ module CommandHandler =
                                 (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
 
-                            if (eventBroker.notifyAggregate.IsSome) then
-                                kafkaParmeters1
-                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                                |> ignore
+                            // todo: reintroduce
+                            // if (eventBroker.notifyAggregate.IsSome) then
+                            //     kafkaParmeters1
+                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                            //     |> ignore
 
-                            if (eventBroker.notifyAggregate.IsSome) then
-                                kafkaParameters2
-                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                                |> ignore
+                            // if (eventBroker.notifyAggregate.IsSome) then
+                            //     kafkaParameters2
+                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
+                            //     |> ignore
 
                             let _ =
                                 aggregateIds1
-                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1> storage
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
                             let _ =
                                 aggregateIds2
-                                |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2> storage
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
                         
                             return eventIds
                         }
@@ -583,16 +591,16 @@ module CommandHandler =
                 delayedCommand()
 
 
-    let inline runTwoCommands<'A1, 'A2, 'E1, 'E2 
+    let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (member Serialize: ISerializer -> 'F)
         and 'A1: (member StateId: Guid)
-        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A1: (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> string)
-        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'A2: (member Serialize: ISerializer -> 'F)
+        and 'A2: (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A1: (static member Lock: obj)
@@ -602,12 +610,12 @@ module CommandHandler =
         and 'A2: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
-        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> string)
-        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> string)
+        and 'E1: (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> 'F)
+        and 'E2: (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> 'F)
         >
-            (storage: IEventStore<string>)
+            (storage: IEventStore<'F>)
             (eventBroker: IEventBroker) 
 
             (command1: Command<'A1, 'E1>) 
@@ -646,15 +654,15 @@ module CommandHandler =
                                         (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
 
-                            if (eventBroker.notify.IsSome) then
-                                let idAndEvents1 = List.zip idLists.[0] events1'
-                                let idAndEvents2 = List.zip idLists.[1] events2'
-                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                                ()
+                            // if (eventBroker.notify.IsSome) then
+                            //     let idAndEvents1 = List.zip idLists.[0] events1'
+                            //     let idAndEvents2 = List.zip idLists.[1] events2'
+                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                            //     ()
 
-                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
                             return idLists
                         } 
                     }
@@ -667,22 +675,22 @@ module CommandHandler =
             | _ ->
                 delayedCommand()
 
-    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3
+    let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> string)
+        and 'A1: (member Serialize: ISerializer -> 'F)
         and 'A1: (member StateId: Guid)
-        and 'A1: (static member Deserialize: ISerializer -> Json -> Result<'A1, string>)
+        and 'A1: (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> string)
+        and 'A2: (member Serialize: ISerializer -> 'F)
         and 'A2: (member StateId: Guid)
-        and 'A2: (static member Deserialize: ISerializer -> Json -> Result<'A2, string>)
+        and 'A2: (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
-        and 'A3: (member Serialize: ISerializer -> string)
+        and 'A3: (member Serialize: ISerializer -> 'F)
         and 'A2: (member StateId: Guid)
-        and 'A3: (static member Deserialize: ISerializer -> Json -> Result<'A3, string>)
+        and 'A3: (static member Deserialize: ISerializer -> 'F -> Result<'A3, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A3: (static member Version: string)
@@ -696,14 +704,14 @@ module CommandHandler =
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E3 :> Event<'A3>
-        and 'E1: (static member Deserialize: ISerializer -> Json -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> string)
-        and 'E2: (static member Deserialize: ISerializer -> Json -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> string)
-        and 'E3: (static member Deserialize: ISerializer -> Json -> Result<'E3, string>)
-        and 'E3: (member Serialize: ISerializer -> string)
+        and 'E1: (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
+        and 'E1: (member Serialize: ISerializer -> 'F)
+        and 'E2: (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
+        and 'E2: (member Serialize: ISerializer -> 'F)
+        and 'E3: (static member Deserialize: ISerializer -> 'F -> Result<'E3, string>)
+        and 'E3: (member Serialize: ISerializer -> 'F)
         > 
-            (storage: IEventStore<string>)
+            (storage: IEventStore<'F>)
             (eventBroker: IEventBroker) 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
@@ -751,19 +759,19 @@ module CommandHandler =
                                         (events3', 'A3.Version, 'A2.StorageName, state3.StateId)
                                     ]
                             
-                            if (eventBroker.notify.IsSome) then
-                                let idAndEvents1 = List.zip idLists.[0] events1'
-                                let idAndEvents2 = List.zip idLists.[1] events2'
-                                let idAndEvents3 = List.zip idLists.[2] events3'
+                            // if (eventBroker.notify.IsSome) then
+                            //     let idAndEvents1 = List.zip idLists.[0] events1'
+                            //     let idAndEvents2 = List.zip idLists.[1] events2'
+                            //     let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                                ()
+                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                            //     postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                            //     ()
 
-                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A3, 'E3> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
 
                             return idLists
                         } 

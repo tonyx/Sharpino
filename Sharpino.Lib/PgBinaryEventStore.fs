@@ -16,14 +16,13 @@ open log4net.Config
 
 module PgBinaryStore =
     open Conf
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let log = LogManager.GetLogger (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
-
-    type PgBinaryStore(connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+    type PgBinaryStore (connection: string, readAsBinary: RowReader -> (string -> byte[])) =
 
         // let connection = new NpgsqlConnection(connection)
         // let readAsBinary = readAsBinary
-        new (connection: string) = PgBinaryStore(connection, readAsBinary)
+        new (connection: string) = PgBinaryStore (connection, readAsBinary)
 
         member this.Reset version name = 
             if (Conf.isTestEnv) then
