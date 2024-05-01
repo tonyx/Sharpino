@@ -15,29 +15,21 @@ open log4net.Config
 module PgStorage =
     open Conf
 
-    // type eventDataFormat = Js | Bin
     let config = Conf.config ()
     let sqlJson = 
         match config.PgSqlJsonFormat with
         | PgSqlJson.PlainText -> Sql.text
         | PgSqlJson.PgJson -> Sql.jsonb
-        // | PgSqlJson.Binary -> Sql.bytea
 
     let sqlBinary = Sql.bytea
 
     let readAsText<'F> = fun (r: RowReader) -> r.text 
-    // let readAsText:RowReaderByFormat<'F> = fun (r: RowReader) -> r.text
     let readAsBinary:RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // enable for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
-    // , redAsText:RowReaderByFormat<'F>) =
-
-    //     new (connection: string) =
-    //         PgEventStore<'F>(connection, readAsText)
-
         new (connection: string) =
             PgEventStore(connection, readAsText)
 

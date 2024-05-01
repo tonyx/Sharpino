@@ -59,7 +59,7 @@ module PgBinaryStore =
             else
                 failwith "operation allowed only in test db"
                 
-        interface IEventStore<byte array> with
+        interface IEventStore<byte []> with
             // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
                 this.Reset version name
@@ -78,7 +78,6 @@ module PgBinaryStore =
                                 (
                                     read.int "id",
                                     read.int "event_id",
-                                    // readAsText read "snapshot"
                                     readAsBinary read "snapshot"
                                 )
                             )
@@ -154,10 +153,9 @@ module PgBinaryStore =
                 |> Sql.executeAsync
                     (
                         fun read ->
-                            let result: StoragePgEvent<byte array> = 
+                            let result: StoragePgEvent<byte[]> = 
                                 {
                                     Id = read.int "id"
-                                    // JsonEvent = readAsText read "event"
                                     JsonEvent = readAsBinary read "event"
                                     KafkaOffset = read.int64OrNone "kafkaoffset"
                                     KafkaPartition = read.intOrNone "kafkapartition"
@@ -260,7 +258,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            // readAsText read "event"
                             readAsBinary read "event"
                         )
                     )
@@ -276,7 +273,7 @@ module PgBinaryStore =
             member this.SetSnapshot version (id: int, snapshot: byte array) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
-                let tryEvent = ((this :> IEventStore<byte array>).TryGetEvent version id name)
+                let tryEvent = ((this :> IEventStore<byte []>).TryGetEvent version id name)
                 match tryEvent with
                 | None -> Error (sprintf "event %d not found" id)
                 | Some event -> 
@@ -313,7 +310,6 @@ module PgBinaryStore =
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                            // ("snapshot",  sqlJson json);
                                             ("snapshot",  sqlBinary json);
                                             ("timestamp", Sql.timestamp System.DateTime.Now)
                                         ]
@@ -371,7 +367,6 @@ module PgBinaryStore =
                                                 [
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
-                                                    // ("snapshot",  sqlJson json);
                                                     ("snapshot",  sqlBinary json);
                                                     ("timestamp", Sql.timestamp System.DateTime.Now)
                                                 ]
@@ -414,7 +409,6 @@ module PgBinaryStore =
                                             [
                                                 ("@aggregate_id", Sql.uuid aggregateId);
                                                 ("@event_id", Sql.int event.Id);
-                                                // ("snapshot",  sqlJson snapshot);
                                                 ("snapshot",  sqlBinary snapshot);
                                                 ("timestamp", Sql.timestamp event.Timestamp)
                                             ]
@@ -439,7 +433,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            // readAsText read "event"
                             readAsBinary read "event"
                         )
                     )
@@ -475,7 +468,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync (fun read ->
                         (
                             read.int "event_id",
-                            // readAsText read "snapshot"
                             readAsBinary read "snapshot"
                         )
                     )
@@ -495,7 +487,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync (fun read ->
                         (
                             read.intOrNone "event_id",
-                            // readAsText read "snapshot"
                             readAsBinary read "snapshot"
                         )
                     )
@@ -718,7 +709,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            // readAsText read "event"
                             readAsBinary read "event"
                         )
                     )
@@ -741,7 +731,6 @@ module PgBinaryStore =
                     |> Sql.executeAsync ( fun read ->
                         (
                             read.int "id",
-                            // readAsText read "event"
                             readAsBinary read "event"
                         )
                     )
