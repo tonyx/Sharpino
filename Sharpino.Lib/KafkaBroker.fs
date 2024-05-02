@@ -21,10 +21,10 @@ open FSharp.Core
 module KafkaBroker =
 
     let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    type BrokerMessage = {
+    type BrokerMessage<'F> = {
         ApplicationId: Guid
         EventId: int
-        Event: Json
+        Event: 'F
     }
     
     type BrokerAggregateMessage = {

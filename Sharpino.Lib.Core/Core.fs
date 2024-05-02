@@ -17,7 +17,7 @@ module Core =
     type Aggregate<'F> =
         abstract member StateId: Guid
         abstract member Id: Guid // use this one to be able to filter related events from same string
-        abstract member Serialize<'F>: ISerializer -> 'F
+        abstract member Serialize: 'F
         abstract member Lock: obj
     
     type Event<'A> =

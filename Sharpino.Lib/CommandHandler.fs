@@ -46,23 +46,22 @@ module CommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member Lock: obj)
         and 'E:> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         >(eventStore: IEventStore<'F>) =
             fun () -> getFreshState<'A, 'E, 'F> eventStore
 
     let inline getAggregateStorageFreshStateViewer<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
-        and 'A :> Entity 
-        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         >
         (eventStore: IEventStore<'F>) 
         =
@@ -82,12 +81,12 @@ module CommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         > 
         (storage: IEventStore<'F>) =
             let stateViewer = getStorageFreshStateViewer<'A, 'E, 'F> storage
@@ -96,7 +95,7 @@ module CommandHandler =
                     ResultCE.result
                         {
                             let! (id, state, _, _) = stateViewer ()
-                            let serState = state.Serialize serializer
+                            let serState = state.Serialize
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
                         }
@@ -106,13 +105,12 @@ module CommandHandler =
     [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mkAggregateSnapshot<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
-        and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
-        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> 'F)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
         > 
         (storage: IEventStore<'F>) 
         (aggregateId: AggregateId) =
@@ -122,7 +120,7 @@ module CommandHandler =
                     ResultCE.result
                         {
                             let! (eventId, state, _, _) = stateViewer aggregateId 
-                            let serState = state.Serialize serializer
+                            let serState = state.Serialize 
                             let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
                             return! result 
                         }
@@ -135,11 +133,11 @@ module CommandHandler =
         and 'A: (static member Version: string)
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         >
         (storage: IEventStore<'F>) =
             log.Debug "mkSnapshotIfIntervalPassed"
@@ -162,14 +160,13 @@ module CommandHandler =
             
     let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
-        and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string)
         and 'A : (static member SnapshotsInterval : int)
         and 'A : (static member Version: string) 
-        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> 'F)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
         >
         (storage: IEventStore<'F>)
         (aggregateId: AggregateId) =
@@ -197,13 +194,13 @@ module CommandHandler =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (member Serialize: 'F)
         and 'A: (member StateId: Guid)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F) 
         >
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker) 
@@ -221,7 +218,7 @@ module CommandHandler =
                                 |> command.Execute
                             let events' =
                                 events 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
 
@@ -252,13 +249,13 @@ module CommandHandler =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'A: (member StateId: Guid)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         and 'A1:> Aggregate<'F>
         and 'A1 : (static member StorageName: string) 
         and 'A1 : (static member Version: string)
@@ -280,9 +277,9 @@ module CommandHandler =
                                 |> command.Execute
                             let events' =
                                 events 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let! ids =
-                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName (initialInstance.Serialize<'F> serializer) 'A.Version 'A.StorageName state.StateId
+                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
 
                             // if (eventBroker.notify.IsSome) then
                             //     let f =
@@ -306,14 +303,13 @@ module CommandHandler =
 
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A :> Aggregate<'F>
-        and 'A :> Entity 
         and 'E :> Event<'A>
-        and 'A : (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) 
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string)
         and 'A : (static member SnapshotsInterval: int)
-        and 'E : (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E : (member Serialize: ISerializer -> 'F)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
@@ -333,7 +329,7 @@ module CommandHandler =
                                 |> command.Execute
                             let events' =
                                 events 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
 
@@ -366,11 +362,10 @@ module CommandHandler =
 
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
-        and 'A1 :> Entity
         and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: ISerializer -> 'F)
-        and 'E1 : (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
@@ -404,7 +399,7 @@ module CommandHandler =
 
                             let serializedEvents =
                                 events 
-                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize serializer 
+                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize 
                             
                             let aggregateIdsWithStateIds =
                                 List.zip aggregateIds states'
@@ -448,20 +443,18 @@ module CommandHandler =
 
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
-        and 'A1 :> Entity
         and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: ISerializer -> 'F)
-        and 'E1 : (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 :> Aggregate<'F>
-        and 'A2 :> Entity
         and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: ISerializer -> 'F)
-        and 'E2 : (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
@@ -514,11 +507,11 @@ module CommandHandler =
 
                             let serializedEvents1 =
                                 events1 
-                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize serializer
+                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
 
                             let serializedEvents2 =
                                 events2 
-                                |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize serializer
+                                |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
 
                             let aggregateIdsWithStateIds1 =
                                 List.zip aggregateIds1 states1'
@@ -594,13 +587,13 @@ module CommandHandler =
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> 'F)
+        and 'A1: (member Serialize: 'F)
         and 'A1: (member StateId: Guid)
-        and 'A1: (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> 'F)
-        and 'A2: (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
+        and 'A2: (member Serialize: 'F)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A1: (static member Lock: obj)
@@ -610,10 +603,10 @@ module CommandHandler =
         and 'A2: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
-        and 'E1: (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> 'F)
-        and 'E2: (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> 'F)
+        and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'E1: (member Serialize: 'F)
+        and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'E2: (member Serialize: 'F)
         >
             (storage: IEventStore<'F>)
             (eventBroker: IEventBroker) 
@@ -642,10 +635,10 @@ module CommandHandler =
 
                             let events1' =
                                 events1 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let events2' =
                                 events2 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
 
                             let! idLists =
                                 storage.MultiAddEvents 
@@ -678,19 +671,19 @@ module CommandHandler =
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
-        and 'A1: (member Serialize: ISerializer -> 'F)
+        and 'A1: (member Serialize: 'F)
         and 'A1: (member StateId: Guid)
-        and 'A1: (static member Deserialize: ISerializer -> 'F -> Result<'A1, string>)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
-        and 'A2: (member Serialize: ISerializer -> 'F)
+        and 'A2: (member Serialize: 'F)
         and 'A2: (member StateId: Guid)
-        and 'A2: (static member Deserialize: ISerializer -> 'F -> Result<'A2, string>)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
-        and 'A3: (member Serialize: ISerializer -> 'F)
+        and 'A3: (member Serialize: 'F)
         and 'A2: (member StateId: Guid)
-        and 'A3: (static member Deserialize: ISerializer -> 'F -> Result<'A3, string>)
+        and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
         and 'A3: (static member Version: string)
@@ -704,12 +697,12 @@ module CommandHandler =
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E3 :> Event<'A3>
-        and 'E1: (static member Deserialize: ISerializer -> 'F -> Result<'E1, string>)
-        and 'E1: (member Serialize: ISerializer -> 'F)
-        and 'E2: (static member Deserialize: ISerializer -> 'F -> Result<'E2, string>)
-        and 'E2: (member Serialize: ISerializer -> 'F)
-        and 'E3: (static member Deserialize: ISerializer -> 'F -> Result<'E3, string>)
-        and 'E3: (member Serialize: ISerializer -> 'F)
+        and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'E1: (member Serialize: 'F)
+        and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'E2: (member Serialize: 'F)
+        and 'E3: (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'E3: (member Serialize: 'F)
         > 
             (storage: IEventStore<'F>)
             (eventBroker: IEventBroker) 
@@ -743,13 +736,13 @@ module CommandHandler =
 
                             let events1' =
                                 events1 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let events2' =
                                 events2 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
                             let events3' =
                                 events3 
-                                |>> fun x -> x.Serialize serializer
+                                |>> fun x -> x.Serialize
 
                             let! idLists =
                                 storage.MultiAddEvents 

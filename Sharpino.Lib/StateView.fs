@@ -23,15 +23,15 @@ module StateView =
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (id: int)
         (storage: IEventStore<'F>) =
             let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
             match snapshot |>> snd with
             | Some snapshot' ->
-                let deserSnapshot = 'A.Deserialize (serializer, snapshot')
+                let deserSnapshot = 'A.Deserialize  snapshot'
                 let eventid = snapshot |>> fst
                 match deserSnapshot with
                 | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
@@ -43,7 +43,7 @@ module StateView =
 
     let inline private tryGetAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (aggregateId: Guid)
         (id: int)
@@ -54,7 +54,7 @@ module StateView =
             let snapshot = storage.TryGetAggregateSnapshotById version storageName aggregateId id
             match snapshot |>> snd with
             | Some snapshot' ->
-                let deserSnapshot = 'A.Deserialize (serializer, snapshot')
+                let deserSnapshot = 'A.Deserialize  snapshot'
                 let eventId = snapshot |>> fst
                 match deserSnapshot, eventId with
                 | Ok deserSnapshot, Some evId  ->
@@ -73,8 +73,8 @@ module StateView =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (storage: IEventStore<'F>) =
             log.Debug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
@@ -100,7 +100,7 @@ module StateView =
 
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (aggregateId: Guid)
         (version: string)
@@ -135,10 +135,10 @@ module StateView =
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
-        and 'A: (member Serialize: ISerializer -> 'F)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'A: (member Serialize:  'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         >
         (storage: IEventStore<'F>) = 
         log.Debug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
@@ -156,7 +156,7 @@ module StateView =
 
     let inline snapAggregateEventIdStateAndEvents<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A> and
-        'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>) and
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)>
         (id: Guid)
@@ -189,11 +189,11 @@ module StateView =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
-        and 'A: (member Serialize: ISerializer -> 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
         >
         (storage: IEventStore<'F>): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
             log.Debug (sprintf "getFreshState %s - %s" 'A.Version 'A.StorageName)
@@ -204,7 +204,7 @@ module StateView =
                         let! deserEvents =
                             events 
                             |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize (serializer, x))
+                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
                         return newState
@@ -220,8 +220,8 @@ module StateView =
 
     let inline getAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
-        and 'A: (static member Deserialize: ISerializer -> 'F -> Result<'A, string>)
-        and 'E: (static member Deserialize: ISerializer -> 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >
@@ -236,7 +236,7 @@ module StateView =
                         let! deserEvents =
                             events 
                             |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize (serializer, x))
+                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> state
                         return newState
