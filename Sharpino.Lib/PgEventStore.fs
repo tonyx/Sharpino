@@ -190,10 +190,10 @@ module PgStorage =
                 let eventsAndStatesIds = List.zip events uniqueStateIds
 
                 conn.Open()
+                let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
-                            let transaction = conn.BeginTransaction() 
                             let ids =
                                 eventsAndStatesIds
                                 |>>
@@ -203,14 +203,18 @@ module PgStorage =
                                         command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
                                         let result = command'.ExecuteScalar() 
                                         result :?> int
-                                    
                             transaction.Commit()
-                            conn.Close()
                             ids |> Ok
                         with
                             | _ as ex -> 
+                                transaction.Rollback()
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
+
                 }
                 |> Async.RunSynchronously
 
@@ -220,7 +224,7 @@ module PgStorage =
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
                             let cmdList = 
                                 arg 
@@ -245,12 +249,16 @@ module PgStorage =
                                                 result :?> int
                                     
                             transaction.Commit()    
-                            conn.Close()
                             cmdList |> Ok
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
                 
@@ -351,8 +359,9 @@ module PgStorage =
                     ]
                 let eventsAndStatesIds = List.zip events uniqueStateIds
                 conn.Open()
+                let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
                             let transaction = conn.BeginTransaction() 
                             let ids =
@@ -394,7 +403,12 @@ module PgStorage =
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
 
@@ -432,21 +446,19 @@ module PgStorage =
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query
-                    |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                    |> Sql.executeAsync ( fun read ->
-                        (
-                            read.int "id",
-                            readAsText read "event"
-                        )
+                connection
+                |> Sql.connect
+                |> Sql.query query
+                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                |> Sql.executeAsync ( fun read ->
+                    (
+                        read.int "id",
+                        readAsText read "event"
                     )
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> Seq.toList
-                res 
+                )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.toList
 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
@@ -467,40 +479,36 @@ module PgStorage =
             member this.TryGetSnapshotById version name id =
                 log.Debug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query
-                    |> Sql.parameters ["id", Sql.int id]
-                    |> Sql.executeAsync (fun read ->
-                        (
-                            read.int "event_id",
-                            readAsText read "snapshot"
-                        )
+                connection
+                |> Sql.connect
+                |> Sql.query query
+                |> Sql.parameters ["id", Sql.int id]
+                |> Sql.executeAsync (fun read ->
+                    (
+                        read.int "event_id",
+                        readAsText read "snapshot"
                     )
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> Seq.tryHead
-                res
+                )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.tryHead
 
             member this.TryGetAggregateSnapshotById version name aggregateId id =
                 log.Debug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
-                let res =
-                    connection
-                    |> Sql.connect
-                    |> Sql.query query
-                    |> Sql.parameters ["id", Sql.int id]
-                    |> Sql.executeAsync (fun read ->
-                        (
-                            read.intOrNone "event_id",
-                            readAsText read "snapshot"
-                        )
+                connection
+                |> Sql.connect
+                |> Sql.query query
+                |> Sql.parameters ["id", Sql.int id]
+                |> Sql.executeAsync (fun read ->
+                    (
+                        read.intOrNone "event_id",
+                        readAsText read "snapshot"
                     )
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> Seq.tryHead
-                res
+                )
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.tryHead
             
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
@@ -573,10 +581,10 @@ module PgStorage =
                 let command = sprintf "CALL set_classic_optimistic_lock%s%s()" version name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
+                let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
-                            let transaction = conn.BeginTransaction() 
                             let _ =
                                 connection
                                 |> Sql.connect
@@ -586,12 +594,16 @@ module PgStorage =
                                 |> Async.RunSynchronously
                                 |> ignore
                             transaction.Commit()
-                            conn.Close()
                             () |> Ok
                         with
                             | _ as ex -> 
+                                transaction.Rollback()
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
                 
@@ -600,10 +612,10 @@ module PgStorage =
                 let command = sprintf "CALL un_set_classic_optimistic_lock%s%s()" version name
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
+                let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result = 
                         try
-                            let transaction = conn.BeginTransaction() 
                             let _ =
                                 connection
                                 |> Sql.connect
@@ -613,12 +625,16 @@ module PgStorage =
                                 |> Async.RunSynchronously
                                 |> ignore
                             transaction.Commit()
-                            conn.Close()
                             () |> Ok
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
                 
@@ -635,10 +651,10 @@ module PgStorage =
                     ]
                 let eventsAndAggregateStateId = List.zip events uniqueStateIds
                 conn.Open()
+                let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
-                            let transaction = conn.BeginTransaction() 
                             let ids =
                                 eventsAndAggregateStateId
                                 |>> 
@@ -652,12 +668,16 @@ module PgStorage =
                                             result :?> int
                                     )
                             transaction.Commit()
-                            conn.Close()
                             ids |> Ok
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
 
@@ -667,7 +687,7 @@ module PgStorage =
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
-                    return
+                    let result =
                         try
                             let cmdList = 
                                 arg 
@@ -696,12 +716,16 @@ module PgStorage =
                                             
                                     )
                             transaction.Commit()    
-                            conn.Close()
                             cmdList |> Ok
                         with
                             | _ as ex -> 
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
+                    try
+                        return result
+                    finally
+                        conn.Close()
                 }
                 |> Async.RunSynchronously
 

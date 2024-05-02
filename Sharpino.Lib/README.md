@@ -166,22 +166,50 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
-## Roadmap:
-- (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
-- (done) add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
-- (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
-- (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
+- Adapt the examples to the new version of the library (2.0.0)
 
 ## News: 
- 
-- added an [example of many counter as aggregates referenced by a single context](https://github.com/tonyx/SharpinoCounter3.git)
-- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore based state viewers instead.
+- published version 2.0.0 supporting binary serialization for events and snapshots on Postgres.
+Note: the current examples provided are still referencing the previous 1.6.6 version. 
+[Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
+
+- added some videos (in Italian) about the library and the sample applications.
+https://youtu.be/OQKD5uluFPc
+https://youtu.be/ToZ_I_xRA-g
+https://youtu.be/WtGEQqznPnQ
+https://youtu.be/j2XoLkCt31c
+
+
+
+- added a few new examples (can be used for dojos)
+[pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
+- version 1.6.6: can use plain text instead of JSON data type for database (see scripts in SqlTemplate dir). The appSettings has a new settings for it:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"}
+}
+```
+
+The other option is:
+```
+    "PgSqlJsonFormat":{"Case":"PgJson"}
+```    
+the tables should be coherent: use PlainText when json fields are of type text and PgJson when they are of type json or jsonb.
+Why bother? In this example I use FsPickler to serialize/deserialize https://github.com/tonyx/shoppingCartWithSharpino
+It won't work with jsonb fields because it needs the same order of fields in the json string whereas json/jsonb fields are stored in a way that doesn't preserve the order of fields.
+
+
+
+- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 

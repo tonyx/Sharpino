@@ -166,19 +166,19 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
-## Roadmap:
-- (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
-- (done) add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
-- (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
-- (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
+- Adapt the examples to the new version of the library (2.0.0)
 
 ## News: 
+- published version 2.0.0 supporting binary serialization for events and snapshots on Postgres.
+Note: the current examples provided are still referencing the previous 1.6.6 version. 
+[Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
+
 - added some videos (in Italian) about the library and the sample applications.
 https://youtu.be/OQKD5uluFPc
 https://youtu.be/ToZ_I_xRA-g
