@@ -32,13 +32,13 @@ module PubSystem =
         "User Id=safe;"+
         "Password=safe;"
 
-    type PubSystem (storage: IEventStore<string>, eventBroker: IEventBroker) =
+    type PubSystem (storage: IEventStore, eventBroker: IEventBroker) =
             let kitchenStateViewer = getStorageFreshStateViewer<Kitchen, KitchenEvents> storage
             let dishStateViewer = getAggregateStorageFreshStateViewer<Dish, DishEvents> storage
             let ingredientStateViewer = getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents> storage
             let supplierStateViewer = getAggregateStorageFreshStateViewer<Supplier, SupplierEvents> storage
 
-            new (storage: IEventStore<string>) =
+            new (storage: IEventStore) =
                 PubSystem(storage, doNothingBroker)
             member this.SetAggregateStateControlInOptimisticLock version name =
                 ResultCE.result {

@@ -12,7 +12,7 @@ module App =
     //     }
 
 
-    type App(storage: IEventStore<string>, eventBroker: IEventBroker) =
+    type App(storage: IEventStore, eventBroker: IEventBroker) =
         // let BootstrapServers = "localhost:9092"
         // let doNothingBroker = Sharpino.KafkaBroker.getKafkaBroker(BootstrapServers, storage)
         let row1StateViewer =
@@ -20,7 +20,7 @@ module App =
             
         let row2StateViewer =
             getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events > storage
-        new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
+        new(storage: IEventStore) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {

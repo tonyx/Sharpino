@@ -30,11 +30,11 @@ module StorageStadiumBookingSystem =
         "Password=safe;"
 
     type StadiumBookingSystem
-        (storage: IEventStore<string>, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (storage: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
-        new (storage: IEventStore<string>) =
+        new (storage: IEventStore) =
             StadiumBookingSystem(storage, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
-        new (storage: IEventStore<string>, eventBroker: IEventBroker) =
+        new (storage: IEventStore, eventBroker: IEventBroker) =
             StadiumBookingSystem(storage, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
         member this.SetAggregateStateControlInOptimisticLock Version Name =
             ResultCE.result {

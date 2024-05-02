@@ -12,14 +12,6 @@ module Storage =
             KafkaPartition: Option<int>
             Timestamp: System.DateTime
         }
-    // type StorageEventBinary =
-    //     {
-    //         JsonEvent: byte array
-    //         Id: int
-    //         KafkaOffset: Option<int64>
-    //         KafkaPartition: Option<int>
-    //         Timestamp: System.DateTime
-    //     }
         
     type StorageEventJsonRef =
         {
@@ -107,10 +99,10 @@ module Storage =
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * 'F >
         abstract member SetPublished: Version -> Name -> EventId -> KafkaOffset -> KafkaPartitionId ->  Result<unit, string>
 
-    type IEventBroker =
+    type IEventBroker<'F> =
         {
-            notify: Option<Version -> Name -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<string, string>>, string >>
-            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * Json> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null,string>>, string >>
+            notify: Option<Version -> Name -> List<EventId * 'F> -> Result<List<Confluent.Kafka.DeliveryResult<'F, string>>, string >>
+            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * 'F> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null, string>>, string >>
         }
 
     type RowReaderByFormat<'F> = RowReader -> string ->'F

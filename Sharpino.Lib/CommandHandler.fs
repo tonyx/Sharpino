@@ -203,7 +203,7 @@ module CommandHandler =
         and 'E: (member Serialize: 'F) 
         >
         (storage: IEventStore<'F>) 
-        (eventBroker: IEventBroker) 
+        (eventBroker: IEventBroker<'F>) 
         (stateViewer: StateViewer<'A>)
         (command: Command<'A, 'E>) =
         
@@ -223,13 +223,13 @@ module CommandHandler =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
 
                             // todo: reintroduce
-                            // if (eventBroker.notify.IsSome) then
-                            //     let f =
-                            //         fun () ->
-                            //             List.zip ids events'
-                            //             |> tryPublish eventBroker 'A.Version 'A.StorageName
-                            //             |> ignore
-                            //     f |> postToProcessor |> ignore
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
 
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                             return [ids]
@@ -261,7 +261,7 @@ module CommandHandler =
         and 'A1 : (static member Version: string)
         >
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker)
+        (eventBroker: IEventBroker<'F>)
         (stateViewer: StateViewer<'A>)
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
@@ -281,13 +281,14 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
 
-                            // if (eventBroker.notify.IsSome) then
-                            //     let f =
-                            //         fun () ->
-                            //             List.zip ids events'
-                            //             |> tryPublish eventBroker 'A.Version 'A.StorageName
-                            //             |> ignore
-                            //     f |> postToProcessor |> ignore
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
+
                             let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                             return [ids]
                         }
@@ -313,7 +314,7 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker)
+        (eventBroker: IEventBroker<'F>) 
         (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
         =
@@ -334,13 +335,13 @@ module CommandHandler =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
 
                             // todo: adapt event broker 
-                            // if (eventBroker.notifyAggregate.IsSome) then
-                            //     let f =
-                            //         fun () ->    
-                            //             List.zip ids events'
-                            //             |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
-                            //             |> ignore
-                            //     f |> postToProcessor |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                let f =
+                                    fun () ->    
+                                        List.zip ids events'
+                                        |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
                             
                             let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId    
                             return [ids]
@@ -372,7 +373,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker)
+        (eventBroker: IEventBroker<'F>)
         (stateViewer: AggregateViewer<'A1>)
         (commands: List<Command<'A1, 'E1>>)
         =
@@ -416,15 +417,15 @@ module CommandHandler =
                                 List.zip aggregateIds eventIds
 
                             // todo: reintroduce
-                            // let kafkaParameters =
-                            //     List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
-                            //     |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                            let kafkaParameters =
+                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
+                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
                             // todo: reintroduce
-                            // if (eventBroker.notifyAggregate.IsSome) then
-                            //     kafkaParameters
-                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            //     |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParameters
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
 
                             let _ =
                                 aggregateIds
@@ -462,7 +463,7 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker)
+        (eventBroker: IEventBroker<'F>)
         (stateViewer1: AggregateViewer<'A1>)
         (stateViewer2: AggregateViewer<'A2>)
         (command1: List<Command<'A1, 'E1>>)
@@ -554,15 +555,15 @@ module CommandHandler =
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
 
                             // todo: reintroduce
-                            // if (eventBroker.notifyAggregate.IsSome) then
-                            //     kafkaParmeters1
-                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            //     |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParmeters1
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
 
-                            // if (eventBroker.notifyAggregate.IsSome) then
-                            //     kafkaParameters2
-                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                            //     |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParameters2
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
+                                |> ignore
 
                             let _ =
                                 aggregateIds1
@@ -609,7 +610,7 @@ module CommandHandler =
         and 'E2: (member Serialize: 'F)
         >
             (storage: IEventStore<'F>)
-            (eventBroker: IEventBroker) 
+            (eventBroker: IEventBroker<'F>) 
 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>)
@@ -647,12 +648,12 @@ module CommandHandler =
                                         (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
 
-                            // if (eventBroker.notify.IsSome) then
-                            //     let idAndEvents1 = List.zip idLists.[0] events1'
-                            //     let idAndEvents2 = List.zip idLists.[1] events2'
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            //     ()
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                ()
 
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
@@ -705,7 +706,7 @@ module CommandHandler =
         and 'E3: (member Serialize: 'F)
         > 
             (storage: IEventStore<'F>)
-            (eventBroker: IEventBroker) 
+            (eventBroker: IEventBroker<'F>) 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) 

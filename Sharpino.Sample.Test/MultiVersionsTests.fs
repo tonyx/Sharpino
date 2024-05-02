@@ -37,13 +37,13 @@ let allVersions =
         // enable if you had setup postgres (see dbmate scripts):
         
         // disable only if you have your postgres configured
-        (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
-        (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
-        (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
+        // (currentPostgresApp,        currentPostgresApp,     fun () -> () |> Result.Ok)
+        // (upgradedPostgresApp,       upgradedPostgresApp,    fun () -> () |> Result.Ok)
+        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value)
         
         (currentMemoryApp,          currentMemoryApp,       fun () -> () |> Result.Ok)
-        (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
-        (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
+        // (upgradedMemoryApp,         upgradedMemoryApp,      fun () -> () |> Result.Ok)
+        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value)
 
         // enable if you have eventstore locally (tested only with docker version of eventstore)
         // I am sorry but I think I am going to ditch eventstoreDb in the future
