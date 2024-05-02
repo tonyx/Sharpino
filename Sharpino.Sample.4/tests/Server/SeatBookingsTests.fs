@@ -562,7 +562,7 @@ module BookingTests =
                 // when
                 let addAnotherSeatEvent = RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None } |> serializer.Serialize
                 let stored =
-                    (pgStorage :> IEventStore).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
+                    (pgStorage :> IEventStore<string>).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
 
                 Expect.isOk stored "should be ok"
 
@@ -591,7 +591,7 @@ module BookingTests =
                 // when
                 let addAnotherSeatEvent = RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None } |> serializer.Serialize
                 let stored =
-                    (pgStorage :> IEventStore).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
+                    (pgStorage :> IEventStore<string>).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
                 Expect.isError stored "should be error"
 
                 // then

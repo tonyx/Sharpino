@@ -109,7 +109,7 @@ module KafkaReceiver =
                 Result.Error e 
             | Ok msg ->
                 ResultCE.result {
-                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage>
+                    let! newMessage = msg.Message.Value |> serializer.Deserialize<BrokerMessage<'F>>
                     let eventId = newMessage.EventId
                     let! currentStateId, _, _, _ = this.State ()
                     if eventId = currentStateId + 1 then

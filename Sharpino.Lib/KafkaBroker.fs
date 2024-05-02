@@ -21,24 +21,24 @@ open FSharp.Core
 module KafkaBroker =
 
     let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-    type BrokerMessage = {
+    type BrokerMessage<'F> = {
         ApplicationId: Guid
         EventId: int
-        Event: Json
+        Event: 'F
     }
     
-    type BrokerAggregateMessage = {
+    type BrokerAggregateMessage<'F> = {
         ApplicationId: Guid
         AggregateId: Guid
         EventId: int
-        Event: Json
+        Event: 'F
     }
 
     let log = LogManager.GetLogger(Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore) =
+    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore<string>) =
         try 
             let config = ProducerConfig()
             config.BootstrapServers <- bootStrapServer
@@ -52,7 +52,7 @@ module KafkaBroker =
             let message = Message<string, string>()
             let aggregatemessage = Message<Null, string>()
 
-            let notifyAggregateMessage  (version: string) (name: string) (aggregateId: Guid) (msg: int * Json) =
+            let notifyAggregateMessage  (version: string) (name: string) (aggregateId: Guid) (msg: int * 'F) =
                 let topic = name + "-" + version |> String.replace "_" ""
 
                 let brokerMessage = {
@@ -84,7 +84,7 @@ module KafkaBroker =
                         log.Error e.Message
                         Error(e.Message.ToString())
             
-            let notifyMessage (version: string) (name: string)  (msg: int * Json) =
+            let notifyMessage (version: string) (name: string)  (msg: int * 'F) =
                 let topic = name + "-" + version |> String.replace "_" ""
 
                 let brokerMessage = {
@@ -115,7 +115,7 @@ module KafkaBroker =
                         log.Error e.Message
                         Error(e.Message.ToString())
 
-            let notifier: IEventBroker =
+            let notifier: IEventBroker<'F> =
                 {
                     notify = 
                         fun version name events ->

@@ -21,10 +21,8 @@
     <Compile Include="Suppliers/Events.fs" />
     <Compile Include="Suppliers/Command.fs" />
     <Compile Include="PubSystem.fs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup> <ItemGroup>
+    <!-- <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" /> -->
 <!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
   </ItemGroup>
 
@@ -35,7 +33,7 @@
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
     <PackageReference Include="Log4net" Version="2.0.17" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-<!--    <PackageReference Include="Sharpino" Version="1.5.9" />-->
+    <PackageReference Include="Sharpino" Version="1.6.6" />
   </ItemGroup>
 
 </Project>

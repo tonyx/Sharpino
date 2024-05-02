@@ -69,10 +69,10 @@ module Cache =
             dic.Clear()
             queue.Clear()
 
-    type AggregateCache<'A when 'A :> Aggregate> private () =
+    type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
-        static let instance = AggregateCache<'A>()
+        static let instance = AggregateCache<'A, 'F>()
         static member Instance = instance
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
