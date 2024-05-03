@@ -212,7 +212,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state, _, _) = stateViewer() 
+                            let! (eventId, state, _, _) = stateViewer() 
                             let! events =
                                 state
                                 |> command.Execute
@@ -220,7 +220,7 @@ module CommandHandler =
                                 events 
                                 |>> fun x -> x.Serialize
                             let! ids =
-                                events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
+                                events' |> storage.AddEvents eventId 'A.Version 'A.StorageName state.StateId
 
                             if (eventBroker.notify.IsSome) then
                                 let f =
@@ -619,8 +619,8 @@ module CommandHandler =
                     return
                         result {
 
-                            let! (_, state1, _, _) = stateViewerA1 ()
-                            let! (_, state2, _, _) = stateViewerA2 ()
+                            let! (eventId1, state1, _, _) = stateViewerA1 ()
+                            let! (eventId2, state2, _, _) = stateViewerA2 ()
 
                             let! events1 =
                                 state1
@@ -639,8 +639,8 @@ module CommandHandler =
                             let! idLists =
                                 storage.MultiAddEvents 
                                     [
-                                        (events1', 'A1.Version, 'A1.StorageName, state1.StateId)
-                                        (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
+                                        (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
+                                        (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
 
                             if (eventBroker.notify.IsSome) then
@@ -716,9 +716,9 @@ module CommandHandler =
                     return
                         result {
 
-                            let! (_, state1, _, _) = stateViewerA1 ()
-                            let! (_, state2, _, _) = stateViewerA2 ()
-                            let! (_, state3, _, _) = stateViewerA3 ()
+                            let! (eventId1, state1, _, _) = stateViewerA1 ()
+                            let! (eventId2, state2, _, _) = stateViewerA2 ()
+                            let! (eventId3, state3, _, _) = stateViewerA3 ()
 
                             let! events1 =
                                 state1
@@ -743,20 +743,20 @@ module CommandHandler =
                             let! idLists =
                                 storage.MultiAddEvents 
                                     [
-                                        (events1', 'A1.Version, 'A1.StorageName, state1.StateId)
-                                        (events2', 'A2.Version, 'A2.StorageName, state2.StateId)
-                                        (events3', 'A3.Version, 'A2.StorageName, state3.StateId)
+                                        (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
+                                        (eventId2,  events2', 'A2.Version, 'A2.StorageName, state2.StateId)
+                                        (eventId3, events3', 'A3.Version, 'A2.StorageName, state3.StateId)
                                     ]
                             
-                            // if (eventBroker.notify.IsSome) then
-                            //     let idAndEvents1 = List.zip idLists.[0] events1'
-                            //     let idAndEvents2 = List.zip idLists.[1] events2'
-                            //     let idAndEvents3 = List.zip idLists.[2] events3'
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let idAndEvents3 = List.zip idLists.[2] events3'
 
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                            //     ()
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                                ()
 
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage

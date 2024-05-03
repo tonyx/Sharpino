@@ -234,7 +234,7 @@ module MemoryStorage =
                 this.Reset version name
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents version name contextStateId xs: Result<List<int>, string> = 
+            member this.AddEvents _ version name contextStateId xs: Result<List<int>, string> = 
                 log.Debug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
                     [ for e in xs do
@@ -262,7 +262,7 @@ module MemoryStorage =
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
-                (this:> IEventStore<string>).AddEvents contextVersion contextName contextStateId events
+                (this:> IEventStore<string>).AddEvents 0 contextVersion contextName contextStateId events
                 
             member this.SetClassicOptimisticLock version name =
                 // nothing to do with memory db (or maybe yes?)
@@ -280,13 +280,13 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents (arg: List<List<Json> * Version * Name * ContextStateId >) =
+            member this.MultiAddEvents (arg: List< _ * List<Json> * Version * Name * ContextStateId >) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
                     |> List.map 
-                        (fun (xs, version, name, contextStateId) ->
-                            (this :> IEventStore<string>).AddEvents version name contextStateId xs |> Result.get
+                        (fun (_, xs, version, name, contextStateId) ->
+                            (this :> IEventStore<string>).AddEvents 0 version name contextStateId xs |> Result.get
                         ) 
                 cmds |> Ok
 

@@ -124,7 +124,7 @@ module PgStorage =
                         connection
                         |> Sql.connect
                         |> Sql.query query
-                        |> Sql.executeAsync  (fun read -> read.int "event_id")
+                        |> Sql.executeAsync (fun read -> read.int "event_id")
                         |> Async.AwaitTask
                         |> Async.RunSynchronously
                         |> Seq.tryHead
@@ -174,7 +174,7 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                     
-            member this.AddEvents version name contextStateId events =
+            member this.AddEvents eventId version name contextStateId events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
@@ -192,24 +192,29 @@ module PgStorage =
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
+                    let lastEventId = (this :> IEventStore<string>).TryGetLastEventId version name
                     let result =
-                        try
-                            let ids =
-                                eventsAndStatesIds
-                                |>>
-                                    fun (event, contextStateId) -> 
-                                        let command' = new NpgsqlCommand(command, conn)
-                                        command'.Parameters.AddWithValue("event", event ) |> ignore
-                                        command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
-                                        let result = command'.ExecuteScalar() 
-                                        result :?> int
-                            transaction.Commit()
-                            ids |> Ok
-                        with
-                            | _ as ex -> 
-                                transaction.Rollback()
-                                log.Error (sprintf "an error occurred: %A" ex.Message)
-                                ex.Message |> Error
+                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                            try
+                                let ids =
+                                    eventsAndStatesIds
+                                    |>>
+                                        fun (event, contextStateId) -> 
+                                            let command' = new NpgsqlCommand(command, conn)
+                                            command'.Parameters.AddWithValue("event", event ) |> ignore
+                                            command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
+                                            let result = command'.ExecuteScalar() 
+                                            result :?> int
+                                transaction.Commit()
+                                ids |> Ok
+                            with
+                                | _ as ex -> 
+                                    transaction.Rollback()
+                                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                                    ex.Message |> Error
+                        else
+                            transaction.Rollback()
+                            Error "EventId is not the last one"
                     try
                         return result
                     finally
@@ -218,18 +223,20 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddEvents(arg: List<List<Json> * Version * Name * ContextStateId>) =
+            member this.MultiAddEvents (arg: List<EventId * List<Json> * Version * Name * ContextStateId>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
+                    let lastEventIdsPerContext =
+                        arg |>> (fun (eventId, _, version, name, _) -> (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
                     let result =
                         try
                             let cmdList = 
                                 arg 
                                 |>>
-                                    fun (events, version,  name, contextStateId) -> 
+                                    fun (eventId, events, version,  name, contextStateId) -> 
                                         let stream_name = version + name
                                         let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
                                         let uniqueContextStateIds =
@@ -326,7 +333,7 @@ module PgStorage =
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlJson json);
-                                            ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                            ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                         ]
                                     ]
                                 command2,
@@ -361,6 +368,7 @@ module PgStorage =
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
+                    let lastEventId = (this :> IEventStore<string>).TryGetLastEventId contextVersion contextName
                     let result =
                         try
                             let ids =
@@ -383,7 +391,7 @@ module PgStorage =
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                     ("snapshot",  sqlJson json);
-                                                    ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                                    ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                                 ]
                                             ]
                                         command2,
@@ -650,6 +658,9 @@ module PgStorage =
                 let eventsAndAggregateStateId = List.zip events uniqueStateIds
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
+                let lastEventId = 
+                    (this :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet version name aggregateId
+                    |>> (fun (x, _, _) -> x)
                 async {
                     let result =
                         try
@@ -684,6 +695,13 @@ module PgStorage =
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
+
+                let lastEventIds =
+                    arg 
+                    |>> 
+                    fun (_, version, name, aggregateId, _) -> 
+                        ((this :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet version name aggregateId) |>> (fun (x, _, _) -> x)
+
                 async {
                     let result =
                         try

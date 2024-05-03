@@ -165,7 +165,7 @@ module PgBinaryStore =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                     
-            member this.AddEvents version name contextStateId events =
+            member this.AddEvents eventId version name contextStateId events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
@@ -182,24 +182,29 @@ module PgBinaryStore =
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
+                    let lastEventId = (this :> IEventStore<byte[]>).TryGetLastEventId version name
                     let result =
-                        try
-                            let ids =
-                                eventsAndStatesIds
-                                |>>
-                                    fun (event, contextStateId) -> 
-                                        let command' = new NpgsqlCommand(command, conn)
-                                        command'.Parameters.AddWithValue("event", event ) |> ignore
-                                        command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
-                                        let result = command'.ExecuteScalar() 
-                                        result :?> int
-                            transaction.Commit()
-                            ids |> Ok
-                        with
-                            | _ as ex -> 
-                                log.Error (sprintf "an error occurred: %A" ex.Message)
-                                transaction.Rollback()
-                                ex.Message |> Error
+                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                            try
+                                let ids =
+                                    eventsAndStatesIds
+                                    |>>
+                                        fun (event, contextStateId) -> 
+                                            let command' = new NpgsqlCommand(command, conn)
+                                            command'.Parameters.AddWithValue("event", event ) |> ignore
+                                            command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
+                                            let result = command'.ExecuteScalar() 
+                                            result :?> int
+                                transaction.Commit()
+                                ids |> Ok
+                            with
+                                | _ as ex -> 
+                                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                                    transaction.Rollback()
+                                    ex.Message |> Error
+                        else
+                            transaction.Rollback()
+                            Error "EventId is not the last one"
                     try 
                         return result
                     finally
@@ -207,18 +212,22 @@ module PgBinaryStore =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddEvents(arg: List<List<byte array> * Version * Name * ContextStateId>) =
+            member this.MultiAddEvents (arg: List<EventId * List<byte array> * Version * Name * ContextStateId>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
+
+                    let lastEventIdsPerContext =
+                        arg |>> (fun (eventId, _, version, name, _) -> (eventId, (this :> IEventStore<byte[]>).TryGetLastEventId version name))
+
                     let result =
                         try
                             let cmdList = 
                                 arg 
                                 |>>
-                                    fun (events, version,  name, contextStateId) -> 
+                                    fun (eventId, events, version,  name, contextStateId) -> 
                                         let stream_name = version + name
                                         let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
                                         let uniqueContextStateIds =
