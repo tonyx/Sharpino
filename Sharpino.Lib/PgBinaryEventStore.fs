@@ -680,29 +680,25 @@ module PgBinaryStore =
                             let cmdList = 
                                 arg 
                                 |>>
-                                    (
-                                        fun (events, version,  name, aggregateId, aggregateStateId) ->
-                                            let stream_name = version + name
-                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
-                                            let uniqueAggregateStateIds =
-                                                [  
-                                                    for i in 1..events.Length -> 
-                                                        if i = 1 then aggregateStateId
-                                                        else System.Guid.NewGuid()
-                                                ]
-                                            let eventsAndStatesIds = List.zip events uniqueAggregateStateIds
-                                            eventsAndStatesIds
-                                            |>> 
-                                                fun (event, aggregateStateId) ->
-                                                    (
-                                                        command.Parameters.AddWithValue("event", event ) |> ignore
-                                                        command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                        command.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
-                                                        let result = command.ExecuteScalar() 
-                                                        result :?> int
-                                                    )
-                                            
-                                    )
+                                    fun (events, version,  name, aggregateId, aggregateStateId) ->
+                                        let stream_name = version + name
+                                        let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
+                                        let uniqueAggregateStateIds =
+                                            [  
+                                                for i in 1..events.Length -> 
+                                                    if i = 1 then aggregateStateId
+                                                    else System.Guid.NewGuid()
+                                            ]
+                                        let eventsAndStatesIds = List.zip events uniqueAggregateStateIds
+                                        eventsAndStatesIds
+                                        |>> 
+                                            fun (event, aggregateStateId) ->
+                                                command.Parameters.AddWithValue("event", event ) |> ignore
+                                                command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                                command.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
+                                                let result = command.ExecuteScalar() 
+                                                result :?> int
+                                    
                             transaction.Commit()    
                             cmdList |> Ok
                         with

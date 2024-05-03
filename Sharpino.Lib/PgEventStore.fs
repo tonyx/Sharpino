@@ -363,7 +363,6 @@ module PgStorage =
                 async {
                     let result =
                         try
-                            let transaction = conn.BeginTransaction() 
                             let ids =
                                 eventsAndStatesIds
                                 |>>
@@ -398,7 +397,6 @@ module PgStorage =
                                 |> Async.AwaitTask
                                 |> Async.RunSynchronously
                             transaction.Commit()
-                            conn.Close()
                             ids |> Ok
                         with
                             | _ as ex -> 
@@ -597,8 +595,8 @@ module PgStorage =
                             () |> Ok
                         with
                             | _ as ex -> 
-                                transaction.Rollback()
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
                                 ex.Message |> Error
                     try
                         return result
