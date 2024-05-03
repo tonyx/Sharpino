@@ -20,8 +20,6 @@ module PgBinaryStore =
 
     type PgBinaryStore (connection: string, readAsBinary: RowReader -> (string -> byte[])) =
 
-        // let connection = new NpgsqlConnection(connection)
-        // let readAsBinary = readAsBinary
         new (connection: string) = PgBinaryStore (connection, readAsBinary)
 
         member this.Reset version name = 
@@ -317,7 +315,7 @@ module PgBinaryStore =
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlBinary json);
-                                            ("timestamp", Sql.timestamp System.DateTime.Now)
+                                            ("timestamp", Sql.timestamp System.DateTime.UtcNow)
                                         ]
                                     ]
                                 command2,
@@ -374,7 +372,7 @@ module PgBinaryStore =
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                     ("snapshot",  sqlBinary json);
-                                                    ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                    ("timestamp", Sql.timestamp System.DateTime.UtcNow)
                                                 ]
                                             ]
                                         command2,

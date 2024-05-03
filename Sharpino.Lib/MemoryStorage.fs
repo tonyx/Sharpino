@@ -243,7 +243,7 @@ module MemoryStorage =
                             JsonEvent = e
                             KafkaOffset = None
                             KafkaPartition = None 
-                            Timestamp = DateTime.Now
+                            Timestamp = DateTime.UtcNow
                         }
                     ]
                 let events = getExistingEvents version name @ newEvents
@@ -256,7 +256,7 @@ module MemoryStorage =
                         Id = next_snapshot_id aggregateVersion aggregatename
                         AggregateId = aggregateId
                         Snapshot = json
-                        TimeStamp = DateTime.Now
+                        TimeStamp = DateTime.UtcNow
                         EventId = None
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
@@ -296,7 +296,7 @@ module MemoryStorage =
                     {
                         Id = next_snapshot_id version name
                         Snapshot = snapshot 
-                        TimeStamp = DateTime.Now
+                        TimeStamp = DateTime.UtcNow
                         EventId = id
                     }
                 let snapshots = getExistingSnapshots version name @ [newSnapshot]
@@ -319,7 +319,7 @@ module MemoryStorage =
                         Id = next_snapshot_id version name
                         AggregateId = aggregateId
                         Snapshot = snapshot
-                        TimeStamp = DateTime.Now
+                        TimeStamp = DateTime.UtcNow
                         EventId = None 
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
@@ -471,7 +471,7 @@ module MemoryStorage =
                                 JsonEvent = e
                                 KafkaOffset = None
                                 KafkaPartition = None
-                                Timestamp = DateTime.Now
+                                Timestamp = DateTime.UtcNow
                             }
                     ]
                 let events' = getExistingAggregateEvents version name aggregateId @ newEvents
@@ -529,7 +529,7 @@ module MemoryStorage =
                         Id = next_snapshot_id version name
                         AggregateId = aggregateId
                         Snapshot = snapshot
-                        TimeStamp = DateTime.Now
+                        TimeStamp = DateTime.UtcNow
                         EventId = eventId |> Some
                     }
                 addAggregateSnapshots version name aggregateId state

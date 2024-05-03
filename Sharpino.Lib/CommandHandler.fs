@@ -222,7 +222,6 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.AddEvents 'A.Version 'A.StorageName state.StateId
 
-                            // todo: reintroduce
                             if (eventBroker.notify.IsSome) then
                                 let f =
                                     fun () ->
@@ -334,7 +333,6 @@ module CommandHandler =
                             let! ids =
                                 events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
 
-                            // todo: adapt event broker 
                             if (eventBroker.notifyAggregate.IsSome) then
                                 let f =
                                     fun () ->    
@@ -416,12 +414,10 @@ module CommandHandler =
                             let aggregateIdsWithEventIds =
                                 List.zip aggregateIds eventIds
 
-                            // todo: reintroduce
                             let kafkaParameters =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                            // todo: reintroduce
                             if (eventBroker.notifyAggregate.IsSome) then
                                 kafkaParameters
                                 |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
@@ -554,7 +550,6 @@ module CommandHandler =
                                 (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
 
-                            // todo: reintroduce
                             if (eventBroker.notifyAggregate.IsSome) then
                                 kafkaParmeters1
                                 |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)

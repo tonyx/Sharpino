@@ -326,7 +326,7 @@ module PgStorage =
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlJson json);
-                                            ("timestamp", Sql.timestamp System.DateTime.Now)
+                                            ("timestamp", Sql.timestamp System.DateTime.UtcNow)
                                         ]
                                     ]
                                 command2,
@@ -384,7 +384,7 @@ module PgStorage =
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                     ("snapshot",  sqlJson json);
-                                                    ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                    ("timestamp", Sql.timestamp System.DateTime.UtcNow)
                                                 ]
                                             ]
                                         command2,
