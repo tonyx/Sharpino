@@ -315,7 +315,7 @@ module PgBinaryStore =
                                             ("@aggregate_id", Sql.uuid aggregateId);
                                             ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlBinary json);
-                                            ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                            ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                         ]
                                     ]
                                 command2,
@@ -372,7 +372,7 @@ module PgBinaryStore =
                                                     ("@aggregate_id", Sql.uuid aggregateId);
                                                     ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                     ("snapshot",  sqlBinary json);
-                                                    ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                                    ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                                 ]
                                             ]
                                         command2,

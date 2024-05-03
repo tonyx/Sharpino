@@ -175,7 +175,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News: 
-- version 2.0.2: changes from "now()" to utcNow() format in eventstores (Postgres and inMemory) and Sql template scripts.
+- version 2.0.3: changes from "now()" to utcNow() format in eventstores (Postgres and inMemory) and Sql template scripts.
 - published version 2.0.0 supporting binary serialization for events and snapshots on Postgres.
 Note: the current examples provided are still referencing the previous 1.6.6 version. 
 [Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
