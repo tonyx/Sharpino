@@ -212,6 +212,7 @@ module CommandHandler =
                 async {
                     return
                         result {
+                            // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
                             let! (eventId, state, _, _) = stateViewer() 
                             let! events =
                                 state
@@ -270,7 +271,8 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state, _, _) = stateViewer ()
+                            // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
+                            let! (eventId, state, _, _) = stateViewer ()
                             let! events = 
                                 state
                                 |> command.Execute
@@ -278,7 +280,7 @@ module CommandHandler =
                                 events 
                                 |>> fun x -> x.Serialize
                             let! ids =
-                                events' |> storage.SetInitialAggregateStateAndAddEvents initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
+                                events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
 
                             if (eventBroker.notify.IsSome) then
                                 let f =
@@ -323,7 +325,8 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            let! (_, state, _, _) = stateView
+                            // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
+                            let! (eventId, state, _, _) = stateView
                             let! events =
                                 state
                                 |> command.Execute
@@ -331,7 +334,7 @@ module CommandHandler =
                                 events 
                                 |>> fun x -> x.Serialize
                             let! ids =
-                                events' |> storage.AddAggregateEvents 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
+                                events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
 
                             if (eventBroker.notifyAggregate.IsSome) then
                                 let f =
@@ -380,6 +383,7 @@ module CommandHandler =
                 async {
                     return
                         result {
+                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
                             let! states =
                                 aggregateIds
                                 |> List.traverseResultM stateViewer
@@ -387,6 +391,10 @@ module CommandHandler =
                             let states' = 
                                 states 
                                 |>> fun (_, state, _, _) -> state
+
+                            let lastEventIds =
+                                states
+                                |>> fun (eventId, _, _, _) -> eventId
 
                             let statesAndCommands =
                                 List.zip states' commands
@@ -401,12 +409,12 @@ module CommandHandler =
                                 |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize 
                             
                             let aggregateIdsWithStateIds =
-                                List.zip aggregateIds states'
+                                List.zip  aggregateIds states'
                                 |>> fun (id, state ) -> (id, state.StateId)
                                 
                             let packParametersForDb =
-                                List.zip serializedEvents aggregateIdsWithStateIds
-                                |>> fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)
+                                List.zip3 lastEventIds serializedEvents aggregateIdsWithStateIds
+                                |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A1.Version, 'A1.StorageName, id, stateId)
 
                             let! eventIds =
                                 storage.MultiAddAggregateEvents packParametersForDb
@@ -470,10 +478,12 @@ module CommandHandler =
                 async {
                     return 
                         result {
+                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
                             let! states1 =
                                 aggregateIds1
                                 |> List.traverseResultM stateViewer1
 
+                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
                             let! states2 =
                                 aggregateIds2
                                 |> List.traverseResultM stateViewer2
@@ -485,6 +495,14 @@ module CommandHandler =
                             let states2' =
                                 states2 
                                 |>> fun (_, state, _, _) -> state
+
+                            let eventIds1 =
+                                states1
+                                |>> fun (eventId, _, _, _) -> eventId
+
+                            let eventIds2 =
+                                states2
+                                |>> fun (eventId, _, _, _) -> eventId
 
                             let statesAndCommands1 =
                                 List.zip states1' command1
@@ -519,12 +537,12 @@ module CommandHandler =
                                 |>> fun (id, state ) -> (id, state.StateId)
 
                             let packParametersForDb1 =
-                                List.zip serializedEvents1 aggregateIdsWithStateIds1
-                                |>> fun (events, (id, stateId)) -> (events, 'A1.Version, 'A1.StorageName, id, stateId)
+                                List.zip3 eventIds1 serializedEvents1 aggregateIdsWithStateIds1
+                                |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A1.Version, 'A1.StorageName, id, stateId)
 
                             let packParametersForDb2 =
-                                List.zip serializedEvents2 aggregateIdsWithStateIds2
-                                |>> fun (events, (id, stateId)) -> (events, 'A2.Version, 'A2.StorageName, id, stateId)
+                                List.zip3 eventIds2 serializedEvents2 aggregateIdsWithStateIds2
+                                |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A2.Version, 'A2.StorageName, id, stateId)
 
                             let allPacked = packParametersForDb1 @ packParametersForDb2
 
@@ -619,6 +637,7 @@ module CommandHandler =
                     return
                         result {
 
+                            // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
                             let! (eventId1, state1, _, _) = stateViewerA1 ()
                             let! (eventId2, state2, _, _) = stateViewerA2 ()
 

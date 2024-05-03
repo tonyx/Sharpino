@@ -250,7 +250,7 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> _.Id 
                 ids |> Ok
-            member this.SetInitialAggregateStateAndAddEvents aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+            member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
                 let initialState =
                     {
                         Id = next_snapshot_id aggregateVersion aggregatename
@@ -439,13 +439,13 @@ module MemoryStorage =
                                         ]
                         Ok ()
 
-            member this.MultiAddAggregateEvents (arg: List<List<Json> * Version * Name * AggregateId * Guid> ) =
+            member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId * Guid> ) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg
                     |> List.map
-                        (fun (xs, version, name, aggregateId, aggregateVersionId) ->
-                            (this :> IEventStore<string>).AddAggregateEvents version name aggregateId aggregateVersionId xs |> Result.get
+                        (fun (_, xs, version, name, aggregateId, aggregateVersionId) ->
+                            (this :> IEventStore<string>).AddAggregateEvents 0 version name aggregateId aggregateVersionId xs |> Result.get
                         )
                 cmds |> Ok        
 
@@ -459,7 +459,7 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddAggregateEvents version name aggregateId aggregateStateId events =
+            member this.AddAggregateEvents _ version name aggregateId aggregateStateId events =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
