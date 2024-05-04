@@ -1,7 +1,7 @@
 
 namespace Tonyx.Sharpino.Pub
-
 open Sharpino.CommandHandler
+open Tonyx.Sharpino.Pub.Commons
 open Sharpino.Definitions
 open System
 open FSharpPlus.Operators
@@ -21,8 +21,6 @@ module Dish =
         member this.StateId = stateId
         member this.Id = id
         member this.Name = name
-
-
         member this.AddIngredient (id: Guid) =
             result {
                 let! notAlreadyExists =
@@ -44,7 +42,6 @@ module Dish =
                 return Dish(this.Id, this.Name, newIgredients)
             }
 
-
         member this.Ingredients = ingredients   
 
         static member StorageName =
@@ -52,19 +49,19 @@ module Dish =
         static member Version =
             "_01"
         static member SnapshotsInterval =  15
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this 
             |> serializer.Serialize
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Dish, string>  =
+        static member Deserialize json =
             serializer.Deserialize<Dish> json
 
-        interface Aggregate with
+        interface Aggregate<string> with
             member this.StateId = stateId
             member this.Id = this.Id
             member this.Lock: obj = 
                 this
-            member this.Serialize(serializer: ISerializer): string = 
-                this.Serialize serializer
+            member this.Serialize =
+                this.Serialize 
         interface Entity with
             member this.Id = this.Id
 

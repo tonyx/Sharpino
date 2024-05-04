@@ -64,7 +64,7 @@ module AppVersions =
         db.Reset CategoriesContext.Version CategoriesContext.StorageName
         StateCache<CategoriesContext>.Instance.Clear()
 
-    type IApplication<'T> =
+    type IApplication =
         {
             _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<string, string>>, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
@@ -83,7 +83,6 @@ module AppVersions =
             addTag:             Tag -> Result< List<List<int>>, string>
             removeTag:          Guid -> Result< List<List<int>>, string>
             getAllTags:         unit -> Result<List<Tag>, string>
-            todoReport:         DateTime -> DateTime -> Result<TodosEvents<'T>, string>
         }
 
     [<CurrentVersion>]
@@ -111,7 +110,6 @@ module AppVersions =
             addTag =            currentPgApp.AddTag 
             removeTag =         currentPgApp.RemoveTag
             getAllTags =        currentPgApp.GetAllTags
-            todoReport =        currentPgApp.TodoReport
         }
 
     [<UpgradedVersion>]
@@ -138,7 +136,6 @@ module AppVersions =
             addTag =            upgradedPgApp.AddTag
             removeTag =         upgradedPgApp.removeTag
             getAllTags =        upgradedPgApp.GetAllTags
-            todoReport =        upgradedPgApp.TodoReport
         }
 
 
@@ -166,7 +163,6 @@ module AppVersions =
             addTag =            currentMemApp.AddTag 
             removeTag =         currentMemApp.RemoveTag
             getAllTags =        currentMemApp.GetAllTags
-            todoReport =        currentMemApp.TodoReport
         }
 
     [<UpgradedVersion>]
@@ -193,7 +189,6 @@ module AppVersions =
             addTag =            upgradedMemApp.AddTag
             removeTag =         upgradedMemApp.removeTag
             getAllTags =        upgradedMemApp.GetAllTags
-            todoReport =        upgradedMemApp.TodoReport
         }
 
 

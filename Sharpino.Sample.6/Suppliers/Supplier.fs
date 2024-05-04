@@ -1,6 +1,7 @@
 
 namespace Tonyx.Sharpino.Pub
 open Sharpino.CommandHandler
+open Tonyx.Sharpino.Pub.Commons 
 open Sharpino.Definitions
 open System
 open FSharpPlus.Operators
@@ -34,7 +35,7 @@ module Supplier =
            if matches.Count > 0 then
                Supplier(this.Id, this.Name, newEmail, this.Phone) |> Ok
            else "Invalid email" |> Error
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Supplier, string> =
+        static member Deserialize json =
             serializer.Deserialize<Supplier> json
         static member StorageName =
             "_supplier"
@@ -43,13 +44,13 @@ module Supplier =
         member this.Serialize (serializer: ISerializer): Json =
             serializer.Serialize this    
         
-        interface Aggregate with
+        interface Aggregate<string> with
             member this.Id = this.Id
             member this.StateId = stateId
             member this.Lock: obj =
                 this
-            member this.Serialize (serializer: ISerializer): Json =
-                this.Serialize serializer
+            member this.Serialize =
+                serializer.Serialize this
         
         interface Entity with
             member this.Id = this.Id

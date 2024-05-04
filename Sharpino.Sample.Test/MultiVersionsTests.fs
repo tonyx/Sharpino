@@ -43,6 +43,7 @@ let allVersions =
         // todo: finish porting to new version
 
         // (upgradedPostgresApp,       upgradedPostgresApp,    ((fun () -> () |> Result.Ok): unit -> Result<unit, string>), (pgStorage :> IEventStore<string>))
+
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value, pgStorage)
         
         
@@ -582,6 +583,8 @@ let multiVersionsTests =
 
             let result = ap.getAllTodos().OkValue 
             Expect.equal (result |> List.head).TagIds [tagId2] "should be equal"
+
+
 
         // focus
         // move somewhere else as the generalization of test parameterized won't work here

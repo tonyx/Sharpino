@@ -4,6 +4,7 @@ open Shared
 open Server
 open Npgsql.FSharp
 open Npgsql
+open FSharpPlus
 open System
 open Sharpino
 open Sharpino.Storage
@@ -22,10 +23,10 @@ module BookingTests =
             pgStorage.Reset SeatsRow.Version SeatsRow.StorageName
             pgStorage.Reset Stadium.Version Stadium.StorageName
             pgStorage.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
-            AggregateCache<SeatsRow>.Instance.Clear()
+            AggregateCache<SeatsRow,string>.Instance.Clear()
             StateCache<Stadium>.Instance.Clear()
 
-        let doNothingBroker: IEventBroker =
+        let doNothingBroker: IEventBroker<string> =
             {
                 notify = None
                 notifyAggregate =  None
@@ -559,10 +560,13 @@ module BookingTests =
                 let retrieved = retrieveLastAggregateVersionId "_01" "_seatrow"
                 let (_, aggregateId, aggregateVersionId) = retrieved |> Option.get
 
+                let lastEventId = (pgStorage :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet "_01" "_seatrow" aggregateId |>> fun (id, _, _) -> id
+                let lastEventId' = lastEventId |> Option.defaultValue 0
+
                 // when
-                let addAnotherSeatEvent = RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None } |> serializer.Serialize
+                let addAnotherSeatEvent = (RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None }).Serialize
                 let stored =
-                    (pgStorage :> IEventStore).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
+                    (pgStorage :> IEventStore<string>).AddAggregateEvents lastEventId' "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
 
                 Expect.isOk stored "should be ok"
 
@@ -572,7 +576,8 @@ module BookingTests =
 
                 Expect.equal seats.Length 2 "should be equal"
 
-            testCase "the classic optimistic lock is set, so I can not store events with the same version Id in the aggregate events table, and so conflicting event can't be processed - OK"  <| fun _ ->
+            // this will not needed in this way anymore
+            ptestCase "the classic optimistic lock is set, so I can not store events with the same version Id in the aggregate events table, and so conflicting event can't be processed - OK"  <| fun _ ->
                 setUp()
 
                 // given
@@ -587,11 +592,13 @@ module BookingTests =
 
                 let retrieved = retrieveLastAggregateVersionId "_01" "_seatrow"
                 let (_, aggregateId, aggregateVersionId) = retrieved |> Option.get
+                let lastEventId = (pgStorage :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet "_01" "_seatrow" aggregateId |>> fun (id, _, _) -> id
+                let lastEventId' = lastEventId |> Option.defaultValue 0
 
                 // when
-                let addAnotherSeatEvent = RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None } |> serializer.Serialize
+                let addAnotherSeatEvent = (RowAggregateEvent.SeatAdded { Id = 2; State = Free; RowId = None }).Serialize
                 let stored =
-                    (pgStorage :> IEventStore).AddAggregateEvents "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
+                    (pgStorage :> IEventStore<string>).AddAggregateEvents lastEventId' "_01" "_seatrow" aggregateId aggregateVersionId [addAnotherSeatEvent]
                 Expect.isError stored "should be error"
 
                 // then

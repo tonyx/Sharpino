@@ -3,6 +3,7 @@ namespace Tonyx.Sharpino.Pub
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Tonyx.Sharpino.Pub.Ingredient
+open Tonyx.Sharpino.Pub.Commons
 open Sharpino.Definitions
 open Sharpino.Utils
 open Sharpino.Core
@@ -25,8 +26,8 @@ module IngredientEvents =
                         x.RemoveMeasureType t
                     | AddMeasureType t ->
                         x.AddMeasureType t     
-        static member Deserialize (serializer: ISerializer, json: Json): Result<IngredientEvents, string>  =
+        static member Deserialize  json =
             serializer.Deserialize<IngredientEvents> json
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize    

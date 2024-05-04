@@ -1,6 +1,7 @@
 
 namespace Tonyx.Sharpino.Pub
 open Tonyx.Sharpino.Pub.Dish
+open Tonyx.Sharpino.Pub.Commons
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
@@ -20,9 +21,9 @@ module DishEvents =
                         x.AddIngredient id
                     | IngredientRemoved id ->
                         x.RemoveIngredient id
-        static member Deserialize (serializer: ISerializer, json: Json): Result<DishEvents, string>  =
-            serializer.Deserialize<DishEvents> json    
-        member this.Serialize (serializer: ISerializer) =   
+        static member Deserialize x =
+            serializer.Deserialize<DishEvents> x    
+        member this.Serialize =
             this
             |> serializer.Serialize
 

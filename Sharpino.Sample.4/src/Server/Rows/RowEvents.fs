@@ -1,5 +1,6 @@
 namespace Tonyx.SeatsBooking
 
+open Tonyx.SeatsBooking.Commons
 open FsToolkit.ErrorHandling
 open Shared.Entities
 open Sharpino.Utils
@@ -31,8 +32,8 @@ module RowAggregateEvent =
                     | InvariantAdded invariant ->
                         x.AddInvariant invariant
 
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
-        static member Deserialize(serializer: ISerializer, x: string) =
+        static member Deserialize  x =
             serializer.Deserialize<RowAggregateEvent> x

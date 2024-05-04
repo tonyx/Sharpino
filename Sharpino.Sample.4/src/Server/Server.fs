@@ -23,6 +23,7 @@ open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Tonyx.SeatsBooking.Stadium
 open Tonyx.SeatsBooking.StadiumEvents
+open Tonyx.SeatsBooking.Commons
 
 let connection =
     "Server=127.0.0.1;"+
@@ -31,7 +32,7 @@ let connection =
     "Password=safe;"
 let eventStore = PgEventStore connection
 let memoryStore = MemoryStorage()
-let doNothingBroker: IEventBroker =
+let doNothingBroker: IEventBroker<string> =
     {
         notify = None
         notifyAggregate = None
@@ -39,8 +40,10 @@ let doNothingBroker: IEventBroker =
 
 let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
 let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
-let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
-let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
+let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore
+
+// need some rework on the kafka viewer
+// let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
 
 let stadiumBookingSystem = StadiumBookingSystem (memoryStore, doNothingBroker)
 

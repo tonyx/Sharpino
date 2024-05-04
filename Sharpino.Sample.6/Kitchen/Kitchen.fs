@@ -1,4 +1,5 @@
 ﻿namespace Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Commons
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
@@ -82,7 +83,6 @@ module Kitchen =
 
         member this.GetIngredientReferences () =
             this.ingredientReferences |>> snd
-
         
         static member StorageName =
             "_kitchen"
@@ -92,10 +92,9 @@ module Kitchen =
             15
         static member Lock =
             new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Kitchen, string>  =
+        static member Deserialize json =
             serializer.Deserialize<Kitchen> json
-
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize  =
             this
             |> serializer.Serialize
 

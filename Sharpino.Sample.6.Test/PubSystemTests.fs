@@ -23,10 +23,10 @@ let tests =
         "Database=es_pub_system;" +
         "User Id=safe;"+
         "Password=safe;"
-    let memEventStore: IEventStore = MemoryStorage()
-    let pgEventStore: IEventStore = PgEventStore(connection)
+    let memEventStore: IEventStore<string> = MemoryStorage()
+    let pgEventStore: IEventStore<string> = PgEventStore(connection)
     let setUp () =
-        AggregateCache<Dish.Dish>.Instance.Clear()
+        AggregateCache<Dish.Dish, string>.Instance.Clear()
         StateCache<Kitchen>.Instance.Clear()
         memEventStore.Reset Kitchen.Version Kitchen.StorageName
         memEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
@@ -36,7 +36,6 @@ let tests =
         pgEventStore.ResetAggregateStream Dish.Version Dish.StorageName
 
     // todo: check if you will need it in those tests
-    let serializer = JsonSerializer(Utils.serSettings) :> ISerializer
     let doNothingBroker =
         {
             notify = None

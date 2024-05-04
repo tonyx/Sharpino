@@ -3,7 +3,7 @@
 
 CREATE TABLE public.events_01_stadium (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean NOT NULL DEFAULT false,
     kafkaoffset BIGINT,
     kafkapartition INTEGER,
@@ -28,7 +28,7 @@ CREATE SEQUENCE public.snapshots_01_stadium_id_seq
 
 CREATE TABLE public.snapshots_01_stadium (
     id integer DEFAULT nextval('public.snapshots_01_stadium_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
@@ -54,7 +54,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_stadium(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;

@@ -1,5 +1,6 @@
 namespace Tonyx.SeatsBooking
 
+open Tonyx.SeatsBooking.Commons
 open FSharpPlus
 open FsToolkit.ErrorHandling
 open Sharpino.Definitions
@@ -12,9 +13,9 @@ module Stadium =
         member this.rowReferences = rowReferences
         static member Zero =
             Stadium []
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Stadium, string>  =
+        static member Deserialize  json: Result<Stadium, string>  =
             serializer.Deserialize<Stadium> json
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 

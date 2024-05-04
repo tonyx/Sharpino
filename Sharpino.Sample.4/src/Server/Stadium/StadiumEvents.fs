@@ -1,7 +1,9 @@
 
 namespace Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.Stadium
+open Tonyx.SeatsBooking.Commons
 open Sharpino.Definitions
+
 open Sharpino.Core
 open System
 open Sharpino.Utils
@@ -18,8 +20,8 @@ module StadiumEvents =
                     | RowReferenceRemoved id ->
                         x.RemoveRowReference id
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize  json =
             serializer.Deserialize<StadiumEvent> json
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize

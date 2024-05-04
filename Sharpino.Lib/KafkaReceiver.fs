@@ -161,12 +161,12 @@ module KafkaReceiver =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Lock: obj)
-        and 'A: (member Serialize: ISerializer -> string)
-        and 'A: (static member Deserialize: ISerializer -> Json -> Result<'A, string>)
+        and 'A: (member Serialize: string)
+        and 'A: (static member Deserialize: Json -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
-        and 'E: (static member Deserialize: ISerializer -> Json -> Result<'E, string>)
-        and 'E: (member Serialize: ISerializer -> string)
+        and 'E: (static member Deserialize: Json -> Result<'E, string>)
+        and 'E: (member Serialize: string)
         >
         (subscriber: KafkaSubscriber) 
         (sourceOfTruthStateViewer: unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>) 

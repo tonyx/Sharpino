@@ -1,4 +1,5 @@
 namespace Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Commons
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
@@ -15,7 +16,6 @@ open Newtonsoft.Json
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
 
 module rec SeatRow =
-    let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let pickler = FsPickler.CreateJsonSerializer(indent = false)
     let checkInvariants (row: SeatsRow) =
         row.Invariants
@@ -44,7 +44,7 @@ module rec SeatRow =
         member this.Invariants = invariants
         member this.Id = id
 
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 
@@ -134,18 +134,18 @@ module rec SeatRow =
                 }
             result
 
-        static member Deserialize (serializer: ISerializer, json: string) =
+        static member Deserialize  json =
             serializer.Deserialize<SeatsRow> json
 
         static member Version = "_01"
         static member StorageName = "_seatrow"
         static member SnapshotsInterval = 15
 
-        interface Aggregate with
+        interface Aggregate<string> with
             member this.StateId = this.StateId
             member this.Id = this.Id
-            member this.Serialize serializer =
-                this.Serialize serializer
+            member this.Serialize  =
+                this.Serialize
             member this.Lock = this
         interface Entity with
             member this.Id = this.Id

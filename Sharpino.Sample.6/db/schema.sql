@@ -47,7 +47,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_dish(event, aggregate_id, timestamp)
-VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -84,7 +84,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_ingredient(event, aggregate_id, timestamp)
-VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -101,7 +101,7 @@ DECLARE
 inserted_id integer;
 BEGIN
     INSERT INTO events_01_kitchen(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;
@@ -119,7 +119,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_kitchen(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -156,7 +156,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_supplier(event, aggregate_id, timestamp)
-VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -264,7 +264,7 @@ CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_kitchen()
     LANGUAGE plpgsql
     AS $$
 BEGIN
-ALTER TABLE aggregate_events_01_kitchen
+ALTER TABLE events_01_kitchen
 DROP CONSTRAINT IF EXISTS context_events_01_kitchen_context_state_id_unique;
     -- You can have more SQL statements as needed
 END;
@@ -369,7 +369,7 @@ CREATE TABLE public.aggregate_events_01_supplier (
 CREATE TABLE public.events_01_dish (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -398,7 +398,7 @@ ALTER TABLE public.events_01_dish ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 CREATE TABLE public.events_01_ingredient (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -426,7 +426,7 @@ ALTER TABLE public.events_01_ingredient ALTER COLUMN id ADD GENERATED ALWAYS AS 
 
 CREATE TABLE public.events_01_kitchen (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -456,7 +456,7 @@ ALTER TABLE public.events_01_kitchen ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 CREATE TABLE public.events_01_supplier (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -505,7 +505,7 @@ CREATE SEQUENCE public.snapshots_01_dish_id_seq
 
 CREATE TABLE public.snapshots_01_dish (
     id integer DEFAULT nextval('public.snapshots_01_dish_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     aggregate_state_id uuid,
@@ -531,7 +531,7 @@ CREATE SEQUENCE public.snapshots_01_ingredient_id_seq
 
 CREATE TABLE public.snapshots_01_ingredient (
     id integer DEFAULT nextval('public.snapshots_01_ingredient_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     aggregate_state_id uuid,
@@ -557,7 +557,7 @@ CREATE SEQUENCE public.snapshots_01_kitchen_id_seq
 
 CREATE TABLE public.snapshots_01_kitchen (
     id integer DEFAULT nextval('public.snapshots_01_kitchen_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
@@ -581,7 +581,7 @@ CREATE SEQUENCE public.snapshots_01_supplier_id_seq
 
 CREATE TABLE public.snapshots_01_supplier (
     id integer DEFAULT nextval('public.snapshots_01_supplier_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     aggregate_state_id uuid,

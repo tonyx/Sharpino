@@ -2,6 +2,7 @@
 namespace Tonyx.Sharpino.Pub
 
 open Sharpino.CommandHandler
+open Tonyx.Sharpino.Pub.Commons
 open Sharpino.Definitions
 open System
 open FSharpPlus.Operators
@@ -87,10 +88,10 @@ module Ingredient =
                 return Ingredient(this.Id, this.Name, this.IngredientTypes, newMeasureTypes)
             }    
         
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this 
             |> serializer.Serialize
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Ingredient, string>  =
+        static member Deserialize json =
             serializer.Deserialize<Ingredient> json
 
         static member StorageName =
@@ -100,12 +101,12 @@ module Ingredient =
 
         static member SnapshotsInterval =  15 
 
-        interface Aggregate with
+        interface Aggregate<string> with
             member this.StateId = stateId
             member this.Id = this.Id
             member this.Lock: obj = 
                 this
-            member this.Serialize(serializer: ISerializer): string = 
-                this.Serialize serializer
+            member this.Serialize =
+                this.Serialize
         interface Entity with
             member this.Id = this.Id

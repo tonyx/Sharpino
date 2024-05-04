@@ -1,5 +1,5 @@
 namespace Tonyx.Sharpino.Pub
-
+open Tonyx.Sharpino.Pub.Commons
 open Sharpino.Definitions
 open Sharpino.Core
 open Sharpino.Utils
@@ -16,8 +16,8 @@ module SupplierEvents =
                         supplier.ChangePhone phone
                     | EmailChanged email ->
                         supplier.ChangeEmail email
-        static member Deserialize (serializer: ISerializer, json: Json): Result<SupplierEvents, string>  =
-            serializer.Deserialize<SupplierEvents> json    
-        member this.Serialize (serializer: ISerializer) =   
+        static member Deserialize x =
+            serializer.Deserialize<SupplierEvents> x    
+        member this.Serialize  =   
             this
             |> serializer.Serialize

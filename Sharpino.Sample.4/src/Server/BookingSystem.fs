@@ -1,4 +1,5 @@
 namespace Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.Commons
 open Shared.Entities
 open Sharpino.PgStorage
 open Tonyx.SeatsBooking.SeatRow
@@ -18,7 +19,7 @@ open Sharpino.Core
 open Sharpino.Utils
 
 module StorageStadiumBookingSystem =
-    let doNothingBroker: IEventBroker =
+    let doNothingBroker: IEventBroker<string> =
         {
             notify = None
             notifyAggregate = None
@@ -30,12 +31,12 @@ module StorageStadiumBookingSystem =
         "Password=safe;"
 
     type StadiumBookingSystem
-        (storage: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (storage: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
-        new (storage: IEventStore) =
-            StadiumBookingSystem(storage, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
-        new (storage: IEventStore, eventBroker: IEventBroker) =
-            StadiumBookingSystem(storage, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> storage)
+        new (storage: IEventStore<string>) =
+            StadiumBookingSystem(storage, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> storage)
+        new (storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
+            StadiumBookingSystem(storage, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > storage, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> storage)
         member this.SetAggregateStateControlInOptimisticLock Version Name =
             ResultCE.result {
                 return! storage.SetClassicOptimisticLock Version Name
@@ -50,11 +51,11 @@ module StorageStadiumBookingSystem =
                 // or accept there will be potentially rows with no reference (not hurting anything)
                 // let seatsRow = SeatsRow (rowId, doNothingBroker)
                 let seatsRow = SeatsRow rowId
-                let initSnapshot = seatsRow.Serialize serializer
+                let initSnapshot = seatsRow.Serialize
                 let! stored =
                     storage.SetInitialAggregateState rowId seatsRow.StateId SeatsRow.Version SeatsRow.StorageName initSnapshot
                 let addRowReference = StadiumCommand.AddRowReference rowId
-                let! result = runCommand<Stadium, StadiumEvent> storage eventBroker stadiumStateViewer addRowReference
+                let! result = runCommand<Stadium, StadiumEvent, string> storage eventBroker stadiumStateViewer addRowReference
                 return result
             }
         member this.AddRowReference () =
@@ -64,7 +65,7 @@ module StorageStadiumBookingSystem =
             result {
                 let bookSeat = RowAggregateCommand.BookSeats booking
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
                         rowId storage eventBroker rowStateViewer bookSeat
                 return result
             }
@@ -80,7 +81,7 @@ module StorageStadiumBookingSystem =
                     rowsAndBookings.Length < 3
                     |> boolToResult "Can only book up to 2 rows at a time"
                 let! result =
-                    runNAggregateCommands<SeatsRow, RowAggregateEvent>
+                    runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         storage
                         eventBroker
@@ -107,7 +108,7 @@ module StorageStadiumBookingSystem =
                 let addSeat =
                     RowAggregateCommand.AddSeat {seat with RowId = rowId |> Some}
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
                         rowId storage eventBroker rowStateViewer addSeat
                 return result
             }
@@ -119,7 +120,7 @@ module StorageStadiumBookingSystem =
                 let removeSeat =
                     RowAggregateCommand.RemoveSeat seat
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
                         rowId storage eventBroker rowStateViewer removeSeat
                 return result
             }
@@ -128,7 +129,7 @@ module StorageStadiumBookingSystem =
             result {
                 let addSeats = RowAggregateCommand.AddSeats seats
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
                         rowId storage eventBroker rowStateViewer addSeats
                 return result
             }
@@ -140,7 +141,7 @@ module StorageStadiumBookingSystem =
                     |>> fun (_, seats) -> (AddSeats seats):> Command<SeatsRow, RowAggregateEvent>
                 let rowIDs = rowAndSeats |>> fst
                 let! result =
-                    runNAggregateCommands<SeatsRow, RowAggregateEvent>
+                    runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         storage
                         eventBroker
@@ -169,7 +170,7 @@ module StorageStadiumBookingSystem =
             let addInvariant = RowAggregateCommand.AddInvariant invariant
             result {
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
                         rowId storage eventBroker rowStateViewer addInvariant
                 return result
             }

@@ -47,7 +47,7 @@ DECLARE
 inserted_id integer;
 BEGIN
     INSERT INTO events_01_seatrow(event, aggregate_id, timestamp)
-    VALUES(event_in::JSON, aggregate_id, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -64,7 +64,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_stadium(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;
@@ -82,7 +82,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_stadium(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -184,7 +184,7 @@ CREATE TABLE public.aggregate_events_01_seatrow (
 CREATE TABLE public.events_01_seatrow (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -212,7 +212,7 @@ ALTER TABLE public.events_01_seatrow ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 
 CREATE TABLE public.events_01_stadium (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
     kafkapartition integer,
@@ -262,7 +262,7 @@ CREATE SEQUENCE public.snapshots_01_seatrow_id_seq
 
 CREATE TABLE public.snapshots_01_seatrow (
     id integer DEFAULT nextval('public.snapshots_01_seatrow_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     aggregate_state_id uuid,
@@ -288,7 +288,7 @@ CREATE SEQUENCE public.snapshots_01_stadium_id_seq
 
 CREATE TABLE public.snapshots_01_stadium (
     id integer DEFAULT nextval('public.snapshots_01_stadium_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );

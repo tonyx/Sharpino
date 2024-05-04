@@ -1,5 +1,6 @@
 
 namespace Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Commons
 open Tonyx.Sharpino.Pub.Kitchen
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -33,8 +34,8 @@ module KitchenEvents =
                     | SupplierReferenceRemoved id ->
                         x.RemoveSupplierReference id
 
-        static member Deserialize (serializer: ISerializer, json: Json): Result<KitchenEvents, string>  =
-            serializer.Deserialize<KitchenEvents> json
-        member this.Serialize (serializer: ISerializer) =
+        static member Deserialize x =
+            serializer.Deserialize<KitchenEvents> x
+        member this.Serialize =
             this
             |> serializer.Serialize

@@ -14,7 +14,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_stadium(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;

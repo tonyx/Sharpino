@@ -1,4 +1,5 @@
 namespace Tonyx.Sharpino.Pub
+open Tonyx.Sharpino.Pub.Commons
 open Tonyx.Sharpino.Pub.Kitchen
 open Tonyx.Sharpino.Pub.KitchenEvents
 open Tonyx.Sharpino.Pub.Supplier
@@ -21,7 +22,7 @@ module PubSystem =
     open Ingredient
     open IngredientEvents
 
-    let doNothingBroker: IEventBroker =
+    let doNothingBroker: IEventBroker<string> =
         {
             notify = None
             notifyAggregate = None
@@ -32,13 +33,13 @@ module PubSystem =
         "User Id=safe;"+
         "Password=safe;"
 
-    type PubSystem (storage: IEventStore, eventBroker: IEventBroker) =
-            let kitchenStateViewer = getStorageFreshStateViewer<Kitchen, KitchenEvents> storage
-            let dishStateViewer = getAggregateStorageFreshStateViewer<Dish, DishEvents> storage
-            let ingredientStateViewer = getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents> storage
-            let supplierStateViewer = getAggregateStorageFreshStateViewer<Supplier, SupplierEvents> storage
+    type PubSystem (storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
+            let kitchenStateViewer = getStorageFreshStateViewer<Kitchen, KitchenEvents, string> storage
+            let dishStateViewer = getAggregateStorageFreshStateViewer<Dish, DishEvents, string> storage
+            let ingredientStateViewer = getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> storage
+            let supplierStateViewer = getAggregateStorageFreshStateViewer<Supplier, SupplierEvents, string> storage
 
-            new (storage: IEventStore) =
+            new (storage: IEventStore<string>) =
                 PubSystem(storage, doNothingBroker)
             member this.SetAggregateStateControlInOptimisticLock version name =
                 ResultCE.result {
@@ -51,20 +52,20 @@ module PubSystem =
             member this.AddDish (dish: Dish) =
                 ResultCE.result {
                     let addDishReference = KitchenCommands.AddDishReference dish.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Dish> storage eventBroker kitchenStateViewer dish addDishReference
+                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Dish, string> storage eventBroker kitchenStateViewer dish addDishReference
                     return result
                 }
             member this.AddIngredient (ingredientId: Guid, name: string) =
                 ResultCE.result {
                     let ingredient = Ingredient.Ingredient(ingredientId, name, [], [])
                     let addIngredientReference = KitchenCommands.AddIngredientReference ingredient.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Ingredient> storage eventBroker kitchenStateViewer ingredient addIngredientReference
+                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Ingredient, string> storage eventBroker kitchenStateViewer ingredient addIngredientReference
                     return result
                 }
             member this.AddSupplier (supplier: Supplier) =
                 ResultCE.result {
                     let addSupplierReference = KitchenCommands.AddSupplierReference supplier.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Supplier> storage eventBroker kitchenStateViewer supplier addSupplierReference
+                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Supplier, string> storage eventBroker kitchenStateViewer supplier addSupplierReference
                     return result
                 }
             member this.GetAllSuppliers ()      =
@@ -112,13 +113,13 @@ module PubSystem =
                 ResultCE.result {
                     let! ingredient = this.GetIngredient guid
                     let addIngredientType = IngredientCommands.AddIngredientType ingredientType 
-                    let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker ingredientStateViewer addIngredientType 
+                    let! result = runAggregateCommand<Ingredient, IngredientEvents, string> guid storage eventBroker ingredientStateViewer addIngredientType 
                     return result
                 }
             member this.AddMeasureType ( guid: Guid, measureType: MeasureType) =
                 ResultCE.result {
                     let! ingredient = this.GetIngredient guid
                     let addMeasureType = IngredientCommands.AddMeasureType measureType
-                    let! result = runAggregateCommand<Ingredient, IngredientEvents> guid storage eventBroker ingredientStateViewer addMeasureType 
+                    let! result = runAggregateCommand<Ingredient, IngredientEvents, string> guid storage eventBroker ingredientStateViewer addMeasureType 
                     return result
                 }     
