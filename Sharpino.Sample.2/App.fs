@@ -2,8 +2,10 @@
 namespace seatsLockWithSharpino 
 open FsToolkit.ErrorHandling
 open Sharpino.CommandHandler
+open Sharpino
 
 module App =
+    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     open Sharpino.Storage
     // let doNothingBroker: IEventBroker = 
     //     {
@@ -12,26 +14,26 @@ module App =
     //     }
 
 
-    type App(storage: IEventStore, eventBroker: IEventBroker) =
+    type App(storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
         // let BootstrapServers = "localhost:9092"
         // let doNothingBroker = Sharpino.KafkaBroker.getKafkaBroker(BootstrapServers, storage)
         let row1StateViewer =
-            getStorageFreshStateViewer< Row1Context.Row1, Row1Events.Row1Events > storage
+            getStorageFreshStateViewer< Row1Context.Row1, Row1Events.Row1Events, string > storage
             
         let row2StateViewer =
-            getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events > storage
-        new(storage: IEventStore) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
+            getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events, string > storage
+        new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {
                 let bookRow1 = Row1Command.BookSeats bookingRow1
-                let! result = runCommand<Row1Context.Row1, Row1Events.Row1Events> storage eventBroker row1StateViewer bookRow1 
+                let! result = runCommand<Row1Context.Row1, Row1Events.Row1Events, string> storage eventBroker row1StateViewer bookRow1 
                 return result
             }
         member private this.BookSeatsRow2 (bookingRow2: Seats.Booking) =
             result {
                 let bookRow2 = Row2Command.BookSeats bookingRow2
-                let! result = runCommand<Row2Context.Row2, Row2Events.Row2Events> storage eventBroker row2StateViewer bookRow2
+                let! result = runCommand<Row2Context.Row2, Row2Events.Row2Events, string> storage eventBroker row2StateViewer bookRow2
                 return result
             }
 
@@ -45,7 +47,7 @@ module App =
                     | false, true -> this.BookSeatsRow1 row1Booking
                     | true, false -> this.BookSeatsRow2 row2Booking
                     | false, false ->
-                        runTwoCommands<Row1Context.Row1, Row2Context.Row2, Row1Events.Row1Events, Row2Events.Row2Events> 
+                        runTwoCommands<Row1Context.Row1, Row2Context.Row2, Row1Events.Row1Events, Row2Events.Row2Events, string> 
                             storage eventBroker (Row1Command.BookSeats row1Booking) (Row2Command.BookSeats row2Booking) 
                             row1StateViewer row2StateViewer
                 return! result

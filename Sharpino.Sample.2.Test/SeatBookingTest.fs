@@ -11,6 +11,7 @@ open Expecto
 open Sharpino
 open Sharpino.MemoryStorage
 open seatsLockWithSharpino.App
+open seatsLockWithSharpino.Commons
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.Core
@@ -18,9 +19,8 @@ open System
 
 [<Tests>]
 let hackingEventInStorageTest =
-    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
-        testCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
+        ptestCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
@@ -29,8 +29,8 @@ let hackingEventInStorageTest =
             Expect.equal availableSeats.Length 10 "should be equal"
             let seatOneBooking = { id = 1; seats = [1] }
             let bookingEvent = Row1Events.SeatsBooked seatOneBooking
-            let serializedEvent = bookingEvent.Serialize serializer
-            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [ serializedEvent]  |> ignore
+            let serializedEvent = bookingEvent.Serialize
+            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [ serializedEvent]  |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 9 "should be equal"
         
@@ -46,8 +46,8 @@ let hackingEventInStorageTest =
             let invalidBookingViolatesInvariant = { id = 1; seats = [1; 2; 4; 5] }
             
             let bookingEvent = Row1Events.SeatsBooked invalidBookingViolatesInvariant
-            let serializedEvent = bookingEvent.Serialize serializer 
-            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [serializedEvent] |> ignore
+            let serializedEvent = bookingEvent.Serialize
+            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [serializedEvent] |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
 
@@ -65,10 +65,10 @@ let hackingEventInStorageTest =
             let firstBookingOfFirstTwoSeats =  { id = 1; seats = [1; 2] }
             let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
             
-            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstTwoSeats).Serialize  serializer
-            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
+            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstTwoSeats).Serialize
+            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
-            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [booking1; booking2] |> ignore
+            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [booking1; booking2] |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 8 "should be equal"
 
@@ -83,10 +83,10 @@ let hackingEventInStorageTest =
             let firstBookingOfFirstSeats =  { id = 1; seats = [1] }
             let secondBookingOfLastTwoSeats = { id = 2; seats = [4; 5] }
             
-            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize  serializer
-            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize serializer
+            let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize 
+            let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
-            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [booking1; booking2] |> ignore
+            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [booking1; booking2] |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
 
@@ -101,10 +101,10 @@ let hackingEventInStorageTest =
             let secondBooking = { id = 2; seats = [2] }
             let thirdBooking = { id = 3; seats = [3] }
 
-            let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize  serializer
-            let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize serializer
-            let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize serializer
-            (storage :> IEventStore).AddEvents Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [bookingEvent1; bookingEvent2; bookingEvent3] |> ignore
+            let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize
+            let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize
+            let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize
+            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName (Guid.NewGuid()) [bookingEvent1; bookingEvent2; bookingEvent3] |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
             

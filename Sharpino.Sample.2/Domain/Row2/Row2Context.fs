@@ -2,11 +2,13 @@
 namespace seatsLockWithSharpino
 open FsToolkit.ErrorHandling
 open Sharpino.Utils
+open seatsLockWithSharpino.Commons
+open Sharpino
 open Row2
 open Row
+open System
 
 module Row2Context =
-    open System
     type Row2 (rowContext: RowContext) =
         let stateId = Guid.NewGuid()
         member this.StateId = stateId
@@ -25,10 +27,10 @@ module Row2Context =
             }
         member this.GetAvailableSeats () =
             rowContext.GetAvailableSeats ()
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
-        static member Deserialize (serializer: ISerializer, json: string)=
+        static member Deserialize json =
             serializer.Deserialize<Row2> json
         static member StorageName =
             "_row2"

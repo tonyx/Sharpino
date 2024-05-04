@@ -1,13 +1,12 @@
 
 namespace seatsLockWithSharpino
 open seatsLockWithSharpino.Seats
+open seatsLockWithSharpino.Commons
 open Sharpino.Utils
 open Sharpino
 open FsToolkit.ErrorHandling
 
 module Row =
-    let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
-
     type RowContext(RowSeats: Seats.Seat list) = 
         member this.RowSeats with get() = RowSeats
         member this.IsAvailable (seatId: Seats.Id) =
@@ -59,6 +58,6 @@ module Row =
             |> List.filter (fun seat -> seat.State = Seats.SeatState.Free)
             |> List.map (_.id)
 
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
