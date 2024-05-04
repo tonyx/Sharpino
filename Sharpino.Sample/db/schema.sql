@@ -27,7 +27,8 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_tags(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -44,7 +45,8 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_tags(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    -- VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -61,7 +63,8 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_todo(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -78,7 +81,8 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_todo(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    -- VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -95,7 +99,8 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_categories(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -112,7 +117,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_categories(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -129,7 +134,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_todo(event, timestamp)
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -146,23 +151,24 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_todo(event, timestamp, context_state_id)
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_event_and_return_id(json); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_event_and_return_id(event_in json) RETURNS integer
+CREATE FUNCTION public.insert_event_and_return_id(event_in text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_todo(event, timestamp)
+    -- VALUES(event_in, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
     VALUES(event_in, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
@@ -283,8 +289,8 @@ CREATE PROCEDURE public.un_set_classic_optimistic_lock_02_todo()
     LANGUAGE plpgsql
     AS $$
 BEGIN
-ALTER TABLE events_02_todo
-DROP CONSTRAINT IF EXISTS context_events_02_todo_context_state_id_unique;
+    ALTER TABLE events_02_todo
+    DROP CONSTRAINT IF EXISTS context_events_02_todo_context_state_id_unique;
 END;
 $$;
 
@@ -299,7 +305,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.events_01_tags (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
@@ -328,7 +334,7 @@ ALTER TABLE public.events_01_tags ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 CREATE TABLE public.events_01_todo (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
@@ -357,7 +363,7 @@ ALTER TABLE public.events_01_todo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 
 CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
@@ -386,7 +392,7 @@ ALTER TABLE public.events_02_categories ALTER COLUMN id ADD GENERATED ALWAYS AS 
 
 CREATE TABLE public.events_02_todo (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     published boolean DEFAULT false NOT NULL,
     kafkaoffset bigint,
@@ -436,7 +442,7 @@ CREATE SEQUENCE public.snapshots_01_tags_id_seq
 
 CREATE TABLE public.snapshots_01_tags (
     id integer DEFAULT nextval('public.snapshots_01_tags_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
@@ -460,7 +466,7 @@ CREATE SEQUENCE public.snapshots_01_todo_id_seq
 
 CREATE TABLE public.snapshots_01_todo (
     id integer DEFAULT nextval('public.snapshots_01_todo_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
@@ -484,7 +490,7 @@ CREATE SEQUENCE public.snapshots_02_categories_id_seq
 
 CREATE TABLE public.snapshots_02_categories (
     id integer DEFAULT nextval('public.snapshots_02_categories_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
@@ -508,7 +514,7 @@ CREATE SEQUENCE public.snapshots_02_todo_id_seq
 
 CREATE TABLE public.snapshots_02_todo (
     id integer DEFAULT nextval('public.snapshots_02_todo_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );

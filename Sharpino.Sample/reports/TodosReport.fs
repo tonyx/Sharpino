@@ -8,22 +8,43 @@ open Sharpino.Sample.Todos.TodoEvents
 open FsToolkit.ErrorHandling
 
 module TodosReport =
-    type TodosEvents =
+    // make it only one with generic type
+    type TodosEvents<'TEvent> =
         {
             InitTime: DateTime
             EndTime: DateTime
-            TodoEvents: List<TodoEvent>
+            TodoEvents: List<'TEvent>
         }
         member 
-            this.AddEvent (e: TodoEvent) =
+            this.AddEvent (e: 'TEvent) =
                 {
                     this with
                         TodoEvents = e :: this.TodoEvents
                 }
         member
-            this.AddEvents (es: List<TodoEvent>) =
+            this.AddEvents (es: List<'TEvent>) =
                 {
                     this with
                         TodoEvents = es @ this.TodoEvents
                 }
+
+    // type TodosEvents' =
+    //     {
+    //         InitTime: DateTime
+    //         EndTime: DateTime
+    //         TodoEvents: List<TodoEvent'>
+    //     }
+    //     member 
+    //         this.AddEvent (e: TodoEvent') =
+    //             {
+    //                 this with
+    //                     TodoEvents = e :: this.TodoEvents
+    //             }
+    //     member
+    //         this.AddEvents (es: List<TodoEvent'>) =
+    //             {
+    //                 this with
+    //                     TodoEvents = es @ this.TodoEvents
+    //             }
+
     

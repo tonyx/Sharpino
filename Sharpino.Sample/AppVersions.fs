@@ -51,7 +51,7 @@ module AppVersions =
     let resetAppId() =
         ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
 
-    let resetDb (db: IEventStore) =
+    let resetDb (db: IEventStore<string>) =
         db.Reset TodosContext.Version TodosContext.StorageName
         StateCache<TodosContext>.Instance.Clear()
 
@@ -64,12 +64,12 @@ module AppVersions =
         db.Reset CategoriesContext.Version CategoriesContext.StorageName
         StateCache<CategoriesContext>.Instance.Clear()
 
-    type IApplication =
+    type IApplication<'T> =
         {
             _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<string, string>>, string >>    
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
-            _addEvents:         Version * List<Json> * Name * ContextStateId -> unit
+            _addEvents:         EventId * Version * List<Json> * Name * ContextStateId -> unit
             _pingTodo:          unit -> Result< List<List<int>>, string>
             _pingCategories:    unit -> Result< List<List<int>>, string>
             _pingTags:          unit -> Result< List<List<int>>, string>
@@ -83,7 +83,7 @@ module AppVersions =
             addTag:             Tag -> Result< List<List<int>>, string>
             removeTag:          Guid -> Result< List<List<int>>, string>
             getAllTags:         unit -> Result<List<Tag>, string>
-            todoReport:         DateTime -> DateTime -> Result<TodosEvents, string>
+            todoReport:         DateTime -> DateTime -> Result<TodosEvents<'T>, string>
         }
 
     [<CurrentVersion>]
@@ -95,9 +95,9 @@ module AppVersions =
             _reset =            fun () -> 
                                     resetDb pgStorage
                                     resetAppId()
-            _addEvents =        fun (vers: Version, e: List<string>, name, contextStateId ) -> 
+            _addEvents =        fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (pgStorage :> IEventStore).AddEvents vers name contextStateId deser |> ignore
+                                    (pgStorage :> IEventStore<string>).AddEvents eventId vers name contextStateId deser |> ignore
             _pingTodo =         currentPgApp.PingTodo
             _pingCategories =   currentPgApp.PingCategory
             _pingTags =         currentPgApp.PingTag
@@ -122,9 +122,9 @@ module AppVersions =
             _reset =            fun () -> 
                                     resetDb pgStorage
                                     resetAppId()
-            _addEvents =        fun (version, e: List<string>, name, contextStateId ) -> 
+            _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (pgStorage :> IEventStore).AddEvents version name (Guid.Empty) deser |> ignore
+                                    (pgStorage :> IEventStore<string>).AddEvents eventId version name contextStateId deser |> ignore
             _pingTodo =         upgradedPgApp.PingTodo
             _pingCategories =   upgradedPgApp.PingCategory
             _pingTags =         upgradedPgApp.PingTag
@@ -150,9 +150,9 @@ module AppVersions =
             _reset =            fun () -> 
                                     resetDb memoryStorage
                                     resetAppId()
-            _addEvents =        fun (version, e: List<string>, name, contextStateId ) -> 
+            _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (memoryStorage :> IEventStore).AddEvents version name (Guid.Empty) deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name (Guid.Empty) deser |> ignore
             _pingTodo =         currentMemApp.PingTodo
             _pingCategories =   currentMemApp.PingCategory
             _pingTags =         currentMemApp.PingTag
@@ -177,9 +177,9 @@ module AppVersions =
             _reset =            fun () -> 
                                     resetDb memoryStorage
                                     resetAppId()
-            _addEvents =        fun (version, e: List<string>, name, contextStateId ) -> 
+            _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e 
-                                    (memoryStorage :> IEventStore).AddEvents version name Guid.Empty deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name Guid.Empty deser |> ignore
             _pingTodo =         upgradedMemApp.PingTodo
             _pingCategories =   upgradedMemApp.PingCategory
             _pingTags =         upgradedMemApp.PingTag    

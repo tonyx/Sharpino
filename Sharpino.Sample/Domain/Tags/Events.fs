@@ -6,6 +6,7 @@ open Sharpino.Definitions
 open Sharpino.Sample.TagsContext
 open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.Shared.Entities
+open Sharpino.Sample.Commons
 
 open System
 
@@ -23,9 +24,9 @@ module TagsEvents =
                         x.RemoveTag g
                     | PingDone () ->
                         x.Ping()
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize json = 
             serializer.Deserialize<TagEvent> json

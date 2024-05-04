@@ -14,7 +14,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_categories(event, timestamp, context_state_id) 
-    VALUES(event_in::JSON, now(), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id; 
 END;
 $$;

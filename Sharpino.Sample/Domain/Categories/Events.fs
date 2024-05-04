@@ -9,8 +9,9 @@ open Sharpino.Definitions
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.CategoriesContext
 open Sharpino.Sample.Shared.Entities
-
+open Sharpino.Sample.Commons
 module CategoriesEvents =
+    
     type CategoryEvent =
         | CategoryAdded of Category
         | CategoryRemoved of Guid
@@ -27,9 +28,9 @@ module CategoriesEvents =
                         x.AddCategories cs
                     | PingDone () ->
                         x.Ping()
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize  json =
             serializer.Deserialize<CategoryEvent> json

@@ -12,7 +12,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_todo(event, timestamp) 
-    VALUES(event_in::JSON, now()) RETURNING id INTO inserted_id;
+    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
     return inserted_id; 
 END;
 $$

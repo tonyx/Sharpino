@@ -6,6 +6,7 @@ open Sharpino.Definitions
 open Sharpino.Repositories
 
 open Sharpino.Sample.Shared.Entities
+open Sharpino.Sample.Commons
 
 open System
 open FsToolkit.ErrorHandling
@@ -39,11 +40,10 @@ module TagsContext =
             }
         member this.GetTags() = this.Tags.GetTags()
 
-        member this.Serialize(serializer: ISerializer) =
-            this
-            |> serializer.Serialize
+        member this.Serialize =
+            this |> serializer.Serialize
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize json =
             serializer.Deserialize<TagsContext> json
         static member StorageName =
             "_tags"

@@ -5,6 +5,7 @@ open Sharpino.Sample.Entities.Todos
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.TodosContext
 open Sharpino.Sample.Shared.Entities
+open Sharpino.Sample.Commons
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Utils
@@ -32,10 +33,10 @@ module TodoEvents =
                         g |> x.RemoveTagReference
                     | PingDone () ->
                         x.Ping()
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize json =
             serializer.Deserialize<TodoEvent> json
 
 
@@ -62,9 +63,9 @@ module TodoEvents =
                         x.AddTodos ts
                     | PingDone () ->
                         x.Ping()
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
+        static member Deserialize  json =
             serializer.Deserialize<TodoEvent'> json

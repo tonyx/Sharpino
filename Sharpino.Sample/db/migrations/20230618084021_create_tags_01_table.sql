@@ -2,7 +2,7 @@
 
 CREATE TABLE public.events_01_tags (
     id integer NOT NULL,
-    event json NOT NULL,
+    event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -24,7 +24,7 @@ CREATE SEQUENCE public.snapshots_01_tags_id_seq
 
 CREATE TABLE public.snapshots_01_tags (
     id integer DEFAULT nextval('public.snapshots_01_tags_id_seq'::regclass) NOT NULL,
-    snapshot json NOT NULL,
+    snapshot text NOT NULL,
     event_id integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL
 );

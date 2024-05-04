@@ -8,6 +8,7 @@ open Sharpino
 open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.Repositories
+open Sharpino.Sample.Commons
 
 open FSharpPlus
 open FsToolkit.ErrorHandling
@@ -98,9 +99,9 @@ module TodosContext =
             15 
         static member Lock =
             new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<TodosContext, string>  =
+        static member Deserialize  json: Result<TodosContext, string>  =
             serializer.Deserialize<TodosContext> json
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
 
@@ -109,6 +110,7 @@ module TodosContext =
     [<UpgradedVersion>]
 
     type TodosContextUpgraded(todos: Todos) =
+        let serializer = JsonSerializer(serSettings):> ISerializer
         let stateId = Guid.NewGuid()
         member this.StateId = stateId
         member this.todos = todos
@@ -176,10 +178,10 @@ module TodosContext =
                     return
                         TodosContextUpgraded((removeReferenceOfTagToAllTodos id) |> Todos.FromList)
                 }
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this |> serializer.Serialize
 
-        static member Deserialize (serializer: ISerializer, json: Json)=
+        static member Deserialize  json =
             serializer.Deserialize<TodosContextUpgraded> json
         static member StorageName =
             "_todo"

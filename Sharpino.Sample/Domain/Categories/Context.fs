@@ -5,6 +5,7 @@ open FsToolkit.ErrorHandling
 open Sharpino.Utils
 open Sharpino.Storage
 open Sharpino.Definitions
+open Sharpino.Sample.Commons
 
 open Sharpino.Sample.Entities.Categories
 open Sharpino.Sample.Shared.Entities
@@ -41,10 +42,10 @@ module CategoriesContext =
             }
         member this.GetCategories() = this.Categories.GetCategories().GetAll()
 
-        member this.Serialize(serializer: ISerializer) =
+        member this.Serialize =
             this
             |> serializer.Serialize
-        static member Deserialize (serializer: ISerializer, json: Json)=
+        static member Deserialize  json =
             serializer.Deserialize<CategoriesContext> json
         static member StorageName =
             "_categories"

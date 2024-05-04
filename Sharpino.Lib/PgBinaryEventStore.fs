@@ -453,11 +453,12 @@ module PgBinaryStore =
             
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                // use now() at the stored procedure add events level  and pass the utcnow here. So it will work
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 connection
                 |> Sql.connect
                 |> Sql.query query
-                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                |> Sql.parameters ["dateFrom", Sql.timestamptz dateFrom; "dateTo", Sql.timestamptz dateTo]
                 |> Sql.executeAsync ( fun read ->
                     (
                         read.int "id",
