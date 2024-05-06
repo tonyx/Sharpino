@@ -176,7 +176,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## News
 - I am porting the examples to use the newer version (2.0.6). The porting of the first example(Sharpino.Sample) is incomplete (At the moment I disabled the "migrate between version" function in that example).
-
+- version 2.0.7: a fix in runThreeCommand. CommandHandler will just use fresh data ignoring the viewer that has been passed. 
 
 - version 2.0.6: 
     - eventstore checks the eventId of the state that produces any event before adding them. That will ensure that events are added in the right order and cannot fail (so the optimistic lock stateId will
