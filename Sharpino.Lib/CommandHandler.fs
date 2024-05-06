@@ -204,7 +204,7 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
-        (stateViewer: StateViewer<'A>)
+        (stateViewer: StateViewer<'A>) // ignore it and get a freshere state direclty from the storage
         (command: Command<'A, 'E>) =
         
             log.Debug (sprintf "runCommand %A" command)
@@ -213,7 +213,9 @@ module CommandHandler =
                     return
                         result {
                             // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                            let! (eventId, state, _, _) = stateViewer() 
+
+                            // let! (eventId, state, _, _) = stateViewer() 
+                            let! (eventId, state, _, _) = getFreshState<'A, 'E, 'F> storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -272,7 +274,8 @@ module CommandHandler =
                     return
                         result {
                             // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                            let! (eventId, state, _, _) = stateViewer ()
+                            // let! (eventId, state, _, _) = stateViewer ()
+                            let! (eventId, state, _, _) = getFreshState<'A, 'E, 'F> storage
                             let! events = 
                                 state
                                 |> command.Execute
@@ -326,7 +329,8 @@ module CommandHandler =
                     return
                         result {
                             // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                            let! (eventId, state, _, _) = stateView
+                            // let! (eventId, state, _, _) = stateView
+                            let! (eventId, state, _, _) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
                             let! events =
                                 state
                                 |> command.Execute
@@ -373,9 +377,9 @@ module CommandHandler =
         and 'A1 : (static member Version: string)
         >
         (aggregateIds: List<Guid>)
-        (storage: IEventStore<'F>)
+        (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (stateViewer: AggregateViewer<'A1>)
+        (stateViewer: AggregateViewer<'A1>) // will remove this
         (commands: List<Command<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
@@ -384,9 +388,12 @@ module CommandHandler =
                     return
                         result {
                             // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
+                            // let! states =
+                            //     aggregateIds
+                            //     |> List.traverseResultM stateViewer
                             let! states =
                                 aggregateIds
-                                |> List.traverseResultM stateViewer
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
                                 
                             let states' = 
                                 states 
@@ -417,7 +424,7 @@ module CommandHandler =
                                 |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A1.Version, 'A1.StorageName, id, stateId)
 
                             let! eventIds =
-                                storage.MultiAddAggregateEvents packParametersForDb
+                                eventStore.MultiAddAggregateEvents packParametersForDb
 
                             let aggregateIdsWithEventIds =
                                 List.zip aggregateIds eventIds
@@ -433,7 +440,7 @@ module CommandHandler =
 
                             let _ =
                                 aggregateIds
-                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
                             
                             return eventIds
                         }
@@ -468,8 +475,8 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (storage: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (stateViewer1: AggregateViewer<'A1>)
-        (stateViewer2: AggregateViewer<'A2>)
+        (stateViewer1: AggregateViewer<'A1>) // will ditch this
+        (stateViewer2: AggregateViewer<'A2>) // will ditch this
         (command1: List<Command<'A1, 'E1>>)
         (command2: List<Command<'A2, 'E2>>)
         =
@@ -479,14 +486,21 @@ module CommandHandler =
                     return 
                         result {
                             // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
+                            // let! states1 =
+                            //     aggregateIds1
+                            //     |> List.traverseResultM stateViewer1
                             let! states1 =
                                 aggregateIds1
-                                |> List.traverseResultM stateViewer1
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id storage)
 
                             // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
+                            // let! states2 =
+                            //     aggregateIds2
+                            //     |> List.traverseResultM stateViewer2
                             let! states2 =
                                 aggregateIds2
-                                |> List.traverseResultM stateViewer2
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id storage)
+
 
                             let states1' =
                                 states1 
@@ -622,7 +636,7 @@ module CommandHandler =
         and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
         and 'E2: (member Serialize: 'F)
         >
-            (storage: IEventStore<'F>)
+            (eventStore: IEventStore<'F>)
             (eventBroker: IEventBroker<'F>) 
 
             (command1: Command<'A1, 'E1>) 
@@ -637,9 +651,12 @@ module CommandHandler =
                     return
                         result {
 
-                            // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                            let! (eventId1, state1, _, _) = stateViewerA1 ()
-                            let! (eventId2, state2, _, _) = stateViewerA2 ()
+                            // stateview will be forced to be only based on the real eventstore/truth to get fresher data as possible
+                            // let! (eventId1, state1, _, _) = stateViewerA1 ()
+                            // let! (eventId2, state2, _, _) = stateViewerA2 ()
+
+                            let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> eventStore
+                            let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> eventStore
 
                             let! events1 =
                                 state1
@@ -656,7 +673,7 @@ module CommandHandler =
                                 |>> fun x -> x.Serialize
 
                             let! idLists =
-                                storage.MultiAddEvents 
+                                eventStore.MultiAddEvents 
                                     [
                                         (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
                                         (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
@@ -669,8 +686,8 @@ module CommandHandler =
                                 postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
                                 ()
 
-                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
                             return idLists
                         } 
                     }
@@ -735,9 +752,12 @@ module CommandHandler =
                     return
                         result {
 
-                            let! (eventId1, state1, _, _) = stateViewerA1 ()
-                            let! (eventId2, state2, _, _) = stateViewerA2 ()
-                            let! (eventId3, state3, _, _) = stateViewerA3 ()
+                            // let! (eventId1, state1, _, _) = stateViewerA1 ()
+                            // let! (eventId2, state2, _, _) = stateViewerA2 ()
+                            // let! (eventId3, state3, _, _) = stateViewerA3 ()
+                            let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> storage
+                            let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> storage
+                            let! (eventId3, state3, _, _) = getFreshState<'A3, 'E3, 'F> storage
 
                             let! events1 =
                                 state1
@@ -763,8 +783,8 @@ module CommandHandler =
                                 storage.MultiAddEvents 
                                     [
                                         (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
-                                        (eventId2,  events2', 'A2.Version, 'A2.StorageName, state2.StateId)
-                                        (eventId3, events3', 'A3.Version, 'A2.StorageName, state3.StateId)
+                                        (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
+                                        (eventId3, events3', 'A3.Version, 'A3.StorageName, state3.StateId)
                                     ]
                             
                             if (eventBroker.notify.IsSome) then
