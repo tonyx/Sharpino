@@ -3,7 +3,7 @@
 CREATE TABLE public.events{Version}{AggregateStorageName} (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
-                                          {Format} json NOT NULL,
+                                          event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,
@@ -77,7 +77,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events{Version}{AggregateStorageName}(event, aggregate_id, timestamp)
-VALUES(event_in::{Format}, aggregate_id,  (now() at time zone 'utc')) RETURNING id INTO inserted_id;
+VALUES(event_in::{Format}, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
