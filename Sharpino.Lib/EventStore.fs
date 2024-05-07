@@ -4,6 +4,7 @@ open Sharpino.Definitions
 open log4net
 
 module Storage =
+    open Confluent.Kafka
     type StoragePgEvent<'T> =
         {
             JsonEvent: 'T
@@ -100,8 +101,8 @@ module Storage =
 
     type IEventBroker<'F> =
         {
-            notify: Option<Version -> Name -> List<EventId * 'F> -> Result<List<Confluent.Kafka.DeliveryResult<'F, string>>, string >>
-            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * 'F> -> Result<List<Confluent.Kafka.DeliveryResult<Confluent.Kafka.Null, string>>, string >>
+            notify: Option<Version -> Name -> List<EventId * 'F> -> List<DeliveryResult<string, 'F>>>
+            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * 'F> -> List<DeliveryResult<string, string>>>
         }
 
     type RowReaderByFormat<'F> = RowReader -> string ->'F
