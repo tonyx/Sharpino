@@ -1,6 +1,8 @@
 
 namespace Sharpino
 open Sharpino.Storage
+open Sharpino.Commons
+open FsKafka
 open Confluent.Kafka
 open System.Net
 open System
@@ -21,6 +23,27 @@ open FSharp.Core
 module KafkaBroker =
 
     let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    // let picklerSerializer = Commons.jsonPSerializer // :> Commons.Serialization<string>
+    let binPicklerSerializer = Commons.binarySerializer // :> Commons.Serialization<string>
+    // I decided to binarize the objects and then encode them to base64
+
+    type BrokerEvent =
+        | StrEvent of string
+        | BinaryEvent of byte[]
+
+    type BrokerMessageRef = {
+        ApplicationId: Guid
+        EventId: int
+        BrokerEvent: BrokerEvent
+    }
+
+    type BrokerAggregateMessageRef<'F> = {
+        ApplicationId: Guid
+        AggregateId: Guid
+        EventId: int
+        BrokerEvent: BrokerEvent
+    }
+
     type BrokerMessage<'F> = {
         ApplicationId: Guid
         EventId: int
@@ -38,167 +61,62 @@ module KafkaBroker =
     // uncomment following for quick debugging
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
-    let getKafkaBroker (bootStrapServer: string, eventStore: IEventStore<string>) =
+    let getKafkaBroker (bootStrapServer: string) =
+        let log = Serilog.LoggerConfiguration().CreateLogger()
+        let batching = Batching.Linger (System.TimeSpan.FromMilliseconds 10.)
+        let producerConfig = KafkaProducerConfig.Create("MyClientId", bootStrapServer, Acks.All, batching)
+        printf "getting kafka broker 1000\n"
         try 
-            let config = ProducerConfig()
-            config.BootstrapServers <- bootStrapServer
-            let producer = ProducerBuilder<string, string>(config)
-            let p = producer.Build()
-
-            let aggregateProducer = ProducerBuilder<Null, string>(config)
-            let aggregateP = aggregateProducer.Build()
-
-
-            let message = Message<string, string>()
-            let aggregatemessage = Message<Null, string>()
-
-            let notifyAggregateMessage  (version: string) (name: string) (aggregateId: Guid) (msg: int * 'F) =
-                let topic = name + "-" + version |> String.replace "_" ""
-
-                let brokerMessage = {
-                    AggregateId = aggregateId
-                    ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
-                    EventId = msg |> fst
-                    Event = msg |> snd
-                }
-
-                try
-                    let sent =
-                        aggregatemessage.Key <- null
-                        aggregatemessage.Value <- brokerMessage |> serializer.Serialize
-                        aggregateP.ProduceAsync(topic, aggregatemessage)
-                        |> Async.AwaitTask 
-                        |> Async.RunSynchronously
-
-                    if sent.Status = PersistenceStatus.Persisted then
-                        let offset = sent.Offset.Value
-                        let partition = sent.Partition.Value
-                        let isPublished = eventStore.SetPublished version name (msg |> fst) offset partition
-                        match isPublished with
-                        | Ok _  -> sent |> Ok
-                        | Error e -> Error e
-                    else        
-                        Error(sprintf "Message %A Not persisted in Kafka topic. Sent: %A" message sent)
-                with
-                    | _ as e -> 
-                        log.Error e.Message
-                        Error(e.Message.ToString())
-            
-            let notifyMessage (version: string) (name: string)  (msg: int * 'F) =
-                let topic = name + "-" + version |> String.replace "_" ""
-
-                let brokerMessage = {
-                    ApplicationId = ApplicationInstance.ApplicationInstance.Instance.GetGuid()
-                    EventId = msg |> fst
-                    Event = msg |> snd
-                }
-
-                try
-                    let sent =
-                        message.Key <- topic
-                        message.Value <- brokerMessage |> serializer.Serialize
-                        p.ProduceAsync(topic, message)
-                        |> Async.AwaitTask 
-                        |> Async.RunSynchronously
-
-                    if sent.Status = PersistenceStatus.Persisted then
-                        let offset = sent.Offset.Value
-                        let partition = sent.Partition.Value
-                        let isPublished = eventStore.SetPublished version name (msg |> fst) offset partition
-                        match isPublished with
-                        | Ok _  -> sent |> Ok
-                        | Error e -> Error e
-                    else        
-                        Error(sprintf "Message %A Not persisted in Kafka topic. Sent: %A" message sent)
-                with
-                    | _ as e -> 
-                        log.Error e.Message
-                        Error(e.Message.ToString())
-
-            let notifier: IEventBroker<'F> =
+            let notifier: IEventBroker<_> =
                 {
                     notify = 
-                        fun version name events ->
-                            result {    
-                                try 
-                                    let notified = events |> List.traverseResultM (fun x -> notifyMessage version name x) 
-                                    let notified2 =
-                                        match notified with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 1 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
-
-                                    let notified3 =
-                                        match notified2 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 2 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
-
-                                    let notified4 =
-                                        match notified3 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 3 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
-
-                                    let notified5 =
-                                        match notified4 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 4 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyMessage version name x)
-                                    return! notified5
-                                with
-                                | _ as e -> 
-                                    log.Error e.Message
-                                    return! Result.Error (e.Message.ToString())
-                            }
+                        (fun version name events -> 
+                            let topic = name + "-" + version |> String.replace "_" ""
+                            let producer = KafkaProducer.Create(log, producerConfig, topic)
+                            let key = topic
+                            let deliveryResults =
+                                events 
+                                |> List.map 
+                                    (fun (id, x) -> 
+                                        let brokerMessageRef = {
+                                            ApplicationId = Guid.NewGuid()
+                                            EventId = id
+                                            BrokerEvent = StrEvent x
+                                        }
+                                        let binPicled = binPicklerSerializer.Serialize x
+                                        let encoded = Convert.ToBase64String binPicled
+                                        producer.ProduceAsync(key, encoded) |> Async.RunSynchronously // |> ignore
+                                    )
+                            deliveryResults
+                        )
                         |> Some
                     notifyAggregate =
-                        fun version name aggregateId events ->
-                            result {    
-                                try 
-                                    let notified = events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x) 
-                                    let notified2 =
-                                        match notified with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 1 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
-
-                                    let notified3 =
-                                        match notified2 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 2 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
-
-                                    let notified4 =
-                                        match notified3 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 3 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
-
-                                    let notified5 =
-                                        match notified4 with
-                                        | Ok x -> Ok x 
-                                        | Error e -> 
-                                            log.Error (sprintf "retry send n. 4 %s" e)
-                                            events |> List.traverseResultM (fun x -> notifyAggregateMessage version name aggregateId x)
-                                    return! notified5
-                                with
-                                | _ as e -> 
-                                    log.Error e.Message
-                                    return! Result.Error (e.Message.ToString())
-                            }
+                        (fun version name aggregateId events -> 
+                            let topic = name + "-" + version |> String.replace "_" ""
+                            let producer = KafkaProducer.Create(log, producerConfig, topic)
+                            let key = aggregateId.ToString() 
+                            let deliveryResults =
+                                events 
+                                |> List.map 
+                                    (fun (id, x) -> 
+                                        let brokerAggregateMessageRef = {
+                                            ApplicationId = Guid.NewGuid()
+                                            AggregateId = aggregateId
+                                            EventId = id
+                                            BrokerEvent = StrEvent x
+                                        }
+                                        let binPicled = binPicklerSerializer.Serialize x
+                                        let encoded = Convert.ToBase64String binPicled
+                                        producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
+                                    )
+                            deliveryResults
+                        )
                         |> Some
                 }
             notifier
         with
         | _ as e -> 
+            printf "error getting kafka broker %A\n" e
             log.Error e.Message
             {
                 notify = None
@@ -208,14 +126,14 @@ module KafkaBroker =
     let tryPublish eventBroker version name idAndEvents =
         async {
             return
-                match eventBroker.notify with
-                | Some notify ->
-                    notify version name idAndEvents
-                | None ->
+                if (eventBroker.notify.IsSome) then
+                    eventBroker.notify.Value version name idAndEvents
+                else
                     log.Info "no sending to any broker"
-                    [] |> Ok
+                    [] 
         }
         |> Async.StartAsTask
+
     
     let tryPublishAggregateEvent eventBroker aggregateId version name idAndEvents =
         async {
@@ -224,7 +142,6 @@ module KafkaBroker =
                 | Some notify ->
                     notify version name aggregateId idAndEvents
                 | None ->
-                    log.Info "no sending to any broker"
-                    [] |> Ok
+                    []
         }
         |> Async.StartAsTask

@@ -10,6 +10,7 @@ open Sharpino
 open Sharpino.Storage
 open Sharpino.Definitions
 open log4net
+open System
 open log4net.Config
 
 module PgStorage =
@@ -594,6 +595,7 @@ module PgStorage =
                 |> Async.RunSynchronously
                 |> Seq.tryHead
             
+            [<Obsolete("Don't. Will not be able to set/unset lock type on the fly anymore")>]
             member this.SetClassicOptimisticLock version name =
                 log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
                 let command = sprintf "CALL set_classic_optimistic_lock%s%s()" version name
@@ -625,6 +627,8 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
                 
+
+            [<Obsolete("Don't. Will not be able to set/unset lock type on the fly anymore")>]
             member this.UnSetClassicOptimisticLock version name =
                 log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
                 let command = sprintf "CALL un_set_classic_optimistic_lock%s%s()" version name

@@ -22,7 +22,7 @@ module App =
             
         let row2StateViewer =
             getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events, string > storage
-        new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
+        // new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {

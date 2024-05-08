@@ -204,17 +204,16 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
-        (stateViewer: StateViewer<'A>) // ignore it and get a freshere state direclty from the storage
+        (stateViewer: StateViewer<'A>) // ignore it and get a fresher state directty from the storage
         (command: Command<'A, 'E>) =
-        
-            log.Debug (sprintf "runCommand %A" command)
+            log.Debug (sprintf "runCommand %A\n" command)
             let delayedCommand = fun () ->
                 async {
                     return
                         result {
                             // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-
                             // let! (eventId, state, _, _) = stateViewer() 
+
                             let! (eventId, state, _, _) = getFreshState<'A, 'E, 'F> storage
                             let! events =
                                 state
@@ -228,8 +227,7 @@ module CommandHandler =
                             if (eventBroker.notify.IsSome) then
                                 let f =
                                     fun () ->
-                                        List.zip ids events'
-                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        eventBroker.notify.Value 'A.Version 'A.StorageName (List.zip ids events')
                                         |> ignore
                                 f |> postToProcessor |> ignore
 
@@ -387,10 +385,7 @@ module CommandHandler =
                 async {
                     return
                         result {
-                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
-                            // let! states =
-                            //     aggregateIds
-                            //     |> List.traverseResultM stateViewer
+
                             let! states =
                                 aggregateIds
                                 |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
@@ -485,22 +480,13 @@ module CommandHandler =
                 async {
                     return 
                         result {
-                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
-                            // let! states1 =
-                            //     aggregateIds1
-                            //     |> List.traverseResultM stateViewer1
                             let! states1 =
                                 aggregateIds1
                                 |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id storage)
 
-                            // stateviewer will be forced to be only based on the real eventstore (no other read models as it was previously, wrongly, suggesting)
-                            // let! states2 =
-                            //     aggregateIds2
-                            //     |> List.traverseResultM stateViewer2
                             let! states2 =
                                 aggregateIds2
                                 |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id storage)
-
 
                             let states1' =
                                 states1 
@@ -572,7 +558,6 @@ module CommandHandler =
 
                             let aggregateIdsWithEventIds2 =
                                 List.zip aggregateIds2 eventIds2
-
 
                             let kafkaParmeters1 =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
@@ -752,9 +737,6 @@ module CommandHandler =
                     return
                         result {
 
-                            // let! (eventId1, state1, _, _) = stateViewerA1 ()
-                            // let! (eventId2, state2, _, _) = stateViewerA2 ()
-                            // let! (eventId3, state3, _, _) = stateViewerA3 ()
                             let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> storage
                             let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> storage
                             let! (eventId3, state3, _, _) = getFreshState<'A3, 'E3, 'F> storage
