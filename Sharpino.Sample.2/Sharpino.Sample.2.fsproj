@@ -22,22 +22,21 @@
     <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-
   <ItemGroup>
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <!-- <PackageReference Include="Sharpino" Version="1.6.6" /> -->
+    <PackageReference Include="Sharpino" Version="2.0.6" />
     
 
   </ItemGroup>
 
 
-
+<!-- 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
   </ItemGroup>
-
+ -->
 
   <!-- enable during dev: -->
 

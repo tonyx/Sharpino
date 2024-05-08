@@ -3,7 +3,7 @@
 CREATE TABLE public.events{Version}{AggregateStorageName} (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
-                                          {Format} json NOT NULL,
+                                          event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,

@@ -45,7 +45,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
    
     <!-- include to test from the nuget repository -->
-    <!-- <PackageReference Include="Sharpino" Version="1.6.6" /> -->
+    <PackageReference Include="Sharpino" Version="2.0.6" />
     <!-- <PackageReference Include="Sharpino.Core" Version="1.1.4" /> -->
     
     <PackageReference Update="FSharp.Core" Version="8.*" />
@@ -57,11 +57,12 @@
   </ItemGroup> -->
 
   <!-- comment if get the lib from nuget -->
-   <ItemGroup>
+   <!-- <ItemGroup>
      <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-   </ItemGroup>
+   </ItemGroup> -->
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />
   </ItemGroup>
+
 </Project>

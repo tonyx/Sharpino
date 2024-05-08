@@ -204,7 +204,7 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
-        (stateViewer: StateViewer<'A>) // ignore it and get a freshere state direclty from the storage
+        (stateViewer: StateViewer<'A>) // ignore it and get a fresher state directty from the storage
         (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A\n" command)
             let delayedCommand = fun () ->
@@ -428,10 +428,10 @@ module CommandHandler =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
                                 |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                            // if (eventBroker.notifyAggregate.IsSome) then
-                            //     kafkaParameters
-                            //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            //     |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParameters
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
 
                             let _ =
                                 aggregateIds
@@ -475,8 +475,6 @@ module CommandHandler =
         (command1: List<Command<'A1, 'E1>>)
         (command2: List<Command<'A2, 'E2>>)
         =
-
-            printf "runTwoNAggregateCommands\n"
             log.Debug "runTwoNAggregateCommands"
             let delayedCommand = fun () ->
                 async {
@@ -560,7 +558,6 @@ module CommandHandler =
 
                             let aggregateIdsWithEventIds2 =
                                 List.zip aggregateIds2 eventIds2
-
 
                             let kafkaParmeters1 =
                                 List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
@@ -667,12 +664,12 @@ module CommandHandler =
                                         (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
                                     ]
 
-                            // if (eventBroker.notify.IsSome) then
-                            //     let idAndEvents1 = List.zip idLists.[0] events1'
-                            //     let idAndEvents2 = List.zip idLists.[1] events2'
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            //     ()
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                ()
 
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
@@ -740,9 +737,6 @@ module CommandHandler =
                     return
                         result {
 
-                            // let! (eventId1, state1, _, _) = stateViewerA1 ()
-                            // let! (eventId2, state2, _, _) = stateViewerA2 ()
-                            // let! (eventId3, state3, _, _) = stateViewerA3 ()
                             let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> storage
                             let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> storage
                             let! (eventId3, state3, _, _) = getFreshState<'A3, 'E3, 'F> storage
@@ -775,15 +769,15 @@ module CommandHandler =
                                         (eventId3, events3', 'A3.Version, 'A3.StorageName, state3.StateId)
                                     ]
                             
-                            // if (eventBroker.notify.IsSome) then
-                            //     let idAndEvents1 = List.zip idLists.[0] events1'
-                            //     let idAndEvents2 = List.zip idLists.[1] events2'
-                            //     let idAndEvents3 = List.zip idLists.[2] events3'
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let idAndEvents3 = List.zip idLists.[2] events3'
 
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            //     postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                            //     ()
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                                ()
 
                             let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
                             let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
