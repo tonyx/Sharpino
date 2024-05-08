@@ -2,6 +2,7 @@
 
 namespace Sharpino
 
+open System
 open FsToolkit.ErrorHandling
 open Npgsql.FSharp
 open Npgsql
@@ -13,7 +14,6 @@ open Sharpino.PgStorage
 open Sharpino.Definitions
 open log4net
 open log4net.Config
-open System
 
 module PgBinaryStore =
     open Conf
