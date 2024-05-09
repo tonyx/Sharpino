@@ -65,7 +65,6 @@ module KafkaBroker =
         let log = Serilog.LoggerConfiguration().CreateLogger()
         let batching = Batching.Linger (System.TimeSpan.FromMilliseconds 10.)
         let producerConfig = KafkaProducerConfig.Create("MyClientId", bootStrapServer, Acks.All, batching)
-        printf "getting kafka broker 1000\n"
         try 
             let notifier: IEventBroker<_> =
                 {
