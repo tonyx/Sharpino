@@ -572,10 +572,10 @@ module CommandHandler =
                                 |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
                                 |> ignore
 
-                            if (eventBroker.notifyAggregate.IsSome) then
                                 kafkaParameters2
                                 |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
                                 |> ignore
+                                ()
 
                             let _ =
                                 aggregateIds1

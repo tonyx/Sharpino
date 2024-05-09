@@ -26,6 +26,7 @@ module KafkaBroker =
     // let picklerSerializer = Commons.jsonPSerializer // :> Commons.Serialization<string>
     let binPicklerSerializer = Commons.binarySerializer // :> Commons.Serialization<string>
     // I decided to binarize the objects and then encode them to base64
+    let jsonPicklerSerializer = Commons.jsonPSerializer // :> Commons.Serialization<string>
 
     type BrokerEvent =
         | StrEvent of string
@@ -84,8 +85,10 @@ module KafkaBroker =
                                             BrokerEvent = StrEvent x
                                         }
                                         let binPicled = binPicklerSerializer.Serialize x
+                                        let jsonPickled = jsonPicklerSerializer.Serialize x
                                         let encoded = Convert.ToBase64String binPicled
-                                        producer.ProduceAsync(key, encoded) |> Async.RunSynchronously // |> ignore
+                                        // producer.ProduceAsync(key, x) |> Async.RunSynchronously // |> ignore
+                                        producer.ProduceAsync(key, jsonPickled) |> Async.RunSynchronously // |> ignore
                                     )
                             deliveryResults
                         )
@@ -107,7 +110,9 @@ module KafkaBroker =
                                         }
                                         let binPicled = binPicklerSerializer.Serialize x
                                         let encoded = Convert.ToBase64String binPicled
-                                        producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
+                                        let jsonPickled = jsonPicklerSerializer.Serialize x
+
+                                        producer.ProduceAsync (key, jsonPickled) |> Async.RunSynchronously // |> ignore
                                     )
                             deliveryResults
                         )

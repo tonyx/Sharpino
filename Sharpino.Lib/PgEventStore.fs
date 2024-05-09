@@ -1,6 +1,7 @@
 
 namespace Sharpino
 
+open System
 open FsToolkit.ErrorHandling
 open Npgsql.FSharp
 open Npgsql
@@ -10,7 +11,6 @@ open Sharpino
 open Sharpino.Storage
 open Sharpino.Definitions
 open log4net
-open System
 open log4net.Config
 
 module PgStorage =
