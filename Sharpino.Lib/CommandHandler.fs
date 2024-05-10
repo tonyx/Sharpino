@@ -237,12 +237,12 @@ module CommandHandler =
                 }
                 |> Async.RunSynchronously 
 
-            match config.LockType with
-            | Pessimistic ->
-                lock 'A.Lock <| fun () ->
-                    delayedCommand()
-            | _ ->
-                delayedCommand()
+            // match config.LockType with
+            // | Pessimistic ->
+            //     lock 'A.Lock <| fun () ->
+            //         delayedCommand()
+            // | _ ->
+            delayedCommand()
     
     let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)

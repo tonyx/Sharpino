@@ -7,11 +7,11 @@ open Sharpino
 module App =
     let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     open Sharpino.Storage
-    // let doNothingBroker: IEventBroker = 
-    //     {
-    //         notify = None
-    //         notifyAggregate = None 
-    //     }
+    let doNothingBroker: IEventBroker<string> = 
+        {
+            notify = None
+            notifyAggregate = None 
+        }
 
 
     type App(storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
@@ -23,6 +23,7 @@ module App =
         let row2StateViewer =
             getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events, string > storage
         // new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
+        new (storage: IEventStore<string>) = App(storage, doNothingBroker)
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
             result {
