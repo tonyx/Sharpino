@@ -11,6 +11,7 @@ module Conf =
     // this will go away and the difference between test and prod db will be handled differently
     let isTestEnv = true
 
+    [<Obsolete "will be always optimistic and this conf will be removed">]
     type LockType =
         | Pessimistic
         | Optimistic

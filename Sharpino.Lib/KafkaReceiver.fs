@@ -4,6 +4,7 @@ namespace Sharpino
 open FsToolkit.ErrorHandling
 open FSharpPlus
 open Sharpino
+open Sharpino.Commons
 open Sharpino.Storage
 open Sharpino.Definitions
 open Confluent.Kafka
@@ -14,14 +15,120 @@ open System.Collections
 open System
 open log4net
 open log4net.Config
-
+open Confluent.Kafka
+open FsKafka
 
 // to be removed/rewritten
 module KafkaReceiver =
-    ()
-    
-    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let getStrAggregateMessage message =
+        ResultCE.result {
+            let base64Decoded = message |> Convert.FromBase64String 
+            let! binaryDecoded = binarySerializer.Deserialize<BrokerAggregateMessageRef> base64Decoded
+            return binaryDecoded
+        }
 
+    let getFromMessage<'E> value =
+        ResultCE.result {
+            let! okBinaryDecoded = getStrAggregateMessage value
+
+            let id = okBinaryDecoded.AggregateId
+            let eventId = okBinaryDecoded.EventId
+
+            let message = okBinaryDecoded.BrokerEvent
+            let actual = 
+                match message with
+                    | StrEvent x -> jsonPicklerSerializer.Deserialize<'E> x |> Result.get
+                    | BinaryEvent x -> binPicklerSerializer.Deserialize<'E> x |> Result.get
+            return (eventId, id, actual)
+        }
+
+    let logger = LogManager.GetLogger (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+
+    type ConsumerX<'A, 'E when 'E :> Event<'A>> (initStates: List<'A>, topic: string, clientId: string, bootStrapServers: string, groupId: string, timeOut: int) =
+        let mutable gMessages = []
+        member this.GMessages = gMessages
+
+        member this.GetEvents =
+            ResultCE.result {
+                let! messages = 
+                    this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
+                return messages |>> fun (_, _, x) -> x
+            }
+
+        member this.GetEventsByAggregate aggregateId =
+            ResultCE.result {
+                let! messages = 
+                    this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
+                let filtered = messages |> List.filter (fun (_, id, _) -> id = aggregateId)
+
+                let sorted = filtered |> List.sortBy (fun (evId, _, _) -> evId)
+                return sorted |>> fun (_, _, x) -> x
+            }
+
+        member this.GetMessages =
+            gMessages 
+            |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getStrAggregateMessage)
+
+        member this.Consuming () =
+            let log = Serilog.LoggerConfiguration().CreateLogger()
+            let handler (messages : ConsumeResult<string, string> []) = async {
+                for m in messages do
+                    gMessages <- gMessages @ [m]
+            } 
+
+            let cfgGood1 = KafkaConsumerConfig.Create(clientId, bootStrapServers, [topic], groupId, AutoOffsetReset.Earliest)
+            let timeOutConsumer (consumer: BatchedConsumer) =
+                Async.Sleep timeOut |> Async.RunSynchronously
+                consumer.Stop()
+            async {
+                use consumer = BatchedConsumer.Start(log, cfgGood1, handler)
+                use _ = KafkaMonitor(log).Start(consumer.Inner, cfgGood1.Inner.GroupId)
+                let result = consumer.AwaitWithStopOnCancellation()
+                timeOutConsumer consumer
+                return! result
+            } |> Async.RunSynchronously
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // let config = 
     //     try
     //         Conf.config ()

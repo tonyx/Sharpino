@@ -38,8 +38,8 @@ module KafkaBroker =
         BrokerEvent: BrokerEvent
     }
 
-    type BrokerAggregateMessageRef<'F> = {
-        ApplicationId: Guid
+    type BrokerAggregateMessageRef = {
+        // ApplicationId: Guid
         AggregateId: Guid
         EventId: int
         BrokerEvent: BrokerEvent
@@ -66,7 +66,6 @@ module KafkaBroker =
         let log = Serilog.LoggerConfiguration().CreateLogger()
         let batching = Batching.Linger (System.TimeSpan.FromMilliseconds 10.)
         let producerConfig = KafkaProducerConfig.Create("MyClientId", bootStrapServer, Acks.All, batching)
-        printf "getting kafka broker 1000\n"
         try 
             let notifier: IEventBroker<_> =
                 {
@@ -103,16 +102,14 @@ module KafkaBroker =
                                 |> List.map 
                                     (fun (id, x) -> 
                                         let brokerAggregateMessageRef = {
-                                            ApplicationId = Guid.NewGuid()
                                             AggregateId = aggregateId
                                             EventId = id
                                             BrokerEvent = StrEvent x
                                         }
-                                        let binPicled = binPicklerSerializer.Serialize x
-                                        let encoded = Convert.ToBase64String binPicled
-                                        let jsonPickled = jsonPicklerSerializer.Serialize x
 
-                                        producer.ProduceAsync (key, jsonPickled) |> Async.RunSynchronously // |> ignore
+                                        let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
+                                        let encoded = Convert.ToBase64String binPickled
+                                        producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
                                     )
                             deliveryResults
                         )

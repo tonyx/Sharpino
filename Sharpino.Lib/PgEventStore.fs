@@ -181,6 +181,7 @@ module PgStorage =
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
 
+                // this trick is not needed anymore: remove it
                 let uniqueStateIds =
                     [  
                         for i in 1..events.Length -> 
@@ -244,6 +245,8 @@ module PgStorage =
                                         fun (eventId, events, version,  name, contextStateId) -> 
                                             let stream_name = version + name
                                             let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
+
+                                            // this trick is not needed anymore: remove it
                                             let uniqueContextStateIds =
                                                 [  
                                                     for i in 1..events.Length -> 
@@ -366,6 +369,8 @@ module PgStorage =
                 let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" aggregateVersion aggregatename
                 let command3 = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" (contextVersion + contextName)
                 let conn = new NpgsqlConnection(connection)
+
+                // this trick is not needed anymore: remove it
                 let uniqueStateIds =
                     [  
                         for i in 1..events.Length -> 
@@ -665,6 +670,8 @@ module PgStorage =
                 let stream_name = version + name
                 let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
+
+                // this trick is not needed anymore: remove it
                 let uniqueStateIds =
                     [  
                         for i in 1..events.Length -> 
@@ -741,6 +748,8 @@ module PgStorage =
                                         fun (eventId, events, version,  name, aggregateId, aggregateStateId) ->
                                             let stream_name = version + name
                                             let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
+
+                                            // this trick is not needed anymore: remove it
                                             let uniqueAggregateStateIds =
                                                 [  
                                                     for i in 1..events.Length -> 

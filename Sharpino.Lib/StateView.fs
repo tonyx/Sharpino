@@ -72,7 +72,6 @@ module StateView =
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)
         and 'A: (member Serialize: 'F)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
@@ -133,7 +132,6 @@ module StateView =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)
         and 'E :> Event<'A>
         and 'A: (member Serialize:  'F)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -188,7 +186,6 @@ module StateView =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (static member Lock: obj)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (member Serialize: 'F)
         and 'E :> Event<'A>
@@ -209,11 +206,13 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
+
+            // remove kafka info always
+            let (lastEventId, _, _) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state' -> 
-                (lastEventId, state', kafkaOffSet, kafkaPartition) |> Ok
+                (lastEventId, state', None, None) |> Ok
             | Error e -> 
                 log.Error (sprintf "getState: %s" e)
                 Error e
@@ -241,11 +240,12 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let (lastEventId, kafkaOffSet, kafkaPartition) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName  id |> Option.defaultValue (0, None, None)
+            // remove kafka info always
+            let (lastEventId, _, _) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName  id |> Option.defaultValue (0, None, None)
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
-                (lastEventId, state, kafkaOffSet, kafkaPartition) |> Ok
+                (lastEventId, state, None, None) |> Ok
             | Error e -> 
                 log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
