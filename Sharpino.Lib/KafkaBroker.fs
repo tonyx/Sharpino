@@ -83,6 +83,7 @@ module KafkaBroker =
                                             EventId = id
                                             BrokerEvent = StrEvent x
                                         }
+                                        // decide which format will be used (probably binary and then text encoded)
                                         let binPicled = binPicklerSerializer.Serialize x
                                         let jsonPickled = jsonPicklerSerializer.Serialize x
                                         let encoded = Convert.ToBase64String binPicled
@@ -107,6 +108,8 @@ module KafkaBroker =
                                             BrokerEvent = StrEvent x
                                         }
 
+
+                                        // ok go for binary and then text encoded
                                         let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
                                         let encoded = Convert.ToBase64String binPickled
                                         producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
