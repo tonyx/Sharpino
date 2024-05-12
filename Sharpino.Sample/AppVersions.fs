@@ -66,7 +66,7 @@ module AppVersions =
 
     type IApplication =
         {
-            _notify:            Option<Version -> Name -> List<int * Json> -> Result< List<Confluent.Kafka.DeliveryResult<string, string>>, string >>    
+            _notify:            Option<Version -> Name -> List<int * Json> -> List<Confluent.Kafka.DeliveryResult<string, string>>>
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         EventId * Version * List<Json> * Name * ContextStateId -> unit

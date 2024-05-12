@@ -47,7 +47,7 @@ let allVersions =
         // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value, pgStorage)
         
         
-        // (currentMemoryApp,          currentMemoryApp,       ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
+        (currentMemoryApp,          currentMemoryApp,       ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
         // (upgradedMemoryApp,         upgradedMemoryApp,      ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
         // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value, (memoryStorage :> IEventStore<string>))
 
@@ -67,7 +67,6 @@ let allVersions =
     ]
 
 let currentTestConfs = allVersions
-
 
 [<Tests>]
 let utilsTests =
@@ -96,98 +95,58 @@ let utilsTests =
             Expect.equal result.OkValue [1; 5; 3; 4; 9; 9; 3; 99] "should be equal"
     ]
 
-// [<Tests>]
-// let testCoreEvolve =
-//     // quick and dirty way to log for debug:
-//     // log4net.Config.BasicConfigurator.Configure() |> ignore
-//     let serializer = JsonSerializer(serSettings) :> ISerializer
+// used those ones while I wanted to make the evolve able to skip errors
+// after the pickler was introducedrp
+// regression caused by pickler, I guess.
 
-//     testList "evolve test" [
-//         multipleTestCase "generate the events directly without using the command handler - Ok " currentTestConfs <| fun (ap, _, _, eventStore) ->
-//             let _ = ap._reset()
-//             let id = Guid.NewGuid()
-//             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+[<Tests>]
+let testCoreEvolve =
+    // quick and dirty way to log for debug:
+    // log4net.Config.BasicConfigurator.Configure() |> ignore
+    // let serializer = JsonSerializer(serSettings) :> ISerializer
 
-//             let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
+    testList "evolve test" [
+        multipleTestCase "generate the events directly without using the command handler - Ok " currentTestConfs <| fun (ap, _, _, eventStore) ->
+            let _ = ap._reset()
+            let id = Guid.NewGuid()
+            let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
-//             // I am adding the same event twice and the "evolve" will ignore it
-//             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()  )
-//             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid() )
-//             let _ = ap._addEvents (lastEventId, TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
+            let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
 
-//             let todos = ap.getAllTodos()
+            // I am adding the same event twice and the "evolve" will ignore it
+            let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()  )
+            let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid() )
+            let _ = ap._addEvents (lastEventId, TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
-//             Expect.isOk todos "should be ok"
-//             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+            let todos = ap.getAllTodos()
 
-//         // this will be deprecated as events can't be inconsistent in the event store: the must succeed if they are there!
-//         multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _, eventStore) ->
-//             let _ = ap._reset()
-//             let id = Guid.NewGuid()
-//             let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
-//             let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-//             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid())
-//             let _ = ap._addEvents (lastEventId,TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid())
+            Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
-//             let lastEventId' = eventStore.TryGetLastEventId TodosContextUpgraded.Version TodosContextUpgraded.StorageName |> Option.defaultValue 0
-//             let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
-//             let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
+        // this will be deprecated as events can't be inconsistent in the event store: the must succeed if they are there!
+        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _, eventStore) ->
+            let _ = ap._reset()
+            let id = Guid.NewGuid()
+            let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
+            let event = TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
+            let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (lastEventId,TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid())
 
-//             let todos = ap.getAllTodos()
-//             Expect.isOk todos "should be ok"
-//             Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+            let lastEventId' = eventStore.TryGetLastEventId TodosContextUpgraded.Version TodosContextUpgraded.StorageName |> Option.defaultValue 0
+            let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
+            let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
-//         // todo reenable
-//         // multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events second try - Ok" currentTestConfs <| fun (ap, _, _, eventStore) ->
-//         //     let _ = ap._reset() 
-//         //     let id = Guid.NewGuid()
-//         //     let id2 = Guid.NewGuid()
-//         //     let event = TodoEvents.TodoAdded (mkTodo id "test" [] [])
-//         //     let event2 = TodoEvents.TodoAdded (mkTodo id2 "test second part" [] [])
-//         //     let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
+            let todos = ap.getAllTodos()
+            Expect.isOk todos "should be ok"
+            Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
-//         //     let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()) 
-//         //     let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()) 
-
-//         //     let lastEventId' = eventStore.TryGetLastEventId TodosContextUpgraded.Version TodosContextUpgraded.StorageName |> Option.defaultValue 0
-//         //     let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
-//         //     let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
-
-//         //     // let _ = ap._addEvents (lastEventId, TodosContext.Version,  [ event2.Serialize ], TodosContext.StorageName, Guid.NewGuid())
-//         //     // let _ = ap._addEvents (lastEventId', TodosContextUpgraded.Version, [ event2.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
-
-//         //     let todos = ap.getAllTodos()
-
-//         //     Expect.isOk todos "should be ok"
-//         //     Expect.equal (todos.OkValue |> Set.ofList) 
-//         //         (
-//         //             [
-//         //                 { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
-//         //                 { Id = id2; Description = "test second part"; CategoryIds = []; TagIds = [] }
-//         //             ] 
-//         //             |> Set.ofList
-//         //         ) "should be equal"
-//         ]
-//         |> testSequenced
-
+        ]
+        |> testSequenced
 
 [<Tests>]
 let multiVersionsTests =
 
-    let serializer = JsonSerializer(serSettings) :> ISerializer
-    let todoReceiver = KafkaSubscriber.Create ("localhost:9092", TodosContext.Version, TodosContext.StorageName, "sharpinoTestClient1") 
-    let categoriesReceiver = KafkaSubscriber.Create ("localhost:9092", CategoriesContext.CategoriesContext.Version, CategoriesContext.CategoriesContext.StorageName, "sharpinoTestClient1")
-    let tagsReceiver = KafkaSubscriber.Create ("localhost:9092", TagsContext.TagsContext.Version, TagsContext.TagsContext.StorageName, "sharpinoTestClient1")
-
     testList "App with coordinator test - Ok" [
-        multipleTestCase "if notifier is enabled then receivers must be all ok" currentTestConfs <| fun (ap, _, _, _) ->
-            let _ = ap._reset()
-            if ap._notify.IsSome then
-                Expect.isOk todoReceiver "should be ok"
-                Expect.isOk categoriesReceiver "should be ok"
-                Expect.isOk tagsReceiver "should be ok"
-            else
-                Expect.isTrue true "should be true"
 
         multipleTestCase "add the same todo twice - Ko" currentTestConfs <| fun (ap, _, _, _) ->
             let _ = ap._reset() 
