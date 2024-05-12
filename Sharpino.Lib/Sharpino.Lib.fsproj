@@ -83,6 +83,10 @@
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FsKafka\src\FsKafka\FsKafka.fsproj" />
+  </ItemGroup>
+
   <!-- needed if you are developing the core: -->
 <!--  -->
  

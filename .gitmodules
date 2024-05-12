@@ -1,0 +1,3 @@
+[submodule "FsKafka"]
+	path = FsKafka
+	url = https://github.com/tonyx/FsKafka.git
