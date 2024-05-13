@@ -38,8 +38,9 @@ let doNothingBroker: IEventBroker<string> =
         notifyAggregate = None
     }
 
-let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
-let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
+// to be reintroduced
+// let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
+// let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore
 
 // need some rework on the kafka viewer
