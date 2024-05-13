@@ -24,8 +24,8 @@ module CommandHandler =
     open Sharpino.Lib.Core.Commons
     // let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    type StateViewer<'A> = unit -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string>
-    type AggregateViewer<'A> = Guid -> Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>,string>
+    type StateViewer<'A> = unit -> Result<EventId * 'A, string>
+    type AggregateViewer<'A> = Guid -> Result<EventId * 'A,string>
 
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
 
@@ -67,7 +67,7 @@ module CommandHandler =
         =
             fun (id: Guid) -> getAggregateFreshState<'A, 'E, 'F> id eventStore 
 
-    let config = 
+    let config =
         try
             Conf.config ()
         with
@@ -93,7 +93,8 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            let! (id, state, _, _) = stateViewer ()
+                            // let! (id, state, _, _) = stateViewer ()
+                            let! (id, state) = stateViewer ()
                             let serState = state.Serialize
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
                             return result 
@@ -118,7 +119,7 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            let! (eventId, state, _, _) = stateViewer aggregateId 
+                            let! (eventId, state) = stateViewer aggregateId 
                             let serState = state.Serialize 
                             let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
                             return! result 
@@ -173,9 +174,9 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            let (lastEventId, _, _) = 
-                                storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName aggregateId
-                                |> Option.defaultValue (0, None, None)
+                            let lastEventId = 
+                                storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
+                                |> Option.defaultValue 0
                             let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
                             let result =
                                 if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
@@ -201,13 +202,12 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
-        (stateViewer: StateViewer<'A>) // ignore it and get a fresher state directty from the storage
         (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A\n" command)
             async {
                 return
                     result {
-                        let! (eventId, state, _, _) = getFreshState<'A, 'E, 'F> storage
+                        let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
                         let! events =
                             state
                             |> command.Execute
@@ -215,7 +215,7 @@ module CommandHandler =
                             events 
                             |>> fun x -> x.Serialize
                         let! ids =
-                            events' |> storage.AddEvents eventId 'A.Version 'A.StorageName state.StateId
+                            events' |> storage.AddEvents eventId 'A.Version 'A.StorageName 
 
                         if (eventBroker.notify.IsSome) then
                             let f =
@@ -247,7 +247,6 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (stateViewer: StateViewer<'A>)
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
         =
@@ -255,9 +254,7 @@ module CommandHandler =
             async {
                 return
                     result {
-                        // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                        // let! (eventId, state, _, _) = stateViewer ()
-                        let! (eventId, state, _, _) = getFreshState<'A, 'E, 'F> storage
+                        let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
                         let! events = 
                             state
                             |> command.Execute
@@ -265,7 +262,7 @@ module CommandHandler =
                             events 
                             |>> fun x -> x.Serialize
                         let! ids =
-                            events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id initialInstance.StateId 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
+                            events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
 
                         if (eventBroker.notify.IsSome) then
                             let f =
@@ -294,17 +291,13 @@ module CommandHandler =
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>) 
-        (stateViewer: AggregateViewer<'A>)
         (command: Command<'A, 'E>)
         =
-            let stateView = stateViewer aggregateId
             log.Debug (sprintf "runAggregateCommand %A" command)
             async {
                 return
                     result {
-                        // stateview will be forced to be only based on the real eventstore/truth (no other read models as it was previously, wrongly, suggesting)
-                        // let! (eventId, state, _, _) = stateView
-                        let! (eventId, state, _, _) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
+                        let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
                         let! events =
                             state
                             |> command.Execute
@@ -312,7 +305,7 @@ module CommandHandler =
                             events 
                             |>> fun x -> x.Serialize
                         let! ids =
-                            events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id state.StateId  // last one should be state_version_id
+                            events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id // state.StateId  // last one should be state_version_id
 
                         if (eventBroker.notifyAggregate.IsSome) then
                             let f =
@@ -341,7 +334,6 @@ module CommandHandler =
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (stateViewer: AggregateViewer<'A1>) // will remove this
         (commands: List<Command<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
@@ -355,11 +347,11 @@ module CommandHandler =
                                 
                         let states' = 
                             states 
-                            |>> fun (_, state, _, _) -> state
+                            |>> fun (_, state) -> state
 
                         let lastEventIds =
                             states
-                            |>> fun (eventId, _, _, _) -> eventId
+                            |>> fun (eventId, _) -> eventId
 
                         let statesAndCommands =
                             List.zip states' commands
@@ -372,14 +364,10 @@ module CommandHandler =
                         let serializedEvents =
                             events 
                             |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize 
-                            
-                        let aggregateIdsWithStateIds =
-                            List.zip  aggregateIds states'
-                            |>> fun (id, state ) -> (id, state.StateId)
                                 
                         let packParametersForDb =
-                            List.zip3 lastEventIds serializedEvents aggregateIdsWithStateIds
-                            |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A1.Version, 'A1.StorageName, id, stateId)
+                            List.zip3 lastEventIds serializedEvents aggregateIds
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
 
                         let! eventIds =
                             eventStore.MultiAddAggregateEvents packParametersForDb
@@ -427,8 +415,8 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (stateViewer1: AggregateViewer<'A1>) // will ditch this
-        (stateViewer2: AggregateViewer<'A2>) // will ditch this
+        // (stateViewer1: AggregateViewer<'A1>) // will ditch this
+        // (stateViewer2: AggregateViewer<'A2>) // will ditch this
         (command1: List<Command<'A1, 'E1>>)
         (command2: List<Command<'A2, 'E2>>)
         =
@@ -445,19 +433,19 @@ module CommandHandler =
 
                         let states1' =
                             states1 
-                            |>> fun (_, state, _, _) -> state
+                            |>> fun (_, state) -> state
 
                         let states2' =
                             states2 
-                            |>> fun (_, state, _, _) -> state
+                            |>> fun (_, state) -> state
 
                         let eventIds1 =
                             states1
-                            |>> fun (eventId, _, _, _) -> eventId
+                            |>> fun (eventId, _) -> eventId
 
                         let eventIds2 =
                             states2
-                            |>> fun (eventId, _, _, _) -> eventId
+                            |>> fun (eventId, _) -> eventId
 
                         let statesAndCommands1 =
                             List.zip states1' command1
@@ -483,21 +471,13 @@ module CommandHandler =
                             events2 
                             |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
 
-                        let aggregateIdsWithStateIds1 =
-                            List.zip aggregateIds1 states1'
-                            |>> fun (id, state ) -> (id, state.StateId)
-                        
-                        let aggregateIdsWithStateIds2 =
-                            List.zip aggregateIds2 states2'
-                            |>> fun (id, state ) -> (id, state.StateId)
-
                         let packParametersForDb1 =
-                            List.zip3 eventIds1 serializedEvents1 aggregateIdsWithStateIds1
-                            |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A1.Version, 'A1.StorageName, id, stateId)
+                            List.zip3 eventIds1 serializedEvents1 aggregateIds1
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
 
                         let packParametersForDb2 =
-                            List.zip3 eventIds2 serializedEvents2 aggregateIdsWithStateIds2
-                            |>> fun (eventId, events, (id, stateId)) -> (eventId, events, 'A2.Version, 'A2.StorageName, id, stateId)
+                            List.zip3 eventIds2 serializedEvents2 aggregateIds2
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
 
                         let allPacked = packParametersForDb1 @ packParametersForDb2
 
@@ -578,8 +558,8 @@ module CommandHandler =
                 return
                     result {
 
-                        let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> eventStore
-                        let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> eventStore
+                        let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> eventStore
+                        let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> eventStore
 
                         let! events1 =
                             state1
@@ -664,9 +644,9 @@ module CommandHandler =
                 return
                     result {
 
-                        let! (eventId1, state1, _, _) = getFreshState<'A1, 'E1, 'F> storage
-                        let! (eventId2, state2, _, _) = getFreshState<'A2, 'E2, 'F> storage
-                        let! (eventId3, state3, _, _) = getFreshState<'A3, 'E3, 'F> storage
+                        let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> storage
+                        let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> storage
+                        let! (eventId3, state3) = getFreshState<'A3, 'E3, 'F> storage
 
                         let! events1 =
                             state1

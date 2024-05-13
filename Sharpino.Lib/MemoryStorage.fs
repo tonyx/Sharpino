@@ -234,15 +234,13 @@ module MemoryStorage =
                 this.Reset version name
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents _ version name contextStateId xs: Result<List<int>, string> = 
+            member this.AddEvents _ version name xs: Result<List<int>, string> = 
                 log.Debug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
                     [ for e in xs do
                         yield {
                             Id = next_event_id version name
                             JsonEvent = e
-                            KafkaOffset = None
-                            KafkaPartition = None 
                             Timestamp = DateTime.UtcNow
                         }
                     ]
@@ -250,7 +248,7 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> _.Id 
                 ids |> Ok
-            member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+            member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
                 let initialState =
                     {
                         Id = next_snapshot_id aggregateVersion aggregatename
@@ -262,14 +260,7 @@ module MemoryStorage =
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
-                (this:> IEventStore<string>).AddEvents 0 contextVersion contextName contextStateId events
-                
-            member this.SetClassicOptimisticLock version name =
-                // nothing to do with memory db (or maybe yes?)
-                () |> Ok
-            member this.UnSetClassicOptimisticLock version name =
-                // nothing to do with memory db (or maybe yes?)
-                () |> Ok
+                (this:> IEventStore<string>).AddEvents 0 contextVersion contextName events
                 
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
@@ -286,7 +277,8 @@ module MemoryStorage =
                     arg 
                     |> List.map 
                         (fun (_, xs, version, name, contextStateId) ->
-                            (this :> IEventStore<string>).AddEvents 0 version name contextStateId xs |> Result.get
+                            // (this :> IEventStore<string>).AddEvents 0 version name contextStateId xs |> Result.get
+                            (this :> IEventStore<string>).AddEvents 0 version name xs |> Result.get
                         ) 
                 cmds |> Ok
 
@@ -313,7 +305,7 @@ module MemoryStorage =
                         |> List.tryFind (fun x -> x.Id = id)
                     res
 
-            member this.SetInitialAggregateState aggregateId aggregateStateId version name snapshot =
+            member this.SetInitialAggregateState aggregateId version name snapshot =
                 let initialState =
                     {
                         Id = next_snapshot_id version name
@@ -418,55 +410,25 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |>> (fun (id, event) -> id, event)
 
-            member this.SetPublished version name id kafkaOffset partition = 
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
-                    Error (sprintf "not found stream " + version + " " + name)
-                else
-                    let res =
-                        events_dic.[version].[name]
-                        |> List.tryFind (fun x -> x.Id = id)
-                    match res with
-                    | None -> Error (sprintf "element %d not found in stream %s - %s" id version name)
-                    | Some x ->
-                        events_dic.[version].[name]
-                            <- events_dic.[version].[name]
-                                |> List.filter (fun x -> x.Id <> id)
-                                |> List.append
-                                        [
-                                            { x with
-                                                KafkaOffset = kafkaOffset |> Some
-                                                KafkaPartition = partition |> Some }
-                                        ]
-                        Ok ()
-
-            member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId * Guid> ) =
+            member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId> ) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg
                     |> List.map
-                        (fun (_, xs, version, name, aggregateId, aggregateVersionId) ->
-                            (this :> IEventStore<string>).AddAggregateEvents 0 version name aggregateId aggregateVersionId xs |> Result.get
+                        (fun (_, xs, version, name, aggregateId) ->
+                            (this :> IEventStore<string>).AddAggregateEvents 0 version name aggregateId xs |> Result.get
                         )
                 cmds |> Ok        
 
-            member this.TryGetLastEventIdWithKafkaOffSet version name  = 
-                log.Debug (sprintf "TryGetLastEventIdWithKafkaOffSet %s %s" version name)
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
-                    None
-                else
-                    events_dic.[version].[name]
-                    |> List.tryLast
-                    |>> (fun x -> x.Id, x.KafkaOffset, x.KafkaPartition)
-
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddAggregateEvents _ version name aggregateId aggregateStateId events =
+            member this.AddAggregateEvents _ version name aggregateId events =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
                         for e in events do
                             yield {
                                 AggregateId = aggregateId
-                                AggregateStateId = aggregateStateId
+                                // AggregateStateId = aggregateStateId
                                 Id = next_aggregate_event_id version name aggregateId
                                 JsonEvent = e
                                 KafkaOffset = None
@@ -479,7 +441,7 @@ module MemoryStorage =
                 let ids = newEvents |>> _.Id
                 ids |> Ok
                     
-            member this.TryGetLastEventIdByAggregateIdWithKafkaOffSet(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>> =
+            member this.TryGetLastAggregateEventId(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId> =
                 log.Debug (sprintf "TryGetLastEentdByAggregateId %s %s %A"  name version aggregateId)
                 if (aggregate_events_dic.ContainsKey version |> not) then 
                     None
@@ -490,7 +452,7 @@ module MemoryStorage =
                         if (aggregate_events_dic.[version].[name].ContainsKey aggregateId) then
                             aggregate_events_dic.[version].[name].[aggregateId]
                             |> List.tryLast
-                            |>> ( fun x -> ( x.Id, x.KafkaOffset, x.KafkaPartition ))
+                            |>> (fun x ->  x.Id) //, x.KafkaOffset, x.KafkaPartition ))
                         else
                             None 
                 

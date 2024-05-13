@@ -9,15 +9,13 @@ module Storage =
         {
             JsonEvent: 'T
             Id: int
-            KafkaOffset: Option<int64>
-            KafkaPartition: Option<int>
             Timestamp: System.DateTime
         }
         
     type StorageEventJsonRef =
         {
             AggregateId: Guid
-            AggregateStateId: Guid
+            // AggregateStateId: Guid
             JsonEvent: Json
             Id: int
             KafkaOffset: Option<int64>
@@ -61,14 +59,14 @@ module Storage =
 
     type IEventStore<'F> =
         abstract member Reset: Version -> Name -> unit
-        abstract member SetClassicOptimisticLock: Version -> Name -> Result<unit, string>
-        abstract member UnSetClassicOptimisticLock: Version -> Name -> Result<unit, string>
+
         abstract member ResetAggregateStream: Version -> Name -> unit
-        // abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * Json>
+
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * 'F>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
-        abstract member TryGetLastEventIdWithKafkaOffSet: Version -> Name -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
-        abstract member TryGetLastEventIdByAggregateIdWithKafkaOffSet: Version -> Name -> AggregateId -> Option<EventId * Option<KafkaOffset> * Option<KafkaPartitionId>>
+
+        abstract member TryGetLastAggregateEventId: Version -> Name -> AggregateId -> Option<EventId> // * Option<KafkaOffset> * Option<KafkaPartitionId>>
+
         // todo: the following two can be unified
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
@@ -77,19 +75,26 @@ module Storage =
 
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * 'F>
         abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * 'F>
-        // abstract member TryGetEvent: Version -> EventId -> Name -> Option<StorageEventJson>
+
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StoragePgEvent<'F>>
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
-        abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> 'F ->  Result<unit, string>
-        abstract member AddEvents: EventId -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
-        abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> AggregateStateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+        // abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> 'F ->  Result<unit, string>
+        abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
 
-        abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId -> AggregateStateId -> List<'F> -> Result<List<EventId>, string>
+        // abstract member AddEvents: EventId -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+        abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
+
+        // abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> AggregateStateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+        abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+
+        // abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId -> AggregateStateId -> List<'F> -> Result<List<EventId>, string>
+        abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
 
         abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name * ContextStateId>  -> Result<List<List<EventId>>, string>
-        abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId * AggregateStateId>  -> Result<List<List<EventId>>, string>
+        // abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId * AggregateStateId>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId>  -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * 'F >, string >
 
@@ -97,7 +102,6 @@ module Storage =
         abstract member GetAggregateEvents: Version ->  Name -> Guid -> Result< List< EventId * 'F >, string >
 
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * 'F >
-        abstract member SetPublished: Version -> Name -> EventId -> KafkaOffset -> KafkaPartitionId ->  Result<unit, string>
 
     type IEventBroker<'F> =
         {

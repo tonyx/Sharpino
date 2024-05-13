@@ -166,8 +166,6 @@ module PgStorage =
                         {
                             Id = read.int "id"
                             JsonEvent = readAsText read "event"
-                            KafkaOffset = read.int64OrNone "kafkaoffset"
-                            KafkaPartition = read.intOrNone "kafkapartition"
                             Timestamp = read.dateTime "timestamp"
                         }
                     )
@@ -175,21 +173,12 @@ module PgStorage =
                     |> Async.RunSynchronously
                     |> Seq.tryHead
                     
-            member this.AddEvents eventId version name contextStateId events =
+            member this.AddEvents eventId version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
+                // let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
+                let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
                 let conn = new NpgsqlConnection(connection)
-
-                // this trick is not needed anymore: remove it
-                let uniqueStateIds =
-                    [  
-                        for i in 1..events.Length -> 
-                            if i = 1 then contextStateId
-                            else System.Guid.NewGuid()
-                    ]
-
-                let eventsAndStatesIds = List.zip events uniqueStateIds
 
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
@@ -199,12 +188,11 @@ module PgStorage =
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
                                 let ids =
-                                    eventsAndStatesIds
+                                    events
                                     |>>
-                                        fun (event, contextStateId) -> 
+                                        fun event -> 
                                             let command' = new NpgsqlCommand(command, conn)
                                             command'.Parameters.AddWithValue("event", event ) |> ignore
-                                            command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
                                             let result = command'.ExecuteScalar() 
                                             result :?> int
                                 transaction.Commit()
@@ -242,24 +230,15 @@ module PgStorage =
                                 let cmdList = 
                                     arg 
                                     |>>
-                                        fun (eventId, events, version,  name, contextStateId) -> 
+                                        fun (eventId, events, version,  name, _) -> 
                                             let stream_name = version + name
-                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
+                                            // let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
+                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
 
-                                            // this trick is not needed anymore: remove it
-                                            let uniqueContextStateIds =
-                                                [  
-                                                    for i in 1..events.Length -> 
-                                                        if i = 1 then contextStateId
-                                                        else System.Guid.NewGuid()
-                                                ]
-                                            let eventsAndStatesIds = List.zip events uniqueContextStateIds
-                                            // events
-                                            eventsAndStatesIds
+                                            events
                                             |>> 
-                                                fun (event, contextStateId) ->
+                                                fun event ->
                                                     command.Parameters.AddWithValue("event", event ) |> ignore
-                                                    command.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
                                                     let result = command.ExecuteScalar() 
                                                     result :?> int
                                     
@@ -328,10 +307,12 @@ module PgStorage =
                         |> Async.RunSynchronously
                     () |> Ok
 
-            member this.SetInitialAggregateState aggregateId aggregateStateId version name json =
+            member this.SetInitialAggregateState aggregateId version name json =
                 log.Debug "entered in setSnapshot"
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" version name
-                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" version name
+                // let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" version name
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                // let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" version name
+                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 try
                     let _ =
                         connection
@@ -342,7 +323,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
-                                            ("aggregate_state_id", Sql.uuid aggregateStateId);
+                                            // ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlJson json);
                                             ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                         ]
@@ -351,7 +332,7 @@ module PgStorage =
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId)
-                                            ("aggregate_state_id", Sql.uuid aggregateStateId)
+                                            // ("aggregate_state_id", Sql.uuid aggregateStateId)
                                         ]
                                     ]
                             ]
@@ -363,21 +344,15 @@ module PgStorage =
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
 
-            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateStateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
                 log.Debug "entered in setSnapshot"
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" aggregateVersion aggregatename
-                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" aggregateVersion aggregatename
-                let command3 = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" (contextVersion + contextName)
+                // let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" aggregateVersion aggregatename
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
+                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+
+                let command3 = sprintf "SELECT insert%s_event_and_return_id(@event);" (contextVersion + contextName)
                 let conn = new NpgsqlConnection(connection)
 
-                // this trick is not needed anymore: remove it
-                let uniqueStateIds =
-                    [  
-                        for i in 1..events.Length -> 
-                            if i = 1 then contextStateId
-                            else System.Guid.NewGuid()
-                    ]
-                let eventsAndStatesIds = List.zip events uniqueStateIds
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
@@ -386,12 +361,11 @@ module PgStorage =
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
                                 let ids =
-                                    eventsAndStatesIds
+                                    events
                                     |>>
-                                        fun (event, contextStateId) -> 
+                                        fun event -> 
                                             let command' = new NpgsqlCommand(command3, conn)
                                             command'.Parameters.AddWithValue("event", event ) |> ignore
-                                            command'.Parameters.AddWithValue("@context_state_id", contextStateId ) |> ignore
                                             let result = command'.ExecuteScalar() 
                                             result :?> int
                                 let _ =
@@ -403,7 +377,7 @@ module PgStorage =
                                                 [
                                                     [
                                                         ("@aggregate_id", Sql.uuid aggregateId);
-                                                        ("aggregate_state_id", Sql.uuid aggregateStateId);
+                                                        // ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                         ("snapshot",  sqlJson json);
                                                         ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                                     ]
@@ -412,7 +386,7 @@ module PgStorage =
                                                 [
                                                     [
                                                         ("@aggregate_id", Sql.uuid aggregateId)
-                                                        ("aggregate_state_id", Sql.uuid aggregateStateId)
+                                                        // ("aggregate_state_id", Sql.uuid aggregateStateId)
                                                     ]
                                                 ]
                                         ]
@@ -550,153 +524,47 @@ module PgStorage =
                     | _ as ex ->
                         log.Error (sprintf "TryGetLastAggregateSnapshotEventId an error occurred: %A" ex.Message)
                         None
-                
-            member this.SetPublished version name id kafkaOffset partition =
-                try
-                    let streamName = version + name
-                    let updateQuery = sprintf "UPDATE events%s SET published = true, kafkaoffset = '%d', kafkapartition = '%d' WHERE id = '%d'"  streamName kafkaOffset partition id
-                    connection 
-                    |> Sql.connect
-                    |> Sql.query updateQuery
-                    |> Sql.executeNonQueryAsync
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    |> ignore
-                    |> Ok
-                with
-                | _ ->
-                    Error("Not persisted")
 
-            member this.TryGetLastEventIdByAggregateIdWithKafkaOffSet version name aggregateId =
+            member this.TryGetLastAggregateEventId version name aggregateId =
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
-                let query = sprintf "SELECT id, kafkaoffset, kafkapartition FROM events%s%s where aggregate_id = '%A' ORDER BY id DESC LIMIT 1" version name aggregateId
+                let query = sprintf "SELECT id FROM events%s%s where aggregate_id = '%A' ORDER BY id DESC LIMIT 1" version name aggregateId
                 connection
                 |> Sql.connect
                 |> Sql.query query 
                 |> Sql.executeAsync  (fun read ->
                         (
-                            read.int "id",
-                            read.int64OrNone "kafkaoffset",
-                            read.intOrNone "kafkapartition"
+                            read.int "id"
                         )     
                     )
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Seq.tryHead
-            member this.TryGetLastEventIdWithKafkaOffSet version name =
-                log.Debug (sprintf "TryGetLastEventId %s %s" version name)
-                let query = sprintf "SELECT id, kafkaoffset, kafkapartition FROM events%s%s ORDER BY id DESC LIMIT 1" version name
-                connection
-                |> Sql.connect
-                |> Sql.query query 
-                |> Sql.executeAsync  (fun read ->
-                        (
-                            read.int "id",
-                            read.int64OrNone "kafkaoffset",
-                            read.intOrNone "kafkapartition"
-                        )     
-                    )
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Seq.tryHead
-            
-            [<Obsolete("Don't. Will not be able to set/unset lock type on the fly anymore")>]
-            member this.SetClassicOptimisticLock version name =
-                log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
-                let command = sprintf "CALL set_classic_optimistic_lock%s%s()" version name
-                let conn = new NpgsqlConnection(connection)
-                conn.Open()
-                let transaction = conn.BeginTransaction() 
-                async {
-                    let result =
-                        try
-                            let _ =
-                                connection
-                                |> Sql.connect
-                                |> Sql.query command
-                                |> Sql.executeNonQueryAsync
-                                |> Async.AwaitTask
-                                |> Async.RunSynchronously
-                                |> ignore
-                            transaction.Commit()
-                            () |> Ok
-                        with
-                            | _ as ex -> 
-                                log.Error (sprintf "an error occurred: %A" ex.Message)
-                                transaction.Rollback()
-                                ex.Message |> Error
-                    try
-                        return result
-                    finally
-                        conn.Close()
-                }
-                |> Async.RunSynchronously
                 
-
-            [<Obsolete("Don't. Will not be able to set/unset lock type on the fly anymore")>]
-            member this.UnSetClassicOptimisticLock version name =
-                log.Debug (sprintf "SetClassicOptimisticLock %s %s " version name)
-                let command = sprintf "CALL un_set_classic_optimistic_lock%s%s()" version name
-                let conn = new NpgsqlConnection(connection)
-                conn.Open()
-                let transaction = conn.BeginTransaction() 
-                async {
-                    let result = 
-                        try
-                            let _ =
-                                connection
-                                |> Sql.connect
-                                |> Sql.query command
-                                |> Sql.executeNonQueryAsync
-                                |> Async.AwaitTask
-                                |> Async.RunSynchronously
-                                |> ignore
-                            transaction.Commit()
-                            () |> Ok
-                        with
-                            | _ as ex -> 
-                                log.Error (sprintf "an error occurred: %A" ex.Message)
-                                transaction.Rollback()
-                                ex.Message |> Error
-                    try
-                        return result
-                    finally
-                        conn.Close()
-                }
-                |> Async.RunSynchronously
-                
-            member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (aggregateStateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
+            // member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (aggregateStateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
+            member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name
+                // let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name
+                let command = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name
                 let conn = new NpgsqlConnection(connection)
 
-                // this trick is not needed anymore: remove it
-                let uniqueStateIds =
-                    [  
-                        for i in 1..events.Length -> 
-                            if i = 1 then aggregateStateId
-                            else System.Guid.NewGuid()
-                    ]
-                let eventsAndAggregateStateId = List.zip events uniqueStateIds
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 let lastEventId = 
-                    (this :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet version name aggregateId
-                    |>> (fun (x, _, _) -> x)
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
+                    |>> (fun x -> x)
                 async {
                     let result =
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
                                 let ids =
-                                    eventsAndAggregateStateId
+                                    events 
                                     |>> 
                                         (
-                                            fun (x, aggregateStateId) -> 
+                                            fun x ->
                                                 let command' = new NpgsqlCommand(command, conn)
                                                 command'.Parameters.AddWithValue("event", x ) |> ignore
                                                 command'.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                command'.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
                                                 let result = command'.ExecuteScalar() 
                                                 result :?> int
                                         )
@@ -717,7 +585,7 @@ module PgStorage =
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddAggregateEvents (arg: List<EventId * List<Json> * Version * Name * System.Guid * System.Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<EventId * List<Json> * Version * Name * System.Guid>) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
@@ -727,12 +595,12 @@ module PgStorage =
                 let lastEventIds =
                     arg 
                     |>> 
-                    fun (_, _, version, name, aggregateId, _) -> 
-                        ((this :> IEventStore<string>).TryGetLastEventIdByAggregateIdWithKafkaOffSet version name aggregateId) |>> (fun (x, _, _) ->    x)
+                    fun (_, _, version, name, aggregateId) -> 
+                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId) |>> (fun x -> x)
 
                 let eventIds = 
                     arg
-                    |>> fun (eventId, _, _, _, _, _) -> eventId
+                    |>> fun (eventId, _, _, _, _) -> eventId
 
                 let checks = 
                     List.zip lastEventIds eventIds
@@ -745,25 +613,17 @@ module PgStorage =
                                 let cmdList = 
                                     arg 
                                     |>>
-                                        fun (eventId, events, version,  name, aggregateId, aggregateStateId) ->
+                                        fun (_, events, version,  name, aggregateId) ->
                                             let stream_name = version + name
-                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
+                                            // let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
+                                            let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
 
-                                            // this trick is not needed anymore: remove it
-                                            let uniqueAggregateStateIds =
-                                                [  
-                                                    for i in 1..events.Length -> 
-                                                        if i = 1 then aggregateStateId
-                                                        else System.Guid.NewGuid()
-                                                ]
-                                            let eventsAndStatesIds = List.zip events uniqueAggregateStateIds
-                                            eventsAndStatesIds
+                                            events
                                             |>> 
-                                                fun (event, aggregateStateId) ->
+                                                fun event ->
                                                     (
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                        command.Parameters.AddWithValue("@aggregate_state_id", aggregateStateId ) |> ignore
                                                         let result = command.ExecuteScalar() 
                                                         result :?> int
                                                     )

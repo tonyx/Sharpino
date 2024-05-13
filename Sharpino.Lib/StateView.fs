@@ -192,7 +192,8 @@ module StateView =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
         >
-        (storage: IEventStore<'F>): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
+        // (storage: IEventStore<'F>): Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> = 
+        (storage: IEventStore<'F>) =
             log.Debug (sprintf "getFreshState %s - %s" 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
@@ -208,11 +209,13 @@ module StateView =
                     }
 
             // remove kafka info always
-            let (lastEventId, _, _) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
+            // let (lastEventId, _, _) = storage.TryGetLastEventIdWithKafkaOffSet 'A.Version 'A.StorageName |> Option.defaultValue (0, None, None)
+            let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
             let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
             match state with
             | Ok state' -> 
-                (lastEventId, state', None, None) |> Ok
+                // (lastEventId, state', None, None) |> Ok
+                (lastEventId, state') |> Ok
             | Error e -> 
                 log.Error (sprintf "getState: %s" e)
                 Error e
@@ -226,7 +229,8 @@ module StateView =
         >
         (id: Guid)
         (storage: IEventStore<'F>)
-        : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
+        =
+        // : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
@@ -241,11 +245,12 @@ module StateView =
                         return newState
                     }
             // remove kafka info always
-            let (lastEventId, _, _) = storage.TryGetLastEventIdByAggregateIdWithKafkaOffSet 'A.Version 'A.StorageName  id |> Option.defaultValue (0, None, None)
+            let lastEventId = storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
-                (lastEventId, state, None, None) |> Ok
+                // (lastEventId, state, None, None) |> Ok
+                (lastEventId, state) |> Ok
             | Error e -> 
                 log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
