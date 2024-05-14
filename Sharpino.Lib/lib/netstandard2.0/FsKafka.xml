@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<doc>
+<assembly><name>FsKafka</name></assembly>
+<members>
+<member name="P:FsKafka.BatchedConsumer.Status">
+<summary>
+ Inspects current status of processing task
+</summary>
+</member>
+<member name="M:FsKafka.BatchedConsumer.Stop">
+<summary>
+ Request cancellation of processing
+</summary>
+</member>
+<member name="M:FsKafka.BatchedConsumer.StartByKey(Serilog.ILogger,FsKafka.KafkaConsumerConfig,System.Int32,Microsoft.FSharp.Core.FSharpFunc{Confluent.Kafka.ConsumeResult{System.String,System.String}[],Microsoft.FSharp.Control.FSharpAsync{Microsoft.FSharp.Core.Unit}})">
+<summary>
+ Starts a Kafka consumer instance that schedules handlers grouped by message key. Additionally accepts a global degreeOfParallelism parameter
+ that controls the number of handlers running concurrently across partitions for the given consumer instance.
+</summary>
+</member>
+<member name="M:FsKafka.BatchedConsumer.Start(Serilog.ILogger,FsKafka.KafkaConsumerConfig,Microsoft.FSharp.Core.FSharpFunc{Confluent.Kafka.ConsumeResult{System.String,System.String}[],Microsoft.FSharp.Control.FSharpAsync{Microsoft.FSharp.Core.Unit}})">
+<summary>
+ Starts a Kafka consumer with the provided configuration. Batches are grouped by topic partition.
+ Batches belonging to the same topic partition will be scheduled sequentially and monotonically; however batches from different partitions can run concurrently.
+ Completion of the `partitionHandler` saves the attained offsets so the auto-commit can mark progress; yielding an exception terminates the processing
+</summary>
+</member>
+<member name="M:FsKafka.BatchedConsumer.AwaitWithStopOnCancellation">
+<summary>
+ Asynchronously awaits until this consumer stops or is faulted.&lt;br/&gt;
+ Reacts to cancellation by Stopping the Consume loop cia &lt;c&gt;Stop()&lt;/c&gt;; see &lt;c&gt;AwaitShutdown&lt;/c&gt; if such semantics are not desired.
+</summary>
+</member>
+<member name="M:FsKafka.BatchedConsumer.AwaitShutdown">
+<summary>
+ Asynchronously awaits until consume loop stops or is faulted. &lt;br/&gt;
+ NOTE: does not Stop the consumer in response to Cancellation; see &lt;c&gt;AwaitWithStopOnCancellation&lt;/c&gt; for such a mechanism
+</summary>
+</member>
+<member name="T:FsKafka.BatchedConsumer">
+<summary>
+ Creates and wraps a Confluent.Kafka IConsumer, wrapping it to afford a batched consumption mode with implicit offset progression at the end of each
+ (parallel across partitions, sequenced/monotonic within) batch of processing carried out by the `partitionHandler`
+ Conclusion of the processing (when a `partitionHandler` throws and/or `Stop()` is called) can be awaited via &lt;c&gt;AwaitShutdown&lt;/c&gt; or &lt;c&gt;AwaitWithStopOnCancellation&lt;/c&gt;.
+</summary>
+</member>
+<member name="M:FsKafka.KafkaConsumerConfig.Create``1(System.String,System.String,System.Collections.Generic.IEnumerable{System.String},System.String,Confluent.Kafka.AutoOffsetReset,Microsoft.FSharp.Core.FSharpOption{System.Int32},Microsoft.FSharp.Core.FSharpOption{System.Int32},Microsoft.FSharp.Core.FSharpOption{System.Nullable{System.Int32}},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.Boolean},Microsoft.FSharp.Core.FSharpOption{System.Collections.Generic.IDictionary{System.String,System.String}},Microsoft.FSharp.Core.FSharpOption{``0},Microsoft.FSharp.Core.FSharpOption{Microsoft.FSharp.Core.FSharpFunc{Confluent.Kafka.ConsumerConfig,Microsoft.FSharp.Core.Unit}},Microsoft.FSharp.Core.FSharpOption{System.Int64},Microsoft.FSharp.Core.FSharpOption{System.Int64},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.Int32})">
+<summary>
+ Builds a Kafka Consumer Config suitable for KafkaConsumer.Start*
+</summary>
+</member>
+<member name="T:FsKafka.KafkaConsumerConfig">
+<summary>
+ See https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for documentation on the implications of specific settings
+</summary>
+</member>
+<member name="M:FsKafka.BatchedProducer.ProduceBatch(System.Collections.Generic.IEnumerable{System.Tuple{System.String,System.String,System.Collections.Generic.IEnumerable{System.Tuple{System.String,System.Byte[]}}}})">
+ <summary>
+ Produces a batch of messages with supplied key/value/headers. 
+ See the other overload.
+ </summary>
+</member>
+<member name="M:FsKafka.BatchedProducer.ProduceBatch(System.Collections.Generic.IEnumerable{System.Tuple{System.String,System.String}})">
+ <summary>
+ Produces a batch of supplied key/value messages. 
+ See the other overload.
+ </summary>
+</member>
+<member name="M:FsKafka.BatchedProducer.ProduceBatch(Confluent.Kafka.Message{System.String,System.String}[])">
+ <summary>
+ Produces a batch of supplied key/value messages. Results are returned in order of writing (which may vary from order of submission).
+ </summary>
+ <throws>
+    1. if there is an immediate local config issue
+    2. upon receipt of the first failed `DeliveryReport` (NB without waiting for any further reports, which can potentially leave some results in doubt should a 'batch' get split) </throws>
+ <remarks>
+    Note that the delivery and/or write order may vary from the supplied order unless `maxInFlight` is 1 (which massively constrains throughput).
+    Thus it's important to note that supplying >1 item into the queue bearing the same key without maxInFlight=1 risks them being written out of order onto the topic.
+ </remarks>
+</member>
+<member name="M:FsKafka.BatchedProducer.Create(Serilog.ILogger,FsKafka.KafkaProducerConfig,System.String)">
+<summary>
+ Creates and wraps a Confluent.Kafka Producer that affords a best effort batched production mode.
+ NB See caveats on the `ProduceBatch` API for further detail as to the semantics
+ Throws ArgumentOutOfRangeException if config has a non-zero linger value as this is absolutely critical to the semantics
+</summary>
+</member>
+<member name="M:FsKafka.KafkaProducer.ProduceAsync(System.String,System.String)">
+ <summary> Produces a single message, yielding a response upon completion/failure of the ack (>3ms to complete)</summary>
+ <remarks>
+ There's no assurance of ordering [without dropping `maxInFlight` down to `1` and annihilating throughput].
+ Thus its critical to ensure you don't submit another message for the same key until you've had a success / failure 
+ response from the call.
+ </remarks>
+</member>
+<member name="M:FsKafka.KafkaProducer.ProduceAsync(System.String,System.String,System.Collections.Generic.IEnumerable{System.Tuple{System.String,System.Byte[]}})">
+ <summary> Produces a single message, yielding a response upon completion/failure of the ack (>3ms to complete)</summary>
+ <remarks>
+ There's no assurance of ordering [without dropping `maxInFlight` down to `1` and annihilating throughput].
+ Thus its critical to ensure you don't submit another message for the same key until you've had a success / failure 
+ response from the call.
+ </remarks>
+</member>
+<member name="M:FsKafka.KafkaProducer.ProduceAsync(Confluent.Kafka.Message{System.String,System.String})">
+ <summary> Produces a single message, yielding a response upon completion/failure of the ack (>3ms to complete)</summary>
+ <remarks>
+ There's no assurance of ordering [without dropping `maxInFlight` down to `1` and annihilating throughput].
+ Thus its critical to ensure you don't submit another message for the same key until you've had a success / failure 
+ response from the call.
+ </remarks>
+</member>
+<member name="T:FsKafka.KafkaProducer">
+<summary>
+ Creates and wraps a Confluent.Kafka Producer with the supplied configuration
+</summary>
+</member>
+<member name="M:FsKafka.KafkaProducerConfig.Create``1(System.String,System.String,Confluent.Kafka.Acks,FsKafka.Batching,Microsoft.FSharp.Core.FSharpOption{Confluent.Kafka.CompressionType},Microsoft.FSharp.Core.FSharpOption{System.Int32},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.TimeSpan},Microsoft.FSharp.Core.FSharpOption{System.Boolean},Microsoft.FSharp.Core.FSharpOption{Confluent.Kafka.Partitioner},Microsoft.FSharp.Core.FSharpOption{System.Int32},Microsoft.FSharp.Core.FSharpOption{System.Collections.Generic.IDictionary{System.String,System.String}},Microsoft.FSharp.Core.FSharpOption{``0},Microsoft.FSharp.Core.FSharpOption{Microsoft.FSharp.Core.FSharpFunc{Confluent.Kafka.ProducerConfig,Microsoft.FSharp.Core.Unit}})">
+<summary>
+ Creates and wraps a Confluent.Kafka ProducerConfig with the specified settings
+</summary>
+</member>
+<member name="T:FsKafka.KafkaProducerConfig">
+<summary>
+ See https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md for documentation on the implications of specific settings
+</summary>
+</member>
+<member name="T:FsKafka.Batching.Custom">
+<summary>
+ Apply custom-defined settings. Not recommended.
+ NB Having a &lt;&gt; 1 value for maxInFlight runs two risks due to the intrinsic lack of batching mechanisms within the Confluent.Kafka client:
+ 1) items within the initial &apos;batch&apos; can get written out of order in the face of timeouts and/or retries
+ 2) items beyond the linger period may enter a separate batch, which can potentially get scheduled for transmission out of order
+</summary>
+</member>
+<member name="T:FsKafka.Batching.BestEffortSerial">
+<summary>
+ Use in conjunction with BatchedProducer.ProduceBatch to to obtain best-effort batching semantics (see comments in BatchedProducer for more detail)
+ Uses maxInFlight=1 batch so failed transmissions should be much less likely to result in broker appending items out of order
+</summary>
+</member>
+<member name="T:FsKafka.Batching.Linger">
+<summary>
+ Produce individually, lingering for throughput+compression. Confluent.Kafka &lt; 1.5 default: 0.5ms. Confluent.Kafka &gt;= 1.5 default: 5ms
+</summary>
+</member>
+<member name="T:FsKafka.Batching">
+<summary>
+ Defines config/semantics for grouping of messages into message sets in order to balance:
+ - Latency per produce call
+ - Using maxInFlight=1 to prevent message sets getting out of order in the case of failure
+</summary>
+</member>
+<member name="M:FsKafka.KafkaMonitor`2.remove_OnStatus(Microsoft.FSharp.Control.FSharpHandler{System.Tuple{System.String,Microsoft.FSharp.Collections.FSharpList{System.Tuple{System.Int32,FsKafka.PartitionResult}}}})">
+<summary>
+ Periodically supplies the status for all assigned partitions (whenever we&apos;ve gathered `windowSize` of readings)
+ Subscriber can e.g. use this to force a consumer restart if no progress is being made
+</summary>
+</member>
+<member name="M:FsKafka.KafkaMonitor`2.remove_OnCheckFailed(Microsoft.FSharp.Control.FSharpHandler{System.Tuple{System.String,System.Int32,System.Exception}})">
+<summary>
+ Raised whenever call to broker to ascertain watermarks has failed
+ Subscriber can e.g. raise an alert if enough consecutive failures have occurred
+</summary>
+</member>
+<member name="P:FsKafka.KafkaMonitor`2.OnStatus">
+<summary>
+ Periodically supplies the status for all assigned partitions (whenever we&apos;ve gathered `windowSize` of readings)
+ Subscriber can e.g. use this to force a consumer restart if no progress is being made
+</summary>
+</member>
+<member name="P:FsKafka.KafkaMonitor`2.OnCheckFailed">
+<summary>
+ Raised whenever call to broker to ascertain watermarks has failed
+ Subscriber can e.g. raise an alert if enough consecutive failures have occurred
+</summary>
+</member>
+<member name="M:FsKafka.KafkaMonitor`2.add_OnStatus(Microsoft.FSharp.Control.FSharpHandler{System.Tuple{System.String,Microsoft.FSharp.Collections.FSharpList{System.Tuple{System.Int32,FsKafka.PartitionResult}}}})">
+<summary>
+ Periodically supplies the status for all assigned partitions (whenever we&apos;ve gathered `windowSize` of readings)
+ Subscriber can e.g. use this to force a consumer restart if no progress is being made
+</summary>
+</member>
+<member name="M:FsKafka.KafkaMonitor`2.add_OnCheckFailed(Microsoft.FSharp.Control.FSharpHandler{System.Tuple{System.String,System.Int32,System.Exception}})">
+<summary>
+ Raised whenever call to broker to ascertain watermarks has failed
+ Subscriber can e.g. raise an alert if enough consecutive failures have occurred
+</summary>
+</member>
+<member name="M:FsKafka.KafkaMonitor`2.Start(Confluent.Kafka.IConsumer{`0,`1},System.String)">
+<summary>
+ Commences a monitoring task per subscribed topic 
+</summary>
+</member>
+<member name="T:FsKafka.KafkaMonitor`2">
+<summary>
+ Used to manage a set of background tasks that periodically (based on `interval`) grab the broker&apos;s recorded high/low watermarks
+ and then map that to a per-partition status for each partition that the consumer being observed has been assigned
+</summary>
+</member>
+<member name="M:FsKafka.AsyncHelpers.Async.AwaitTaskCorrect.Static(System.Threading.Tasks.Task)">
+ <summary>
+     Gets the result of given task so that in the event of exception
+     the actual user exception is raised as opposed to being wrapped
+     in a System.AggregateException.
+ </summary>
+ <param name="task">Task to be awaited.</param>
+</member>
+<member name="M:FsKafka.AsyncHelpers.Async.AwaitTaskCorrect.Static``1(System.Threading.Tasks.Task{``0})">
+ <summary>
+     Gets the result of given task so that in the event of exception
+     the actual user exception is raised as opposed to being wrapped
+     in a System.AggregateException.
+ </summary>
+ <param name="task">Task to be awaited.</param>
+</member>
+<member name="M:FsKafka.ConsumerImpl.approximateMessageBytes(Confluent.Kafka.ConsumeResult{System.String,System.String})">
+<summary>
+ guesstimate approximate message size in bytes
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.messageCount">
+<summary>
+ The number of messages in the partition.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.lead">
+<summary>
+ The distance between the consumer offset and the earliest offset.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.lag">
+<summary>
+ The distance between the high watermark offset and the consumer offset.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.highWatermarkOffset">
+<summary>
+ The offset at the current end of the topic.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.earliestOffset">
+<summary>
+ The offset at the current start of the topic.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.consumerOffset">
+<summary>
+ The consumer&apos;s current offset.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo.partition">
+<summary>
+ The partition id within the topic.
+</summary>
+</member>
+<member name="T:FsKafka.MonitorImpl.ConsumerPartitionProgressInfo">
+<summary>
+ Progress information for a consumer in a group, for a specific topic-partition.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerProgressInfo.minLead">
+<summary>
+ The minimum lead across all partitions.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerProgressInfo.totalLag">
+<summary>
+ The total lag across all partitions.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerProgressInfo.partitions">
+<summary>
+ Progress info for each partition.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerProgressInfo.topic">
+<summary>
+ The name of the kafka topic.
+</summary>
+</member>
+<member name="P:FsKafka.MonitorImpl.ConsumerProgressInfo.group">
+<summary>
+ The consumer group id.
+</summary>
+</member>
+<member name="T:FsKafka.MonitorImpl.ConsumerProgressInfo">
+<summary>
+ Progress information for a consumer in a group.
+</summary>
+</member>
+<member name="M:FsKafka.MonitorImpl.ConsumerInfo.progress``2(System.TimeSpan,Confluent.Kafka.IConsumer{``0,``1},System.String,System.Int32[])">
+<summary>
+ Returns consumer progress information.
+ Note that this does not join the group as a consumer instance
+</summary>
+</member>
+<member name="T:FsKafka.MonitorImpl.ConsumerInfo">
+<summary>
+ Operations for providing consumer progress information.
+</summary>
+</member>
+</members>
+</doc>
