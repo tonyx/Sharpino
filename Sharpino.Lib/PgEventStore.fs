@@ -176,7 +176,6 @@ module PgStorage =
             member this.AddEvents eventId version name events =
                 log.Debug (sprintf "AddEvents %s %s %A" version name events)
                 let stream_name = version + name
-                // let command = sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name
                 let command = sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name
                 let conn = new NpgsqlConnection(connection)
 
@@ -209,18 +208,17 @@ module PgStorage =
                         return result
                     finally
                         conn.Close()
-
                 }
                 |> Async.RunSynchronously
 
-            member this.MultiAddEvents (arg: List<EventId * List<Json> * Version * Name * ContextStateId>) =
+            member this.MultiAddEvents (arg: List<EventId * List<Json> * Version * Name>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction() 
                 async {
                     let lastEventIdsPerContext =
-                        arg |>> (fun (eventId, _, version, name, _) -> (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
+                        arg |>> (fun (eventId, _, version, name) -> (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
                     let checkIds =
                         lastEventIdsPerContext
                         |> List.forall (fun (eventId, lastEventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
@@ -230,9 +228,9 @@ module PgStorage =
                                 let cmdList = 
                                     arg 
                                     |>>
-                                        fun (eventId, events, version,  name, _) -> 
+                                        // take this opportunity to evaluate if eventId cold be managed by the db function to do the check
+                                        fun (eventId, events, version,  name) -> 
                                             let stream_name = version + name
-                                            // let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @context_state_id);" stream_name, conn)
                                             let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
 
                                             events
@@ -309,30 +307,26 @@ module PgStorage =
 
             member this.SetInitialAggregateState aggregateId version name json =
                 log.Debug "entered in setSnapshot"
-                // let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" version name
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                // let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id, aggregate_state_id) VALUES (@aggregate_id, @aggregate_state_id)" version name
-                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 try
                     let _ =
                         connection
                         |> Sql.connect
                         |> Sql.executeTransactionAsync
                             [
-                                command,
+                                insertSnapshot,
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId);
-                                            // ("aggregate_state_id", Sql.uuid aggregateStateId);
                                             ("snapshot",  sqlJson json);
                                             ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                         ]
                                     ]
-                                command2,
+                                firstEmptyAggregateEvent,
                                     [
                                         [
                                             ("@aggregate_id", Sql.uuid aggregateId)
-                                            // ("aggregate_state_id", Sql.uuid aggregateStateId)
                                         ]
                                     ]
                             ]
@@ -344,13 +338,13 @@ module PgStorage =
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
 
-            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename json contextVersion contextName events =
                 log.Debug "entered in setSnapshot"
-                // let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, aggregate_state_id, snapshot, timestamp) VALUES (@aggregate_id, @aggregate_state_id, @snapshot, @timestamp)" aggregateVersion aggregatename
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
-                let command2 = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
 
-                let command3 = sprintf "SELECT insert%s_event_and_return_id(@event);" (contextVersion + contextName)
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
+                let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+
+                let insertEvents = sprintf "SELECT insert%s_event_and_return_id(@event);" (contextVersion + contextName)
                 let conn = new NpgsqlConnection(connection)
 
                 conn.Open()
@@ -364,7 +358,7 @@ module PgStorage =
                                     events
                                     |>>
                                         fun event -> 
-                                            let command' = new NpgsqlCommand(command3, conn)
+                                            let command' = new NpgsqlCommand(insertEvents, conn)
                                             command'.Parameters.AddWithValue("event", event ) |> ignore
                                             let result = command'.ExecuteScalar() 
                                             result :?> int
@@ -373,20 +367,18 @@ module PgStorage =
                                     |> Sql.connect
                                     |> Sql.executeTransactionAsync
                                         [
-                                            command,
+                                            insertSnapshot,
                                                 [
                                                     [
                                                         ("@aggregate_id", Sql.uuid aggregateId);
-                                                        // ("aggregate_state_id", Sql.uuid aggregateStateId);
                                                         ("snapshot",  sqlJson json);
                                                         ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
                                                     ]
                                                 ]
-                                            command2,
+                                            insertFirstEmptyAggregateEvent,
                                                 [
                                                     [
                                                         ("@aggregate_id", Sql.uuid aggregateId)
-                                                        // ("aggregate_state_id", Sql.uuid aggregateStateId)
                                                     ]
                                                 ]
                                         ]
@@ -442,7 +434,6 @@ module PgStorage =
             
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                // use now() at the stored procedure add events level  and pass the utcnow here. So it will work
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 connection
                 |> Sql.connect
@@ -615,7 +606,6 @@ module PgStorage =
                                     |>>
                                         fun (_, events, version,  name, aggregateId) ->
                                             let stream_name = version + name
-                                            // let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id, @aggregate_state_id);" stream_name, conn)
                                             let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
 
                                             events
@@ -646,7 +636,7 @@ module PgStorage =
                 |> Async.RunSynchronously
 
             member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * Json>,string> = 
-                // log.Debug (sprintf "GetEventsAfterIdrefactorer %s %s %A %d" version name aggregateId id)
+                log.Debug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
                 try 
                     connection

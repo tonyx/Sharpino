@@ -48,6 +48,7 @@ module Storage =
     type KafkaOffset = int64
     type KafkaPartitionId = int
 
+    [<Obsolete "use IEventStore and Postgres/InMemory">]
     type ILightStorage =
         abstract member AddEvents: Version -> List<'E> -> Name -> Result<unit, string>
         abstract member ResetEvents: Version -> Name -> unit
@@ -83,17 +84,15 @@ module Storage =
         // abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> 'F ->  Result<unit, string>
         abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
 
-        // abstract member AddEvents: EventId -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
         abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
 
-        // abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> AggregateStateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
-        abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+        // abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
+        abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
 
-        // abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId -> AggregateStateId -> List<'F> -> Result<List<EventId>, string>
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
 
-        abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name * ContextStateId>  -> Result<List<List<EventId>>, string>
-        // abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId * AggregateStateId>  -> Result<List<List<EventId>>, string>
+        // abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name * ContextStateId>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name>  -> Result<List<List<EventId>>, string>
         abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId>  -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * 'F >, string >

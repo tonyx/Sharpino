@@ -248,7 +248,7 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> _.Id 
                 ids |> Ok
-            member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateVersion aggregatename json contextVersion contextName contextStateId events =
+            member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateVersion aggregatename json contextVersion contextName events =
                 let initialState =
                     {
                         Id = next_snapshot_id aggregateVersion aggregatename
@@ -271,13 +271,12 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-            member this.MultiAddEvents (arg: List< _ * List<Json> * Version * Name * ContextStateId >) =
+            member this.MultiAddEvents (arg: List< _ * List<Json> * Version * Name>) =
                 log.Debug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
                     |> List.map 
-                        (fun (_, xs, version, name, contextStateId) ->
-                            // (this :> IEventStore<string>).AddEvents 0 version name contextStateId xs |> Result.get
+                        (fun (_, xs, version, name) ->
                             (this :> IEventStore<string>).AddEvents 0 version name xs |> Result.get
                         ) 
                 cmds |> Ok
@@ -428,7 +427,6 @@ module MemoryStorage =
                         for e in events do
                             yield {
                                 AggregateId = aggregateId
-                                // AggregateStateId = aggregateStateId
                                 Id = next_aggregate_event_id version name aggregateId
                                 JsonEvent = e
                                 KafkaOffset = None

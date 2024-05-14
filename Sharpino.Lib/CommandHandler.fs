@@ -93,7 +93,6 @@ module CommandHandler =
                 return
                     ResultCE.result
                         {
-                            // let! (id, state, _, _) = stateViewer ()
                             let! (id, state) = stateViewer ()
                             let serState = state.Serialize
                             let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
@@ -193,7 +192,6 @@ module CommandHandler =
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (member Serialize: 'F)
-        and 'A: (member StateId: Guid)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
         and 'E :> Event<'A>
@@ -237,7 +235,6 @@ module CommandHandler =
         and 'A: (member Serialize: 'F)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)
-        and 'A: (member StateId: Guid)
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
@@ -262,7 +259,7 @@ module CommandHandler =
                             events 
                             |>> fun x -> x.Serialize
                         let! ids =
-                            events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName state.StateId
+                            events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName 
 
                         if (eventBroker.notify.IsSome) then
                             let f =
@@ -305,7 +302,7 @@ module CommandHandler =
                             events 
                             |>> fun x -> x.Serialize
                         let! ids =
-                            events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id // state.StateId  // last one should be state_version_id
+                            events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id 
 
                         if (eventBroker.notifyAggregate.IsSome) then
                             let f =
@@ -415,8 +412,6 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        // (stateViewer1: AggregateViewer<'A1>) // will ditch this
-        // (stateViewer2: AggregateViewer<'A2>) // will ditch this
         (command1: List<Command<'A1, 'E1>>)
         (command2: List<Command<'A2, 'E2>>)
         =
@@ -526,7 +521,6 @@ module CommandHandler =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: 'F)
-        and 'A1: (member StateId: Guid)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
@@ -536,7 +530,6 @@ module CommandHandler =
         and 'A2: (static member Version: string)
         and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (static member SnapshotsInterval : int)
-        and 'A2: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
@@ -549,8 +542,7 @@ module CommandHandler =
 
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>)
-            (stateViewerA1: StateViewer<'A1>)
-            (stateViewerA2: StateViewer<'A2>) =
+            =
 
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
@@ -578,8 +570,8 @@ module CommandHandler =
                         let! idLists =
                             eventStore.MultiAddEvents 
                                 [
-                                    (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
-                                    (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
+                                    (eventId1, events1', 'A1.Version, 'A1.StorageName)
+                                    (eventId2, events2', 'A2.Version, 'A2.StorageName)
                                 ]
 
                         if (eventBroker.notify.IsSome) then
@@ -600,17 +592,14 @@ module CommandHandler =
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
         and 'A1: (member Serialize: 'F)
-        and 'A1: (member StateId: Guid)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A2: (static member Zero: 'A2)
         and 'A2: (static member StorageName: string)
         and 'A2: (member Serialize: 'F)
-        and 'A2: (member StateId: Guid)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A3: (static member Zero: 'A3)
         and 'A3: (static member StorageName: string)
         and 'A3: (member Serialize: 'F)
-        and 'A2: (member StateId: Guid)
         and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
         and 'A1: (static member Version: string)
         and 'A2: (static member Version: string)
@@ -618,7 +607,6 @@ module CommandHandler =
         and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (static member SnapshotsInterval : int)
         and 'A3: (static member SnapshotsInterval : int)
-        and 'A3: (member StateId: Guid)
         and 'E1 :> Event<'A1>
         and 'E2 :> Event<'A2> 
         and 'E3 :> Event<'A3>
@@ -634,9 +622,6 @@ module CommandHandler =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) 
-            (stateViewerA1: StateViewer<'A1>)
-            (stateViewerA2: StateViewer<'A2>)
-            (stateViewerA3: StateViewer<'A3>)
             =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
@@ -671,9 +656,9 @@ module CommandHandler =
                         let! idLists =
                             storage.MultiAddEvents 
                                 [
-                                    (eventId1, events1', 'A1.Version, 'A1.StorageName, state1.StateId)
-                                    (eventId2, events2', 'A2.Version, 'A2.StorageName, state2.StateId)
-                                    (eventId3, events3', 'A3.Version, 'A3.StorageName, state3.StateId)
+                                    (eventId1, events1', 'A1.Version, 'A1.StorageName)
+                                    (eventId2, events2', 'A2.Version, 'A2.StorageName)
+                                    (eventId3, events3', 'A3.Version, 'A3.StorageName)
                                 ]
                             
                         if (eventBroker.notify.IsSome) then
