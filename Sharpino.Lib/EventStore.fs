@@ -81,17 +81,14 @@ module Storage =
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
-        // abstract member SetInitialAggregateState: AggregateId -> AggregateStateId -> Version -> Name -> 'F ->  Result<unit, string>
         abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
 
         abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
 
-        // abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> ContextStateId -> List<'F> -> Result<List<int>, string>
         abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
 
-        // abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name * ContextStateId>  -> Result<List<List<EventId>>, string>
         abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name>  -> Result<List<List<EventId>>, string>
         abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId>  -> Result<List<List<EventId>>, string>
 
