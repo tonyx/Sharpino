@@ -174,10 +174,9 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 
 ## News
-- Version 2.2.0: removed pessimistic lock (the config value will be ignored). Removed "stateId" that was related to optimistic lock. Now only database eventId is considered for optimistic lock. The read models are  not pas
 
+- Version 2.2.0: Removed the option of pessimistic Lock. (still there in conf file but not used). Command handler does not get any read model as it uses the event-store based read models to get a "fresh" state. There is no "stateId" anymore. There is no Lock in aggregates and contexts. Only this examples has been adapted for the new version: [shopping cart](https://github.com/tonyx/shoppingCartWithSharpino). The others will be adapted soon. A fork of [fsKafka](https://github.com/jet/FsKafka) with updated dependencies is included in the package.
 
-- Version 2.1.2: Removed the option of pessimistic Lock. (still there in conf file but not used). Command handler does not get any read model as it uses the event-store based read models to get a "fresh" state. There is no "stateId" anymore. There is no Lock in aggregates and contexts. Only this examples has been adapted for the new version: [shopping cart](https://github.com/tonyx/shoppingCartWithSharpino). The others will be adapted soon.
 - Version 2.1.1: Update dependencies
 - Version 2.1.0: Going to remove newtonsoft, introduced FsPickler, FsKafka, changed kafka publisher way (binary and textencoding). Removed Kafkareceiver. Preparing to replace it with one based on FSKafka
 - I am porting the examples to use the newer version (2.0.6). The porting of the first example(Sharpino.Sample) is incomplete (At the moment I disabled the "migrate between version" function in that example).
