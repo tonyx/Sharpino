@@ -23,10 +23,15 @@ packages/
 **/.env
 Sharpino.Lib/lib/Sharpino.Lib.dll
 Sharpino.Lib/lib/Sharpino.Lib.xml
+Sharpino.Lib/lib/*.dll
+Sharpino.Lib/lib/*.xml
 **/Sharpino.Lib.Core.dll
 **/Sharpino.Lib.Core.xml
 **/Sharpino.Lib.dll
 **/Sharpino.Lib.xml
+**/FsKafka.dll
+**/FsKafka.xml
+
 Sharpino.Lib/lib/Sharpino.Lib.xml
 Sharpino.Lib/Sharpino.Lib.*.nupkg
 __azurite_db_blob__.json

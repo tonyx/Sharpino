@@ -33,7 +33,7 @@ module KafkaBroker =
         | BinaryEvent of byte[]
 
     type BrokerMessageRef = {
-        ApplicationId: Guid
+        // ApplicationId: Guid
         EventId: int
         BrokerEvent: BrokerEvent
     }
@@ -79,16 +79,15 @@ module KafkaBroker =
                                 |> List.map 
                                     (fun (id, x) -> 
                                         let brokerMessageRef = {
-                                            ApplicationId = Guid.NewGuid()
                                             EventId = id
                                             BrokerEvent = StrEvent x
                                         }
                                         // decide which format will be used (probably binary and then text encoded)
                                         let binPicled = binPicklerSerializer.Serialize x
-                                        let jsonPickled = jsonPicklerSerializer.Serialize x
+                                        // let jsonPickled = jsonPicklerSerializer.Serialize x
                                         let encoded = Convert.ToBase64String binPicled
                                         // producer.ProduceAsync(key, x) |> Async.RunSynchronously // |> ignore
-                                        producer.ProduceAsync(key, jsonPickled) |> Async.RunSynchronously // |> ignore
+                                        producer.ProduceAsync(key, encoded) |> Async.RunSynchronously // |> ignore
                                     )
                             deliveryResults
                         )
@@ -107,8 +106,6 @@ module KafkaBroker =
                                             EventId = id
                                             BrokerEvent = StrEvent x
                                         }
-
-
                                         // ok go for binary and then text encoded
                                         let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
                                         let encoded = Convert.ToBase64String binPickled
