@@ -55,7 +55,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events{Version}{ContextStorageName}(event, timestamp, context_state_id)
-    VALUES(event_in::{Format}, now()), context_state_id) RETURNING id INTO inserted_id;
+    VALUES(event_in::{Format}, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;
