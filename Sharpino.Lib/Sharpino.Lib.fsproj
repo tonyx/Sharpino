@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>2.2.2</Version>
+    <Version>2.2.3</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -42,7 +42,7 @@
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.4.0" />
-    <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.2.1" />
+    <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.3.1" />
     <PackageReference Include="Expecto" Version="10.2.1" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.1" />
     <PackageReference Include="FsCheck" Version="2.16.6" />
@@ -62,7 +62,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
 
-    <PackageReference Include="Sharpino.Core" Version="2.0.3" />
+    <PackageReference Include="Sharpino.Core" Version="2.0.4" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />

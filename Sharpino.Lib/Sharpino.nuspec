@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>2.2.2</version>
+    <version>2.2.3</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -13,7 +13,7 @@
     <dependencies>
       <group targetFramework="net8.0">
         <dependency id="Confluent.Kafka" version="2.4.0" />
-        <dependency id="EventStore.Client.Grpc.Streams" version="23.2.1" />
+        <dependency id="EventStore.Client.Grpc.Streams" version="23.3.1" />
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
         <dependency id="FsCheck" version="2.16.6" />
@@ -28,7 +28,7 @@
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.0.3" />
+        <dependency id="Sharpino.Core" version="2.0.4" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />

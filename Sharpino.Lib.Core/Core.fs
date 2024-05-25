@@ -36,7 +36,7 @@ module Core =
                 )
             ) (h |> Ok)
 
-    [<TailCall>]
+    // [<TailCall>] // fight with .net version 7
     let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
         match acc, events with
         // if the accumulator is an error then skip it, and use the guard instead which was the 

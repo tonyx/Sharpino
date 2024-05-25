@@ -26,7 +26,7 @@ Support for Event-sourcing in F#.
 - Stable and working integration with an Event Broker (Apache Kafka)
 
 
-## Projects[BookingSystem.fs](Sharpino.Sample.4%2Fsrc%2FServer%2FBookingSystem.fs)
+## Projects
 __Sharpino.Lib.Core__:
 
 - [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if the used event store lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error in processing invalid events.  The latter just skip those events. Some other types and functions are defined here. In a "SAFE stack" like project we may "safely" include the Core in a shared project (Fable Remoting style) in the sense that Fable can transpile it to JavaScript.
@@ -166,22 +166,59 @@ __Faq__:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
-## Roadmap:
-- (done) complete the view side related to Kafka integration for fine-grained aggregates (identified by Id)
-- (done) add the classic optimistic lock (note: the type of optimistic lock used here is ok for single aggregate but may fail to handle multiple aggregate transactions properly).
-- (done for aggregate: by code, not config) select the type of lock per aggregate and context. Per aggre
-- (maybe) given that periodic snapshots are not made for fine-grained aggregates (identified by Id) decide if it is worth adding them
 
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
+- Adapt the examples to the new version of the library (2.0.0)
 
-## News: 
+## News
+- Version 2.1.3: added local fork of [FsKafka](https://github.com/jet/FsKafka)  (with library dependencies updated) to be able to use it in the project.
+- Version 2.1.0: going to remove newtonsoft, introduced FsPickler, FsKafka, changed kafka publisher way (binary and textencoding). Removed Kafkareceiver. Preparing to replace it with one based on FSKafka
+- I am porting the examples to use the newer version (2.0.6). The porting of the first example(Sharpino.Sample) is incomplete (At the moment I disabled the "migrate between version" function in that example).
+- version 2.0.7: a fix in runThreeCommand. CommandHandler will just use fresh data ignoring the viewer that has been passed. 
 
+- version 2.0.6: 
+    - eventstore checks the eventId of the state that produces any event before adding them. That will ensure that events are added in the right order and cannot fail (so the optimistic lock stateId will
+    be superfluous and will be dropped). Serialization can be binary or JSON (see appSettings.json). The default is binary. The samples use Fspickler to serialize/deserialize events and snapshots. There is no use of ISerializer interface which was by default newtonsoft. Therefore the user needs to provide a serializer (pickler is ok for binary and for json as well). Pickler will not work with jsonb fields in Postgres as the indexes change their order in jsonb and pickler doesn't want it,  so they must be text.
+    Kafka is still not working on the read part. The write part is ok even though any read test has been dropped for incompatibility and will be rewritten.
+- version 2.0.3: changes from "now()" to utcNow() format in eventstores (Postgres and inMemory) and Sql template scripts.
+- published version 2.0.0 supporting binary serialization for events and snapshots on Postgres.
+Note: the current examples provided are still referencing the previous 1.6.6 version. 
+[Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
+
+- added some videos (in Italian) about the library and the sample applications.
+https://youtu.be/OQKD5uluFPc
+https://youtu.be/ToZ_I_xRA-g
+https://youtu.be/WtGEQqznPnQ
+https://youtu.be/j2XoLkCt31c
+
+
+
+- added a few new examples (can be used for dojos)
+[pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
+- version 1.6.6: can use plain text instead of JSON data type for database (see scripts in SqlTemplate dir). The appSettings has a new settings for it:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"}
+}
+```
+
+The other option is:
+```
+    "PgSqlJsonFormat":{"Case":"PgJson"}
+```    
+the tables should be coherent: use PlainText when json fields are of type text and PgJson when they are of type json or jsonb.
+Why bother? In this example I use FsPickler to serialize/deserialize https://github.com/tonyx/shoppingCartWithSharpino
+It won't work with jsonb fields because it needs the same order of fields in the json string whereas json/jsonb fields are stored in a way that doesn't preserve the order of fields.
+
+- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
-- Version 1.5.9: fix in runNAggregateCommands of command handler when call tryPublishAggregateEvents
 - Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
 - Version 1.5.7: 
 - Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
