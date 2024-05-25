@@ -175,6 +175,11 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Version 2.2.4: some changes in runCommand: no need to pass state and aggregateViewer as it will just use the ones based on the eventstore (source of truth). Supporting also net7.0. The "core" gets rid of TailCall attribute not compatible with net7.0. 
+There is the possibility that including Sharpino.Core must be explicitly included.
+For an example of app that has been upagraded to the newest version of library see 
+[shopping cart](https://github.com/tonyx/shoppingCartWithSharpino.git)
+
 - Version 2.1.3: added local fork of [FsKafka](https://github.com/jet/FsKafka)  (with library dependencies updated) to be able to use it in the project.
 - Version 2.1.0: going to remove newtonsoft, introduced FsPickler, FsKafka, changed kafka publisher way (binary and textencoding). Removed Kafkareceiver. Preparing to replace it with one based on FSKafka
 - I am porting the examples to use the newer version (2.0.6). The porting of the first example(Sharpino.Sample) is incomplete (At the moment I disabled the "migrate between version" function in that example).
