@@ -103,24 +103,6 @@ return event_id;
 END;
 $$;
 
-CREATE OR REPLACE PROCEDURE set_classic_optimistic_lock{Version}{AggregateStorageName}() AS $$
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aggregate_events{Version}{AggregateStorageName}_aggregate_id_state_id_unique') THEN
-ALTER TABLE aggregate_events{Version}{AggregateStorageName}
-    ADD CONSTRAINT aggregate_events{Version}{AggregateStorageName}_aggregate_id_state_id_unique UNIQUE (aggregate_state_id);
-END IF;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE PROCEDURE un_set_classic_optimistic_lock{Version}{AggregateStorageName}() AS $$
-BEGIN
-    ALTER TABLE aggregate_events{Version}{AggregateStorageName}
-    DROP CONSTRAINT IF EXISTS aggregate_events{Version}{AggregateStorageName}_aggregate_id_state_id_unique; 
-    -- You can have more SQL statements as needed
-END;
-$$ LANGUAGE plpgsql;
-
-
 
 
 
