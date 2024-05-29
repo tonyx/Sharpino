@@ -246,7 +246,7 @@ module MemoryStorage =
                     ]
                 let events = getExistingEvents version name @ newEvents
                 storeEvents version name events
-                let ids = newEvents |>> _.Id 
+                let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
             member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateVersion aggregatename json contextVersion contextName events =
                 let initialState =
@@ -325,7 +325,7 @@ module MemoryStorage =
                 else
                     events_dic.[version].[name]
                     |> List.tryLast
-                    |>> _.Id 
+                    |>> (fun x -> x.Id)
             member this.TryGetLastSnapshot version name =
                 log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
@@ -357,7 +357,7 @@ module MemoryStorage =
                 else
                     snapshots_dic.[version].[name]
                     |> List.tryLast
-                    |>> _.EventId 
+                    |>> (fun x -> x.EventId)
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
@@ -366,7 +366,7 @@ module MemoryStorage =
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryLast
                     |> tryLast
-                    |>> _.EventId 
+                    |>> (fun x -> x.EventId) 
                     |> Option.bind (fun x -> x)
                 
             member this.TryGetLastSnapshotId version name =
@@ -436,7 +436,7 @@ module MemoryStorage =
                     ]
                 let events' = getExistingAggregateEvents version name aggregateId @ newEvents
                 storeAggregateEvents version name aggregateId events'
-                let ids = newEvents |>> _.Id
+                let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
                     
             member this.TryGetLastAggregateEventId(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId> =

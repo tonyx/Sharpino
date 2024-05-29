@@ -6,7 +6,6 @@ CREATE TABLE public.events{Version}{ContextStorageName} (
                                           published boolean NOT NULL DEFAULT false,
                                           kafkaoffset BIGINT,
                                           kafkapartition INTEGER,
-                                          context_state_id uuid NOT NULL,
                                           "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -44,8 +43,7 @@ ALTER TABLE ONLY public.snapshots{Version}{ContextStorageName}
 
 
 CREATE OR REPLACE FUNCTION insert{Version}{ContextStorageName}_event_and_return_id(
-    IN event_in TEXT,
-    IN context_state_id uuid
+    IN event_in TEXT
 )
 RETURNS int
        
@@ -54,13 +52,12 @@ AS $$
 DECLARE
     inserted_id integer;
 BEGIN
-    INSERT INTO events{Version}{ContextStorageName}(event, timestamp, context_state_id)
-    VALUES(event_in::{Format}, now(), context_state_id) RETURNING id INTO inserted_id;
+    INSERT INTO events{Version}{ContextStorageName}(event, timestamp)
+    VALUES(event_in::{Format}, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 
 END;
 $$;
-
 
 -- migrate:down
 
