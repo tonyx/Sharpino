@@ -63,7 +63,7 @@
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.0.3" />
+        <dependency id="Sharpino.Core" version="2.0.4" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
