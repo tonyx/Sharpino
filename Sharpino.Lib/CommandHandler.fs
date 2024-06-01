@@ -21,8 +21,6 @@ open log4net
 open log4net.Config
 
 module CommandHandler =
-    open Sharpino.Lib.Core.Commons
-    // let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = Guid -> Result<EventId * 'A,string>

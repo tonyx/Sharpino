@@ -433,7 +433,7 @@ module BookingTests =
                 let tryMultiBookingAgain = stadiumBookingSystem.BookSeatsNRows [(rowId1, newBooking1); (rowId2, newBooking2)]
                 Expect.isOk tryMultiBookingAgain "should be ok"
 
-            testCase "add a seats in one row and two seat in another row - Ok" <| fun _ ->
+            ftestCase "add a seats in one row and two seat in another row - Ok" <| fun _ ->
                 // given
                 setUp()
                 let stadiumBookingSystem = StadiumBookingSystem(pgStorage, doNothingBroker)

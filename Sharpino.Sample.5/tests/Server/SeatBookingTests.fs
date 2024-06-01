@@ -71,7 +71,7 @@ module BookingTests =
 
         let stadiumInstances =
             [
-                // stadiumSystem, 0, 0 // fix the serialization issues that happens only on db
+                // stadiumSystem, 0, 0 // fix the serialization issues that happens only using db version
                 memoryStadiumSystem, 1, 1
             ]
 
