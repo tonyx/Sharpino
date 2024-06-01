@@ -6,6 +6,7 @@ open Sharpino.Definitions
 open Sharpino.Utils
 open Sharpino
 open System
+open Utils
 
 module Stadium =
     type Stadium (rowReferences: List<DateTime * Guid>) =
@@ -44,10 +45,10 @@ module Stadium =
             "_01"
         static member SnapshotsInterval =
             15
-        static member Lock =
-            new Object()
-        static member Deserialize (serializer: ISerializer, json: Json): Result<Stadium, string>  =
-            serializer.Deserialize<Stadium> json
-        member this.Serialize (serializer: ISerializer) =
-            this
-            |> serializer.Serialize
+        // static member Lock =
+        //     new Object()
+
+        static member Deserialize (json: string) =
+            globalSerializer.Deserialize<Stadium> json
+        member this.Serialize =
+            this |> globalSerializer.Serialize

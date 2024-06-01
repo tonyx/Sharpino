@@ -36,18 +36,18 @@ let connection =
     "Password=safe;"
 let eventStore = PgEventStore connection
 let memoryStore = MemoryStorage()
-let doNothingBroker: IEventBroker =
+let doNothingBroker: IEventBroker<string> =
     {
         notify = None
         notifyAggregate = None
     }
 
-let eventBroker = getKafkaBroker ("localhost:9092", eventStore)
+let eventBroker = getKafkaBroker "localhost:9092"
 
-let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
-let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
-let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
-let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
+// let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
+// let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
+// let storageStadiumViewer = getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore
+// let kafkaStadiumViewer = mkKafkaViewer<Stadium, StadiumEvent> stadiumSubscriber storageStadiumViewer  (ApplicationInstance.Instance.GetGuid())
 
 // let rowSubscriber' = KafkaAggregateSubscriber.Create2("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
 

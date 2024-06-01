@@ -9,6 +9,7 @@ open Sharpino.Definitions
 open Sharpino.Lib.Core.Commons
 open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.SeatRow
+open Utils
 
 module RowAggregateEvent =
     type RowAggregateEvent =
@@ -34,8 +35,7 @@ module RowAggregateEvent =
                     | InvariantRemoved invariant ->
                         x.RemoveInvariant invariant
 
-        member this.Serialize(serializer: ISerializer) =
-            this
-            |> serializer.Serialize
-        static member Deserialize(serializer: ISerializer, x: string) =
-            serializer.Deserialize<RowAggregateEvent> x
+        member this.Serialize =
+            this |> globalSerializer.Serialize
+        static member Deserialize x =
+            globalSerializer.Deserialize<RowAggregateEvent> x

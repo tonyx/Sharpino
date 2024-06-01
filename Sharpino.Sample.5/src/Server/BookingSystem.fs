@@ -19,7 +19,7 @@ open Sharpino.Core
 open Sharpino.Utils
 
 module StorageStadiumBookingSystem =
-    let doNothingBroker: IEventBroker =
+    let doNothingBroker: IEventBroker<string> =
         {
             notify = None
             notifyAggregate = None
@@ -31,25 +31,25 @@ module StorageStadiumBookingSystem =
         "Password=safe;"
 
     type StadiumBookingSystem
-        (eventStore: IEventStore, eventBroker: IEventBroker, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
-        new (eventStore: IEventStore) =
-            StadiumBookingSystem(eventStore, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore)
-        new (eventStore: IEventStore, eventBroker: IEventBroker) =
-            StadiumBookingSystem(eventStore, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent> eventStore)
-        member this.SetAggregateStateControlInOptimisticLock version name =
-            ResultCE.result {
-                return! eventStore.SetClassicOptimisticLock version name
-            }
-        member this.UnSetAggregateStateControlInOptimisticLock version name =
-            ResultCE.result {
-                return! eventStore.UnSetClassicOptimisticLock version name
-            }
+        new (eventStore: IEventStore<string>) =
+            StadiumBookingSystem(eventStore, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+        new (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>) =
+            StadiumBookingSystem(eventStore, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+        // member this.SetAggregateStateControlInOptimisticLock version name =
+        //     ResultCE.result {
+        //         return! eventStore.SetClassicOptimisticLock version name
+        //     }
+        // member this.UnSetAggregateStateControlInOptimisticLock version name =
+        //     ResultCE.result {
+        //         return! eventStore.UnSetClassicOptimisticLock version name
+        //     }
         member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {
                 let seatsRow = SeatsRow rowId
                 let addRowReference = StadiumCommand.AddRowReference rowId
-                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow> eventStore eventBroker stadiumStateViewer seatsRow addRowReference
+                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore eventBroker seatsRow addRowReference
                 return result
             }
         member this.AddRowReference () =
@@ -59,8 +59,8 @@ module StorageStadiumBookingSystem =
             result {
                 let bookSeat = RowAggregateCommand.BookSeats booking
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer bookSeat
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker bookSeat
                 return result
             }
 
@@ -75,23 +75,22 @@ module StorageStadiumBookingSystem =
                     rowsAndBookings.Length < 3
                     |> Result.ofBool "Can only book up to 2 rows at a time"
                 let! result =
-                    runNAggregateCommands<SeatsRow, RowAggregateEvent>
+                    runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         eventStore
                         eventBroker
-                        rowStateViewer
                         bookSeatsCommands
                 return result
             }
 
         member this.GetRow id =
             result {
-                let! (_, rowState, _, _) = rowStateViewer id
+                let! (_, rowState) = rowStateViewer id
                 return rowState
             }
         member this.GetSeatsRowTO (id: Guid) =
             result {
-                let! (_, rowState, _, _) = rowStateViewer id
+                let! (_, rowState) = rowStateViewer id
                 return rowState.ToSeatsRowTO ()
             }
 
@@ -102,8 +101,8 @@ module StorageStadiumBookingSystem =
                 let addSeat =
                     RowAggregateCommand.AddSeat {seat with RowId = rowId |> Some}
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer addSeat
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker addSeat
                 return result
             }
 
@@ -114,8 +113,8 @@ module StorageStadiumBookingSystem =
                 let removeSeat =
                     RowAggregateCommand.RemoveSeat seat
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer removeSeat
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker removeSeat
                 return result
             }
 
@@ -123,8 +122,8 @@ module StorageStadiumBookingSystem =
             result {
                 let addSeats = RowAggregateCommand.AddSeats seats
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer addSeats
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker addSeats
                 return result
             }
 
@@ -135,18 +134,17 @@ module StorageStadiumBookingSystem =
                     |>> fun (_, seats) -> (AddSeats seats):> Command<SeatsRow, RowAggregateEvent>
                 let rowIDs = rowAndSeats |>> fst
                 let! result =
-                    runNAggregateCommands<SeatsRow, RowAggregateEvent>
+                    runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         eventStore
                         eventBroker
-                        rowStateViewer
                         addSeatsCommands
                 return result
             }
 
         member this.GetAllRowsSeatsTo () =
             result {
-                let! (_, stadiumState, _, _) = stadiumStateViewer ()
+                let! (_, stadiumState) = stadiumStateViewer ()
                 let rowReferences = stadiumState.GetRowReferences ()
                 let! rowsTos =
                     rowReferences
@@ -156,7 +154,7 @@ module StorageStadiumBookingSystem =
 
         member this.GetAllRowReferences () =
             result {
-                let! (_, stadiumState, _, _) = stadiumStateViewer ()
+                let! (_, stadiumState) = stadiumStateViewer ()
                 return stadiumState.GetRowReferences ()
             }
 
@@ -164,8 +162,8 @@ module StorageStadiumBookingSystem =
             let addInvariant = RowAggregateCommand.AddInvariant invariant
             result {
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer addInvariant
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker addInvariant
                 return result
             }
 
@@ -173,7 +171,7 @@ module StorageStadiumBookingSystem =
             let removeInvariant = RowAggregateCommand.RemoveInvariant invariant
             result {
                 let! result =
-                    runAggregateCommand<SeatsRow, RowAggregateEvent>
-                        rowId eventStore eventBroker rowStateViewer removeInvariant
+                    runAggregateCommand<SeatsRow, RowAggregateEvent, string>
+                        rowId eventStore eventBroker removeInvariant
                 return result
             }

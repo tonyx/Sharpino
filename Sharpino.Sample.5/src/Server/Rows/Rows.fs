@@ -14,9 +14,9 @@ open FSharp.Quotations
 open MBrace.FsPickler.Json
 open Newtonsoft.Json
 open FSharp.Quotations.Evaluator.QuotationEvaluationExtensions
+open Utils
 
 module rec SeatRow =
-    let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     let pickler = FsPickler.CreateJsonSerializer(indent = false)
     let checkInvariants (row: SeatsRow) =
         row.Invariants
@@ -48,9 +48,9 @@ module rec SeatRow =
         member this.Invariants = invariants
         member this.Id = id
 
-        member this.Serialize (serializer: ISerializer) =
+        member this.Serialize =
             this
-            |> serializer.Serialize
+            |> globalSerializer.Serialize
 
         member this.IsAvailable (seatId: Id) =
             this.Seats
@@ -158,19 +158,17 @@ module rec SeatRow =
                 }
             result
 
-        static member Deserialize (serializer: ISerializer, json: string) =
-            serializer.Deserialize<SeatsRow> json
+        static member Deserialize (json: string) =
+            globalSerializer.Deserialize<SeatsRow> json
 
         static member Version = "_01"
         static member StorageName = "_seatrow"
         static member SnapshotsInterval = 6
 
-        interface Aggregate with
-            member this.StateId = this.StateId
+        interface Aggregate<string> with
             member this.Id = this.Id
-            member this.Serialize serializer =
-                this.Serialize serializer
-            member this.Lock = this
+            member this.Serialize  =
+                this.Serialize
 
         interface Entity with
             member this.Id = this.Id

@@ -5,6 +5,7 @@ open Sharpino.Definitions
 open Sharpino.Core
 open System
 open Sharpino.Utils
+open Utils
 
 module StadiumEvents =
     type StadiumEvent =
@@ -18,8 +19,8 @@ module StadiumEvents =
                     | RowReferenceRemoved id ->
                         x.RemoveRowReference id
 
-        static member Deserialize (serializer: ISerializer, json: Json) =
-            serializer.Deserialize<StadiumEvent> json
-        member this.Serialize (serializer: ISerializer) =
+        static member Deserialize  (json: Json) =
+            globalSerializer.Deserialize<StadiumEvent> json
+        member this.Serialize  =
             this
-            |> serializer.Serialize
+            |> globalSerializer.Serialize
