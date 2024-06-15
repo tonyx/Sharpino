@@ -4,7 +4,7 @@
 <img src="ico/sharpino.png" alt="drawing" width="50"/>
 
 
-## A little F# event-sourcing library
+## A little F# Event Sourcing Library
 
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
