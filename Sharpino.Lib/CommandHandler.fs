@@ -216,7 +216,7 @@ module CommandHandler =
                         if (eventBroker.notify.IsSome) then
                             let f =
                                 fun () ->
-                                    eventBroker.notify.Value 'A.Version 'A.StorageName (List.zip ids events')
+                                    tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
                                     |> ignore
                             f |> postToProcessor |> ignore
 
