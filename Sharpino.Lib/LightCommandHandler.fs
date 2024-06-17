@@ -133,36 +133,34 @@ module LightCommandHandler =
             (command2: Command<'A2, 'E2>) =
             log.Debug (sprintf "runTwoCommands %A %A\n" command1 command2)
 
-            lock ('A1.Lock, 'A2.Lock) <| fun () ->
+            result {
+                let! (_, a1State) = getState<'A1, 'E1> storage 
 
-                result {
-                    let! (_, a1State) = getState<'A1, 'E1> storage 
-
-                    let undoer = 
-                        let undoContext = 
-                            match command1.Undoer with
-                            | Some f -> a1State |> f |> Some 
-                            | _ -> None
-                        match undoContext with
-                        | Some x -> 
-                            match x with
-                            | Ok x -> Some x
-                            | _ -> None
+                let undoer = 
+                    let undoContext = 
+                        match command1.Undoer with
+                        | Some f -> a1State |> f |> Some 
                         | _ -> None
+                    match undoContext with
+                    | Some x -> 
+                        match x with
+                        | Ok x -> Some x
+                        | _ -> None
+                    | _ -> None
 
-                    let! result1 = runCommand<'A1, 'E1> storage command1
-                    let result2 = runCommand<'A2, 'E2> storage command2
+                let! result1 = runCommand<'A1, 'E1> storage command1
+                let result2 = runCommand<'A2, 'E2> storage command2
 
-                    match result2, undoer with
-                    | Error _, Some undoer ->
-                        let doUndo = runUndoCommand storage undoer
-                        match doUndo with
-                        | Ok _ -> ()
-                        | Error err -> 
-                            printf "warning can't do undo: %A\n" err
-                    | _ -> ()
-                    return! result2 
-                }
+                match result2, undoer with
+                | Error _, Some undoer ->
+                    let doUndo = runUndoCommand storage undoer
+                    match doUndo with
+                    | Ok _ -> ()
+                    | Error err -> 
+                        log.Error (sprintf "Undo failed!  %A\n" err)
+                | _ -> ()
+                return! result2 
+            }
 
     // todo: write test about
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3

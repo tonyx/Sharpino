@@ -15,7 +15,6 @@ module Storage =
     type StorageEventJsonRef =
         {
             AggregateId: Guid
-            // AggregateStateId: Guid
             JsonEvent: Json
             Id: int
             KafkaOffset: Option<int64>

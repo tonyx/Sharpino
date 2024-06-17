@@ -45,8 +45,6 @@ module Stadium =
             "_01"
         static member SnapshotsInterval =
             15
-        // static member Lock =
-        //     new Object()
 
         static member Deserialize (json: string) =
             globalSerializer.Deserialize<Stadium> json
