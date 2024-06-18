@@ -65,9 +65,8 @@ module Storage =
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * 'F>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
 
-        abstract member TryGetLastAggregateEventId: Version -> Name -> AggregateId -> Option<EventId> // * Option<KafkaOffset> * Option<KafkaPartitionId>>
+        abstract member TryGetLastAggregateEventId: Version -> Name -> AggregateId -> Option<EventId> 
 
-        // todo: the following two can be unified
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
         abstract member TryGetLastSnapshotIdByAggregateId: Version -> Name -> Guid -> Option<Option<EventId> * SnapshotId>

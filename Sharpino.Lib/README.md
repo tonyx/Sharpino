@@ -4,7 +4,7 @@
 <img src="ico/sharpino.png" alt="drawing" width="50"/>
 
 
-## A little F# event-sourcing library
+## A little F# Event Sourcing Library
 
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -172,13 +172,17 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
+- Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Version 2.2.5: fix runCommand eventbroker notification.
+- Version 2.2.4: some changes in runCommand: no need to pass state and aggregateViewer as it will just use the ones based on the eventstore (source of truth). Supporting also net7.0. The "core" gets rid of TailCall attribute not compatible with net7.0. 
+There is the possibility that including Sharpino.Core must be explicitly included.
+For an example of app that has been upagraded to the newest version of library see 
+[shopping cart](https://github.com/tonyx/shoppingCartWithSharpino.git)
 
-- Version 2.2.0: Removed the option of pessimistic Lock. (still there in conf file but not used). Command handler does not get any read model as it uses the event-store based read models to get a "fresh" state. There is no "stateId" anymore. There is no Lock in aggregates and contexts. Only this examples has been adapted for the new version: [shopping cart](https://github.com/tonyx/shoppingCartWithSharpino). The others will be adapted soon. A fork of [fsKafka](https://github.com/jet/FsKafka) with updated dependencies is included in the package.
-
-- Version 2.1.1: Update dependencies
-- Version 2.1.0: Going to remove newtonsoft, introduced FsPickler, FsKafka, changed kafka publisher way (binary and textencoding). Removed Kafkareceiver. Preparing to replace it with one based on FSKafka
+- Version 2.1.3: added local fork of [FsKafka](https://github.com/jet/FsKafka)  (with library dependencies updated) to be able to use it in the project.
+- Version 2.1.0: going to remove newtonsoft, introduced FsPickler, FsKafka, changed kafka publisher way (binary and textencoding). Removed Kafkareceiver. Preparing to replace it with one based on FSKafka
 - I am porting the examples to use the newer version (2.0.6). The porting of the first example(Sharpino.Sample) is incomplete (At the moment I disabled the "migrate between version" function in that example).
 - version 2.0.7: a fix in runThreeCommand. CommandHandler will just use fresh data ignoring the viewer that has been passed. 
 

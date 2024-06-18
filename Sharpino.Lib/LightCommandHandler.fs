@@ -328,7 +328,7 @@ module LightCommandHandler =
             |> Async.RunSynchronously
 
 
-    type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit,string>>)
+    type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
 
     // by using this light processor we process the events in a single thread. It is not always needed but at the moment we stick to it
     // note: I guess this is too strict, and it is almost always _not_ needed. Keep it for now but should not use it.

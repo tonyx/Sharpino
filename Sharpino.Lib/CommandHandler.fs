@@ -200,31 +200,34 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>) 
         (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A\n" command)
-            async {
-                return
-                    result {
-                        let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
-                        let! events =
-                            state
-                            |> command.Execute
-                        let events' =
-                            events 
-                            |>> fun x -> x.Serialize
-                        let! ids =
-                            events' |> storage.AddEvents eventId 'A.Version 'A.StorageName 
+            let command = fun ()  ->
+                async {
+                    return
+                        result {
+                            let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
+                            let! events =
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> fun x -> x.Serialize
+                            let! ids =
+                                events' |> storage.AddEvents eventId 'A.Version 'A.StorageName 
 
-                        if (eventBroker.notify.IsSome) then
-                            let f =
-                                fun () ->
-                                    tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
-                                    |> ignore
-                            f |> postToProcessor |> ignore
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
+                                        |> ignore
+                                f |> postToProcessor |> ignore
 
-                        let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
-                        return [ids]
-                    }
-            }
-            |> Async.RunSynchronously 
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
+                            return ()
+                        }
+                }
+                |> Async.RunSynchronously
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
     
     let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)
@@ -246,32 +249,35 @@ module CommandHandler =
         (command: Command<'A, 'E>)
         =
             log.Debug (sprintf "runInitAndCommand %A %A" 'A1.StorageName command)
-            async {
-                return
-                    result {
-                        let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
-                        let! events = 
-                            state
-                            |> command.Execute
-                        let events' =
-                            events 
-                            |>> fun x -> x.Serialize
-                        let! ids =
-                            events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName 
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
+                            let! events = 
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> fun x -> x.Serialize
+                            let! ids =
+                                events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName 
 
-                        if (eventBroker.notify.IsSome) then
-                            let f =
-                                fun () ->
-                                    List.zip ids events'
-                                    |> tryPublish eventBroker 'A.Version 'A.StorageName
-                                    |> ignore
-                            f |> postToProcessor |> ignore
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
 
-                        let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
-                        return [ids]
-                    }
-            }
-            |> Async.RunSynchronously
+                            let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
+                            return ()
+                        }
+                }
+                |> Async.RunSynchronously
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
 
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A :> Aggregate<'F>
@@ -289,32 +295,35 @@ module CommandHandler =
         (command: Command<'A, 'E>)
         =
             log.Debug (sprintf "runAggregateCommand %A" command)
-            async {
-                return
-                    result {
-                        let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
-                        let! events =
-                            state
-                            |> command.Execute
-                        let events' =
-                            events 
-                            |>> fun x -> x.Serialize
-                        let! ids =
-                            events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id 
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
+                            let! events =
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> fun x -> x.Serialize
+                            let! ids =
+                                events' |> storage.AddAggregateEvents eventId 'A.Version 'A.StorageName state.Id 
 
-                        if (eventBroker.notifyAggregate.IsSome) then
-                            let f =
-                                fun () ->    
-                                    List.zip ids events'
-                                    |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
-                                    |> ignore
-                            f |> postToProcessor |> ignore
-                            
-                        let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId    
-                        return [ids]
-                    }
-            }
-            |> Async.RunSynchronously 
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                let f =
+                                    fun () ->    
+                                        List.zip ids events'
+                                        |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
+                                
+                            let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId
+                            return ()
+                        }
+                }
+                |> Async.RunSynchronously
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
+            MailBoxProcessors.postToTheProcessor processor command
 
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
@@ -332,61 +341,66 @@ module CommandHandler =
         (commands: List<Command<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
-            async {
-                return
-                    result {
+            let commands = fun () ->
+                async {
+                    return
+                        result {
 
-                        let! states =
-                            aggregateIds
-                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                            let! states =
+                                aggregateIds
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                                    
+                            let states' = 
+                                states 
+                                |>> fun (_, state) -> state
+
+                            let lastEventIds =
+                                states
+                                |>> fun (eventId, _) -> eventId
+
+                            let statesAndCommands =
+                                List.zip states' commands
+
+                            let! events =
+                                statesAndCommands
+                                |>> fun (state, command) -> command.Execute state
+                                |> List.traverseResultM id
+
+                            let serializedEvents =
+                                events 
+                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize 
+                                    
+                            let packParametersForDb =
+                                List.zip3 lastEventIds serializedEvents aggregateIds
+                                |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+
+                            let! eventIds =
+                                eventStore.MultiAddAggregateEvents packParametersForDb
+
+                            let aggregateIdsWithEventIds =
+                                List.zip aggregateIds eventIds
+
+                            let kafkaParameters =
+                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
+                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParameters
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
+
+                            let _ =
+                                aggregateIds
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
                                 
-                        let states' = 
-                            states 
-                            |>> fun (_, state) -> state
-
-                        let lastEventIds =
-                            states
-                            |>> fun (eventId, _) -> eventId
-
-                        let statesAndCommands =
-                            List.zip states' commands
-
-                        let! events =
-                            statesAndCommands
-                            |>> fun (state, command) -> command.Execute state
-                            |> List.traverseResultM id
-
-                        let serializedEvents =
-                            events 
-                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize 
-                                
-                        let packParametersForDb =
-                            List.zip3 lastEventIds serializedEvents aggregateIds
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-
-                        let! eventIds =
-                            eventStore.MultiAddAggregateEvents packParametersForDb
-
-                        let aggregateIdsWithEventIds =
-                            List.zip aggregateIds eventIds
-
-                        let kafkaParameters =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-
-                        if (eventBroker.notifyAggregate.IsSome) then
-                            kafkaParameters
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            |> ignore
-
-                        let _ =
-                            aggregateIds
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                            
-                        return eventIds
-                    }
-            }
-            |> Async.RunSynchronously 
+                            return ()    
+                        }
+                }
+                |> Async.RunSynchronously
+            let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+            let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
+            MailBoxProcessors.postToTheProcessor processor commands
 
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -413,107 +427,112 @@ module CommandHandler =
         (command1: List<Command<'A1, 'E1>>)
         (command2: List<Command<'A2, 'E2>>)
         =
-            async {
-                return 
-                    result {
-                        let! states1 =
-                            aggregateIds1
-                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+            let commands = fun () ->
+                async {
+                    return 
+                        result {
+                            let! states1 =
+                                aggregateIds1
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
 
-                        let! states2 =
-                            aggregateIds2
-                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
+                            let! states2 =
+                                aggregateIds2
+                                |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
 
-                        let states1' =
-                            states1 
-                            |>> fun (_, state) -> state
+                            let states1' =
+                                states1 
+                                |>> fun (_, state) -> state
 
-                        let states2' =
-                            states2 
-                            |>> fun (_, state) -> state
+                            let states2' =
+                                states2 
+                                |>> fun (_, state) -> state
 
-                        let eventIds1 =
-                            states1
-                            |>> fun (eventId, _) -> eventId
+                            let eventIds1 =
+                                states1
+                                |>> fun (eventId, _) -> eventId
 
-                        let eventIds2 =
-                            states2
-                            |>> fun (eventId, _) -> eventId
+                            let eventIds2 =
+                                states2
+                                |>> fun (eventId, _) -> eventId
 
-                        let statesAndCommands1 =
-                            List.zip states1' command1
+                            let statesAndCommands1 =
+                                List.zip states1' command1
 
-                        let statesAndCommands2 =
-                            List.zip states2' command2
+                            let statesAndCommands2 =
+                                List.zip states2' command2
 
-                        let! events1 =
-                            statesAndCommands1
-                            |>> fun (state, command) -> command.Execute state
-                            |> List.traverseResultM id
+                            let! events1 =
+                                statesAndCommands1
+                                |>> fun (state, command) -> command.Execute state
+                                |> List.traverseResultM id
 
-                        let! events2 =
-                            statesAndCommands2
-                            |>> fun (state, command) -> command.Execute state
-                            |> List.traverseResultM id
+                            let! events2 =
+                                statesAndCommands2
+                                |>> fun (state, command) -> command.Execute state
+                                |> List.traverseResultM id
 
-                        let serializedEvents1 =
-                            events1 
-                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                            let serializedEvents1 =
+                                events1 
+                                |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
 
-                        let serializedEvents2 =
-                            events2 
-                            |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
+                            let serializedEvents2 =
+                                events2 
+                                |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
 
-                        let packParametersForDb1 =
-                            List.zip3 eventIds1 serializedEvents1 aggregateIds1
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                            let packParametersForDb1 =
+                                List.zip3 eventIds1 serializedEvents1 aggregateIds1
+                                |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
 
-                        let packParametersForDb2 =
-                            List.zip3 eventIds2 serializedEvents2 aggregateIds2
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
+                            let packParametersForDb2 =
+                                List.zip3 eventIds2 serializedEvents2 aggregateIds2
+                                |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
 
-                        let allPacked = packParametersForDb1 @ packParametersForDb2
+                            let allPacked = packParametersForDb1 @ packParametersForDb2
 
-                        let! eventIds =
-                            allPacked
-                            |> eventStore.MultiAddAggregateEvents
+                            let! eventIds =
+                                allPacked
+                                |> eventStore.MultiAddAggregateEvents
 
-                        let eventIds1 = eventIds |> List.take aggregateIds1.Length
-                        let eventIds2 = eventIds |> List.skip aggregateIds1.Length
+                            let eventIds1 = eventIds |> List.take aggregateIds1.Length
+                            let eventIds2 = eventIds |> List.skip aggregateIds1.Length
 
-                        let aggregateIdsWithEventIds1 =
-                            List.zip aggregateIds1 eventIds1
+                            let aggregateIdsWithEventIds1 =
+                                List.zip aggregateIds1 eventIds1
 
-                        let aggregateIdsWithEventIds2 =
-                            List.zip aggregateIds2 eventIds2
+                            let aggregateIdsWithEventIds2 =
+                                List.zip aggregateIds2 eventIds2
 
-                        let kafkaParmeters1 =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                            let kafkaParmeters1 =
+                                List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
+                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
 
-                        let kafkaParameters2 =
-                            (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
+                            let kafkaParameters2 =
+                                (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
+                                |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
 
-                        if (eventBroker.notifyAggregate.IsSome) then
-                            kafkaParmeters1
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            |> ignore
-                            kafkaParameters2
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                            |> ignore
+                            if (eventBroker.notifyAggregate.IsSome) then
+                                kafkaParmeters1
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                                |> ignore
+                                kafkaParameters2
+                                |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
+                                |> ignore
 
-                        let _ =
-                            aggregateIds1
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                        let _ =
-                            aggregateIds2
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                        
-                        return eventIds
-                    }
-            }
-            |> Async.RunSynchronously
+                            let _ =
+                                aggregateIds1
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                            let _ =
+                                aggregateIds2
+                                |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
+                            
+                            return ()
+                            // return eventIds
+                        }
+                }
+                |> Async.RunSynchronously
+            let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
@@ -544,47 +563,51 @@ module CommandHandler =
 
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
 
-            async {
-                return
-                    result {
+            let commands = fun () ->
+                async {
+                    return
+                        result {
 
-                        let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> eventStore
-                        let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> eventStore
+                            let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> eventStore
+                            let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> eventStore
 
-                        let! events1 =
-                            state1
-                            |> command1.Execute
-                        let! events2 =
-                            state2
-                            |> command2.Execute
+                            let! events1 =
+                                state1
+                                |> command1.Execute
+                            let! events2 =
+                                state2
+                                |> command2.Execute
 
-                        let events1' =
-                            events1 
-                            |>> fun x -> x.Serialize
-                        let events2' =
-                            events2 
-                            |>> fun x -> x.Serialize
+                            let events1' =
+                                events1 
+                                |>> fun x -> x.Serialize
+                            let events2' =
+                                events2 
+                                |>> fun x -> x.Serialize
 
-                        let! idLists =
-                            eventStore.MultiAddEvents 
-                                [
-                                    (eventId1, events1', 'A1.Version, 'A1.StorageName)
-                                    (eventId2, events2', 'A2.Version, 'A2.StorageName)
-                                ]
+                            let! idLists =
+                                eventStore.MultiAddEvents 
+                                    [
+                                        (eventId1, events1', 'A1.Version, 'A1.StorageName)
+                                        (eventId2, events2', 'A2.Version, 'A2.StorageName)
+                                    ]
 
-                        if (eventBroker.notify.IsSome) then
-                            let idAndEvents1 = List.zip idLists.[0] events1'
-                            let idAndEvents2 = List.zip idLists.[1] events2'
-                            postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            ()
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                ()
 
-                        let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                        let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                        return idLists
-                    } 
-                }
-            |> Async.RunSynchronously
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
+                            return ()
+                        } 
+                    }
+                |> Async.RunSynchronously
+            let lookupNames = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
+            MailBoxProcessors.postToTheProcessor processor commands
 
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F
         when 'A1: (static member Zero: 'A1)
@@ -622,58 +645,62 @@ module CommandHandler =
             (command3: Command<'A3, 'E3>) 
             =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            
+            let commands = fun () ->
+                async {
+                    return
+                        result {
 
-            async {
-                return
-                    result {
+                            let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> storage
+                            let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> storage
+                            let! (eventId3, state3) = getFreshState<'A3, 'E3, 'F> storage
 
-                        let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> storage
-                        let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> storage
-                        let! (eventId3, state3) = getFreshState<'A3, 'E3, 'F> storage
+                            let! events1 =
+                                state1
+                                |> command1.Execute
+                            let! events2 =
+                                state2
+                                |> command2.Execute
+                            let! events3 =
+                                state3
+                                |> command3.Execute
 
-                        let! events1 =
-                            state1
-                            |> command1.Execute
-                        let! events2 =
-                            state2
-                            |> command2.Execute
-                        let! events3 =
-                            state3
-                            |> command3.Execute
+                            let events1' =
+                                events1 
+                                |>> fun x -> x.Serialize
+                            let events2' =
+                                events2 
+                                |>> fun x -> x.Serialize
+                            let events3' =
+                                events3 
+                                |>> fun x -> x.Serialize
 
-                        let events1' =
-                            events1 
-                            |>> fun x -> x.Serialize
-                        let events2' =
-                            events2 
-                            |>> fun x -> x.Serialize
-                        let events3' =
-                            events3 
-                            |>> fun x -> x.Serialize
+                            let! idLists =
+                                storage.MultiAddEvents 
+                                    [
+                                        (eventId1, events1', 'A1.Version, 'A1.StorageName)
+                                        (eventId2, events2', 'A2.Version, 'A2.StorageName)
+                                        (eventId3, events3', 'A3.Version, 'A3.StorageName)
+                                    ]
+                                
+                            if (eventBroker.notify.IsSome) then
+                                let idAndEvents1 = List.zip idLists.[0] events1'
+                                let idAndEvents2 = List.zip idLists.[1] events2'
+                                let idAndEvents3 = List.zip idLists.[2] events3'
 
-                        let! idLists =
-                            storage.MultiAddEvents 
-                                [
-                                    (eventId1, events1', 'A1.Version, 'A1.StorageName)
-                                    (eventId2, events2', 'A2.Version, 'A2.StorageName)
-                                    (eventId3, events3', 'A3.Version, 'A3.StorageName)
-                                ]
-                            
-                        if (eventBroker.notify.IsSome) then
-                            let idAndEvents1 = List.zip idLists.[0] events1'
-                            let idAndEvents2 = List.zip idLists.[1] events2'
-                            let idAndEvents3 = List.zip idLists.[2] events3'
+                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                                ()
 
-                            postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                            postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                            postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                            ()
+                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
+                            let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
 
-                        let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
-                        let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
-                        let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
-
-                        return idLists
-                    } 
-            }
-            |> Async.RunSynchronously
+                            return ()
+                        } 
+                }
+                |> Async.RunSynchronously
+            let lookupNames = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
+            MailBoxProcessors.postToTheProcessor processor commands

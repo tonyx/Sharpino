@@ -22,7 +22,7 @@ open FSharp.Core
 
 module KafkaBroker =
 
-    let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
+    // let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     // let picklerSerializer = Commons.jsonPSerializer // :> Commons.Serialization<string>
     let binPicklerSerializer = Commons.binarySerializer // :> Commons.Serialization<string>
     // I decided to binarize the objects and then encode them to base64
@@ -33,13 +33,11 @@ module KafkaBroker =
         | BinaryEvent of byte[]
 
     type BrokerMessageRef = {
-        // ApplicationId: Guid
         EventId: int
         BrokerEvent: BrokerEvent
     }
 
     type BrokerAggregateMessageRef = {
-        // ApplicationId: Guid
         AggregateId: Guid
         EventId: int
         BrokerEvent: BrokerEvent
