@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>2.2.5</Version>
+    <Version>2.2.6</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -81,7 +81,6 @@
     <PackageReference Include="MinVer" Version="5.0.0" PrivateAssets="All" />
     <PackageReference Include="Serilog" Version="4.0.0" />
     
-    <!-- <PackageReference Update="FSharp.Core" Version="8.*" /> -->
   </ItemGroup>
 
   <ItemGroup>

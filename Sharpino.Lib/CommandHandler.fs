@@ -71,7 +71,6 @@ module CommandHandler =
         with
         | :? _ as ex -> 
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
-            printf "appSettings.json file not found using defult!!! %A\n" ex
             Conf.defaultConf
 
     [<MethodImpl(MethodImplOptions.Synchronized)>]

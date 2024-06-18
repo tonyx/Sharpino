@@ -215,7 +215,7 @@ module LightCommandHandler =
                             match doUndo with
                             | Ok _ -> () |> Ok
                             | Error err -> 
-                                printf "warning can't do undo: %A\n" err
+                                log.Error err
                                 Error err
                         | _ -> () |> Ok
 
@@ -242,11 +242,10 @@ module LightCommandHandler =
                         match doUndo1, doUndo2 with
                         | Ok _, Ok _ -> ()
                         | Error err, _ -> 
-                            printf "warning can't do undo: %A\n" err
-                        | _, Error err -> 
-                            printf "warning can't do undo: %A\n" err
+                            log.Error err
+                        | _, Error err ->
+                            log.Error err
                     | _ -> ()
-
                     return! result3 
                 }
 
@@ -290,8 +289,8 @@ module LightCommandHandler =
                     let doUndo = runUndoCommand storage undoer
                     match doUndo with
                     | Ok _ -> ()
-                    | Error err -> 
-                        printf "warning can't do undo: %A\n" err
+                    | Error err ->
+                        log.Error err
                     ()
                 | _ -> ()
                 return! result2
@@ -315,8 +314,8 @@ module LightCommandHandler =
 
                 let eventIdAndState = getState<'A, 'E> storage
                 match eventIdAndState with
-                | Error err -> 
-                    printf "warning: %A\n" err
+                | Error err ->
+                    log.Warn err
                     return ()
                 | Ok (eventId, state) ->
                     let difference = eventId - snapId
