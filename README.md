@@ -175,6 +175,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
 - Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)
 - Version 2.2.5: fix runCommand eventbroker notification.
 - Version 2.2.4: some changes in runCommand: no need to pass state and aggregateViewer as it will just use the ones based on the eventstore (source of truth). Supporting also net7.0. The "core" gets rid of TailCall attribute not compatible with net7.0. 
