@@ -39,18 +39,13 @@ module rec SeatRow =
             InvariantContainer pickled
 
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
-        let stateId = Guid.NewGuid()
         new (id: Guid) =
             SeatsRow ([], id, [])
 
-        member this.StateId = stateId
         member this.Seats = seats
         member this.Invariants = invariants
         member this.Id = id
 
-        member this.Serialize =
-            this
-            |> globalSerializer.Serialize
 
         member this.IsAvailable (seatId: Id) =
             this.Seats
@@ -157,6 +152,10 @@ module rec SeatRow =
                     Seats = this.Seats
                 }
             result
+
+        member this.Serialize =
+            this
+            |> globalSerializer.Serialize
 
         static member Deserialize (json: string) =
             globalSerializer.Deserialize<SeatsRow> json
