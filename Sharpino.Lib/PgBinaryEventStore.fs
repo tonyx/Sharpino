@@ -390,6 +390,74 @@ module PgBinaryStore =
                 }
                 |> Async.RunSynchronously
 
+            member this.SetInitialAggregateStateAndAddAggregateEvents eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName events =
+                log.Debug "entered in SetInitialAggregateStateAndAddAggregateEvents"
+
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
+                let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+
+                let insertEvents = sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" (contextVersion + contextName)
+                let conn = new NpgsqlConnection(connection)
+                conn.Open()
+                let transaction = conn.BeginTransaction()
+                let lastEventId =
+                    (this :> IEventStore<byte[]>).TryGetLastAggregateEventId contextVersion contextName secondAggregateId
+                    |>> (fun x -> x)
+                async {
+                    let result =
+                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                            try
+                                let ids =
+                                    events
+                                    |>> 
+                                        (
+                                            fun x ->
+                                                let command' = new NpgsqlCommand(insertEvents, conn)
+                                                command'.Parameters.AddWithValue("event", x ) |> ignore
+                                                command'.Parameters.AddWithValue("@aggregate_id", secondAggregateId ) |> ignore
+                                                let result = command'.ExecuteScalar() 
+                                                result :?> int
+                                        )
+                                let _ =
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransactionAsync
+                                        [
+                                            insertSnapshot,
+                                                [
+                                                    [
+                                                        ("@aggregate_id", Sql.uuid aggregateId);
+                                                        ("snapshot",  sqlBinary json);
+                                                        ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
+                                                    ]
+                                                ]
+                                            insertFirstEmptyAggregateEvent,
+                                                [
+                                                    [
+                                                        ("@aggregate_id", Sql.uuid aggregateId)
+                                                    ]
+                                                ]
+                                        ]
+                                    |> Async.AwaitTask
+                                    |> Async.RunSynchronously
+                                transaction.Commit()
+                                ids |> Ok
+                            with
+                                | _ as ex -> 
+                                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                                    transaction.Rollback()
+                                    ex.Message |> Error
+                        else
+                            transaction.Rollback()
+                            Error "EventId is not the last one"
+                    try
+                        return result
+                    finally
+                        conn.Close()
+                }
+                |> Async.RunSynchronously
+                
+                
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: byte array) name =
                 log.Debug "entered in setSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name

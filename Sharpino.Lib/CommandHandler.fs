@@ -277,6 +277,56 @@ module CommandHandler =
                 |> Async.RunSynchronously
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
+    
+    let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2 :> Aggregate<'F>
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (initialInstance: 'A2)
+        (command: Command<'A1, 'E1>)
+        = 
+            log.Debug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            let command = fun () ->
+                async {
+                    return
+                        result {
+                            let! (eventId, state) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId storage
+                            let! events =
+                                state
+                                |> command.Execute
+                            let events' =
+                                events 
+                                |>> fun x -> x.Serialize
+                            let! ids =
+                                events' |> storage.SetInitialAggregateStateAndAddAggregateEvents eventId initialInstance.Id 'A2.Version 'A2.StorageName aggregateId initialInstance.Serialize 'A1.Version 'A1.StorageName
+    
+                            if (eventBroker.notify.IsSome) then
+                                let f =
+                                    fun () ->
+                                        List.zip ids events'
+                                        |> tryPublish eventBroker 'A1.Version 'A1.StorageName
+                                        |> ignore
+                                f |> postToProcessor |> ignore
+    
+                            let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                            return ()
+                        }
+                }
+                |> Async.RunSynchronously
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
 
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A :> Aggregate<'F>
