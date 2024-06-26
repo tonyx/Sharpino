@@ -39,16 +39,16 @@ module Conf =
 
     let config () =
         try
-            let path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appSettings.json")    
+            let path = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sharpinoSettings.json")    
             let json = System.IO.File.ReadAllText(path)
             let sharpinoConfig = JsonConvert.DeserializeObject<SharpinoConfig>(json)
             sharpinoConfig
         with
         | _ as ex ->
+            printf "there is no sharpinoSettings.json file, using default configuration\n"
             log.Error("Error reading configuration", ex)
             log.Error("consider using or editing this configuration in your appSettings.json:")
             log.Error(JsonConvert.SerializeObject(defaultConf))
-            // printf "%A\n" (JsonConvert.SerializeObject(defaultConf))
             defaultConf
 
         

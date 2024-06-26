@@ -21,9 +21,9 @@ Support for Event-sourcing in F#.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
 - A specific technique helps refactoring (migration) between different versions of the application.
 
-## Absent features (for now)
-- Sensible data (GDPR) 
-- Stable and working integration with an Event Broker (Apache Kafka)
+## Next to come (for now)
+- Handling sensible data (GDPR compliance): in future they should be encrypted or be stored in a separate table.
+- Stable and working integration with an Event Broker (Apache Kafka): the events are correctly sent to the broker and some work could be needed to stabilize the way to subscribe to topics 
 
 
 ## Projects
@@ -34,8 +34,8 @@ __Sharpino.Lib.Core__:
 __Sharpino.Lib__:
 
 - [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): Gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): gets and stores snapshots, executes commands, produces and stores events using an event store that supports publish/subscribe ( EventStoreDB).
-- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistency in Postgres or in-memory respectively.
+- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): it is unmaintained. Meant to  gets and stores snapshots, executes commands, produces and stores events using an event store that supports publish/subscribe ( EventStoreDB).
+- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistence of events in Postgres or in-memory respectively.
 - [Cache.fs](Sharpino.Lib/Cache.fs). Caches the current state of contexts or aggregates. 
 
 __Sharpino.Sample__:
@@ -43,6 +43,23 @@ You need a user called 'safe' with password 'safe' in your Postgres (if you want
 
 It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
 .
+
+One way to write any application is to include the library from nuget and then write your own:
+- aggregates and contexts
+- events and commands
+- api layer.
+- testing
+
+Any example follows the same pattern.
+
+It could be convenient to write the api layer so that it can refer to any eventstore (Postgres, or  in-memory) and an actual event broker (Kafka) or a neutral ("doNothing") event broker.
+There are some facilities in test to run them in a parametrized way respect to the actual instance of the api layer (with the actual db based eventstore or just the in-memory for example).
+
+Warning: some examples refers to previous version of the library as in the nuget repository.
+Check the .fsproj to make sure if you want to use them as a blueprint for your experiments/applications aligned with
+the latest version of the library.
+ 
+
 
 -  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provides members to handle them. 
 
@@ -175,6 +192,28 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+
+- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"},
+    "MailBoxCommandProcessorsSize": 100
+}
+```
+
+Example of line in your .fsproj or .csproj file:
+```xml
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+```
+
+ 
+- Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
+- Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)
 - Version 2.2.5: fix runCommand eventbroker notification.
 - Version 2.2.4: some changes in runCommand: no need to pass state and aggregateViewer as it will just use the ones based on the eventstore (source of truth). Supporting also net7.0. The "core" gets rid of TailCall attribute not compatible with net7.0. 
 There is the possibility that including Sharpino.Core must be explicitly included.
@@ -211,7 +250,8 @@ https://youtu.be/j2XoLkCt31c
     "LockType":{"Case":"Optimistic"},
     "RefreshTimeout": 100,
     "CacheAggregateSize": 100,
-    "PgSqlJsonFormat":{"Case":"PlainText"}
+    "PgSqlJsonFormat":{"Case":"PlainText"},
+    "MailBoxCommandProcessorsSize": 100
 }
 ```
 

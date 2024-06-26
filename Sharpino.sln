@@ -43,23 +43,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shared.Tests", "Sharpino.Sa
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Client.Tests", "Sharpino.Sample.5\tests\Client\Client.Tests.fsproj", "{5C42BDA2-3519-436A-BE18-C85E2862DAA4}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.4", "Sharpino.Sample.4", "{57CD8278-A953-4CDE-A127-A43E941038DE}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2197C9EC-3605-4DF6-8247-0B2049FEE525}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server", "Sharpino.Sample.4\src\Server\Server.fsproj", "{7422614A-5F4B-4A55-AAF3-C61C6F81EBCF}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shared", "Sharpino.Sample.4\src\Shared\Shared.fsproj", "{B7D1EFF6-17A1-495A-9EEC-94D4C34B0B04}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Client", "Sharpino.Sample.4\src\Client\Client.fsproj", "{EB110976-83FA-4619-ABAB-11651CB15DA1}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{7FDB24C3-61AD-46D5-89DE-913010DB20BF}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server.Tests", "Sharpino.Sample.4\tests\Server\Server.Tests.fsproj", "{5F8DC717-F654-4AF4-B408-A8EFFD95FA88}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Client.Tests", "Sharpino.Sample.4\tests\Client\Client.Tests.fsproj", "{9A739399-3B9F-4557-97A0-DA08060FE69E}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Shared.Tests", "Sharpino.Sample.4\tests\Shared\Shared.Tests.fsproj", "{1ECBB994-9532-42A5-A013-368A8B6AB3EE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

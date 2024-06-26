@@ -9,7 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="paket.references" />
-    <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Utils.fs" />
     <Compile Include="Rows/Rows.fs" />
     <Compile Include="Rows/RowEvents.fs" />

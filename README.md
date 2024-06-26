@@ -192,6 +192,26 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+
+- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"},
+    "MailBoxCommandProcessorsSize": 100
+}
+```
+
+Example of line in your .fsproj or .csproj file:
+```xml
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+```
+
+ 
 - Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
 - Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)
 - Version 2.2.5: fix runCommand eventbroker notification.

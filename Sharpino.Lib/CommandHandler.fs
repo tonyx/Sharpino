@@ -64,6 +64,7 @@ module CommandHandler =
         (eventStore: IEventStore<'F>) 
         =
             fun (id: Guid) -> getAggregateFreshState<'A, 'E, 'F> id eventStore 
+            
 
     let config =
         try

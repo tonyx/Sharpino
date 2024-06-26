@@ -230,12 +230,11 @@ module StateView =
         (id: Guid)
         (storage: IEventStore<'F>)
         =
-        // : Result<EventId * 'A * Option<KafkaOffset> * Option<KafkaPartitionId>, string> =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
                     result { 
-                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id storage // zero
+                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id storage
                         let! deserEvents =
                             events 
                             |>> snd 
@@ -244,12 +243,10 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            // remove kafka info always
             let lastEventId = storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
-                // (lastEventId, state, None, None) |> Ok
                 (lastEventId, state) |> Ok
             | Error e -> 
                 log.Error (sprintf "getAggregateFreshState: %s" e)
