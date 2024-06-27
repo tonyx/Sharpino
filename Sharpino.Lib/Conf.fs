@@ -26,6 +26,7 @@ module Conf =
             CacheAggregateSize: int
             PgSqlJsonFormat: PgSqlJson
             MailBoxCommandProcessorsSize: int
+            EventStoreTimeout: int
         }
 
     let defaultConf = 
@@ -34,7 +35,8 @@ module Conf =
             RefreshTimeout = 100
             CacheAggregateSize = 100
             PgSqlJsonFormat = PgSqlJson.PgJson
-            MailBoxCommandProcessorsSize = 1000 
+            MailBoxCommandProcessorsSize = 1000
+            EventStoreTimeout = 1000 
         }
 
     let config () =

@@ -244,6 +244,7 @@ module StateView =
                         return newState
                     }
             let lastEventId = storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
+            log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 

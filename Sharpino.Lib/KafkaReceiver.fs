@@ -177,7 +177,6 @@ module KafkaReceiver =
             let evolvedStates =
                 noOutOfSyncStateAndEvents
                 |> List.map (fun (id, eventId, state, events) -> 
-                    // let _ = printf "XXXXX. Evolving yeah! %A events are of length %A\n" id (events.Length)
                     let result = evolveUNforgivingErrors state (events |>> snd)
                     (id, result)
                 )

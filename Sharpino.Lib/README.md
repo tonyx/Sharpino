@@ -193,6 +193,17 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## News
 
+- Version 2.2.9: introduced timeout in conncetion with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
+```json
+{
+    "LockType":{"Case":"Optimistic"},
+    "RefreshTimeout": 100,
+    "CacheAggregateSize": 100,
+    "PgSqlJsonFormat":{"Case":"PlainText"},
+    "MailBoxCommandProcessorsSize": 100,
+    "EventStoreTimeout": 100
+}
+```
 - Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
 ```json
 {
