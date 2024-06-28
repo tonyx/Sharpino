@@ -10,7 +10,6 @@ open Row1
 module Row1Context =
     open Row
     type Row1(rowContext: RowContext) =
-        let stateId = Guid.NewGuid()
 
         static member Zero =
             Row1(RowContext(row1Seats))
@@ -32,7 +31,6 @@ module Row1Context =
         static member Deserialize  json =
             serializer.Deserialize<Row1> json
 
-        member this.StateId = stateId
         static member StorageName =
             "_row1"
         static member Version =

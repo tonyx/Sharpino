@@ -42,8 +42,6 @@ module Ingredient =
         | Other of string
     
     type Ingredient (id: Guid, name: String, ingredientTypes: List<IngredientType>, measureTypes: List<MeasureType>) =
-        let stateId = Guid.NewGuid()
-        member this.StateId = stateId
         member this.Id = id
         member this.IngredientTypes = ingredientTypes
         member this.MeasureTypes = measureTypes
@@ -102,10 +100,7 @@ module Ingredient =
         static member SnapshotsInterval =  15 
 
         interface Aggregate<string> with
-            member this.StateId = stateId
             member this.Id = this.Id
-            member this.Lock: obj = 
-                this
             member this.Serialize =
                 this.Serialize
         interface Entity with

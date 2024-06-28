@@ -17,7 +17,6 @@ GRANT ALL ON TABLE public.events_01_ingredient to safe;
 GRANT ALL ON TABLE public.snapshots_01_ingredient to safe;
 GRANT ALL ON SEQUENCE public.snapshots_01_ingredient_id_seq to safe;
 
-GRANT postgres to safe;    -- dangerous zone!!!! This is to allow at applicative level the classic optimistic lock aggregateState check.
 
 -- migrate:down
 

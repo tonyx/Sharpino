@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Commons.fs"/>
     <Compile Include="Ingredients/Ingredient.fs" />
     <Compile Include="Ingredients/Events.fs" />
@@ -24,12 +24,12 @@
     <Compile Include="PubSystem.fs" />
   </ItemGroup> 
 
-  <!-- <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> -->
-
   <ItemGroup>
-    <PackageReference Include="Sharpino" Version="2.1.3" />
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
   </ItemGroup>
+
+<!--  <ItemGroup>-->
+<!--    <PackageReference Include="Sharpino" Version="2.1.3" />-->
+<!--  </ItemGroup>-->
 
 </Project>

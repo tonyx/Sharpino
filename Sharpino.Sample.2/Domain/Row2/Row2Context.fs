@@ -10,12 +10,9 @@ open System
 
 module Row2Context =
     type Row2 (rowContext: RowContext) =
-        let stateId = Guid.NewGuid()
-        member this.StateId = stateId
 
         static member Zero =
             Row2 (RowContext row2Seats)
-
 
         member this.IsAvailable (seatId: Seats.Id) =
             rowContext.IsAvailable seatId

@@ -17,30 +17,30 @@ SET row_security = off;
 
 
 --
--- Name: insert_01_dish_aggregate_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_dish_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_dish_aggregate_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_dish_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_01_dish_event_and_return_id(event_in, aggregate_id, aggregate_state_id);
+    event_id := insert_01_dish_event_and_return_id(event_in, aggregate_id);
 
-INSERT INTO aggregate_events_01_dish(aggregate_id, event_id, aggregate_state_id )
-VALUES(aggregate_id, event_id, aggregate_state_id) RETURNING id INTO inserted_id;
+INSERT INTO aggregate_events_01_dish(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
 
 
 --
--- Name: insert_01_dish_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_dish_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_dish_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_dish_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -54,30 +54,30 @@ $$;
 
 
 --
--- Name: insert_01_ingredient_aggregate_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_ingredient_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_ingredient_aggregate_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_ingredient_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_01_ingredient_event_and_return_id(event_in, aggregate_id, aggregate_state_id);
+    event_id := insert_01_ingredient_event_and_return_id(event_in, aggregate_id);
 
-INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id, aggregate_state_id )
-VALUES(aggregate_id, event_id, aggregate_state_id) RETURNING id INTO inserted_id;
+INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
 
 
 --
--- Name: insert_01_ingredient_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_ingredient_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_ingredient_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_ingredient_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -126,30 +126,30 @@ $$;
 
 
 --
--- Name: insert_01_supplier_aggregate_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_supplier_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_supplier_aggregate_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_supplier_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_01_supplier_event_and_return_id(event_in, aggregate_id, aggregate_state_id);
+    event_id := insert_01_supplier_event_and_return_id(event_in, aggregate_id);
 
-INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id, aggregate_state_id )
-VALUES(aggregate_id, event_id, aggregate_state_id) RETURNING id INTO inserted_id;
+INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
 
 
 --
--- Name: insert_01_supplier_event_and_return_id(text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_supplier_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_supplier_event_and_return_id(event_in text, aggregate_id uuid, aggregate_state_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_supplier_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -158,130 +158,6 @@ BEGIN
 INSERT INTO events_01_supplier(event, aggregate_id, timestamp)
 VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_01_dish(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_dish()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aggregate_events_01_dish_aggregate_id_state_id_unique') THEN
-ALTER TABLE aggregate_events_01_dish
-    ADD CONSTRAINT aggregate_events_01_dish_aggregate_id_state_id_unique UNIQUE (aggregate_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_01_ingredient(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_ingredient()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aggregate_events_01_ingredient_aggregate_id_state_id_unique') THEN
-ALTER TABLE aggregate_events_01_ingredient
-    ADD CONSTRAINT aggregate_events_01_ingredient_aggregate_id_state_id_unique UNIQUE (aggregate_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_01_kitchen(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_kitchen()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_kitchen_context_state_id_unique') THEN
-ALTER TABLE aggregate_events_01_kitchen
-    ADD CONSTRAINT context_events_01_kitchen_context_state_id_unique UNIQUE (context_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_01_supplier(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_supplier()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'aggregate_events_01_supplier_aggregate_id_state_id_unique') THEN
-ALTER TABLE aggregate_events_01_supplier
-    ADD CONSTRAINT aggregate_events_01_supplier_aggregate_id_state_id_unique UNIQUE (aggregate_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_dish(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_dish()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE aggregate_events_01_dish
-DROP CONSTRAINT IF EXISTS aggregate_events_01_dish_aggregate_id_state_id_unique;
-    -- You can have more SQL statements as needed
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_ingredient(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_ingredient()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE aggregate_events_01_ingredient
-DROP CONSTRAINT IF EXISTS aggregate_events_01_ingredient_aggregate_id_state_id_unique;
-    -- You can have more SQL statements as needed
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_kitchen(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_kitchen()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE events_01_kitchen
-DROP CONSTRAINT IF EXISTS context_events_01_kitchen_context_state_id_unique;
-    -- You can have more SQL statements as needed
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_supplier(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_supplier()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE aggregate_events_01_supplier
-DROP CONSTRAINT IF EXISTS aggregate_events_01_supplier_aggregate_id_state_id_unique;
-    -- You can have more SQL statements as needed
 END;
 $$;
 
@@ -309,7 +185,6 @@ SET default_table_access_method = heap;
 CREATE TABLE public.aggregate_events_01_dish (
     id integer DEFAULT nextval('public.aggregate_events_01_dish_id_seq'::regclass) NOT NULL,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     event_id integer
 );
 
@@ -357,7 +232,6 @@ CREATE SEQUENCE public.aggregate_events_01_supplier_id_seq
 CREATE TABLE public.aggregate_events_01_supplier (
     id integer DEFAULT nextval('public.aggregate_events_01_supplier_id_seq'::regclass) NOT NULL,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     event_id integer
 );
 
@@ -428,8 +302,6 @@ CREATE TABLE public.events_01_kitchen (
     id integer NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
     "timestamp" timestamp without time zone NOT NULL,
     context_state_id uuid
 );
@@ -458,8 +330,6 @@ CREATE TABLE public.events_01_supplier (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -584,7 +454,6 @@ CREATE TABLE public.snapshots_01_supplier (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     "timestamp" timestamp without time zone NOT NULL
 );
 

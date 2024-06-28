@@ -56,10 +56,7 @@ module Dish =
             serializer.Deserialize<Dish> json
 
         interface Aggregate<string> with
-            member this.StateId = stateId
             member this.Id = this.Id
-            member this.Lock: obj = 
-                this
             member this.Serialize =
                 this.Serialize 
         interface Entity with

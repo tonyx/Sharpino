@@ -19,24 +19,22 @@
     <Compile Include="Domain/Row2/Events.fs" />
     <Compile Include="Domain/Row2/Commands.fs" />
     <Compile Include="App.fs" />
-    <None Include="appSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="sharpinoSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Sharpino" Version="2.1.1" />
-    
 
   </ItemGroup>
-
-
-<!-- 
+ 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
   </ItemGroup>
- -->
 
   <!-- enable during dev: -->
 

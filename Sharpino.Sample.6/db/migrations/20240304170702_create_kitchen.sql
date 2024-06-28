@@ -4,8 +4,6 @@ CREATE TABLE public.events_01_kitchen (
                                           id integer NOT NULL,
                                           event text NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
-                                          kafkaoffset BIGINT,
-                                          kafkapartition INTEGER,
                                           "timestamp" timestamp without time zone NOT NULL
 );
 

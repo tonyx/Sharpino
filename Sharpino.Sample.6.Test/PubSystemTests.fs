@@ -67,7 +67,7 @@ let tests =
             Expect.isOk retrievedDish "should be ok"
             let result = retrievedDish.OkValue
             Expect.equal (result |> List.length) 1 "should be equal"
-            let (_, retrievedDish, _, _) = result |> List.head
+            let (_, retrievedDish) = result |> List.head
             Expect.equal retrievedDish.Id dish.Id "should be equal"
         
         multipleTestCase "add an ingredient and check that it does exist - OK" storages <| fun (eventStore, _, _) ->
@@ -86,7 +86,7 @@ let tests =
             Expect.isOk retrievedIngredients "should be ok"
             let retrievedIngredients' = retrievedIngredients.OkValue
             Expect.equal 1 retrievedIngredients'.Length "should be equal"
-            let (_, ingredient, _, _) = retrievedIngredients'.[0]
+            let (_, ingredient) = retrievedIngredients'.[0]
             Expect.equal ingredient.Name "testIngredient" "should be equal"
             Expect.equal ingredient.Id guid "should be equal"
         
@@ -109,7 +109,7 @@ let tests =
             Expect.isOk retrievedIngredients "should be ok"
             let retrievedIngredients' = retrievedIngredients.OkValue
             Expect.equal retrievedIngredients'.Length 1 "should be equal"
-            let (_, ingredient, _, _) = retrievedIngredients'.[0]
+            let (_, ingredient) = retrievedIngredients'.[0]
             Expect.equal ingredient.Name "testIngredient" "should be equal"
             Expect.equal ingredient.Id guid "should be equal"
             Expect.equal ingredient.IngredientTypes.Length 1 "should be equal"

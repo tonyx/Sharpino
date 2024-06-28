@@ -19,9 +19,7 @@ module Supplier =
     let phonePattern = @"\(?\d{3}\)?-? *\d{3}-? *-?\d{4}"
 
     type Supplier(id: Guid, name: string, email: string, phone: string) =
-        let stateId = Guid.NewGuid()
         member this.Id = id
-        member this.StateId = stateId
         member this.Name = name
         member this.Email = email
         member this.Phone = phone
@@ -46,9 +44,6 @@ module Supplier =
         
         interface Aggregate<string> with
             member this.Id = this.Id
-            member this.StateId = stateId
-            member this.Lock: obj =
-                this
             member this.Serialize =
                 serializer.Serialize this
         
