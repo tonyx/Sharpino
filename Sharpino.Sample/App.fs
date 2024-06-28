@@ -64,14 +64,14 @@ module App =
             result {
                 let! result =
                     TodoCommand.Ping ()
-                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker 
                 return result
             }
         member this.PingTag() =
             result {
                 let! result =
                     TagCommand.Ping()
-                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker
                 return result
             }
         member this.PingCategory() =
@@ -79,20 +79,20 @@ module App =
             result {
                 let! result =
                     TodoCommand.Ping()
-                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                 return result
             }
 
         member this.GetAllTodos() =
             result  {
-                let! (_, state, _, _) = todosStateViewer ()
+                let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
         member this.AddTodo todo =
             // lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
-                    let! (_, tagState, _, _) = tagsStateViewer ()
+                    let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagIdIsValid =    
@@ -103,7 +103,7 @@ module App =
                     let! result =
                         todo
                         |> TodoCommand.AddTodo
-                        |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                        |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                     return result
                 }
             // )
@@ -111,7 +111,7 @@ module App =
         member this.Add2Todos (todo1, todo2) =
             lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
-                    let! (_, tagState, _, _) = tagsStateViewer ()
+                    let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
                     let! tagId1IsValid =  
@@ -127,7 +127,7 @@ module App =
                     let! result =
                         (todo1, todo2)
                         |> TodoCommand.Add2Todos
-                        |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                        |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                     return result
                 }
             )
@@ -137,12 +137,12 @@ module App =
                 let! result =
                     id
                     |> TodoCommand.RemoveTodo
-                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                 return result 
             }
         member this.GetAllCategories() =
             result {
-                let! (_, state, _, _) = todosStateViewer ()
+                let! (_, state) = todosStateViewer ()
                 return  state.GetCategories()
             }
 
@@ -151,7 +151,7 @@ module App =
                 let! result =
                     category
                     |> TodoCommand.AddCategory
-                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                 return result
             }
 
@@ -160,7 +160,7 @@ module App =
                 let! result =
                     id
                     |> TodoCommand.RemoveCategory
-                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                 return result 
             }
 
@@ -169,7 +169,7 @@ module App =
                 let! result =
                     tag
                     |> AddTag
-                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker
                 return result 
             }
 
@@ -177,13 +177,13 @@ module App =
             result {
                 let removeTag = TagCommand.RemoveTag id
                 let removeTagRef = TodoCommand.RemoveTagRef id
-                let! result = runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent, string> storage eventBroker removeTag removeTagRef tagsStateViewer todosStateViewer
+                let! result = runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent, string> storage eventBroker removeTag removeTagRef
                 return result
             }
 
         member this.GetAllTags () =
             result {
-                let! (_, state, _, _) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
+                let! (_, state) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
                 return state.GetTags()
             }
 
@@ -204,9 +204,6 @@ module App =
                             eventBroker
                             command 
                             command2
-                            categoryStateViewer
-                            upgradeTodoStateViewer
-                            
                 return ()
             }
 
@@ -235,7 +232,7 @@ module App =
 
         member this.GetAllTodos() =
             result {
-                let! (_, state, _, _) = todosStateViewer ()
+                let! (_, state) = todosStateViewer ()
                 return state.GetTodos()
             }
 
@@ -244,7 +241,7 @@ module App =
             result {
                 let! result =
                     TodoCommand'.Ping()
-                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker
                 return result
             }
 
@@ -252,7 +249,7 @@ module App =
             result {
                 let! result =
                     TagCommand.Ping()
-                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker
                 return result
             }
         member this.PingCategory() =
@@ -260,16 +257,16 @@ module App =
             result {
                 let! result =
                     CategoryCommand.Ping()
-                    |> runCommand<CategoriesContext, CategoryEvent, string> storage eventBroker categoryStateViewer
+                    |> runCommand<CategoriesContext, CategoryEvent, string> storage eventBroker
                 return result
             }
 
         member this.AddTodo todo =
             result {
-                let! (_, tagState, _, _) = tagsStateViewer ()
+                let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState, _, _) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
+                let! (_, categoriesState) =  categoryStateViewer () // getState<CategoriesCluster, CategoryEvent>
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! tagIdIsValid =    
@@ -285,16 +282,16 @@ module App =
                 let! result =
                     todo
                     |> TodoCommand'.AddTodo
-                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker
                 return result
             }
 
         member this.Add2Todos (todo1, todo2) =
             result {
-                let! (_, tagState, _, _) = tagsStateViewer ()
+                let! (_, tagState) = tagsStateViewer ()
                 let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
 
-                let! (_, categoriesState, _, _) =  categoryStateViewer ()
+                let! (_, categoriesState) =  categoryStateViewer ()
                 let categoryIds = categoriesState.GetCategories() |>> (fun x -> x.Id)
 
                 let! categoryId1IsValid =    
@@ -320,7 +317,7 @@ module App =
                 let! result =
                     (todo1, todo2)
                     |> TodoCommand'.Add2Todos
-                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker
                 return result
             }
 
@@ -329,13 +326,13 @@ module App =
                 let! result =
                     id
                     |> TodoCommand'.RemoveTodo
-                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker todosStateViewer
+                    |> runCommand<TodosContextUpgraded, TodoEvent', string> storage eventBroker
                 return result
             }
 
         member this.GetAllCategories() =
             result {
-                let! (_, state, _, _) = categoryStateViewer ()
+                let! (_, state) = categoryStateViewer ()
                 return state.GetCategories()
             }
 
@@ -344,7 +341,7 @@ module App =
                 let! result =
                     category
                     |> CategoryCommand.AddCategory
-                    |> runCommand<CategoriesContext, CategoryEvent, string> storage eventBroker categoryStateViewer
+                    |> runCommand<CategoriesContext, CategoryEvent, string> storage eventBroker
                 return result 
             }
 
@@ -359,7 +356,7 @@ module App =
                         CategoryEvent, 
                         TodoEvent',
                         string> 
-                        storage eventBroker removeCategory removeCategoryRef categoryStateViewer todosStateViewer
+                        storage eventBroker removeCategory removeCategoryRef
                 return result 
             }
 
@@ -368,7 +365,7 @@ module App =
                 let! result =
                     tag
                     |> AddTag
-                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker tagsStateViewer
+                    |> runCommand<TagsContext, TagEvent, string> storage eventBroker
                 return result 
             }
 
@@ -378,13 +375,13 @@ module App =
                 let removeTagRef = TodoCommand'.RemoveTagRef id
                 let! result = 
                     runTwoCommands<TagsContext, TodosContextUpgraded, TagEvent, TodoEvent', string> 
-                        storage eventBroker removeTag removeTagRef tagsStateViewer todosStateViewer
+                        storage eventBroker removeTag removeTagRef
                 return result
             }
 
         member this.GetAllTags () =
             result {
-                let! (_, state, _, _) = 
+                let! (_, state) = 
                     tagsStateViewer ()
                 let tags = state.GetTags()
                 return tags
