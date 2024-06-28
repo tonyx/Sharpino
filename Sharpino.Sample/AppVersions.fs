@@ -70,18 +70,18 @@ module AppVersions =
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         EventId * Version * List<Json> * Name * ContextStateId -> unit
-            _pingTodo:          unit -> Result< List<List<int>>, string>
-            _pingCategories:    unit -> Result< List<List<int>>, string>
-            _pingTags:          unit -> Result< List<List<int>>, string>
+            _pingTodo:          unit -> Result<unit, string>
+            _pingCategories:    unit -> Result<unit, string>
+            _pingTags:          unit -> Result<unit, string>
             getAllTodos:        unit -> Result<List<Todo>, string>
-            addTodo:            Todo -> Result< List<List<int>>, string>
-            add2Todos:          Todo * Todo -> Result< List<List<int>>, string>
-            removeTodo:         Guid -> Result< List<List<int>>, string>
+            addTodo:            Todo -> Result<unit, string>
+            add2Todos:          Todo * Todo -> Result<unit, string>
+            removeTodo:         Guid -> Result<unit, string>
             getAllCategories:   unit -> Result<List<Category>, string> 
-            addCategory:        Category -> Result<List<List<int>>, string>
-            removeCategory:     Guid -> Result< List<List<int>>, string>
-            addTag:             Tag -> Result< List<List<int>>, string>
-            removeTag:          Guid -> Result< List<List<int>>, string>
+            addCategory:        Category -> Result<unit, string>
+            removeCategory:     Guid -> Result<unit, string>
+            addTag:             Tag -> Result<unit, string>
+            removeTag:          Guid -> Result<unit, string>
             getAllTags:         unit -> Result<List<Tag>, string>
         }
 
@@ -96,7 +96,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (pgStorage :> IEventStore<string>).AddEvents eventId vers name contextStateId deser |> ignore
+                                    (pgStorage :> IEventStore<string>).AddEvents eventId vers name deser |> ignore
             _pingTodo =         currentPgApp.PingTodo
             _pingCategories =   currentPgApp.PingCategory
             _pingTags =         currentPgApp.PingTag
@@ -122,7 +122,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (pgStorage :> IEventStore<string>).AddEvents eventId version name contextStateId deser |> ignore
+                                    (pgStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
             _pingTodo =         upgradedPgApp.PingTodo
             _pingCategories =   upgradedPgApp.PingCategory
             _pingTags =         upgradedPgApp.PingTag
@@ -149,7 +149,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name (Guid.Empty) deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
             _pingTodo =         currentMemApp.PingTodo
             _pingCategories =   currentMemApp.PingCategory
             _pingTags =         currentMemApp.PingTag
@@ -175,7 +175,7 @@ module AppVersions =
                                     resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e 
-                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name Guid.Empty deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
             _pingTodo =         upgradedMemApp.PingTodo
             _pingCategories =   upgradedMemApp.PingCategory
             _pingTags =         upgradedMemApp.PingTag    

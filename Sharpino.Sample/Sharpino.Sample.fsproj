@@ -34,16 +34,17 @@
     <PackageReference Include="Saturn" Version="0.17.0" />
    
     <!-- include to test from the nuget repository -->
-    <PackageReference Include="Sharpino" Version="2.1.1" />
+    
+<!--    <PackageReference Include="Sharpino" Version="2.1.1" />-->
+    
     <!-- <PackageReference Include="Sharpino.Core" Version="1.1.4" /> -->
     
     <PackageReference Update="FSharp.Core" Version="8.*" />
   </ItemGroup>
 
-<!-- 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> -->
+  </ItemGroup> 
 
   <!-- comment if get the lib from nuget -->
    <!-- <ItemGroup>
