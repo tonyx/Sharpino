@@ -191,7 +191,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
-
+- WARNING!!! Version 2.2.9 is DEPRECATED. Fixint it.
 - Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
 {
