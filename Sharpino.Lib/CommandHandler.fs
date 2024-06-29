@@ -74,7 +74,6 @@ module CommandHandler =
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
 
-    [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -87,19 +86,18 @@ module CommandHandler =
         > 
         (storage: IEventStore<'F>) =
             let stateViewer = getStorageFreshStateViewer<'A, 'E, 'F> storage
-            async {
-                return
-                    ResultCE.result
-                        {
-                            let! (id, state) = stateViewer ()
-                            let serState = state.Serialize
-                            let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
-                            return result 
-                        }
-            }
-            |> Async.RunSynchronously
+            Async.RunSynchronously(
+                async {
+                    return
+                        ResultCE.result
+                            {
+                                let! (id, state) = stateViewer ()
+                                let serState = state.Serialize
+                                let! result = storage.SetSnapshot 'A.Version (id, serState) 'A.StorageName
+                                return result 
+                            }
+                }, Commons.generalAsyncTimeOut)
 
-    [<MethodImpl(MethodImplOptions.Synchronized)>]
     let inline private mkAggregateSnapshot<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
         and 'E :> Event<'A>
@@ -112,17 +110,17 @@ module CommandHandler =
         (storage: IEventStore<'F>) 
         (aggregateId: AggregateId) =
             let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E, 'F> storage
-            async {
-                return
-                    ResultCE.result
-                        {
-                            let! (eventId, state) = stateViewer aggregateId 
-                            let serState = state.Serialize 
-                            let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
-                            return! result 
-                        }
-            }
-            |> Async.RunSynchronously
+            Async.RunSynchronously 
+                (async {
+                    return
+                        ResultCE.result
+                            {
+                                let! (eventId, state) = stateViewer aggregateId 
+                                let serState = state.Serialize 
+                                let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
+                                return! result 
+                            }
+                }, Commons.generalAsyncTimeOut)
      
     let inline mkSnapshotIfIntervalPassed<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
@@ -137,22 +135,22 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>) =
             log.Debug "mkSnapshotIfIntervalPassed"
-            async {
-                return
-                    result
-                        {
-                            let! lastEventId = 
-                                storage.TryGetLastEventId 'A.Version 'A.StorageName 
-                                |> Result.ofOption "lastEventId is None"
-                            let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                            return! 
-                                if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
-                                    mkSnapshot<'A, 'E, 'F> storage
-                                else
-                                    () |> Ok
-                        }
-            }    
-            |> Async.RunSynchronously
+            Async.RunSynchronously
+                (async {
+                    return
+                        result
+                            {
+                                let! lastEventId = 
+                                    storage.TryGetLastEventId 'A.Version 'A.StorageName 
+                                    |> Result.ofOption "lastEventId is None"
+                                let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                                return! 
+                                    if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
+                                        mkSnapshot<'A, 'E, 'F> storage
+                                    else
+                                        () |> Ok
+                            }
+                }, Commons.generalAsyncTimeOut)    
             
     let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
@@ -276,6 +274,7 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously
+                    
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
     
@@ -326,6 +325,7 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously
+                    
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
             MailBoxProcessors.postToTheProcessor processor command
 
@@ -574,9 +574,7 @@ module CommandHandler =
                             let _ =
                                 aggregateIds2
                                 |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                            
                             return ()
-                            // return eventIds
                         }
                 }
                 |> Async.RunSynchronously
@@ -655,6 +653,7 @@ module CommandHandler =
                         } 
                     }
                 |> Async.RunSynchronously
+                    
             let lookupNames = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
             MailBoxProcessors.postToTheProcessor processor commands
@@ -697,60 +696,60 @@ module CommandHandler =
             log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
             
             let commands = fun () ->
-                async {
-                    return
-                        result {
+                Async.RunSynchronously
+                    (async {
+                        return
+                            result {
 
-                            let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> storage
-                            let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> storage
-                            let! (eventId3, state3) = getFreshState<'A3, 'E3, 'F> storage
+                                let! (eventId1, state1) = getFreshState<'A1, 'E1, 'F> storage
+                                let! (eventId2, state2) = getFreshState<'A2, 'E2, 'F> storage
+                                let! (eventId3, state3) = getFreshState<'A3, 'E3, 'F> storage
 
-                            let! events1 =
-                                state1
-                                |> command1.Execute
-                            let! events2 =
-                                state2
-                                |> command2.Execute
-                            let! events3 =
-                                state3
-                                |> command3.Execute
+                                let! events1 =
+                                    state1
+                                    |> command1.Execute
+                                let! events2 =
+                                    state2
+                                    |> command2.Execute
+                                let! events3 =
+                                    state3
+                                    |> command3.Execute
 
-                            let events1' =
-                                events1 
-                                |>> fun x -> x.Serialize
-                            let events2' =
-                                events2 
-                                |>> fun x -> x.Serialize
-                            let events3' =
-                                events3 
-                                |>> fun x -> x.Serialize
+                                let events1' =
+                                    events1 
+                                    |>> fun x -> x.Serialize
+                                let events2' =
+                                    events2 
+                                    |>> fun x -> x.Serialize
+                                let events3' =
+                                    events3 
+                                    |>> fun x -> x.Serialize
 
-                            let! idLists =
-                                storage.MultiAddEvents 
-                                    [
-                                        (eventId1, events1', 'A1.Version, 'A1.StorageName)
-                                        (eventId2, events2', 'A2.Version, 'A2.StorageName)
-                                        (eventId3, events3', 'A3.Version, 'A3.StorageName)
-                                    ]
-                                
-                            if (eventBroker.notify.IsSome) then
-                                let idAndEvents1 = List.zip idLists.[0] events1'
-                                let idAndEvents2 = List.zip idLists.[1] events2'
-                                let idAndEvents3 = List.zip idLists.[2] events3'
+                                let! idLists =
+                                    storage.MultiAddEvents 
+                                        [
+                                            (eventId1, events1', 'A1.Version, 'A1.StorageName)
+                                            (eventId2, events2', 'A2.Version, 'A2.StorageName)
+                                            (eventId3, events3', 'A3.Version, 'A3.StorageName)
+                                        ]
+                                    
+                                if (eventBroker.notify.IsSome) then
+                                    let idAndEvents1 = List.zip idLists.[0] events1'
+                                    let idAndEvents2 = List.zip idLists.[1] events2'
+                                    let idAndEvents3 = List.zip idLists.[2] events3'
 
-                                postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                                postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                                postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                                ()
+                                    postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                                    postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                                    postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                                    ()
 
-                            let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
-                            let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
+                                let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                                let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
+                                let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
 
-                            return ()
-                        } 
-                }
-                |> Async.RunSynchronously
+                                return ()
+                            } 
+                    }, Commons.generalAsyncTimeOut)
             let lookupNames = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
             MailBoxProcessors.postToTheProcessor processor commands
