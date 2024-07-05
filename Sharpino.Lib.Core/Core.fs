@@ -21,6 +21,8 @@ module Core =
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
 
+    // todo: make the undoer behave differently. Basically the function the produces tha actual undoer must
+    // be based on a state that includes also info about the whole context (the app iteself, probably)
     type Undoer<'A, 'E when 'E :> Event<'A>> = 'A -> Result<List<'E>, string>
 
     type Command<'A, 'E when 'E :> Event<'A>> =
