@@ -65,7 +65,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
 
-    <PackageReference Include="Sharpino.Core" Version="2.0.4" />
+<!--    <PackageReference Include="Sharpino.Core" Version="2.0.4" />-->
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
@@ -92,10 +92,10 @@
   <!-- needed if you are developing the core: -->
 <!--  -->
 
-<!-- 
+ 
 <ItemGroup>
  <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
 </ItemGroup>
- -->
+
 
 </Project>
