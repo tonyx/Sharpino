@@ -14,7 +14,7 @@
 
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Library</Description>
-    <ReleaseNotes>This release supports In-memory, Postgres, minimal EventStoreDb and Kafka publishing using outbox pattern.</ReleaseNotes> 
+    <ReleaseNotes>This release supports In-memory, Postgres, minimal Kafka publishing using outbox pattern like.</ReleaseNotes> 
     <Copyright>Copyright ©2023-2024 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#, Fsharp, eventstoredb, postgres</PackageTags>
 
