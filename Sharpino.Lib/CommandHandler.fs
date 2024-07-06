@@ -36,8 +36,8 @@ module CommandHandler =
         loop()
     )
     let postToProcessor f =
-        processor.PostAndAsyncReply(fun rc -> f, rc)
-        |> Async.RunSynchronously
+        Async.RunSynchronously
+            (processor.PostAndAsyncReply(fun rc -> f, rc) , Commons.generalAsyncTimeOut)
 
     let inline getStorageFreshStateViewer<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
@@ -195,6 +195,7 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>) 
         (command: Command<'A, 'E>) =
             log.Debug (sprintf "runCommand %A\n" command)
+            // next step is avoid the async in the labmda of the command as the mailboxprocessor already does it
             let command = fun ()  ->
                 async {
                     return
