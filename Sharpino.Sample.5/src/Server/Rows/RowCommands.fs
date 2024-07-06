@@ -16,7 +16,7 @@ module RowAggregateCommand =
         | RemoveSeat of Seat
         | AddInvariant of InvariantContainer
         | RemoveInvariant of InvariantContainer
-            interface Command<SeatsRow, RowAggregateEvent> with
+            interface AggregateCommand<SeatsRow, RowAggregateEvent> with
                 member this.Execute (x: SeatsRow) =
                     match this with
                     | BookSeats booking ->

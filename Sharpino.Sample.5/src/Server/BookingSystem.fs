@@ -37,14 +37,6 @@ module StorageStadiumBookingSystem =
             StadiumBookingSystem(eventStore, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
         new (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>) =
             StadiumBookingSystem(eventStore, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
-        // member this.SetAggregateStateControlInOptimisticLock version name =
-        //     ResultCE.result {
-        //         return! eventStore.SetClassicOptimisticLock version name
-        //     }
-        // member this.UnSetAggregateStateControlInOptimisticLock version name =
-        //     ResultCE.result {
-        //         return! eventStore.UnSetClassicOptimisticLock version name
-        //     }
         member this.AddRowReference (rowId: Guid)  =
             ResultCE.result {
                 let seatsRow = SeatsRow rowId
@@ -68,7 +60,7 @@ module StorageStadiumBookingSystem =
             result {
                 let bookSeatsCommands =
                     rowsAndBookings
-                    |>> fun (_, booking) -> (BookSeats booking)  :> Command<SeatsRow, RowAggregateEvent>
+                    |>> fun (_, booking) -> (BookSeats booking)  :> AggregateCommand<SeatsRow, RowAggregateEvent>
                 let rowIDs = rowsAndBookings |>> fst
                 // todo: should consider the total number of seats
                 let! mustBeLessThanThreeRows =
@@ -131,7 +123,7 @@ module StorageStadiumBookingSystem =
             result {
                 let addSeatsCommands =
                     rowAndSeats
-                    |>> fun (_, seats) -> (AddSeats seats):> Command<SeatsRow, RowAggregateEvent>
+                    |>> fun (_, seats) -> (AddSeats seats):> AggregateCommand<SeatsRow, RowAggregateEvent>
                 let rowIDs = rowAndSeats |>> fst
                 let! result =
                     runNAggregateCommands<SeatsRow, RowAggregateEvent, string>

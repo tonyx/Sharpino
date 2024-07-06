@@ -2,6 +2,7 @@ namespace Sharpino
 open FSharp.Core
 open FSharpPlus
 open FSharpPlus.Data
+open Sharpino.Definitions
 open log4net
 open log4net.Config
 open System
@@ -14,6 +15,9 @@ module Core =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
     // adding types for object based (no class level) aggregate type
     
+    type StateViewer<'A> = unit -> Result<EventId * 'A, string>
+    type AggregateViewer<'A> = Guid -> Result<EventId * 'A,string>
+    
     type Aggregate<'F> =
         abstract member Id: Guid // use this one to be able to filter related events from same string
         abstract member Serialize: 'F
@@ -21,11 +25,13 @@ module Core =
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
 
-    type Undoer<'A, 'E when 'E :> Event<'A>> = 'A -> Result<List<'E>, string>
-
     type Command<'A, 'E when 'E :> Event<'A>> =
         abstract member Execute: 'A -> Result<List<'E>, string>
-        abstract member Undoer: Option<'A -> Result<Undoer<'A, 'E>, string>>
+        abstract member Undoer: Option<'A -> StateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
+        
+    type AggregateCommand<'A, 'E when 'E :> Event<'A>> =
+        abstract member Execute: 'A -> Result<List<'E>, string>
+        abstract member Undoer: Option<'A -> AggregateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
 
     let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
         events

@@ -2,7 +2,6 @@ Saturn
 Fable.Remoting.Giraffe
 FSharp.Core
 Newtonsoft.Json
-FSharp.Quotations.Evaluator
 FSharpPlus
 Log4net
 FSToolkit.ErrorHandling

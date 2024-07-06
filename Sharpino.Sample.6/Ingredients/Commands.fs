@@ -15,7 +15,7 @@ module IngredientCommands =
         | RemoveIngredientType of IngredientType
         | AddMeasureType of MeasureType
         | RemoveMeasureType of MeasureType
-            interface Command<Ingredient, IngredientEvents> with
+            interface AggregateCommand<Ingredient, IngredientEvents> with
                 member this.Execute (x: Ingredient) =
                     match this with
                     | AddIngredientType t ->

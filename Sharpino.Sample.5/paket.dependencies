@@ -6,7 +6,6 @@ nuget Expecto
 nuget Feliz.Bulma
 nuget FSharp.Core ~> 8
 nuget Fable.Remoting.Giraffe ~> 5
-nuget FSharp.Quotations.Evaluator
 nuget FSharpPlus
 nuget FsPickler.Json
 nuget FSToolkit.ErrorHandling
@@ -25,4 +24,3 @@ nuget Feliz ~> 2
 
 nuget Fake.Core.Target ~> 5
 nuget Fake.IO.FileSystem ~> 5
-nuget Farmer ~> 1

@@ -123,28 +123,32 @@ module EventStoreApp =
             }   
             |> Async.RunSynchronously
 
-        member this.RemoveTag id =
-            let f = fun() ->
-                result {
-                    let removeTag = TagCommand.RemoveTag id
-                    let removeTagRef = TodoCommand.RemoveTagRef id
-                    return! runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent> storage removeTag removeTagRef
-                }
-            async { 
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
-            }   
-            |> Async.RunSynchronously
-        member this.RemoveTagFakingErrorOnSecondCommand id =
-            let f = fun() ->
-                result {
-                    let removeTag = TagCommand.RemoveTag id
-                    let removeTagRef = TodoCommand.RemoveTagRef id
-                    return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsContext, TodosContext, TagEvent, TodoEvent> storage removeTag removeTagRef
-                }
-            async { 
-                return lightProcessor.PostAndReply (fun rc -> f, rc)
-            }   
-            |> Async.RunSynchronously
+        // the undoer changed and it is not compatible with the eventstore based app anymore.
+        // The undoer could still be used for the multiple streams transaction-less storing of events
+        // but I will decide if do it again on eventstore db, or with other kinds (including the current postgres based)
+        
+        // member this.RemoveTag id =
+        //     let f = fun() ->
+        //         result {
+        //             let removeTag = TagCommand.RemoveTag id
+        //             let removeTagRef = TodoCommand.RemoveTagRef id
+        //             return! runTwoCommands<TagsContext, TodosContext, TagEvent, TodoEvent> storage removeTag removeTagRef
+        //         }
+        //     async { 
+        //         return lightProcessor.PostAndReply (fun rc -> f, rc)
+        //     }   
+        //     |> Async.RunSynchronously
+        // member this.RemoveTagFakingErrorOnSecondCommand id =
+        //     let f = fun() ->
+        //         result {
+        //             let removeTag = TagCommand.RemoveTag id
+        //             let removeTagRef = TodoCommand.RemoveTagRef id
+        //             return! runTwoCommandsWithFailure_USE_IT_ONLY_TO_TEST_THE_UNDO<TagsContext, TodosContext, TagEvent, TodoEvent> storage removeTag removeTagRef
+        //         }
+        //     async { 
+        //         return lightProcessor.PostAndReply (fun rc -> f, rc)
+        //     }   
+        //     |> Async.RunSynchronously
 
         member this.Add2Todos (todo1, todo2) =
             let f = fun() ->

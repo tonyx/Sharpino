@@ -13,7 +13,7 @@ module DishCommands =
     type DishCommands =
         | AddIngredient of Guid
         | RemoveIngredient of Guid
-            interface Command<Dish, DishEvents> with
+            interface AggregateCommand<Dish, DishEvents> with
                 member this.Execute (x: Dish) =
                     match this with
                     | AddIngredient id ->

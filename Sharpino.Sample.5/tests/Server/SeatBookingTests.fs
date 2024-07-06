@@ -78,6 +78,7 @@ module BookingTests =
         // everything is in progress here:
         testList "seat bookings" [
             multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+                printf "first test\n"
                 setUp ()
 
                 // when
@@ -88,6 +89,7 @@ module BookingTests =
                 Expect.equal result.Length 0 "should be 0"
 
             multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
+                printf "second test\n"
                 setUp()
 
                 // when
@@ -96,6 +98,7 @@ module BookingTests =
 
                 // then
                 Expect.isError row "should be error"
+                Expect.isTrue true "true"
 
             multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem,_,_ ) ->
                 setUp()
@@ -111,11 +114,15 @@ module BookingTests =
                 // then
 
                 let retrievedRow = stadiumSystem.GetRow rowId
+                printf "third test 600\n"
                 Expect.isOk retrievedRow "should be ok"
                 let result = retrievedRow.OkValue
+                printf "third test 700\n"
                 Expect.equal result.Seats.Length 1 "should be 1"
 
             multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+                printf "is this broken? 100\n"
+
                 setUp()
 
                 // given

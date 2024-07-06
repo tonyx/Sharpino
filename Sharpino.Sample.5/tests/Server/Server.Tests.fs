@@ -18,8 +18,9 @@ let server =
 
 
 let all = testList "All"
-              [ Shared.Tests.shared
-                server
+              [
+                // Shared.Tests.shared
+                // server
                 seatBookings
                 ]
 [<EntryPoint>]

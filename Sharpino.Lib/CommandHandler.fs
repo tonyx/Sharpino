@@ -22,8 +22,6 @@ open log4net.Config
 
 module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    type StateViewer<'A> = unit -> Result<EventId * 'A, string>
-    type AggregateViewer<'A> = Guid -> Result<EventId * 'A,string>
 
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
 
@@ -274,7 +272,6 @@ module CommandHandler =
                         }
                 }
                 |> Async.RunSynchronously
-                    
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
     
@@ -295,7 +292,7 @@ module CommandHandler =
         (storage: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
         (initialInstance: 'A2)
-        (command: Command<'A1, 'E1>)
+        (command: AggregateCommand<'A1, 'E1>)
         = 
             log.Debug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
             let command = fun () ->
@@ -342,7 +339,7 @@ module CommandHandler =
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>) 
-        (command: Command<'A, 'E>)
+        (command: AggregateCommand<'A, 'E>)
         =
             log.Debug (sprintf "runAggregateCommand %A" command)
             let command = fun () ->
@@ -388,7 +385,7 @@ module CommandHandler =
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (commands: List<Command<'A1, 'E1>>)
+        (commands: List<AggregateCommand<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
             let commands = fun () ->
@@ -474,8 +471,8 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
         (eventBroker: IEventBroker<'F>)
-        (command1: List<Command<'A1, 'E1>>)
-        (command2: List<Command<'A2, 'E2>>)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
         =
             let commands = fun () ->
                 async {

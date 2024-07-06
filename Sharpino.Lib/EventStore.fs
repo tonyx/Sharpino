@@ -98,6 +98,7 @@ module Storage =
         abstract member GetAggregateEvents: Version ->  Name -> Guid -> Result< List< EventId * 'F >, string >
 
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * 'F >
+        
 
     type IEventBroker<'F> =
         {

@@ -13,7 +13,7 @@ module SupplierCommands =
     type SupplierCommands =
         | ChangePhone of string
         | ChangeEmail of string
-            interface Command<Supplier, SupplierEvents> with
+            interface AggregateCommand<Supplier, SupplierEvents> with
                 member this.Execute (x: Supplier) =
                     match this with
                         | ChangePhone phone ->

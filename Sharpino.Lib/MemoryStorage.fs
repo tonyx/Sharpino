@@ -26,6 +26,8 @@ module MemoryStorage =
         let aggregate_events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>>()
         let snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageSnapshot>>>()
         let aggregate_snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>>>()
+        let aggregate_undo_command_buffer = Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>>()
+        
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id version name =
             log.Debug (sprintf "next_event_id %s %s" version name)
@@ -509,4 +511,3 @@ module MemoryStorage =
                     }
                 addAggregateSnapshots version name aggregateId state
                 () |> Ok     
-
