@@ -21,10 +21,6 @@ Support for Event-sourcing in F#.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
 - A specific technique helps refactoring (migration) between different versions of the application.
 
-## Next to come (for now)
-- Handling sensible data (GDPR compliance): in future they should be encrypted or be stored in a separate table.
-- Stable and working integration with an Event Broker (Apache Kafka): the events are correctly sent to the broker and some work could be needed to stabilize the way to subscribe to topics 
-
 
 ## Projects
 __Sharpino.Lib.Core__:

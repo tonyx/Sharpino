@@ -14,16 +14,12 @@
 Support for Event-sourcing in F#.
 
 ## Features
-- Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
+- Supports in memory and Postgres event store. 
 - Support publishing events to Apache Kafka Event Broker.
 - Example application with tests including Kafka subscriber. (unstable at the moment)
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
 - A specific technique helps refactoring (migration) between different versions of the application.
-
-## Next to come (for now)
-- Handling sensible data (GDPR compliance): in future they should be encrypted or be stored in a separate table.
-- Stable and working integration with an Event Broker (Apache Kafka): the events are correctly sent to the broker and some work could be needed to stabilize the way to subscribe to topics 
 
 
 ## Projects
