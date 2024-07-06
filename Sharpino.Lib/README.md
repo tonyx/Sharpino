@@ -127,7 +127,8 @@ The following line needs to stay commented out.
         // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
 ```
 
-# Sample application 2 is a problem of booking seats in two rows of five seats:
+
+# Sample application 2 is a problem of booking seats in two rows of five seats. 
 1. Booking seats among multiple rows (where those rows are aggregates) in an event-sourcing way.
 2. Booking seats in a single row by two concurrent commands that singularly do not violate any invariant rule and yet the final state is potentially invalid.
 
@@ -151,14 +152,12 @@ There is an invariant rule that says that no booking can end up in leaving the o
 This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
 
 ### Questions:
-1) can you just use a lock on any row to solve this problem?
-   Answer: yes by setting PessimisticLocking to true in appSettings.json that will force single-threaded execution of any command involving the same "aggregate"
-2) can you solve this problem without using locks?
+1) can you solve this problem without using locks?
    Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However they will be skipped by the "evolve" function anyway.
-3) Where are more info about how to test this behavior?
+2) Where are more info about how to test this behavior?
    Answer: See the testList called hackingEventInStorageTest.
    It will simply add invalid events and show that the current state is not affected by them.
-4) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
+3) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
    Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
 
@@ -192,8 +191,81 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Version 2.4.0: for aggregate commands use the AggregateCommand<..> interface instead of Aggregate<..>
+The undoer has changed its signature.
 
-- Version 2.2.9: introduced timeout in conncetion with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
+Usually the way we run commands against multiple aggregate doesn't require undoer, however it may happen.
+Plus: I am planning to use the undoer in the futer for the proper user level undo/redo feature.
+
+An example of the undoer for an aggregate is in the following module 
+
+from [shopping cart](https://github.com/tonyx/shoppingCartWithSharpino.git)
+
+```fsharp
+module CartCommands =
+    type CartCommands =
+    | AddGood of Guid * int
+    | RemoveGood of Guid
+        interface AggregateCommand<Cart, CartEvents> with
+            member this.Execute (cart: Cart) =
+                match this with
+                | AddGood (goodRef, quantity) -> 
+                    cart.AddGood (goodRef, quantity)
+                    |> Result.map (fun _ -> [GoodAdded (goodRef, quantity)])
+                | RemoveGood goodRef ->
+                    cart.RemoveGood goodRef
+                    |> Result.map (fun _ -> [GoodRemoved goodRef])
+            member this.Undoer = 
+                match this with
+                | AddGood (goodRef, _) -> 
+                    Some 
+                        (fun (cart: Cart) (viewer: AggregateViewer<Cart>) ->
+                            result {
+                                let! (i, _) = viewer (cart.Id) 
+                                return
+                                    fun () ->
+                                        result {
+                                            let! (j, state) = viewer (cart.Id)
+                                            let! isGreater = 
+                                                (j >= i)
+                                                |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
+                                            let result =
+                                                state.RemoveGood goodRef
+                                                |> Result.map (fun _ -> [GoodRemoved goodRef])
+                                            return! result
+                                        }
+                                }
+                        )
+                | RemoveGood goodRef ->
+                    Some
+                        (fun (cart: Cart) (viewer: AggregateViewer<Cart>) ->
+                            result {
+                                let! (i, state) = viewer (cart.Id) 
+                                let! goodQuantity = state.GetGoodAndQuantity goodRef
+                                return
+                                    fun () ->
+                                        result {
+                                            let! (j, state) = viewer (cart.Id)
+                                            let! isGreater = 
+                                                // this check depends also on the number of events generated by the command (i.e. the j >= (i+1) if command generates 2 event)
+                                                (j >= i)
+                                                |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
+                                            let result =
+                                                state.AddGood (goodRef, goodQuantity)
+                                                |> Result.map (fun _ -> [GoodAdded (goodRef, goodQuantity)])
+                                            return! result
+                                        }
+                                }
+                        )
+ ```
+
+
+
+ 
+
+
+- WARNING!!! Version 2.2.9 is DEPRECATED. Fixint it.
+- Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
 {
     "LockType":{"Case":"Optimistic"},
@@ -319,19 +391,22 @@ __The more permissive optimistic lock cannot ensure that multiple aggregate tran
 - Version: 1.4.4 Postgres tables of events need a new column: kafkaoffset of type BigInt. It is used to store the offset/position of the event in the Kafka topic.
 See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
 (Error handling can be improved in writing/reading Kafka event info there).
-Those data will be used in the future to feed the "kafkaViewer" on initialization.
+Those data will be used in the future to feed the "kafkaViewer" on initialization. _Note_: kafkaoffset/kafkatopic fields on db in future versions will be unused.
+
 
 - From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer.)
 - [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
-- Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests
+- Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests. Note: Kafka consumer is still in progress.
 - Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured). 
 - Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: the new Repository interface (and implementation) is __not compatible__ with the one introduced in Version 1.3.8!
-- Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities.
+ 
+- Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities. Note repository is only an interface with only a plain list implementation.
 - Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not lists anymore but use Repository data type (which at the moment uses plain lists anyway). 
 
 - Version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
  __don't use this because the configuration is changed in version 1.5.1__
 
+- this entry is ignored as the lock is always optimistic.
 ```json
 
     "SharpinoConfig": {
