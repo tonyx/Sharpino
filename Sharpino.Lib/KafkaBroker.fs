@@ -91,7 +91,7 @@ module KafkaBroker =
                         )
                         |> Some
                     notifyAggregate =
-                        (fun version name aggregateId events -> 
+                        (fun version name aggregateId events ->
                             let topic = name + "-" + version |> String.replace "_" ""
                             let producer = KafkaProducer.Create(log, producerConfig, topic)
                             let key = aggregateId.ToString() 
@@ -107,7 +107,11 @@ module KafkaBroker =
                                         // ok go for binary and then text encoded
                                         let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
                                         let encoded = Convert.ToBase64String binPickled
-                                        producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
+                                        // todo: to be fixed
+                                        // producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
+                                        let res =
+                                            Async.RunSynchronously (producer.ProduceAsync (key, encoded), 1000)
+                                        res
                                     )
                             deliveryResults
                         )
@@ -133,14 +137,18 @@ module KafkaBroker =
                     [] 
         }
         |> Async.StartAsTask
-
     
     let tryPublishAggregateEvent eventBroker aggregateId version name idAndEvents =
+        printf "XXX. try publish 100.\n" 
         async {
             return
                 match eventBroker.notifyAggregate with
                 | Some notify ->
-                    notify version name aggregateId idAndEvents
+                    printf "XXX. Notifying \n"
+                    let result = notify version name aggregateId idAndEvents
+                    // notify version name aggregateId idAndEvents
+                    printf "XXX.  notified \n"
+                    result
                 | None ->
                     []
         }
