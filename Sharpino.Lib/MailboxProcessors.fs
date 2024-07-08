@@ -67,7 +67,6 @@ module MailBoxProcessors =
             ) 
    
     let postToTheProcessor (processor: MailboxProcessor<UnitResult>) f =
-        printf "XXX. postToTheProcessor\n"
         // timeout is harcode here. next release will be a conf
         Async.RunSynchronously (processor.PostAndAsyncReply (fun reply -> (f, reply)), Commons.generalAsyncTimeOut)
         
