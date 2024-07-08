@@ -5,8 +5,6 @@ CREATE TABLE public.events{Version}{AggregateStorageName} (
                                           aggregate_id uuid NOT NULL,
                                           event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
-                                          kafkaoffset BIGINT,
-                                          kafkapartition INTEGER,
                                           "timestamp" timestamp without time zone NOT NULL
 );
 
