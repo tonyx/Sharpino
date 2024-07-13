@@ -187,6 +187,16 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
+This is a sample of the doNothingBroker: 
+```fsharp
+    let doNothingBroker =
+        {
+            notify = None
+            notifyAggregate = None
+        }
+
+```
 - Version 2.4.0: for aggregate commands use the AggregateCommand<..> interface instead of Aggregate<..>
 The undoer has changed its signature.
 

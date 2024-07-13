@@ -36,15 +36,7 @@ module CommandHandler =
         loop()
     )
     let postToProcessor f =
-        printf "XXXX. posting to the processor - 100\n"
-        let result =
-            processor.PostAndAsyncReply(fun rc -> f, rc)
-            |> Async.RunSynchronously
-        printf "XXXX. posted to the processor - 200\n"
-        result
-        
-        // Async.RunSynchronously
-        //     (processor.PostAndAsyncReply(fun rc -> f, rc) , Commons.generalAsyncTimeOut)
+        Async.RunSynchronously(processor.PostAndAsyncReply(fun rc -> f, rc), Commons.generalAsyncTimeOut)
 
     let inline getStorageFreshStateViewer<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
@@ -519,14 +511,14 @@ module CommandHandler =
                         (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
                         |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
                        
-                        
-                    // if (eventBroker.notifyAggregate.IsSome) then
-                    //     kafkaParmeters1
-                    //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                    //     |> ignore
-                    //     kafkaParameters2
-                    //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                    //     |> ignore
+                    // FOCUS todo: use the doNothingBroker (no notification)
+                    if (eventBroker.notifyAggregate.IsSome) then
+                        kafkaParmeters1
+                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                        |> ignore
+                        kafkaParameters2
+                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
+                        |> ignore
                         
                     let _ =
                         aggregateIds1

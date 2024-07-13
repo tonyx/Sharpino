@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>2.4.0</Version>
+    <Version>2.4.1</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Confluent.Kafka" Version="2.4.0" />
+    <PackageReference Include="Confluent.Kafka" Version="2.5.0" />
     <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.3.3" />
     <PackageReference Include="Expecto" Version="10.2.1" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.1" />
@@ -56,7 +56,7 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.2" />
 
-    <PackageReference Include="librdkafka.redist" Version="2.4.0" />
+    <PackageReference Include="librdkafka.redist" Version="2.5.0" />
 
     <PackageReference Include="Log4net" Version="2.0.17" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />

@@ -101,25 +101,48 @@ module PgStorage =
                     log.Info (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
                     None
 
+            // making more tests to check if using async in the inner function 
             // todo: start using result datatype when error is possible (wrap try catch into Result)
+            // member this.TryGetLastEventId version name =
+            //     log.Debug (sprintf "TryGetLastEventId %s %s" version name)
+            //     let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
+            //     try
+            //         Async.RunSynchronously
+            //             (async {
+            //                 return 
+            //                     connection
+            //                     |> Sql.connect
+            //                     |> Sql.query query 
+            //                     |> Sql.execute  (fun read -> read.int "id")
+            //                     |> Seq.tryHead
+            //             }, evenStoreTimeout)
+            //     with
+            //     | _ as ex ->
+            //         log.Error (sprintf "an error occurred: %A" ex.Message)
+            //         None
+
             member this.TryGetLastEventId version name =
                 log.Debug (sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously
                         (async {
-                            return 
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query 
-                                |> Sql.execute  (fun read -> read.int "id")
+                            return
+                                Async.RunSynchronously
+                                    (connection
+                                    |> Sql.connect
+                                    |> Sql.query query 
+                                    |> Sql.executeAsync  (fun read -> read.int "id")
+                                    |> Async.AwaitTask
+                                , evenStoreTimeout)
+                                
+                                // |> Async.RunSynchronously
                                 |> Seq.tryHead
                         }, evenStoreTimeout)
                 with
                 | _ as ex ->
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     None
-
             member this.TryGetLastSnapshotEventId version name =
                 log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
@@ -364,7 +387,8 @@ module PgStorage =
                     }, evenStoreTimeout)
 
             member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename json contextVersion contextName events =
-                log.Debug "entered in setSnapshot"
+                log.Debug "entered in setInitialAggregateStateAndAddEvents"
+                log.Debug (sprintf "timeout: %A" evenStoreTimeout)
 
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
@@ -426,6 +450,7 @@ module PgStorage =
 
             member this.SetInitialAggregateStateAndAddAggregateEvents eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName events =
                 log.Debug "entered in SetInitialAggregateStateAndAddAggregateEvents"
+                log.Debug (sprintf "timeout %A" evenStoreTimeout)
 
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
