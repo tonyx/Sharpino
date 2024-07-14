@@ -14,7 +14,7 @@
 Support for Event-sourcing in F#.
 
 ## Features
-- Supports in memory and Postgres event store. 
+- Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
 - Support publishing events to Apache Kafka Event Broker.
 - Example application with tests including Kafka subscriber. (unstable at the moment)
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
@@ -187,15 +187,25 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Version 2.4.2: Added a constraints that forbids using the same aggregate for multiple commands in the same transaction. The various version of RunMultiCommands are not ready to guarantee that they can always work in a consistent way when this happens.
+- Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
+This is a sample of the doNothingBroker: 
+```fsharp
+    let doNothingBroker =
+        {
+            notify = None
+            notifyAggregate = None
+        }
+
+```
 - Version 2.4.0: for aggregate commands use the AggregateCommand<..> interface instead of Aggregate<..>
 The undoer has changed its signature.
 
 Usually the way we run commands against multiple aggregate doesn't require undoer, however it may happen.
 Plus: I am planning to use the undoer in the futer for the proper user level undo/redo feature.
 
-An example of the undoer for an aggregate is in the following module 
+An example of the undoer for an aggregate is in the following module.
 
-from [shopping cart](https://github.com/tonyx/shoppingCartWithSharpino.git)
 
 ```fsharp
 module CartCommands =
