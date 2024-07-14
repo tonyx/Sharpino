@@ -449,7 +449,7 @@ module CommandHandler =
                 acc |> Result.bind (fun acc ->
                     let res =
                         c.Execute acc
-                        |> Result.bind (fun (res, _) -> res |> Ok)
+                        |> Result.bind (fun (res, e) -> res |> Ok)
                     res    
                 )
             ) (h |> Ok)
@@ -515,9 +515,6 @@ module CommandHandler =
                         statesAndCommands2
                         |>> fun (state, command) -> (command.Execute state)
                         |> List.traverseResultM id
-                   
-                     
-                    
                      
                     let newStates1: List<'A1> =
                         statesAndEvents1
