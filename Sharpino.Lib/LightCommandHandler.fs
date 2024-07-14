@@ -107,7 +107,7 @@ module LightCommandHandler =
                 return
                     result {
                         let! (_, state) = storage |> getState<'A, 'E>
-                        let! events =
+                        let! (newState, events) =
                             state
                             |> command.Execute
                         let serEvents = 

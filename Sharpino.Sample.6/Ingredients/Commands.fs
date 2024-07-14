@@ -20,14 +20,14 @@ module IngredientCommands =
                     match this with
                     | AddIngredientType t ->
                         x.AddIngredientType t
-                        |> Result.map (fun _ -> [IngredientEvents.AddIngredientType t])
+                        |> Result.map (fun x -> (x, [IngredientEvents.AddIngredientType t]))
                     | RemoveIngredientType t ->
                         x.RemoveIngredientType t
-                        |> Result.map (fun _ -> [IngredientEvents.RemoveIngredientType t])
+                        |> Result.map (fun x -> (x, [IngredientEvents.RemoveIngredientType t]))
                     | AddMeasureType t ->
                         x.AddMeasureType t
-                        |> Result.map (fun _ -> [IngredientEvents.AddMeasureType t])
+                        |> Result.map (fun x -> (x, [IngredientEvents.AddMeasureType t]))
                     | RemoveMeasureType t ->
                         x.RemoveMeasureType t
-                        |> Result.map (fun _ -> [IngredientEvents.RemoveMeasureType t])
+                        |> Result.map (fun x -> (x, [IngredientEvents.RemoveMeasureType t]))
                 member this.Undoer = None

@@ -26,11 +26,13 @@ module Core =
         abstract member Process: 'A -> Result<'A, string>
 
     type Command<'A, 'E when 'E :> Event<'A>> =
-        abstract member Execute: 'A -> Result<List<'E>, string>
+        // abstract member Execute: 'A -> Result<List<'E>, string>
+        abstract member Execute: 'A -> Result<'A * List<'E>, string>
         abstract member Undoer: Option<'A -> StateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
         
     type AggregateCommand<'A, 'E when 'E :> Event<'A>> =
-        abstract member Execute: 'A -> Result<List<'E>, string>
+        // abstract member Execute: 'A -> Result<List<'E>, string>
+        abstract member Execute: 'A -> Result<'A * List<'E>, string>
         abstract member Undoer: Option<'A -> AggregateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
 
     let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =

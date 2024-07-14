@@ -18,10 +18,10 @@ module SupplierCommands =
                     match this with
                         | ChangePhone phone ->
                             x.ChangePhone phone
-                            |> Result.map (fun _ -> [PhoneChanged phone])
+                            |> Result.map (fun s -> (s, [PhoneChanged phone]))
                         | ChangeEmail email ->
                             x.ChangeEmail email
-                            |> Result.map (fun _ -> [EmailChanged email])    
+                            |> Result.map (fun s -> (s, [EmailChanged email]))
                     
                 member this.Undoer = None         
     

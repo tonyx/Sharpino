@@ -21,22 +21,27 @@ module KitchenCommands =
                     match this with
                     | AddDishReference id ->
                         x.AddDishReference id
-                        |> Result.map (fun _ -> [KitchenEvents.DishReferenceAdded id])
+                        |> Result.map (fun x -> (x, [KitchenEvents.DishReferenceAdded id]))
                     | AddIngredientReference id ->
-                        x.AddIngredientReference id
-                        |> Result.map (fun _ -> [KitchenEvents.IngredientReferenceAdded id])
+                        let res = x.AddIngredientReference id
+                        res
+                        |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.IngredientReferenceAdded id]))
                     | RemoveIngredientReference id ->
-                        x.RemoveIngredientReference id
-                        |> Result.map (fun _ -> [KitchenEvents.IngredientReferenceRemoved id])
+                        let res = x.RemoveIngredientReference id
+                        res
+                        |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.IngredientReferenceRemoved id]))
                     | RemoveDishReference id ->
-                        x.RemoveDishReference id
-                        |> Result.map (fun _ -> [KitchenEvents.DishReferenceRemoved id])
+                        let res = x.RemoveDishReference id
+                        res
+                        |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.DishReferenceRemoved id]))
                     | AddSupplierReference id ->
-                        x.AddSupplierReference id
-                        |> Result.map (fun _ -> [KitchenEvents.SupplierReferenceAdded id])
+                        let res = x.AddSupplierReference id
+                        res 
+                        |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.SupplierReferenceAdded id]))
                     | RemoveSupplierReference id ->
-                        x.RemoveSupplierReference id
-                        |> Result.map (fun _ -> [KitchenEvents.SupplierReferenceRemoved id])
+                        let res = x.RemoveSupplierReference id
+                        res
+                        |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.SupplierReferenceRemoved id]))
                         
                 member this.Undoer = None
 

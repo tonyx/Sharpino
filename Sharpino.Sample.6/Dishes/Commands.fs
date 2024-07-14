@@ -18,9 +18,9 @@ module DishCommands =
                     match this with
                     | AddIngredient id ->
                         x.AddIngredient id
-                        |> Result.map (fun _ -> [DishEvents.IngredientAdded id])
+                        |> Result.map (fun s -> (s, [DishEvents.IngredientAdded id]))
                     | RemoveIngredient id ->
-                        x.RemoveIngredient id
-                        |> Result.map (fun _ -> [DishEvents.IngredientRemoved id])
+                        x.RemoveIngredient id 
+                        |> Result.map (fun s -> (s, [DishEvents.IngredientRemoved id]))
                 member this.Undoer = None
 
