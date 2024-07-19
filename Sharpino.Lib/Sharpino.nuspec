@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>2.4.1</version>
+    <version>2.5.0</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -17,18 +17,18 @@
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
         <dependency id="FsCheck" version="2.16.6" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.15.2" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.16.0" />
         <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
         <dependency id="FsPickler" version="5.3.2" />
         <dependency id="FsPickler.Json" version="5.3.2" />
         <dependency id="librdkafka.redist" version="2.5.0" />
         <dependency id="Log4net" version="2.0.17" />
         <dependency id="Microsoft.Extensions.Configuration" version="8.0.0" />
-        <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.1" />
+        <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.2" />
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.1.0" />
+        <dependency id="Sharpino.Core" version="2.1.1" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
@@ -52,18 +52,19 @@
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
         <dependency id="FsCheck" version="2.16.6" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.15.2" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.16.0" />
         <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
         <dependency id="FsPickler" version="5.3.2" />
         <dependency id="FsPickler.Json" version="5.3.2" />
         <dependency id="librdkafka.redist" version="2.5.0" />
         <dependency id="Log4net" version="2.0.17" />
         <dependency id="Microsoft.Extensions.Configuration" version="8.0.0" />
-        <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.1" />
+        
+        <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.2" />
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.1.0" />
+        <dependency id="Sharpino.Core" version="2.1.1" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
