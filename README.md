@@ -186,7 +186,24 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 - Adapt the examples to the new version of the library (2.0.0)
 
+
 ## News
+- Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
+- Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return the new computed state and not only the related events. Example:
+```fsharp
+                | UpdateName name -> 
+                    dish.UpdateName name
+                    |> Result.map (fun x -> (x, [NameUpdated name]))
+
+```
+
+Any application needs a little rewrite in the command part (vim macros may be helpful).
+
+In this way the commandhandler takes advantage of it to be able to memoize the state in the cache, so that virtually
+the state will never be processed and at any state the cache will always be ready for the current state
+(unless the system restarts, and in that case the state will be
+taken by reading the last snapshot and processing the events from that point on).
+ 
 - Version 2.4.2: Added a constraints that forbids using the same aggregate for multiple commands in the same transaction. The various version of RunMultiCommands are not ready to guarantee that they can always work in a consistent way when this happens.
 - Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
 This is a sample of the doNothingBroker: 
