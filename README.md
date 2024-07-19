@@ -189,7 +189,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 ## News
 - Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
-- Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return the new computed state and not only the related events. Example:
+- Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return also the new computed state and not only the related events. Example:
 ```fsharp
                 | UpdateName name -> 
                     dish.UpdateName name
