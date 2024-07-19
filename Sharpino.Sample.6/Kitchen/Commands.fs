@@ -42,6 +42,4 @@ module KitchenCommands =
                         let res = x.RemoveSupplierReference id
                         res
                         |> Result.map (fun _ -> (res.OkValue, [KitchenEvents.SupplierReferenceRemoved id]))
-                        
                 member this.Undoer = None
-
