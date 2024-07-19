@@ -384,61 +384,64 @@ module CommandHandler =
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
             log.Debug "runNAggregateCommands"
-            let commands = fun () ->
-                result {
-                    let! states =
-                        aggregateIds
-                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
-                    let states' = 
-                        states 
-                        |>> fun (_, state) -> state
-                    let lastEventIds =
-                        states
-                        |>> fun (eventId, _) -> eventId
-                    let statesAndCommands =
-                        List.zip states' commands
-                    let! stateEvents =
-                        statesAndCommands
-                        |>> fun (state, command) -> (command.Execute state)
-                        |> List.traverseResultM id
-                    let newStates =
-                        stateEvents 
-                        |>> fun (state, _) -> state
-                    let events =
-                        stateEvents
-                        |>> fun (_, events) -> events
-                        
-                    let serializedEvents =
-                        events 
-                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
-                    let packParametersForDb =
-                        List.zip3 lastEventIds serializedEvents aggregateIds
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                    let! eventIds =
-                        eventStore.MultiAddAggregateEvents packParametersForDb
-                        
-                    for i in 0..(aggregateIds.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
-                        
-                    let aggregateIdsWithEventIds =
-                        List.zip aggregateIds eventIds
-                    let kafkaParameters =
-                        List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
-                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                    if (eventBroker.notifyAggregate.IsSome) then
-                        kafkaParameters
-                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                        |> ignore
-                    let _ =
-                        aggregateIds
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                    return ()    
-                }
-            let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-            let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
-            MailBoxProcessors.postToTheProcessor processor commands
-
+            let aggregateIdsAreUnique = aggregateIds |> List.distinct |> List.length = aggregateIds.Length
+            if (not aggregateIdsAreUnique) then
+                Error "aggregateIds are not unique"
+            else
+                let commands = fun () ->
+                    result {
+                        let! states =
+                            aggregateIds
+                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                        let states' = 
+                            states 
+                            |>> fun (_, state) -> state
+                        let lastEventIds =
+                            states
+                            |>> fun (eventId, _) -> eventId
+                        let statesAndCommands =
+                            List.zip states' commands
+                        let! stateEvents =
+                            statesAndCommands
+                            |>> fun (state, command) -> (command.Execute state)
+                            |> List.traverseResultM id
+                        let newStates =
+                            stateEvents 
+                            |>> fun (state, _) -> state
+                        let events =
+                            stateEvents
+                            |>> fun (_, events) -> events
+                            
+                        let serializedEvents =
+                            events 
+                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                        let packParametersForDb =
+                            List.zip3 lastEventIds serializedEvents aggregateIds
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                        let! eventIds =
+                            eventStore.MultiAddAggregateEvents packParametersForDb
+                            
+                        for i in 0..(aggregateIds.Length - 1) do
+                            AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+                            
+                        let aggregateIdsWithEventIds =
+                            List.zip aggregateIds eventIds
+                        let kafkaParameters =
+                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
+                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                        if (eventBroker.notifyAggregate.IsSome) then
+                            kafkaParameters
+                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                            |> ignore
+                        let _ =
+                            aggregateIds
+                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                        return ()    
+                    }
+                let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+                let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
+                let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
+                MailBoxProcessors.postToTheProcessor processor commands
     
     // let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
     let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (commands: List<AggregateCommand<'A, 'E>>) =
@@ -479,123 +482,180 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
-            let commands = fun () ->
-                result {
-                    let! states1 =
-                        aggregateIds1
-                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
-                    let! states2 =
-                        aggregateIds2
-                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
-                        
-                    let states1' =
-                        states1 
-                        |>> fun (_, state) -> state
-                    let states2' =
-                        states2 
-                        |>> fun (_, state) -> state
-                        
-                    let eventIds1 =
-                        states1
-                        |>> fun (eventId, _) -> eventId
-                    let eventIds2 =
-                        states2
-                        |>> fun (eventId, _) -> eventId
-                        
-                    let statesAndCommands1 =
-                        List.zip states1' command1
-                    let statesAndCommands2 =
-                        List.zip states2' command2
-                    
-                    let! statesAndEvents1 =
-                        statesAndCommands1
-                        |>> fun (state, command) -> (command.Execute state)
-                        |> List.traverseResultM id
-                    let! statesAndEvents2 =
-                        statesAndCommands2
-                        |>> fun (state, command) -> (command.Execute state)
-                        |> List.traverseResultM id
-                     
-                    let newStates1: List<'A1> =
-                        statesAndEvents1
-                        |>> fun (state, _) -> state
-                        
-                    let newStates2: List<'A2> =
-                        statesAndEvents2
-                        |>> fun (state, _) -> state    
-                   
-                    let events1 =
-                        statesAndEvents1
-                        |>> fun (_, events) -> events
-                    let events2 =
-                        statesAndEvents2
-                        |>> fun (_, events) -> events    
-                        
-                    let serializedEvents1 =
-                        events1 
-                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
-                    let serializedEvents2 =
-                        events2 
-                        |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
-                        
-                    let packParametersForDb1 =
-                        List.zip3 eventIds1 serializedEvents1 aggregateIds1
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                    let packParametersForDb2 =
-                        List.zip3 eventIds2 serializedEvents2 aggregateIds2
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
-                        
-                    let allPacked = packParametersForDb1 @ packParametersForDb2
-                    let! eventIds =
-                        allPacked
-                        |> eventStore.MultiAddAggregateEvents
-                        
-                    let eventIds1 = eventIds |> List.take aggregateIds1.Length
-                    let eventIds2 = eventIds |> List.skip aggregateIds1.Length
-                    
-                    printf "XXX. eventid1 %A\n" eventIds1
-                    printf "XXX. eventid2 %A\n" eventIds2
+            let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
+            let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
+            if (not aggregateId1AreUnique) then
+                Error "aggregateIds1 are not unique"
+            else if (not aggregateId2AreUnique) then
+                Error "aggregateIds2 are not unique"
+            else
+                let commands = fun () ->
+                    result {
+                        let! states1 =
+                            aggregateIds1
+                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                        let! states2 =
+                            aggregateIds2
+                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
                             
-                    for i in 0..(aggregateIds1.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
-                        // AggregateCache<'A1, 'F>.Instance.Memoize2 (finalState1 |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
-                    
-                    for i in 0..(aggregateIds2.Length - 1) do
-                        AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
-                        // AggregateCache<'A2, 'F>.Instance.Memoize2 (finalState2 |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
-                     
-                    let aggregateIdsWithEventIds1 =
-                        List.zip aggregateIds1 eventIds1
-                    let aggregateIdsWithEventIds2 =
-                        List.zip aggregateIds2 eventIds2
+                        let states1' =
+                            states1 
+                            |>> fun (_, state) -> state
+                        let states2' =
+                            states2 
+                            |>> fun (_, state) -> state
+                            
+                        let eventIds1 =
+                            states1
+                            |>> fun (eventId, _) -> eventId
+                        let eventIds2 =
+                            states2
+                            |>> fun (eventId, _) -> eventId
+                            
+                        let statesAndCommands1 =
+                            List.zip states1' command1
+                        let statesAndCommands2 =
+                            List.zip states2' command2
+                            
+                        let! events1 =
+                            statesAndCommands1
+                            |>> fun (state, command) -> command.Execute state
+                            |> List.traverseResultM id
+                        let! events2 =
+                            statesAndCommands2
+                            |>> fun (state, command) -> command.Execute state
+                            |> List.traverseResultM id
+                            
+                        let serializedEvents1 =
+                            events1 
+                            |>> fun (_, x) -> x |>> fun (z: 'E1) -> z.Serialize
+                        let serializedEvents2 =
+                            events2 
+                            |>> fun (_, x) -> x |>> fun (z: 'E2) -> z.Serialize
+                            
+                        let packParametersForDb1 =
+                            List.zip3 eventIds1 serializedEvents1 aggregateIds1
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                        let packParametersForDb2 =
+                            List.zip3 eventIds2 serializedEvents2 aggregateIds2
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
+                            
+                        let allPacked = packParametersForDb1 @ packParametersForDb2
+                        let! eventIds =
+                            allPacked
+                            |> eventStore.MultiAddAggregateEvents
+                            
+                        let eventIds1 = eventIds |> List.take aggregateIds1.Length
+                        let eventIds2 = eventIds |> List.skip aggregateIds1.Length
                         
-                    let kafkaParmeters1 =
-                        List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
-                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                    let kafkaParameters2 =
-                        (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
-                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
+                        let states1' =
+                            states1 
+                            |>> fun (_, state) -> state
+                        let states2' =
+                            states2 
+                            |>> fun (_, state) -> state
+                            
+                        let eventIds1 =
+                            states1
+                            |>> fun (eventId, _) -> eventId
+                        let eventIds2 =
+                            states2
+                            |>> fun (eventId, _) -> eventId
+                            
+                        let statesAndCommands1 =
+                            List.zip states1' command1
+                        let statesAndCommands2 =
+                            List.zip states2' command2
+                        
+                        let! statesAndEvents1 =
+                            statesAndCommands1
+                            |>> fun (state, command) -> (command.Execute state)
+                            |> List.traverseResultM id
+                        let! statesAndEvents2 =
+                            statesAndCommands2
+                            |>> fun (state, command) -> (command.Execute state)
+                            |> List.traverseResultM id
+                         
+                        let newStates1: List<'A1> =
+                            statesAndEvents1
+                            |>> fun (state, _) -> state
+                            
+                        let newStates2: List<'A2> =
+                            statesAndEvents2
+                            |>> fun (state, _) -> state    
                        
-                    // FOCUS todo: use the doNothingBroker (no notification)
-                    if (eventBroker.notifyAggregate.IsSome) then
-                        kafkaParmeters1
-                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                        |> ignore
-                        kafkaParameters2
-                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                        |> ignore
+                        let events1 =
+                            statesAndEvents1
+                            |>> fun (_, events) -> events
+                        let events2 =
+                            statesAndEvents2
+                            |>> fun (_, events) -> events    
+                            
+                        let serializedEvents1 =
+                            events1 
+                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                        let serializedEvents2 =
+                            events2 
+                            |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
+                            
+                        let packParametersForDb1 =
+                            List.zip3 eventIds1 serializedEvents1 aggregateIds1
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                        let packParametersForDb2 =
+                            List.zip3 eventIds2 serializedEvents2 aggregateIds2
+                            |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
+                            
+                        let allPacked = packParametersForDb1 @ packParametersForDb2
+                        let! eventIds =
+                            allPacked
+                            |> eventStore.MultiAddAggregateEvents
+                            
+                        let eventIds1 = eventIds |> List.take aggregateIds1.Length
+                        let eventIds2 = eventIds |> List.skip aggregateIds1.Length
                         
-                    let _ =
-                        aggregateIds1
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                    let _ =
-                        aggregateIds2
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                    return ()
-                }
-            let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+                        printf "XXX. eventid1 %A\n" eventIds1
+                        printf "XXX. eventid2 %A\n" eventIds2
+                                
+                        for i in 0..(aggregateIds1.Length - 1) do
+                            AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                            // AggregateCache<'A1, 'F>.Instance.Memoize2 (finalState1 |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                        
+                        for i in 0..(aggregateIds2.Length - 1) do
+                            AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
+                            // AggregateCache<'A2, 'F>.Instance.Memoize2 (finalState2 |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
+                         
+                        let aggregateIdsWithEventIds1 =
+                            List.zip aggregateIds1 eventIds1
+                        let aggregateIdsWithEventIds2 =
+                            List.zip aggregateIds2 eventIds2
+                            
+                        let kafkaParmeters1 =
+                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
+                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                        let kafkaParameters2 =
+                            (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
+                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
+                           
+                        // FOCUS todo: use the doNothingBroker (no notification)
+                        if (eventBroker.notifyAggregate.IsSome) then
+                            kafkaParmeters1
+                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                            |> ignore
+                            kafkaParameters2
+                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
+                            |> ignore
+                            
+                        let _ =
+                            aggregateIds1
+                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                        let _ =
+                            aggregateIds2
+                            |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
+                        return ()
+                    }
+                let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+                let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
+                MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)

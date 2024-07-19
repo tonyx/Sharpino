@@ -187,6 +187,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 
 ## News
+- Version 2.4.2: Added a constraints that forbids using the same aggregate for multiple commands in the same transaction. The various version of RunMultiCommands are not ready to guarantee that they can always work in a consistent way when this happens.
 - Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
 This is a sample of the doNothingBroker: 
 ```fsharp
