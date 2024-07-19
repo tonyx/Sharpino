@@ -443,11 +443,10 @@ module CommandHandler =
                 let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
                 MailBoxProcessors.postToTheProcessor processor commands
     
-    // let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+    // this one is for future use (could eventually work when we reintroduce repeated aggregates ids in multicommand, may be...)
     let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (commands: List<AggregateCommand<'A, 'E>>) =
         commands
         |> List.fold
-            // (fun (acc: Result<'A, string>) (e: 'E) ->
             (fun (acc: Result<'A, string>) (c: AggregateCommand<'A, 'E>) ->
                 acc |> Result.bind (fun acc ->
                     let res =
@@ -612,17 +611,12 @@ module CommandHandler =
                             
                         let eventIds1 = eventIds |> List.take aggregateIds1.Length
                         let eventIds2 = eventIds |> List.skip aggregateIds1.Length
-                        
-                        printf "XXX. eventid1 %A\n" eventIds1
-                        printf "XXX. eventid2 %A\n" eventIds2
                                 
                         for i in 0..(aggregateIds1.Length - 1) do
                             AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
-                            // AggregateCache<'A1, 'F>.Instance.Memoize2 (finalState1 |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
                         
                         for i in 0..(aggregateIds2.Length - 1) do
                             AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
-                            // AggregateCache<'A2, 'F>.Instance.Memoize2 (finalState2 |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
                          
                         let aggregateIdsWithEventIds1 =
                             List.zip aggregateIds1 eventIds1
