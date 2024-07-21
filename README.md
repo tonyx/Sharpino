@@ -287,7 +287,7 @@ module CartCommands =
  
 
 
-- WARNING!!! Version 2.2.9 is DEPRECATED. Fixint it.
+- WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
 - Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
 {
@@ -299,7 +299,7 @@ module CartCommands =
     "EventStoreTimeout": 100
 }
 ```
-- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
+- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as follows:
 ```json
 {
     "LockType":{"Case":"Optimistic"},
