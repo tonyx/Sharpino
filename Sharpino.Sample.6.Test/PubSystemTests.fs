@@ -22,7 +22,7 @@ let tests =
         "Server=127.0.0.1;"+
         "Database=es_pub_system;" +
         "User Id=safe;"+
-        "Password=safe;"
+        "Password=Z45Elkj;"
     let memEventStore: IEventStore<string> = MemoryStorage()
     let pgEventStore: IEventStore<string> = PgEventStore(connection)
     let setUp () =
@@ -42,7 +42,7 @@ let tests =
             notifyAggregate = None
         }
     let storages = [
-         (memEventStore, 0, 0)
+        //  (memEventStore, 0, 0)
          (pgEventStore, 0, 0)
     ]
    

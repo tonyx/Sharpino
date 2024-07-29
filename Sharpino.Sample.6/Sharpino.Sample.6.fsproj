@@ -23,8 +23,7 @@
     <Compile Include="Suppliers/Command.fs" />
     <Compile Include="PubSystem.fs" />
   </ItemGroup> 
-
-  <ItemGroup>
+<ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
 <!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
   </ItemGroup> 
