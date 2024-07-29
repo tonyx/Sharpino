@@ -14,9 +14,9 @@ module StadiumCommands =
                     match this with
                     | AddRowReference id ->
                         x.AddRowReference id
-                        |> Result.map (fun _ -> [StadiumEvent.RowReferenceAdded id])
+                        |> Result.map (fun s -> (s, [StadiumEvent.RowReferenceAdded id]))
                     | RemoveRowReference id ->
                         x.RemoveRowReference id
-                        |> Result.map (fun _ -> [StadiumEvent.RowReferenceRemoved id])
+                        |> Result.map (fun s -> (s, [StadiumEvent.RowReferenceRemoved id]))
                 member this.Undoer = None
 

@@ -21,22 +21,22 @@ module RowAggregateCommand =
                     match this with
                     | BookSeats booking ->
                         x.BookSeats booking
-                        |> Result.map (fun _ -> [SeatBooked booking])
+                        |> Result.map (fun s -> (s, [SeatBooked booking]))
                     | AddSeat seat ->
                         x.AddSeat seat
-                        |> Result.map (fun _ -> [SeatAdded seat])
+                        |> Result.map (fun s -> (s, [SeatAdded seat]))
                     | RemoveSeat seat ->
                         x.RemoveSeat seat
-                        |> Result.map (fun _ -> [SeatRemoved seat])
+                        |> Result.map (fun s -> (s, [SeatRemoved seat]))
                     | AddSeats seats ->
                         x.AddSeats seats
-                        |> Result.map (fun _ -> [SeatsAdded seats])
+                        |> Result.map (fun s -> (s, [SeatsAdded seats]))
                     | AddInvariant invariant ->
                         x.AddInvariant invariant
-                        |> Result.map (fun _ -> [InvariantAdded invariant])
+                        |> Result.map (fun s -> (s, [InvariantAdded invariant]))
                     | RemoveInvariant invariant ->
                         x.RemoveInvariant invariant
-                        |> Result.map (fun _ -> [InvariantRemoved invariant])
+                        |> Result.map (fun s -> (s, [InvariantRemoved invariant]))
                 member this.Undoer =
                     None
 

@@ -24,13 +24,15 @@
     <ProjectReference Include="..\Shared\Shared.fsproj" />
 
     <ProjectReference Include="..\..\..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-    <ProjectReference Include="..\..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
 <!--      -->
 
   </ItemGroup>
   <ItemGroup>
 <!--    <PackageReference Include="Expecto" Version="10.2.1" />-->
+    <PackageReference Include="Expecto" Version="10.2.1" />
     <PackageReference Include="Fable.core" Version="4.3.0" />
+    <PackageReference Include="Sharpino.Core" Version="2.1.1" />
+    <!-- <PackageReference Include="Farmer" Version="1.9.0" /> -->
 <!--    <PackageReference Include="farmer" Version="1.8.13" />-->
 <!--    <PackageReference Include="Sharpino" Version="2.3.0" />-->
     <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
