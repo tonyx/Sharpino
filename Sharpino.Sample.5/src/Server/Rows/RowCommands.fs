@@ -40,4 +40,20 @@ module RowAggregateCommand =
                 member this.Undoer =
                     None
 
+                    // in progress to handle the undoers
+                    // match this with
+                    // | BookSeats  booking -> 
+                    //     Some (fun (seatsRow: SeatsRow) (viewer: AggregateViewer<SeatsRow>)  ->
+                    //         result  {
+                    //             let! (i, _) = viewer seatsRow.Id
+                    //             return 
+                    //                 fun () -> 
+                    //                     result {
+                    //                         let! (i, _) = viewer seatsRow.Id
+                    //                         return i.BookSeats booking
+                    //                     }   
+
+                    //         }
+
+
 

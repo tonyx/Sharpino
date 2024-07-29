@@ -234,10 +234,10 @@ module CartCommands =
                 match this with
                 | AddGood (goodRef, quantity) -> 
                     cart.AddGood (goodRef, quantity)
-                    |> Result.map (fun _ -> [GoodAdded (goodRef, quantity)])
+                    |> Result.map (fun s -> (s, [GoodAdded (goodRef, quantity)]))
                 | RemoveGood goodRef ->
                     cart.RemoveGood goodRef
-                    |> Result.map (fun _ -> [GoodRemoved goodRef])
+                    |> Result.map (fun s -> (s, [GoodRemoved goodRef]))
             member this.Undoer = 
                 match this with
                 | AddGood (goodRef, _) -> 
