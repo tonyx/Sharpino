@@ -52,8 +52,7 @@ module Cache =
                 res
         
         member this.Memoize2 (x: Result<'A, string>) (arg: EventId)  =
-            ()
-            // this.TryAddToDictionary(arg, x)  
+            this.TryAddToDictionary(arg, x)  
                 
         member this.LastEventId() =
             dic.Keys  

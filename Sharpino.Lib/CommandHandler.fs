@@ -524,7 +524,6 @@ module CommandHandler =
                             statesAndCommands2
                             |>> fun (state, command) -> command.Execute state
                             |> List.traverseResultM id
-                            
                         let serializedEvents1 =
                             events1 
                             |>> fun (_, x) -> x |>> fun (z: 'E1) -> z.Serialize
@@ -532,40 +531,6 @@ module CommandHandler =
                             events2 
                             |>> fun (_, x) -> x |>> fun (z: 'E2) -> z.Serialize
                             
-                        let packParametersForDb1 =
-                            List.zip3 eventIds1 serializedEvents1 aggregateIds1
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                        let packParametersForDb2 =
-                            List.zip3 eventIds2 serializedEvents2 aggregateIds2
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
-                            
-                        let allPacked = packParametersForDb1 @ packParametersForDb2
-                        let! eventIds =
-                            allPacked
-                            |> eventStore.MultiAddAggregateEvents
-                            
-                        let eventIds1 = eventIds |> List.take aggregateIds1.Length
-                        let eventIds2 = eventIds |> List.skip aggregateIds1.Length
-                        
-                        let states1' =
-                            states1 
-                            |>> fun (_, state) -> state
-                        let states2' =
-                            states2 
-                            |>> fun (_, state) -> state
-                            
-                        let eventIds1 =
-                            states1
-                            |>> fun (eventId, _) -> eventId
-                        let eventIds2 =
-                            states2
-                            |>> fun (eventId, _) -> eventId
-                            
-                        let statesAndCommands1 =
-                            List.zip states1' command1
-                        let statesAndCommands2 =
-                            List.zip states2' command2
-                        
                         let! statesAndEvents1 =
                             statesAndCommands1
                             |>> fun (state, command) -> (command.Execute state)
@@ -574,7 +539,7 @@ module CommandHandler =
                             statesAndCommands2
                             |>> fun (state, command) -> (command.Execute state)
                             |> List.traverseResultM id
-                         
+
                         let newStates1: List<'A1> =
                             statesAndEvents1
                             |>> fun (state, _) -> state
@@ -582,20 +547,6 @@ module CommandHandler =
                         let newStates2: List<'A2> =
                             statesAndEvents2
                             |>> fun (state, _) -> state    
-                       
-                        let events1 =
-                            statesAndEvents1
-                            |>> fun (_, events) -> events
-                        let events2 =
-                            statesAndEvents2
-                            |>> fun (_, events) -> events    
-                            
-                        let serializedEvents1 =
-                            events1 
-                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
-                        let serializedEvents2 =
-                            events2 
-                            |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
                             
                         let packParametersForDb1 =
                             List.zip3 eventIds1 serializedEvents1 aggregateIds1
@@ -691,7 +642,6 @@ module CommandHandler =
                         state2
                         |> command2.Execute
 
-                    // FOCUS watch the state to be memoized
                     let events1' =
                         events1
                         |>> fun x -> x.Serialize

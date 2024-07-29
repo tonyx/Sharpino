@@ -139,15 +139,15 @@ module KafkaBroker =
         |> Async.StartAsTask
     
     let tryPublishAggregateEvent eventBroker aggregateId version name idAndEvents =
-        printf "XXX. try publish 100.\n" 
+        // printf "XXX. try publish 100.\n" 
         async {
             return
                 match eventBroker.notifyAggregate with
                 | Some notify ->
-                    printf "XXX. Notifying \n"
+                    // printf "XXX. Notifying \n"
                     let result = notify version name aggregateId idAndEvents
                     // notify version name aggregateId idAndEvents
-                    printf "XXX.  notified \n"
+                    // printf "XXX.  notified \n"
                     result
                 | None ->
                     []
