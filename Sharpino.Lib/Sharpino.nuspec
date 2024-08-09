@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>2.5.1</version>
+    <version>2.5.2</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -12,7 +12,7 @@
     <readme>README.md</readme>
     <dependencies>
       <group targetFramework="net8.0">
-        <dependency id="Confluent.Kafka" version="2.5.0" />
+        <dependency id="Confluent.Kafka" version="2.5.2" />
         <dependency id="EventStore.Client.Grpc.Streams" version="23.3.3" />
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
@@ -28,13 +28,13 @@
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.1.1" />
+        <dependency id="Sharpino.Core" version="2.1.2" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.8.13" />
+        <dependency id="Farmer" version="1.9.1" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />
@@ -43,11 +43,11 @@
         <dependency id="Npgsql.FSharp" version="5.7.0" />
         <dependency id="System.collections" version="4.3.0" />
         <dependency id="MinVer" version="5.0.0"/>
-        <dependency id="Serilog" version="4.0.0" />
+        <dependency id="Serilog" version="4.0.1" />
       </group>
 
       <group targetFramework="net7.0">
-        <dependency id="Confluent.Kafka" version="2.5.0" />
+        <dependency id="Confluent.Kafka" version="2.5.2" />
         <dependency id="EventStore.Client.Grpc.Streams" version="23.3.3" />
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
@@ -64,13 +64,13 @@
         <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.0" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.0" />
-        <dependency id="Sharpino.Core" version="2.1.1" />
+        <dependency id="Sharpino.Core" version="2.1.2" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.8.13" />
+        <dependency id="Farmer" version="1.9.1" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />
@@ -79,7 +79,7 @@
         <dependency id="Npgsql.FSharp" version="5.7.0" />
         <dependency id="System.collections" version="4.3.0" />
         <dependency id="MinVer" version="5.0.0"/>
-        <dependency id="Serilog" version="4.0.0" />
+        <dependency id="Serilog" version="4.0.1" />
       </group>
 
     </dependencies>

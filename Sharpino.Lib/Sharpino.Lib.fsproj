@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>2.5.1</Version>
+    <Version>2.5.2</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Confluent.Kafka" Version="2.5.0" />
+    <PackageReference Include="Confluent.Kafka" Version="2.5.2" />
     <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.3.3" />
     <PackageReference Include="Expecto" Version="10.2.1" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.1" />
@@ -64,13 +64,13 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Sharpino.Core" Version="2.1.1" />
+    <PackageReference Include="Sharpino.Core" Version="2.1.2" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.8.13" />
+    <PackageReference Include="Farmer" Version="1.9.1" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
@@ -80,7 +80,7 @@
     <PackageReference Include="System.collections" Version="4.3.0" />
 
     <PackageReference Include="MinVer" Version="5.0.0" PrivateAssets="All" />
-    <PackageReference Include="Serilog" Version="4.0.0" />
+    <PackageReference Include="Serilog" Version="4.0.1" />
     
   </ItemGroup>
 

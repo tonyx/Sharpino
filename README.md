@@ -188,6 +188,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 
 
 ## News
+- Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!
 - Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
 - Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return also the new computed state and not only the related events. Example:
 ```fsharp
@@ -219,7 +220,7 @@ This is a sample of the doNothingBroker:
 The undoer has changed its signature.
 
 Usually the way we run commands against multiple aggregate doesn't require undoer, however it may happen.
-Plus: I am planning to use the undoer in the futer for the proper user level undo/redo feature.
+Plus: I am planning to use the undoer in the future for the proper user level undo/redo feature.
 
 An example of the undoer for an aggregate is in the following module.
 
