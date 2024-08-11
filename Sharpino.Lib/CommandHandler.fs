@@ -438,6 +438,7 @@ module CommandHandler =
                             |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
                         return ()    
                     }
+                // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
                 let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
                 let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
                 let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
@@ -598,6 +599,7 @@ module CommandHandler =
                             |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
                         return ()
                     }
+                // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
                 let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
                 let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
@@ -795,9 +797,95 @@ module CommandHandler =
                             |>> mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore
                         return ()
                     }
+                // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
                 let aggregateIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
+                let lookupName = sprintf "%s_%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+
+    // this is in progress and is meant to be used for an alternative saga based version of the previud "runNThreeAggregateCommands"
+    let inline runThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 :> Aggregate<'F>
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member SnapshotsInterval: int)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        and 'A3 :> Aggregate<'F>
+        and 'E3 :> Event<'A3>
+        and 'E3 : (member Serialize: 'F)
+        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A3 : (static member SnapshotsInterval: int)
+        and 'A3 : (static member StorageName: string)
+        and 'A3 : (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (aggregateId3: Guid)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (command3: AggregateCommand<'A3, 'E3>)
+
+        =
+            let commands = fun () ->
+                result {
+                    let! (id1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    let! (id2, state2) = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    let! (id3, state3) = getAggregateFreshState<'A3, 'E3, 'F> aggregateId3 eventStore
+
+                    let! (newState1, events1) =
+                        state1
+                        |> command1.Execute
+                    let! (newState2, events2) =
+                        state2
+                        |> command2.Execute
+                    let! (newState3, events3) =
+                        state3
+                        |> command3.Execute
+
+                    let events1' =
+                        events1
+                        |>> fun x -> x.Serialize
+                    let events2' =
+                        events2
+                        |>> fun x -> x.Serialize
+                    let events3' =
+                        events3
+                        |>> fun x -> x.Serialize
+
+                    let! idLists =
+                        eventStore.MultiAddAggregateEvents 
+                            [
+                                (id1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                                (id2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                                (id3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
+                            ]
+                    AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last, aggregateId1)
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last, aggregateId2)
+                    AggregateCache<'A3, 'F>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last, aggregateId3)
+
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore aggregateId3
+                    return ()
+                }
+            // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
+            let aggregateIds = aggregateId1.ToString() + "_" + aggregateId2.ToString() + "_" + aggregateId3.ToString() 
+            let lookupName = sprintf "%s_%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName aggregateIds
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
