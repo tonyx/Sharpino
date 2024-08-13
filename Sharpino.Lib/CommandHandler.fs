@@ -837,7 +837,6 @@ module CommandHandler =
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
-
         =
             let commands = fun () ->
                 result {
@@ -876,6 +875,15 @@ module CommandHandler =
                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last, aggregateId2)
                     AggregateCache<'A3, 'F>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last, aggregateId3)
 
+                    if (eventBroker.notifyAggregate.IsSome) then
+                        let idAndEvents1 = List.zip idLists.[0] events1'
+                        let idAndEvents2 = List.zip idLists.[1] events2'
+                        let idAndEvents3 = List.zip idLists.[2] events3'
+                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId1 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
+                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId2 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
+                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId3 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
+                        ()
+
                     let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
                     let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
                     let _ = mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore aggregateId3
@@ -886,6 +894,152 @@ module CommandHandler =
             let lookupName = sprintf "%s_%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
+    
+    let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 :> Aggregate<'F>
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member SnapshotsInterval: int)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        and 'A3 :> Aggregate<'F>
+        and 'E3 :> Event<'A3>
+        and 'E3 : (member Serialize: 'F)
+        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A3 : (static member SnapshotsInterval: int)
+        and 'A3 : (static member StorageName: string)
+        and 'A3 : (static member Version: string)
+        >
+        (aggregateIds1: List<Guid>)
+        (aggregateIds2: List<Guid>)
+        (aggregateIds3: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
+        (command3: List<AggregateCommand<'A3, 'E3>>)
+        = 
+            if not
+                (   aggregateIds1.Length = aggregateIds2.Length &&
+                    aggregateIds2.Length = aggregateIds3.Length &&
+                    aggregateIds3.Length = command1.Length &&
+                    command2.Length = command3.Length &&
+                    aggregateIds1.Length >0
+                    ) then
+                Error "error in length: aggregateIds1, aggregateIds2 and aggregateIds3 must have the same length"
+            else
+                let tripetsOfCommands = List.zip3 command1 command2 command3
+                let tripletsOfIds = List.zip3 aggregateIds1 aggregateIds2 aggregateIds3
+                let idsWithCommands = List.zip tripletsOfIds tripetsOfCommands
+               
+                let result =
+                    idsWithCommands
+                    |> List.fold
+                        (fun acc ((id1, id2, id3), (c1, c2, c3)) ->
+                            let guard = acc |> fst
+                            let rst = acc |> snd
+                            if not guard then (false, rst) else
+                                let stateA1 = getAggregateFreshState<'A1, 'E1, 'F> id1 eventStore
+                                let stateA2 = getAggregateFreshState<'A2, 'E2, 'F> id2 eventStore
+                                let stateA3 = getAggregateFreshState<'A3, 'E3, 'F> id3 eventStore
+                                let futureUndo1 =
+                                    let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
+                                    match c1.Undoer, stateA1 with
+                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
+                                    | _ -> None
+                                let futureUndo2 =
+                                    let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
+                                    match c2.Undoer, stateA2 with
+                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
+                                    | _ -> None
+                                let futureUndo3 =
+                                    let aggregateStateViewerA3: AggregateViewer<'A3> = fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore
+                                    match c3.Undoer, stateA3 with
+                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA3)
+                                    | _ -> None
+                                let undoers = [futureUndo1, futureUndo2, futureUndo3]
+                                let myRes = runThreeAggregateCommands id1 id2 id3 eventStore eventBroker c1 c2 c3
+                                match myRes with
+                                | Ok _ -> (guard, rst @ undoers)
+                                | Error _ -> (false, rst)
+                        )
+                        (true, [])
+                match result with
+                | (true, _) -> Ok ()
+                | (false, undoers) ->
+                    let compensatingStreamA1  = undoers |>> fun (x, _, _) -> x
+                    let compensatingStreamA2 = undoers |>> fun (_, x, _) -> x
+                    let compensatingStreamA3 = undoers |>> fun (_, _, x) -> x
+                    
+                    let extractedCompensatorE1 =
+                        compensatingStreamA1
+                        |> List.map (fun x -> x |> Option.get |> Result.get)
+                    let extractedCompensatorE2 =
+                        compensatingStreamA2
+                        |> List.map (fun x -> x |> Option.get |> Result.get)
+                    let extractedCompensatorE3 =
+                        compensatingStreamA3
+                        |> List.map (fun x -> x |> Option.get |> Result.get)
+
+                    let extractedEventsForE1 =
+                        let exCompLen = extractedCompensatorE1.Length
+                        List.zip3
+                            (aggregateIds1 |> List.take exCompLen)
+                            ((aggregateIds1 |> List.take exCompLen)
+                            |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
+                            (extractedCompensatorE1
+                            |>> fun x -> x () |> Result.get)
+                        |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                        
+                    let extractedEventsForE2 =
+                        let exCompLen = extractedCompensatorE2.Length
+                        List.zip3
+                            (aggregateIds2 |> List.take exCompLen)
+                            ((aggregateIds2 |> List.take exCompLen)
+                             |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
+                            (extractedCompensatorE2
+                             |>> fun x -> x() |> Result.get)
+                        |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                         
+                    let extractedEventsForE3 =
+                        let exCompLen = extractedCompensatorE3.Length
+                        List.zip3
+                            (aggregateIds3 |> List.take exCompLen)
+                            ((aggregateIds3 |> List.take exCompLen)
+                             |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
+                            (extractedCompensatorE3
+                            |>> fun x -> x () |> Result.get)
+                        |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                    
+                    let add1 =
+                        extractedEventsForE1
+                        |> List.map (fun (id, evid, ev) ->
+                                printf "%A\n" ev
+                                eventStore.AddAggregateEvents evid 'A1.Version 'A1.StorageName id ev)
+                    let add2 =     
+                        extractedEventsForE2 
+                        |> List.map  (fun (id, evid, ev) ->
+                                printf "%A\n" ev
+                                eventStore.AddAggregateEvents evid 'A2.Version 'A2.StorageName id ev)
+                    let add3 =
+                        extractedEventsForE3
+                        |> List.map  (fun (id, evid, ev) ->
+                                printf "%A \n" ev
+                                eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
+
+                    Error "error"
+                
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)

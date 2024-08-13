@@ -685,7 +685,7 @@ module PgStorage =
                 | _ as ex ->
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     None
-            
+           
             member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A %A" version name aggregateId events)
                 let stream_name = version + name
@@ -700,7 +700,7 @@ module PgStorage =
                 Async.RunSynchronously
                     (async {
                         let result =
-                            if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                            if (lastEventId.IsNone &&  eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                                 try
                                     let ids =
                                         events 

@@ -25,9 +25,11 @@ module Core =
     type Event<'A> =
         abstract member Process: 'A -> Result<'A, string>
 
+    type CommandUndoer<'A, 'E> =  Option<'A -> StateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
     type Command<'A, 'E when 'E :> Event<'A>> =
         abstract member Execute: 'A -> Result<'A * List<'E>, string>
-        abstract member Undoer: Option<'A -> StateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
+        // abstract member Undoer: Option<'A -> StateViewer<'A> -> Result<unit -> Result<List<'E>, string>, string>>
+        abstract member Undoer: CommandUndoer<'A, 'E>
         
     type AggregateCommand<'A, 'E when 'E :> Event<'A>> =
         abstract member Execute: 'A -> Result<'A * List<'E>, string>
