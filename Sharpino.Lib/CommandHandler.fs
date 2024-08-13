@@ -903,6 +903,7 @@ module CommandHandler =
     // undoers and applying the undoers if one triplet of the commands fails.
     // test of this are in a private application (will add public tests soon)
     // this is a very experimental function and should be used with caution
+    // note: minor issues are here but will fix them
     let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -969,17 +970,17 @@ module CommandHandler =
                                     let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
                                     match c1.Undoer, stateA1 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
-                                    | _ -> None // should never happen as the preconditions are clear
+                                    | _ -> None // should never happen as the preconditions are clear. todo: issues if stateA1 is error
                                 let futureUndo2 =
                                     let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
                                     match c2.Undoer, stateA2 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
-                                    | _ -> None // should never happen as the preconditions are clear
+                                    | _ -> None // should never happen as the preconditions are clear. todo:  issues if stateA2 is error
                                 let futureUndo3 =
                                     let aggregateStateViewerA3: AggregateViewer<'A3> = fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore
                                     match c3.Undoer, stateA3 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA3)
-                                    | _ -> None // should never happen as the preconditions are clear
+                                    | _ -> None // should never happen as the preconditions are clear. todo: issues if stateA3 is error
                                 let undoers = [futureUndo1, futureUndo2, futureUndo3]
                                 let myRes = runThreeAggregateCommands id1 id2 id3 eventStore eventBroker c1 c2 c3
                                 match myRes with
@@ -1051,7 +1052,9 @@ module CommandHandler =
                                          |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
                                         extractedCompensatorE3Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                              
+                             
+                                let! A1CurrentStates =
+                                    
                                 // FOCUS: much better pre-process those events checking any processing error before adding them to the event store 
                                 let addEventsStreamA1 =
                                     extractedEventsForE1
@@ -1068,17 +1071,15 @@ module CommandHandler =
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
                               
-                                let result = 
-                                    match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
-                                    | Ok _, Ok _, Ok _ -> return ()
-                                    | Error x, Ok   _, Ok _ -> Error x
-                                    | Ok _, Error x, Ok _ -> Error x
-                                    | Ok _, Ok _, Error x -> Error x
-                                    | Error x, Error y, Ok _ -> Error (x + " - " + y)
-                                    | Error x, Ok _, Error z -> Error (x + " - " + z)
-                                    | Ok _, Error y, Error z -> Error (y + " -" + z)
-                                    | Error x, Error y, Error z -> Error (x + " - " + y + " -" + z)
-                                return result     
+                                match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
+                                | Ok _, Ok _, Ok _ -> return ()
+                                | Error x, Ok   _, Ok _ -> return! Error x
+                                | Ok _, Error x, Ok _ -> return! Error x
+                                | Ok _, Ok _, Error x -> return! Error x
+                                | Error x, Error y, Ok _ -> return! Error (x + " - " + y)
+                                | Error x, Ok _, Error z -> return! Error (x + " - " + z)
+                                | Ok _, Error y, Error z -> return! Error (y + " -" + z)
+                                | Error x, Error y, Error z -> return! Error (x + " - " + y + " -" + z)
                             }
                     
                     let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
