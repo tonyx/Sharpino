@@ -1066,7 +1066,18 @@ module CommandHandler =
                                         extractedCompensatorE3Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
                              
-                                // FOCUS: much better pre-process those events checking any processing error before adding them to the event store 
+                                // FOCUS: much better pre-process those events checking any processing error before adding them to the event store
+                                let! statesA1 =
+                                    aggregateIds1
+                                    |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                                let! statesA2 =
+                                    aggregateIds2
+                                    |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
+                                let! statesA3 =
+                                    aggregateIds3
+                                    |> List.traverseResultM (fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore)     
+                                
+                                 
                                 let addEventsStreamA1 =
                                     extractedEventsForE1
                                     |> List.traverseResultM (fun (id, evid, ev) ->
