@@ -439,8 +439,9 @@ module CommandHandler =
                         return ()    
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-                let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
+                // let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+                // let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
+                let lookupName = 'A1.StorageName
                 let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
                 MailBoxProcessors.postToTheProcessor processor commands
     
@@ -600,8 +601,9 @@ module CommandHandler =
                         return ()
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-                let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName aggregateIds
+                // let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+                
+                let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
     let inline runThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
@@ -798,8 +800,9 @@ module CommandHandler =
                         return ()
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-                let aggregateIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                let lookupName = sprintf "%s_%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName aggregateIds
+                // let aggregateIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+                
+                let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
     // this is in progress and is meant to be used for an alternative saga based version of the previud "runNThreeAggregateCommands"
@@ -890,11 +893,16 @@ module CommandHandler =
                     return ()
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-            let aggregateIds = aggregateId1.ToString() + "_" + aggregateId2.ToString() + "_" + aggregateId3.ToString() 
-            let lookupName = sprintf "%s_%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName aggregateIds
+            // let aggregateIds = aggregateId1.ToString() + "_" + aggregateId2.ToString() + "_" + aggregateId3.ToString()
+            
+            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
-    
+   
+    // this one is based on the idea of folding the single triplets of commands accumulating the
+    // undoers and applying the undoers if one triplet of the commands fails.
+    // test of this are in a private application (will add public tests soon)
+    // this is a very experimental function and should be used with caution
     let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -930,7 +938,6 @@ module CommandHandler =
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
         =
-            printf "entered 1 \n"
             let command1HasUndoers = command1 |> List.forall (fun x -> x.Undoer.IsSome)
             let command2HasUndoers = command2 |> List.forall (fun x -> x.Undoer.IsSome)
             let command3HasUndoers = command3 |> List.forall (fun x -> x.Undoer.IsSome)
@@ -983,95 +990,104 @@ module CommandHandler =
                 match iteratedExecutionOfTripletsOfCommands with
                 | (true, _) -> Ok () // here it means we have been able to run all the triplets of command with no error
                 | (false, undoers) -> // here it means that somehow we stopped somewhere, so we need to compensate with the accumulated undoers
-                  
                     let undoerRun =
-                        
-                        result {
-                            
-                            let compensatingStreamA1  = undoers |>> fun (x, _, _) -> x
-                            let compensatingStreamA2 = undoers |>> fun (_, x, _) -> x
-                            let compensatingStreamA3 = undoers |>> fun (_, _, x) -> x
-                           
-                            let! extractedCompensatorE1 =
-                                compensatingStreamA1
-                                |> List.map (fun x -> x |> Option.get)
-                                |> List.traverseResultM (fun x -> x)
+                        fun () ->
+                            result {
                                 
-                            let! extractedCompensatorE1Applied =
-                                extractedCompensatorE1
-                                |> List.traverseResultM (fun x -> x ())
+                                let compensatingStreamA1  = undoers |>> fun (x, _, _) -> x
+                                let compensatingStreamA2 = undoers |>> fun (_, x, _) -> x
+                                let compensatingStreamA3 = undoers |>> fun (_, _, x) -> x
+                               
+                                let! extractedCompensatorE1 =
+                                    compensatingStreamA1
+                                    |> List.map (fun x -> x |> Option.get)
+                                    |> List.traverseResultM (fun x -> x)
+                                    
+                                let! extractedCompensatorE1Applied =
+                                    extractedCompensatorE1
+                                    |> List.traverseResultM (fun x -> x ())
+                                    
+                                let! extractedCompensatorE2 =
+                                    compensatingStreamA2
+                                    |> List.map (fun x -> x |> Option.get)
+                                    |> List.traverseResultM (fun x -> x)
+                                    
+                                let! extractedCompensatorE2Applied =
+                                    extractedCompensatorE2
+                                    |> List.traverseResultM (fun x -> x ())
+                                    
+                                let! extractedCompensatorE3 =
+                                    compensatingStreamA3
+                                    |> List.map (fun x -> x |> Option.get)
+                                    |> List.traverseResultM (fun x -> x)
+                                    
+                                let! extractedCompensatorE3Applied =
+                                    extractedCompensatorE3
+                                    |> List.traverseResultM (fun x -> x ())    
                                 
-                            let! extractedCompensatorE2 =
-                                compensatingStreamA2
-                                |> List.map (fun x -> x |> Option.get)
-                                |> List.traverseResultM (fun x -> x)
+                                let extractedEventsForE1 =
+                                    let exCompLen = extractedCompensatorE1.Length
+                                    List.zip3
+                                        (aggregateIds1 |> List.take exCompLen)
+                                        ((aggregateIds1 |> List.take exCompLen)
+                                        |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
+                                        extractedCompensatorE1Applied
+                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                                    
+                                let extractedEventsForE2 =
+                                    let exCompLen = extractedCompensatorE2.Length
+                                    List.zip3
+                                        (aggregateIds2 |> List.take exCompLen)
+                                        ((aggregateIds2 |> List.take exCompLen)
+                                         |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
+                                        extractedCompensatorE2Applied
+                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                                     
+                                let extractedEventsForE3 =
+                                    let exCompLen = extractedCompensatorE3.Length
+                                    List.zip3
+                                        (aggregateIds3 |> List.take exCompLen)
+                                        ((aggregateIds3 |> List.take exCompLen)
+                                         |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
+                                        extractedCompensatorE3Applied
+                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                               
+                                let addEventsStreamA1 =
+                                    extractedEventsForE1
+                                    |> List.traverseResultM (fun (id, evid, ev) ->
+                                            eventStore.AddAggregateEvents evid 'A1.Version 'A1.StorageName id ev)
                                 
-                            let! extractedCompensatorE2Applied =
-                                extractedCompensatorE2
-                                |> List.traverseResultM (fun x -> x ())
-                                
-                            let! extractedCompensatorE3 =
-                                compensatingStreamA3
-                                |> List.map (fun x -> x |> Option.get)
-                                |> List.traverseResultM (fun x -> x)
-                                
-                            let! extractedCompensatorE3Applied =
-                                extractedCompensatorE3
-                                |> List.traverseResultM (fun x -> x ())    
-                            
-                            let extractedEventsForE1 =
-                                let exCompLen = extractedCompensatorE1.Length
-                                List.zip3
-                                    (aggregateIds1 |> List.take exCompLen)
-                                    ((aggregateIds1 |> List.take exCompLen)
-                                    |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
-                                    extractedCompensatorE1Applied
-                                |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                
-                            let extractedEventsForE2 =
-                                let exCompLen = extractedCompensatorE2.Length
-                                List.zip3
-                                    (aggregateIds2 |> List.take exCompLen)
-                                    ((aggregateIds2 |> List.take exCompLen)
-                                     |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
-                                    extractedCompensatorE2Applied
-                                |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                 
-                            let extractedEventsForE3 =
-                                let exCompLen = extractedCompensatorE3.Length
-                                List.zip3
-                                    (aggregateIds3 |> List.take exCompLen)
-                                    ((aggregateIds3 |> List.take exCompLen)
-                                     |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
-                                    extractedCompensatorE3Applied
-                                |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                           
-                            let! add1WiseVersion =
-                                extractedEventsForE1
-                                |> List.traverseResultM (fun (id, evid, ev) ->
-                                        eventStore.AddAggregateEvents evid 'A1.Version 'A1.StorageName id ev)
-                            
-                            let! add2WiseVersion =
-                                extractedEventsForE2
-                                |> List.traverseResultM (fun (id, evid, ev) ->
-                                        eventStore.AddAggregateEvents evid 'A2.Version 'A2.StorageName id ev)
-                           
-                            let! add3WiseVersion =
-                                extractedEventsForE3
-                                |> List.traverseResultM (fun (id, evid, ev) ->
-                                        eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
-                            return ()
-                        }
-                        
-                        
-                        
+                                let addEventsStreamA2 =
+                                    extractedEventsForE2
+                                    |> List.traverseResultM (fun (id, evid, ev) ->
+                                            eventStore.AddAggregateEvents evid 'A2.Version 'A2.StorageName id ev)
+                               
+                                let addEventsStreamA3 =
+                                    extractedEventsForE3
+                                    |> List.traverseResultM (fun (id, evid, ev) ->
+                                            eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
+                               
+                                match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
+                                | Ok _, Ok _, Ok _ -> return ()
+                                | Error x, Ok   _, Ok _ -> Error x
+                                | Ok _, Error x, Ok _ -> Error x
+                                | Ok _, Ok _, Error x -> Error x
+                                | Error x, Error y, Ok _ -> Error (x + " - " + y)
+                                | Error x, Ok _, Error z -> Error (x + " - " + z)
+                                | Ok _, Error y, Error z -> Error (y + " -" + z)
+                                | Error x, Error y, Error z -> Error (x + " - " + y + " -" + z)
+                            }
+                    
+                    let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+                    let tryCompensations =
+                        MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                     let _ =
-                        match undoerRun with
+                        match tryCompensations with
                         | Error x -> log.Error x
                         | Ok _ -> log.Info "compensation has been succesful" 
-                    Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" undoerRun)    
+                    Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
                 else                 
-                    Error (sprintf "check which one is not true and fix it command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)
+                    Error (sprintf "falied the precondition of applicability of the runSagaThreeNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)
 
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F

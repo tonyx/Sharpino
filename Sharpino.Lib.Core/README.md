@@ -14,16 +14,12 @@
 Support for Event-sourcing in F#.
 
 ## Features
-- Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
-- Support publishing events to Apache Kafka Event Broker.
+- Supports in memory and Postgres event store. (EvenstoreDb is not supported anymore)
+- Support publishing events to Apache Kafka Event (unstable. Don't use it)
 - Example application with tests including Kafka subscriber. (unstable at the moment)
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
 - A specific technique helps refactoring (migration) between different versions of the application.
-
-## Next to come (for now)
-- Handling sensible data (GDPR compliance): in future they should be encrypted or be stored in a separate table.
-- Stable and working integration with an Event Broker (Apache Kafka): the events are correctly sent to the broker and some work could be needed to stabilize the way to subscribe to topics 
 
 
 ## Projects
@@ -190,8 +186,109 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 - Adapt the examples to the new version of the library (2.0.0)
 
+
 ## News
-- WARNING!!! Version 2.2.9 is DEPRECATED. Fixint it.
+- Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!
+- Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
+- Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return also the new computed state and not only the related events. Example:
+```fsharp
+                | UpdateName name -> 
+                    dish.UpdateName name
+                    |> Result.map (fun x -> (x, [NameUpdated name]))
+
+```
+
+Any application needs a little rewrite in the command part (vim macros may be helpful).
+
+In this way the commandhandler takes advantage of it to be able to memoize the state in the cache, so that virtually
+the state will never be processed and at any state the cache will always be ready for the current state
+(unless the system restarts, and in that case the state will be
+taken by reading the last snapshot and processing the events from that point on).
+ 
+- Version 2.4.2: Added a constraints that forbids using the same aggregate for multiple commands in the same transaction. The various version of RunMultiCommands are not ready to guarantee that they can always work in a consistent way when this happens.
+- Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
+This is a sample of the doNothingBroker: 
+```fsharp
+    let doNothingBroker =
+        {
+            notify = None
+            notifyAggregate = None
+        }
+
+```
+- Version 2.4.0: for aggregate commands use the AggregateCommand<..> interface instead of Aggregate<..>
+The undoer has changed its signature.
+
+Usually the way we run commands against multiple aggregate doesn't require undoer, however it may happen.
+Plus: I am planning to use the undoer in the future for the proper user level undo/redo feature.
+
+An example of the undoer for an aggregate is in the following module.
+
+
+```fsharp
+module CartCommands =
+    type CartCommands =
+    | AddGood of Guid * int
+    | RemoveGood of Guid
+        interface AggregateCommand<Cart, CartEvents> with
+            member this.Execute (cart: Cart) =
+                match this with
+                | AddGood (goodRef, quantity) -> 
+                    cart.AddGood (goodRef, quantity)
+                    |> Result.map (fun s -> (s, [GoodAdded (goodRef, quantity)]))
+                | RemoveGood goodRef ->
+                    cart.RemoveGood goodRef
+                    |> Result.map (fun s -> (s, [GoodRemoved goodRef]))
+            member this.Undoer = 
+                match this with
+                | AddGood (goodRef, _) -> 
+                    Some 
+                        (fun (cart: Cart) (viewer: AggregateViewer<Cart>) ->
+                            result {
+                                let! (i, _) = viewer (cart.Id) 
+                                return
+                                    fun () ->
+                                        result {
+                                            let! (j, state) = viewer (cart.Id)
+                                            let! isGreater = 
+                                                (j >= i)
+                                                |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
+                                            let result =
+                                                state.RemoveGood goodRef
+                                                |> Result.map (fun _ -> [GoodRemoved goodRef])
+                                            return! result
+                                        }
+                                }
+                        )
+                | RemoveGood goodRef ->
+                    Some
+                        (fun (cart: Cart) (viewer: AggregateViewer<Cart>) ->
+                            result {
+                                let! (i, state) = viewer (cart.Id) 
+                                let! goodQuantity = state.GetGoodAndQuantity goodRef
+                                return
+                                    fun () ->
+                                        result {
+                                            let! (j, state) = viewer (cart.Id)
+                                            let! isGreater = 
+                                                // this check depends also on the number of events generated by the command (i.e. the j >= (i+1) if command generates 2 event)
+                                                (j >= i)
+                                                |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
+                                            let result =
+                                                state.AddGood (goodRef, goodQuantity)
+                                                |> Result.map (fun _ -> [GoodAdded (goodRef, goodQuantity)])
+                                            return! result
+                                        }
+                                }
+                        )
+ ```
+
+
+
+ 
+
+
+- WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
 - Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
 {
@@ -203,7 +300,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
     "EventStoreTimeout": 100
 }
 ```
-- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
+- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as follows:
 ```json
 {
     "LockType":{"Case":"Optimistic"},

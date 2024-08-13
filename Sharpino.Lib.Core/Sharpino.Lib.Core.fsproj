@@ -4,7 +4,7 @@
     <TargetFrameworks>net8.0;net7.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>2.1.2</Version>
+    <Version>2.1.3</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -21,6 +21,7 @@
     <Compile Include="Commons.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="Core.fs" />
+    <Content Include="README.md" />
   </ItemGroup>
 
   <ItemGroup>
