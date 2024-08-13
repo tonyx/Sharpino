@@ -994,14 +994,29 @@ module CommandHandler =
                     let undoerRun =
                         fun () ->
                             result {
+                                // removed a potentially dangerous Option.get.
+                                // if there is room to simplify... will do it later
+
+                                let! compensatingStreamA1' =
+                                    undoers
+                                    |>> fun (x, _, _) -> x
+                                    |> List.traverseOptionM (fun x -> x)
+                                    |> Option.toResultWith "compensatingStreamA1"
+                                     
+                                let! compensatingStreamA2' =
+                                    undoers
+                                    |>> fun (_, x, _) -> x
+                                    |> List.traverseOptionM (fun x -> x)
+                                    |> Option.toResultWith "compensatingStreamA2"
+                                    
+                                let! compensatingStreamA3' =
+                                    undoers
+                                    |>> fun (_, _, x) -> x
+                                    |> List.traverseOptionM (fun x -> x)
+                                    |> Option.toResultWith "compensatingStreamA3"
                                 
-                                let compensatingStreamA1  = undoers |>> fun (x, _, _) -> x
-                                let compensatingStreamA2 = undoers |>> fun (_, x, _) -> x
-                                let compensatingStreamA3 = undoers |>> fun (_, _, x) -> x
-                               
                                 let! extractedCompensatorE1 =
-                                    compensatingStreamA1
-                                    |> List.map (fun x -> x |> Option.get)
+                                    compensatingStreamA1'
                                     |> List.traverseResultM (fun x -> x)
                                     
                                 let! extractedCompensatorE1Applied =
@@ -1009,8 +1024,7 @@ module CommandHandler =
                                     |> List.traverseResultM (fun x -> x ())
                                     
                                 let! extractedCompensatorE2 =
-                                    compensatingStreamA2
-                                    |> List.map (fun x -> x |> Option.get)
+                                    compensatingStreamA2'
                                     |> List.traverseResultM (fun x -> x)
                                     
                                 let! extractedCompensatorE2Applied =
@@ -1018,8 +1032,7 @@ module CommandHandler =
                                     |> List.traverseResultM (fun x -> x ())
                                     
                                 let! extractedCompensatorE3 =
-                                    compensatingStreamA3
-                                    |> List.map (fun x -> x |> Option.get)
+                                    compensatingStreamA3'
                                     |> List.traverseResultM (fun x -> x)
                                     
                                 let! extractedCompensatorE3Applied =
@@ -1053,8 +1066,6 @@ module CommandHandler =
                                         extractedCompensatorE3Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
                              
-                                let! A1CurrentStates =
-                                    
                                 // FOCUS: much better pre-process those events checking any processing error before adding them to the event store 
                                 let addEventsStreamA1 =
                                     extractedEventsForE1
