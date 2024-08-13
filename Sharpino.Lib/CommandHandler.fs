@@ -1051,7 +1051,8 @@ module CommandHandler =
                                          |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
                                         extractedCompensatorE3Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                               
+                              
+                                // FOCUS: much better pre-process those events checking any processing error before adding them to the event store 
                                 let addEventsStreamA1 =
                                     extractedEventsForE1
                                     |> List.traverseResultM (fun (id, evid, ev) ->
