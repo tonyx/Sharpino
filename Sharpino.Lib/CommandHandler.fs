@@ -1067,16 +1067,18 @@ module CommandHandler =
                                     extractedEventsForE3
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
-                               
-                                match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
-                                | Ok _, Ok _, Ok _ -> return ()
-                                | Error x, Ok   _, Ok _ -> Error x
-                                | Ok _, Error x, Ok _ -> Error x
-                                | Ok _, Ok _, Error x -> Error x
-                                | Error x, Error y, Ok _ -> Error (x + " - " + y)
-                                | Error x, Ok _, Error z -> Error (x + " - " + z)
-                                | Ok _, Error y, Error z -> Error (y + " -" + z)
-                                | Error x, Error y, Error z -> Error (x + " - " + y + " -" + z)
+                              
+                                let result = 
+                                    match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
+                                    | Ok _, Ok _, Ok _ -> return ()
+                                    | Error x, Ok   _, Ok _ -> Error x
+                                    | Ok _, Error x, Ok _ -> Error x
+                                    | Ok _, Ok _, Error x -> Error x
+                                    | Error x, Error y, Ok _ -> Error (x + " - " + y)
+                                    | Error x, Ok _, Error z -> Error (x + " - " + z)
+                                    | Ok _, Error y, Error z -> Error (y + " -" + z)
+                                    | Error x, Error y, Error z -> Error (x + " - " + y + " -" + z)
+                                return result     
                             }
                     
                     let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
