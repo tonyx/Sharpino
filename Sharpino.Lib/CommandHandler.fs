@@ -320,6 +320,80 @@ module CommandHandler =
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
             MailBoxProcessors.postToTheProcessor processor command
 
+    let inline runInitAndTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F, 'A3
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2 :> Aggregate<'F>
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2: (static member SnapshotsInterval : int)
+        and 'A3 :> Aggregate<'F>
+        and 'A3: (static member StorageName: string)
+        and 'A3: (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (initialInstance: 'A3)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        =
+            log.Debug "runInitAndTwoAggregateCommands"
+            let command = fun () ->
+                result {
+                    let! (eventId1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    let! (eventId2, state2) = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    let! (newState1, events1) =
+                        state1
+                        |> command1.Execute
+                    let! (newState2, events2) =
+                        state2
+                        |> command2.Execute
+                    let events1' =
+                        events1
+                        |>> fun x -> x.Serialize
+                    let events2' =
+                        events2
+                        |>> fun x -> x.Serialize
+                    let multiEvents =
+                        [
+                            (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                        ]
+                    let! ids =
+                        eventStore.SetInitialAggregateStateAndMultiAddAggregateEvents initialInstance.Id 'A3.Version 'A3.StorageName initialInstance.Serialize multiEvents
+                    
+                    if (eventBroker.notify.IsSome) then
+                        let f =
+                            fun () ->
+                                tryPublishAggregateEvent eventBroker aggregateId1 'A1.Version 'A1.StorageName (List.zip (ids.[0]) events1')
+                                |> ignore
+                            fun () ->
+                                tryPublishAggregateEvent eventBroker aggregateId2 'A2.Version 'A2.StorageName (List.zip (ids.[1]) events2')
+                                |> ignore
+                        f |> postToProcessor |> ignore
+                    
+                    AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((ids.[0] |> List.last, aggregateId1))
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((ids.[1] |> List.last, aggregateId2))
+                     
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    return ()
+                }
+            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+    
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -446,17 +520,89 @@ module CommandHandler =
                 MailBoxProcessors.postToTheProcessor processor commands
     
     // this one is for future use (could eventually work when we reintroduce repeated aggregates ids in multicommand, may be...)
-    let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (commands: List<AggregateCommand<'A, 'E>>) =
-        commands
-        |> List.fold
-            (fun (acc: Result<'A, string>) (c: AggregateCommand<'A, 'E>) ->
-                acc |> Result.bind (fun acc ->
-                    let res =
-                        c.Execute acc
-                        |> Result.bind (fun (res, e) -> res |> Ok)
-                    res    
-                )
-            ) (h |> Ok)
+    // let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (commands: List<AggregateCommand<'A, 'E>>) =
+    //     commands
+    //     |> List.fold
+    //         (fun (acc: Result<'A, string>) (c: AggregateCommand<'A, 'E>) ->
+    //             acc |> Result.bind (fun acc ->
+    //                 let res =
+    //                     c.Execute acc
+    //                     |> Result.bind (fun (res, e) -> res |> Ok)
+    //                 res    
+    //             )
+    //         ) (h |> Ok)
+    
+    
+    let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 :> Aggregate<'F>
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member SnapshotsInterval: int)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        =
+            let commands = fun () ->
+                result {
+                    let! (eventId1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    let! (eventId2, state2) = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    
+                    let! (newState1, events1) =
+                        state1
+                        |> command1.Execute
+                    
+                    let! (newState2, events2) =
+                        state2
+                        |> command2.Execute    
+                    
+                    let events1' =
+                        events1 
+                        |>> fun x -> x.Serialize    
+                 
+                    let events2' =
+                        events2
+                        |>> fun x -> x.Serialize
+                    
+                    let! idLists =
+                        eventStore.MultiAddAggregateEvents
+                            [
+                                (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                                (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                            ]
+                    AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((idLists.[0] |> List.last, aggregateId1))
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((idLists.[1] |> List.last, aggregateId2))
+                    
+                    if (eventBroker.notifyAggregate.IsSome) then
+                        let f =
+                            fun () ->
+                                tryPublishAggregateEvent eventBroker aggregateId1 'A1.Version 'A1.StorageName (List.zip (idLists.[0]) events1')
+                                |> ignore
+                                tryPublishAggregateEvent eventBroker aggregateId2 'A2.Version 'A2.StorageName (List.zip (idLists.[1]) events2')
+                                |> ignore
+                        f |> postToProcessor |> ignore
+                    
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    return ()     
+                }
+            let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -970,17 +1116,17 @@ module CommandHandler =
                                     let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
                                     match c1.Undoer, stateA1 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
-                                    | _ -> None // should never happen as the preconditions are clear. todo: issues if stateA1 is error
+                                    | _ -> None
                                 let futureUndo2 =
                                     let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
                                     match c2.Undoer, stateA2 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
-                                    | _ -> None // should never happen as the preconditions are clear. todo:  issues if stateA2 is error
+                                    | _ -> None
                                 let futureUndo3 =
                                     let aggregateStateViewerA3: AggregateViewer<'A3> = fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore
                                     match c3.Undoer, stateA3 with
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA3)
-                                    | _ -> None // should never happen as the preconditions are clear. todo: issues if stateA3 is error
+                                    | _ -> None 
                                 let undoers = [futureUndo1, futureUndo2, futureUndo3]
                                 let myRes = runThreeAggregateCommands id1 id2 id3 eventStore eventBroker c1 c2 c3
                                 match myRes with
@@ -1001,19 +1147,19 @@ module CommandHandler =
                                     undoers
                                     |>> fun (x, _, _) -> x
                                     |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith "compensatingStreamA1"
+                                    |> Option.toResultWith (sprintf "compensatingStreamA1 - %s - %s" 'A1.Version 'A1.StorageName)
                                      
                                 let! compensatingStreamA2' =
                                     undoers
                                     |>> fun (_, x, _) -> x
                                     |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith "compensatingStreamA2"
+                                    |> Option.toResultWith (sprintf "compensatingStreamA2 %s - %s" 'A2.Version 'A2.StorageName)
                                     
                                 let! compensatingStreamA3' =
                                     undoers
                                     |>> fun (_, _, x) -> x
                                     |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith "compensatingStreamA3"
+                                    |> Option.toResultWith (sprintf "compensatingStreamA3 %s - %s" 'A3.Version 'A3.StorageName)
                                 
                                 let! extractedCompensatorE1 =
                                     compensatingStreamA1'
@@ -1093,7 +1239,14 @@ module CommandHandler =
                                     extractedEventsForE3
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             eventStore.AddAggregateEvents evid 'A3.Version 'A3.StorageName id ev)
-                              
+                             
+                                // todo: recap. for uniformity and precautions may want to preprocess the events before adding them to the eventstore
+                                // put result in the cache and should also
+                                // notify the eventbroker (if everything is ok). not urgent because
+                                // eventbroker is usually disabled and it is not likely that the compensation
+                                // will fail. (in writing the undo you take care of the fact that you should
+                                // succeed in reversing the command)
+                                 
                                 match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
                                 | Ok _, Ok _, Ok _ -> return ()
                                 | Error x, Ok   _, Ok _ -> return! Error x

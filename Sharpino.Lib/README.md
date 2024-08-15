@@ -14,8 +14,8 @@
 Support for Event-sourcing in F#.
 
 ## Features
-- Supports in memory and Postgres event store. Supports EventStoreDB (only for the LightCommandHandler).
-- Support publishing events to Apache Kafka Event Broker.
+- Supports in memory and Postgres event store. (EvenstoreDb is not supported anymore)
+- Support publishing events to Apache Kafka Event (unstable. Don't use it)
 - Example application with tests including Kafka subscriber. (unstable at the moment)
 - Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
 - Aggregates are the same as contexts with many instances identified by Id (Guid).
@@ -185,8 +185,33 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 - Adapt the examples to the new version of the library (2.0.0)
+- Write more examples (porting examples from Equinox would be fine)
 
 ## News
+- Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
+- Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
+  (A short example will come but here is an idea, pretending the aggregate types can be two, and not three: A1, A2, A3, A3 needs to merge into An: I cannot run the "indpendent" saga-free version of running 
+ multiple commands (pairs) because I should repeat the id of An many times which is invalid, so I run the saga version that executes the single "merge" i.e. merge A1 into An, then merge A2 into An etc...: if somethings goes wrong I have accuulted the "future undoers" that may rollback the eventually suffessful merges)
+Probably the runSagaTwoNAggregateCommands and runSagaSingleNAggregateCommands may come soon.
+
+- A "porting" of an example from Equinox https://github.com/tonyx/sharpinoinvoices
+- Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!
+- Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
+- Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return also the new computed state and not only the related events. Example:
+```fsharp
+                | UpdateName name -> 
+                    dish.UpdateName name
+                    |> Result.map (fun x -> (x, [NameUpdated name]))
+
+```
+
+Any application needs a little rewrite in the command part (vim macros may be helpful).
+
+In this way the commandhandler takes advantage of it to be able to memoize the state in the cache, so that virtually
+the state will never be processed and at any state the cache will always be ready for the current state
+(unless the system restarts, and in that case the state will be
+taken by reading the last snapshot and processing the events from that point on).
+ 
 - Version 2.4.2: Added a constraints that forbids using the same aggregate for multiple commands in the same transaction. The various version of RunMultiCommands are not ready to guarantee that they can always work in a consistent way when this happens.
 - Disable Kafka on notification and subscribtion as well. Just use the "donothingbroker" until I go back on this and fix it.
 This is a sample of the doNothingBroker: 
@@ -202,7 +227,7 @@ This is a sample of the doNothingBroker:
 The undoer has changed its signature.
 
 Usually the way we run commands against multiple aggregate doesn't require undoer, however it may happen.
-Plus: I am planning to use the undoer in the futer for the proper user level undo/redo feature.
+Plus: I am planning to use the undoer in the future for the proper user level undo/redo feature.
 
 An example of the undoer for an aggregate is in the following module.
 
@@ -217,10 +242,10 @@ module CartCommands =
                 match this with
                 | AddGood (goodRef, quantity) -> 
                     cart.AddGood (goodRef, quantity)
-                    |> Result.map (fun _ -> [GoodAdded (goodRef, quantity)])
+                    |> Result.map (fun s -> (s, [GoodAdded (goodRef, quantity)]))
                 | RemoveGood goodRef ->
                     cart.RemoveGood goodRef
-                    |> Result.map (fun _ -> [GoodRemoved goodRef])
+                    |> Result.map (fun s -> (s, [GoodRemoved goodRef]))
             member this.Undoer = 
                 match this with
                 | AddGood (goodRef, _) -> 
@@ -270,7 +295,7 @@ module CartCommands =
  
 
 
-- WARNING!!! Version 2.2.9 is DEPRECATED. Fixint it.
+- WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
 - Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
 {
@@ -282,7 +307,7 @@ module CartCommands =
     "EventStoreTimeout": 100
 }
 ```
-- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as foollows:
+- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as follows:
 ```json
 {
     "LockType":{"Case":"Optimistic"},

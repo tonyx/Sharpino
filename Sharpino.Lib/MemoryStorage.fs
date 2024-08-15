@@ -278,6 +278,20 @@ module MemoryStorage =
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
                 (this:> IEventStore<string>).AddAggregateEvents 0 contextVersion contextName secondAggregateId events
                 
+            member this.SetInitialAggregateStateAndMultiAddAggregateEvents aggregateId Version Name jsonSnapshot events =
+                let initialState =
+                    {
+                        Id = next_snapshot_id Version Name
+                        AggregateId = aggregateId
+                        Snapshot = jsonSnapshot
+                        TimeStamp = DateTime.UtcNow
+                        EventId = None
+                    }
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add (aggregateId, [initialState])
+                addAggregateSnapshots Version Name aggregateId initialState
+                (this:> IEventStore<string>).MultiAddAggregateEvents events
+                
             member this.GetEventsAfterId version id name =
                 log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
