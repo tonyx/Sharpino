@@ -174,6 +174,19 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Adapt the examples to the new version of the library (2.0.0)
 - Write more examples (porting examples from Equinox would be fine)
 
+## Comparison with other event-sourcing libraries
+- [Equinox](https://github.com/jet/equinox)
+
+See these examples to compare:
+- [Counter in Sharpino](https://github.com/tonyx/SharpinoCounter3)
+- [Counter in Equinox](https://github.com/jet/equinox/blob/master/samples/Tutorial/Counter.fsx)
+- [Invoices in Sharpino] (https://github.com/tonyx/sharpinoinvoices)
+- [Invoices in Equinox](https://github.com/nordfjord/minimal-equinox/tree/main)
+
+
+
+
+
 ## News
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
