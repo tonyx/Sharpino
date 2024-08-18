@@ -180,7 +180,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 See these examples to compare:
 - [Counter in Sharpino](https://github.com/tonyx/SharpinoCounter3)
 - [Counter in Equinox](https://github.com/jet/equinox/blob/master/samples/Tutorial/Counter.fsx)
-- [Invoices in Sharpino] (https://github.com/tonyx/sharpinoinvoices)
+- [Invoices in Sharpino](https://github.com/tonyx/sharpinoinvoices)
 - [Invoices in Equinox](https://github.com/nordfjord/minimal-equinox/tree/main)
 
 
