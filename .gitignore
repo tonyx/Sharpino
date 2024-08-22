@@ -23,6 +23,9 @@ packages/
 **/.env
 Sharpino.Lib/lib/Sharpino.Lib.dll
 Sharpino.Lib/lib/Sharpino.Lib.xml
+Sharpino.Lib/lib/*.Lib.dll
+Sharpino.Lib/lib/*.Lib.xml
+
 Sharpino.Lib/lib/*.dll
 Sharpino.Lib/lib/*.xml
 **/Sharpino.Lib.Core.dll
