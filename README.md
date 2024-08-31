@@ -187,7 +187,7 @@ See these examples to compare:
 
 ## Acknowledgements
 
-A heartfelt thank you to  [Intellij](https://www.jetbrains.com/idea/) who have generously provided free licenses of their products to support this project.
+A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.

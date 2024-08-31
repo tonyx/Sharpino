@@ -52,7 +52,6 @@ module MailBoxProcessors =
             processors.Add(name, processor)
             queue.Enqueue name
             processor
-            
         
         member this.createProcessor () =
             MailboxProcessor<UnitResult>.Start (fun inbox ->
