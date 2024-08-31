@@ -8,6 +8,9 @@ open Sharpino
 open System
 open FsToolkit.ErrorHandling
 
+
+// usually for each aggregate we mantain its state in memory and use lists
+// but we could use a repository like this to be able to persist the state 
 module Repositories =    
     type IRepository<'A when 'A: equality and 'A :> Entity> =
         abstract member Add: 'A * string -> Result<IRepository<'A>, string>

@@ -16,7 +16,7 @@
     <Description>Simple F# Event-Sourcing Library</Description>
     <ReleaseNotes>This release supports In-memory, Postgres, minimal Kafka publishing using outbox pattern like.</ReleaseNotes> 
     <Copyright>Copyright ©2023-2024 Antonio Lucca</Copyright>
-    <PackageTags>event-sourcing, F#, Fsharp, Postgresql, Apache Kafka</PackageTags>
+    <PackageTags>event-sourcing, F#, FSharp, Postgresql, Apache Kafka</PackageTags>
 
     <AsyncTimeOut>1000</AsyncTimeOut> 
     

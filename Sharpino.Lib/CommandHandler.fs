@@ -75,7 +75,7 @@ module CommandHandler =
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
-        and 'A: (member Serialize: 'F)
+        and 'A: (member Serialize: 'F )
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
