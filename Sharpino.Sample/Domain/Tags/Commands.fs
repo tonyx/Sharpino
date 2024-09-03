@@ -21,13 +21,13 @@ module TagCommands =
                 match this with
                 | AddTag t ->
                     x.AddTag t
-                    |> Result.map (fun _ -> [TagAdded t]) 
+                    |> Result.map (fun s -> (s, [TagAdded t]))
                 | RemoveTag g ->
                     x.RemoveTag g
-                    |> Result.map (fun _ -> [TagRemoved g])
+                    |> Result.map (fun s -> (s, [TagRemoved g]))
                 | Ping () ->
                     x.Ping()
-                    |> Result.map (fun _ -> [PingDone ()])
+                    |> Result.map (fun s -> (s, [PingDone ()]))
             member this.Undoer =
                 match this with
                 | AddTag t ->

@@ -40,16 +40,14 @@
     <!-- <PackageReference Include="Sharpino.Core" Version="1.1.4" /> -->
     
     <PackageReference Update="FSharp.Core" Version="8.*" />
+    
+    <PackageReference Include="Sharpino" Version="2.5.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-  </ItemGroup> 
-
-  <!-- comment if get the lib from nuget -->
-   <!-- <ItemGroup>
-     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-   </ItemGroup> -->
+<!--  -->
+<!--  <ItemGroup>-->
+<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--  </ItemGroup> -->
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />

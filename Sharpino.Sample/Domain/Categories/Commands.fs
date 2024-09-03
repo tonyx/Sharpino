@@ -21,14 +21,14 @@ module CategoriesCommands =
                 match this with
                 | AddCategory c ->
                     x.AddCategory c
-                    |> Result.map (fun _ -> [CategoryAdded c])
+                    |> Result.map (fun s -> (s, [CategoryAdded c]))
                 | RemoveCategory g ->
                     x.RemoveCategory g
-                    |> Result.map (fun _ -> [CategoryRemoved g])
+                    |> Result.map (fun s -> (s, [CategoryRemoved g]))
                 | AddCategories cs ->
                     x.AddCategories cs
-                    |> Result.map (fun _ -> [CategoriesAdded cs])
+                    |> Result.map (fun s -> (s, [CategoriesAdded cs]))
                 | Ping () ->
                     x.Ping()
-                    |> Result.map (fun _ -> [PingDone ()])
+                    |> Result.map (fun s -> (s, [PingDone ()]))
             member this.Undoer = None
