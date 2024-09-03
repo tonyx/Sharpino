@@ -12,19 +12,27 @@ open FsToolkit.ErrorHandling
 // usually for each aggregate we mantain its state in memory and use lists
 // but we could use a repository like this to be able to persist the state 
 module Repositories =    
-    type IRepository<'A when 'A: equality and 'A :> Entity> =
-        abstract member Add: 'A * string -> Result<IRepository<'A>, string>
-        abstract member AddWithPredicate: 'A * ('A -> bool) * string -> Result<IRepository<'A>, string>
-        abstract member AddMany: List<'A> * ('A -> string) -> Result<IRepository<'A>, string>
-        abstract member AddManyWithPredicate: List<'A> * ('A -> string) * ('A * 'A -> bool) -> Result<IRepository<'A>, string>
+    type JsonSerializableEntity =
+        abstract member Id: Guid
+        abstract member Serialize: string
+        // abstract member RepositoryName : string
+        
+    type IRepository<'A when 'A: equality and 'A :> JsonSerializableEntity> =
+        abstract member Add<'A> : 'A * string -> Result<IRepository<'A>, string>
+        abstract member AddWithPredicate<'A>: 'A * ('A -> bool) * string -> Result<IRepository<'A>, string>
+        abstract member AddMany<'A>: List<'A> * ('A -> string) -> Result<IRepository<'A>, string>
+        abstract member AddManyWithPredicate<'A>: List<'A> * ('A -> string) * ('A * 'A -> bool) -> Result<IRepository<'A>, string>
         abstract member Remove: Guid -> string -> Result<IRepository<'A>, string>
-        abstract member Find: ('A -> bool) -> 'A option
+        abstract member Find<'A>: ('A -> bool) -> 'A option
         abstract member Get: Guid -> 'A option
-        abstract member Exists: ('A -> bool) -> bool
+        abstract member Exists<'A>: ('A -> bool) -> bool
         abstract member IsEmpty: unit -> bool
-        abstract member GetAll: unit -> List<'A>
+        abstract member GetAll<'A>: unit -> List<'A>
 
-    type ListRepository<'A when 'A: equality and  'A:> Entity> =
+    
+        
+    // type ListRepository<'A when 'A: equality and 'A:> Entity and 'A: (member Serialize: string)>  =
+    type ListRepository<'A when 'A: equality and 'A:> JsonSerializableEntity>  =
         {
             Items: List<'A>
         }
