@@ -30,7 +30,6 @@ module PgRepository =
     type PgRepository<'A when 'A: equality and 'A:> JsonSerializableEntity> (connection: string, repositoryName: string) =
         let log = LogManager.GetLogger(repositoryName)
         let streamName = repositoryName + "_repository"
-       
         
         // caution!!
         member this.Reset () =
@@ -55,79 +54,101 @@ module PgRepository =
         interface IRepository<'A> with
             member this.Add (x: 'A, msg: string) =
                 let addCommand = sprintf "INSERT INTO %s (id, data) VALUES ('%s', '%s')" streamName (x.Id.ToString()) x.Serialize
-                Async.RunSynchronously
-                    ( async {
-                         return
-                            try
-                                connection
-                                |> Sql.connect
-                                |> Sql.query addCommand
-                                |> Sql.executeNonQuery
-                                |> ignore
-                                Result.Ok this
-                            with
-                            | ex ->
-                                printf "XXX error %A" ex
-                                log.Error ex.Message
-                                Result.Error msg
-                    }, timeout = evenStoreTimeout)
-                    
+                try
+                    Async.RunSynchronously
+                        ( async {
+                             return
+                                try
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query addCommand
+                                    |> Sql.executeNonQuery
+                                    |> ignore
+                                    Result.Ok this
+                                with
+                                | ex ->
+                                    log.Error ex.Message
+                                    Result.Error msg
+                        }, timeout = evenStoreTimeout)
+                with        
+                | _ as ex -> 
+                    log.Error ex.Message
+                    Result.Error ex.Message
                         
             member this.AddMany(items:List<'A>, msg: 'A -> string) =
                 log.Debug "add many"
-                // let addCommand  = sprintf "INSERT INTO %s (id, data) VALUES (@id, @item);" repositoryName
                 let addCommand  = sprintf "INSERT INTO %s (id, data) VALUES (@id, @item);" streamName
                 let conn = new NpgsqlConnection(connection)
                 conn.Open()
                 let transaction = conn.BeginTransaction()
-                Async.RunSynchronously
-                    ( async {
-                         let result =
-                            try
-                                items
-                                |>>
-                                     fun item ->
-                                         let addCommand' = new NpgsqlCommand(addCommand, conn)
-                                         addCommand'.Parameters.AddWithValue("id", item.Id.ToString())
-                                         addCommand'.Parameters.AddWithValue("item", item.Serialize)
-                                |> ignore         
-                                transaction.Commit()
-                                Result.Ok (this:>IRepository<'A>)
-                            with
-                            | _ as ex ->
-                                transaction.Rollback()
-                                log.Error ex.Message
-                                ex.Message |> Result.Error
-                         try
-                             return result
-                         finally
-                                conn.Close()
-                    }, timeout = evenStoreTimeout)
+                try
+                    Async.RunSynchronously
+                        ( async {
+                             let result =
+                                try
+                                    items
+                                    |>>
+                                         fun item ->
+                                             let addCommand' = new NpgsqlCommand(addCommand, conn)
+                                             addCommand'.Parameters.AddWithValue("id", item.Id.ToString())
+                                             addCommand'.Parameters.AddWithValue("data", item.Serialize)
+                                    |> ignore         
+                                    transaction.Commit()
+                                    Result.Ok (this:>IRepository<'A>)
+                                with
+                                | _ as ex ->
+                                    transaction.Rollback()
+                                    log.Error ex.Message
+                                    ex.Message |> Result.Error
+                             try
+                                 return result
+                             finally
+                                    conn.Close()
+                        }, timeout = evenStoreTimeout)
+                with        
+                | _ as ex -> 
+                    log.Error ex.Message
+                    Result.Error ex.Message
                 
             member this.AddManyWithPredicate(x, msg, p) = 
                 log.Debug "add many with preicate"
                 (this:> IRepository<'A>).AddMany(x, msg)
             
             member this.AddWithPredicate (x, p, msg) = 
-                log.Debug "add with predicate"
-                (this:> IRepository<'A>).Add(x, msg)
+                result {
+                    let! exists = 
+                        (this:> IRepository<'A>).Exists p
+                    if exists then
+                        return! Result.Error msg
+                    else
+                        return! (this:> IRepository<'A>).Add(x, msg)
+                }
             
             member this.Exists (p: 'A -> bool) =
                 log.Debug "exists"
-                result
-                    {
-                        let query = sprintf "SELECT data FROM %s" streamName
-                        let! found =
-                            connection
-                            |> Sql.connect
-                            |> Sql.query query
-                            |> Sql.execute (fun read -> 
-                                 (read.string "data"))
-                            |> List.traverseResultM (fun x ->
-                                jsonSerializer.Deserialize<'A> ((string)x))
-                        let filtered = found |> List.filter p
-                        return not (List.isEmpty filtered)
-                    }
+                try
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                result
+                                    {
+                                        let query = sprintf "SELECT data FROM %s" streamName
+                                        let! found =
+                                            connection
+                                            |> Sql.connect
+                                            |> Sql.query query
+                                            |> Sql.execute (fun read -> 
+                                                (read.string "data"))
+                                            |> List.traverseResultM (fun x ->
+                                                jsonSerializer.Deserialize<'A> ((string)x))
+                                        let filtered = found |> List.filter p
+                                        return not (List.isEmpty filtered)
+                                    }
+                        }, timeout = evenStoreTimeout)
+                with
+                | _ as ex -> 
+                    log.Error ex.Message
+                    Result.Error ex.Message
 
             // to be optimized as there is no json query
             member this.Find (p: 'A -> bool) = 
@@ -152,19 +173,29 @@ module PgRepository =
             member this.Get(counterId) = 
                 log.Debug "get"
                 let query = sprintf "SELECT data FROM %s WHERE id = @id" streamName
-                result {
-                    let! found =
-                        connection
-                        |> Sql.connect
-                        |> Sql.query query
-                        |> Sql.parameters ["id", Sql.uuid counterId]
-                        |> Sql.execute (fun read -> 
-                             (read.string "data"))
-                        |> List.traverseResultM (fun x ->
-                            jsonSerializer.Deserialize<'A> ((string)x))
-                    let firstFound = found |> List.tryHead
-                    return firstFound
-                }
+
+                try
+                    Async.RunSynchronously (
+                        async {
+                            return
+                                result {
+                                    let! found =
+                                        connection
+                                        |> Sql.connect
+                                        |> Sql.query query
+                                        |> Sql.parameters ["id", Sql.uuid counterId]
+                                        |> Sql.execute (fun read -> 
+                                            (read.string "data"))
+                                        |> List.traverseResultM (fun x ->
+                                            jsonSerializer.Deserialize<'A> ((string)x))
+                                    let firstFound = found |> List.tryHead
+                                    return firstFound
+                                }
+                        }, timeout = evenStoreTimeout)
+                with
+                | _ as ex -> 
+                    log.Error ex.Message
+                    Result.Error ex.Message
 
             member this.GetAll() =
                 log.Debug "get all"

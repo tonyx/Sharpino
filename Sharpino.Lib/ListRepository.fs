@@ -21,7 +21,7 @@ module Repositories =
         abstract member Add<'A> : 'A * string -> Result<IRepository<'A>, string>
         abstract member AddWithPredicate<'A>: 'A * ('A -> bool) * string -> Result<IRepository<'A>, string>
         abstract member AddMany<'A>: List<'A> * ('A -> string) -> Result<IRepository<'A>, string>
-        abstract member AddManyWithPredicate<'A>: List<'A> * ('A -> string) * ('A * 'A -> bool) -> Result<IRepository<'A>, string>
+        abstract member AddManyWithPredicate<'A>: List<'A> * ('A -> string) * ('A -> bool) -> Result<IRepository<'A>, string>
         abstract member Remove: Guid -> string -> Result<IRepository<'A>, string>
         abstract member Find<'A>: ('A -> bool) -> Result<Option<'A>, string>
         abstract member Get: Guid -> Result<Option<'A>, string>
@@ -73,9 +73,9 @@ module Repositories =
                                 with Items = xs @ this.Items
                         }
                     }
-                member this.AddManyWithPredicate (xs: List<'A>, msg: 'A -> string, p: 'A * 'A -> bool) =
+                member this.AddManyWithPredicate (xs: List<'A>, msg: 'A -> string, p: 'A -> bool) =
                     let notExists (t: 'A) =
-                        this.Items |> List.exists (fun x -> x.Id = t.Id || p(x, t))
+                        this.Items |> List.exists (fun x -> x.Id = t.Id || p(x))
                         |> not
                         |> Result.ofBool (msg t)
 
