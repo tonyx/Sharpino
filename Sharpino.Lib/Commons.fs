@@ -9,7 +9,7 @@ module Commons =
         abstract member Deserialize<'A> : 'F -> Result<'A, string>
         abstract member Serialize<'A> : 'A -> 'F
 
-    let jsonPickler = FsPickler.CreateJsonSerializer(indent = false)
+    let jsonPickler = FsPickler.CreateJsonSerializer(indent = false, omitHeader = true)
     let binaryPickle = FsPickler.CreateBinarySerializer()
 
     let jsonPSerializer =
@@ -33,4 +33,5 @@ module Commons =
             member this.Serialize<'A> (obj: 'A) =
                 binaryPickle.Pickle obj
         }
-        
+    let jsonSerializer: Serialization<_> = jsonPSerializer
+ 

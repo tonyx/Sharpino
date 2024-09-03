@@ -16,16 +16,13 @@ open Npgsql.FSharp
 open Npgsql
 open FsToolkit.ErrorHandling
 open log4net
+open Sharpino.Commons
 open log4net.Config
 open Conf
 
 
 module PgRepository =
-
-    // serialize are already present ... ????
-    type Serializable<'F> =
-        abstract member Deserialize<'A> : 'F -> Result<'A, string>
-        abstract member Serialize<'A> : 'A -> 'F
+    
         
     let config = Conf.config ()
     let evenStoreTimeout = config.EventStoreTimeout    
@@ -33,10 +30,30 @@ module PgRepository =
     type PgRepository<'A when 'A: equality and 'A:> JsonSerializableEntity> (connection: string, repositoryName: string) =
         let log = LogManager.GetLogger(repositoryName)
         let streamName = repositoryName + "_repository"
+       
+        
+        // caution!!
+        member this.Reset () =
+            let resetCommand = sprintf "DELETE FROM %s" streamName
+            Async.RunSynchronously
+                ( async {
+                     return
+                        try
+                            connection
+                            |> Sql.connect
+                            |> Sql.query resetCommand
+                            |> Sql.executeNonQuery
+                            |> ignore
+                            Result.Ok this
+                        with
+                        | ex ->
+                            printf "XXX error %A" ex
+                            log.Error ex.Message
+                            Result.Error ex.Message
+                }, timeout = evenStoreTimeout)
+        
         interface IRepository<'A> with
             member this.Add (x: 'A, msg: string) =
-                printf "XXX adding %A" x
-                // let addCommand = sprintf "INSERT INTO %s (id, data) VALUES ('%s', '%s')" repositoryName (x.Id.ToString()) x.Serialize
                 let addCommand = sprintf "INSERT INTO %s (id, data) VALUES ('%s', '%s')" streamName (x.Id.ToString()) x.Serialize
                 Async.RunSynchronously
                     ( async {
@@ -53,7 +70,8 @@ module PgRepository =
                                 printf "XXX error %A" ex
                                 log.Error ex.Message
                                 Result.Error msg
-                    }, timeout = 1000)
+                    }, timeout = evenStoreTimeout)
+                    
                         
             member this.AddMany(items:List<'A>, msg: 'A -> string) =
                 log.Debug "add many"
@@ -94,10 +112,104 @@ module PgRepository =
                 log.Debug "add with predicate"
                 (this:> IRepository<'A>).Add(x, msg)
             
-            member this.Exists(var0) = failwith "todo"
-            member this.Find(var0) = failwith "todo"
-            member this.Get(var0) = failwith "todo"
-            member this.GetAll() = failwith "todo"
-            member this.IsEmpty() = failwith "todo"
-            member this.Remove var0 var1 = failwith "todo"
+            member this.Exists (p: 'A -> bool) =
+                log.Debug "exists"
+                result
+                    {
+                        let query = sprintf "SELECT data FROM %s" streamName
+                        let! found =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query query
+                            |> Sql.execute (fun read -> 
+                                 (read.string "data"))
+                            |> List.traverseResultM (fun x ->
+                                jsonSerializer.Deserialize<'A> ((string)x))
+                        let filtered = found |> List.filter p
+                        return not (List.isEmpty filtered)
+                    }
+
+            // to be optimized as there is no json query
+            member this.Find (p: 'A -> bool) = 
+                log.Debug "find"
+                result
+                    {
+                        let query = sprintf "SELECT data FROM %s" streamName
+                        let! found =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query query
+                            |> Sql.execute (fun read -> 
+                                 (read.string "data"))
+                            |> List.traverseResultM (fun x ->
+                                jsonSerializer.Deserialize<'A> ((string)x))
+                        let filtered = found |> List.filter p
+                        let optFiltered = filtered |> List.tryHead
+                        return optFiltered
+                    }
+                
+                
+            member this.Get(counterId) = 
+                log.Debug "get"
+                let query = sprintf "SELECT data FROM %s WHERE id = @id" streamName
+                result {
+                    let! found =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query query
+                        |> Sql.parameters ["id", Sql.uuid counterId]
+                        |> Sql.execute (fun read -> 
+                             (read.string "data"))
+                        |> List.traverseResultM (fun x ->
+                            jsonSerializer.Deserialize<'A> ((string)x))
+                    let firstFound = found |> List.tryHead
+                    return firstFound
+                }
+
+            member this.GetAll() =
+                log.Debug "get all"
+                let command = sprintf "SELECT data FROM %s" streamName
+                try
+                    Async.RunSynchronously (
+                        async  {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query command
+                                |> Sql.execute (fun read -> 
+                                     (read.string "data"))
+                                |> List.traverseResultM (fun x ->
+                                    jsonSerializer.Deserialize<'A> ((string)x))    
+                        }, timeout = evenStoreTimeout)
+                with        
+                | _ as ex -> 
+                    log.Error ex.Message
+                    Result.Error ex.Message
+            
+            member this.IsEmpty() = 
+                result {
+                    let! all = (this :> IRepository<'A>).GetAll()
+                    return List.isEmpty all
+                }
+
+            member this.Remove(id: System.Guid) (msg: string) =
+                log.Debug "remove"
+                let removeCommand = sprintf "DELETE FROM %s WHERE id = @id" streamName
+                Async.RunSynchronously
+                    ( async {
+                         return
+                            try
+                                connection
+                                |> Sql.connect
+                                |> Sql.query removeCommand
+                                |> Sql.parameters ["id", Sql.uuid id]
+                                |> Sql.executeNonQuery
+                                |> ignore
+                                Result.Ok this
+                            with
+                            | ex ->
+                                log.Error ex.Message
+                                Result.Error msg
+                    }, timeout = evenStoreTimeout)
+
             

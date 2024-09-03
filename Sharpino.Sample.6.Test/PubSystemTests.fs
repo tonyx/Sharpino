@@ -20,7 +20,7 @@ open Sharpino.Cache
 let tests =
     let connection =
         "Server=127.0.0.1;"+
-        "Database=es_pub_system;" +
+        "Database=es_counter;" +
         "User Id=safe;"+
         "Password=safe;"
     let memEventStore: IEventStore<string> = MemoryStorage()

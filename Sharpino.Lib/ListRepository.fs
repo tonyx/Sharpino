@@ -23,11 +23,11 @@ module Repositories =
         abstract member AddMany<'A>: List<'A> * ('A -> string) -> Result<IRepository<'A>, string>
         abstract member AddManyWithPredicate<'A>: List<'A> * ('A -> string) * ('A * 'A -> bool) -> Result<IRepository<'A>, string>
         abstract member Remove: Guid -> string -> Result<IRepository<'A>, string>
-        abstract member Find<'A>: ('A -> bool) -> 'A option
-        abstract member Get: Guid -> 'A option
-        abstract member Exists<'A>: ('A -> bool) -> bool
-        abstract member IsEmpty: unit -> bool
-        abstract member GetAll<'A>: unit -> List<'A>
+        abstract member Find<'A>: ('A -> bool) -> Result<Option<'A>, string>
+        abstract member Get: Guid -> Result<Option<'A>, string>
+        abstract member Exists<'A>: ('A -> bool) -> Result<bool, string>
+        abstract member IsEmpty: unit -> Result<bool, string>
+        abstract member GetAll<'A>: unit -> Result<List<'A>, string>
 
     
         
@@ -97,12 +97,12 @@ module Repositories =
                             return! Error errorMsg
                     }
                 member this.Find (f: 'A -> bool) =
-                    this.Items |> List.tryFind f
+                    this.Items |> List.tryFind f |> Ok
                 member this.Get id =
-                    this.Items |> List.tryFind (fun x -> x.Id = id)
+                    this.Items |> List.tryFind (fun x -> x.Id = id) |> Ok
                 member this.Exists (f: 'A -> bool) =
-                    this.Items |> List.exists f
+                    this.Items |> List.exists f |> Ok
                 member this.IsEmpty () =
-                    this.Items |> List.isEmpty
+                    this.Items |> List.isEmpty |> Ok
                 member this.GetAll () =
-                    this.Items
+                    this.Items |> Ok
