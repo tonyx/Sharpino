@@ -22,7 +22,6 @@ open Conf
 
 
 module PgRepository =
-    
         
     let config = Conf.config ()
     let evenStoreTimeout = config.EventStoreTimeout    
@@ -46,12 +45,11 @@ module PgRepository =
                             Result.Ok this
                         with
                         | ex ->
-                            printf "XXX error %A" ex
                             log.Error ex.Message
                             Result.Error ex.Message
                 }, timeout = evenStoreTimeout)
         
-        interface IRepository<'A> with
+        interface IPgRepository<'A> with
             member this.Add (x: 'A, msg: string) =
                 let addCommand = sprintf "INSERT INTO %s (id, data) VALUES ('%s', '%s')" streamName (x.Id.ToString()) x.Serialize
                 try
@@ -94,7 +92,7 @@ module PgRepository =
                                              addCommand'.Parameters.AddWithValue("data", item.Serialize)
                                     |> ignore         
                                     transaction.Commit()
-                                    Result.Ok (this:>IRepository<'A>)
+                                    Result.Ok (this:>IPgRepository<'A>)
                                 with
                                 | _ as ex ->
                                     transaction.Rollback()
@@ -112,16 +110,16 @@ module PgRepository =
                 
             member this.AddManyWithPredicate(x, msg, p) = 
                 log.Debug "add many with preicate"
-                (this:> IRepository<'A>).AddMany(x, msg)
+                (this:> IPgRepository<'A>).AddMany(x, msg)
             
             member this.AddWithPredicate (x, p, msg) = 
                 result {
                     let! exists = 
-                        (this:> IRepository<'A>).Exists p
+                        (this:> IPgRepository<'A>).Exists p
                     if exists then
                         return! Result.Error msg
                     else
-                        return! (this:> IRepository<'A>).Add(x, msg)
+                        return! (this:> IPgRepository<'A>).Add(x, msg)
                 }
             
             member this.Exists (p: 'A -> bool) =
@@ -168,7 +166,6 @@ module PgRepository =
                         let optFiltered = filtered |> List.tryHead
                         return optFiltered
                     }
-                
                 
             member this.Get(counterId) = 
                 log.Debug "get"
@@ -219,7 +216,7 @@ module PgRepository =
             
             member this.IsEmpty() = 
                 result {
-                    let! all = (this :> IRepository<'A>).GetAll()
+                    let! all = (this :> IPgRepository<'A>).GetAll()
                     return List.isEmpty all
                 }
 

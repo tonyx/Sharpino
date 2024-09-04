@@ -30,6 +30,17 @@ module Repositories =
         abstract member GetAll<'A>: unit -> Result<List<'A>, string>
 
     
+    type IPgRepository<'A when 'A: equality and 'A :> JsonSerializableEntity> =
+        abstract member Add<'A> : 'A * string -> Result<IPgRepository<'A>, string>
+        abstract member AddWithPredicate<'A>: 'A * ('A -> bool) * string -> Result<IPgRepository<'A>, string>
+        abstract member AddMany<'A>: List<'A> * ('A -> string) -> Result<IPgRepository<'A>, string>
+        abstract member AddManyWithPredicate<'A>: List<'A> * ('A -> string) * ('A -> bool) -> Result<IPgRepository<'A>, string>
+        abstract member Remove: Guid -> string -> Result<IPgRepository<'A>, string>
+        abstract member Find<'A>: ('A -> bool) -> Result<Option<'A>, string>
+        abstract member Get: Guid -> Result<Option<'A>, string>
+        abstract member Exists<'A>: ('A -> bool) -> Result<bool, string>
+        abstract member IsEmpty: unit -> Result<bool, string>
+        abstract member GetAll<'A>: unit -> Result<List<'A>, string>
         
     // type ListRepository<'A when 'A: equality and 'A:> Entity and 'A: (member Serialize: string)>  =
     type ListRepository<'A when 'A: equality and 'A:> JsonSerializableEntity>  =
