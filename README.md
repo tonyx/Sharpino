@@ -190,6 +190,7 @@ See these examples to compare:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News
+- Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
   (A short example will come but here is an idea, pretending the aggregate types can be two, and not three: A1, A2, A3, A3 needs to merge into An: I cannot run the "indpendent" saga-free version of running 
