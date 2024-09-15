@@ -537,6 +537,79 @@ module CommandHandler =
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
             MailBoxProcessors.postToTheProcessor processor command
 
+    let inline forceRunNAggregateCommands<'A1, 'E1, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        >
+        (aggregateIds: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (commands: List<AggregateCommand<'A1, 'E1>>)
+        =
+            let commands = fun () ->
+                result {
+                    let! states =
+                        aggregateIds
+                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                    let states' = 
+                        states 
+                        |>> fun (_, state) -> state
+                    let lastEventIds =
+                        states
+                        |>> fun (eventId, _) -> eventId
+                    let statesAndCommands =
+                        List.zip states' commands
+                    let! stateEvents =
+                        statesAndCommands
+                        |>> fun (state, command) -> (command.Execute state)
+                        |> List.traverseResultM id
+                    let newStates =
+                        stateEvents 
+                        |>> fun (state, _) -> state
+                    let events =
+                        stateEvents
+                        |>> fun (_, events) -> events
+                        
+                    let serializedEvents =
+                        events 
+                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                    let packParametersForDb =
+                        List.zip3 lastEventIds serializedEvents aggregateIds
+                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                    let! eventIds =
+                        eventStore.MultiAddAggregateEvents packParametersForDb
+                        
+                    for i in 0..(aggregateIds.Length - 1) do
+                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+                        
+                    let aggregateIdsWithEventIds =
+                        List.zip aggregateIds eventIds
+                    let kafkaParameters =
+                        List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
+                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
+                    if (eventBroker.notifyAggregate.IsSome) then
+                        kafkaParameters
+                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
+                        |> ignore
+                    let _ =
+                        aggregateIds
+                        |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                    return ()    
+                }
+            // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
+            // let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
+            // let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
+            let lookupName = 'A1.StorageName
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
+            MailBoxProcessors.postToTheProcessor processor commands
+    
+    
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -557,76 +630,11 @@ module CommandHandler =
             if (not aggregateIdsAreUnique) then
                 Error "aggregateIds are not unique"
             else
-                let commands = fun () ->
-                    result {
-                        let! states =
-                            aggregateIds
-                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
-                        let states' = 
-                            states 
-                            |>> fun (_, state) -> state
-                        let lastEventIds =
-                            states
-                            |>> fun (eventId, _) -> eventId
-                        let statesAndCommands =
-                            List.zip states' commands
-                        let! stateEvents =
-                            statesAndCommands
-                            |>> fun (state, command) -> (command.Execute state)
-                            |> List.traverseResultM id
-                        let newStates =
-                            stateEvents 
-                            |>> fun (state, _) -> state
-                        let events =
-                            stateEvents
-                            |>> fun (_, events) -> events
-                            
-                        let serializedEvents =
-                            events 
-                            |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
-                        let packParametersForDb =
-                            List.zip3 lastEventIds serializedEvents aggregateIds
-                            |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                        let! eventIds =
-                            eventStore.MultiAddAggregateEvents packParametersForDb
-                            
-                        for i in 0..(aggregateIds.Length - 1) do
-                            AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
-                            
-                        let aggregateIdsWithEventIds =
-                            List.zip aggregateIds eventIds
-                        let kafkaParameters =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds serializedEvents
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                        if (eventBroker.notifyAggregate.IsSome) then
-                            kafkaParameters
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            |> ignore
-                        let _ =
-                            aggregateIds
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                        return ()    
-                    }
-                // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-                // let aggregateIds = aggregateIds |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                // let lookupName = sprintf "%s_%s" 'A1.StorageName aggregateIds
-                let lookupName = 'A1.StorageName
-                let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
-                MailBoxProcessors.postToTheProcessor processor commands
-    
-    // this one is for future use (could eventually work when we reintroduce repeated aggregates ids in multicommand, may be...)
-    // let inline commandEvolves<'A, 'E when 'E :> Event<'A>> (h: 'A) (commands: List<AggregateCommand<'A, 'E>>) =
-    //     commands
-    //     |> List.fold
-    //         (fun (acc: Result<'A, string>) (c: AggregateCommand<'A, 'E>) ->
-    //             acc |> Result.bind (fun acc ->
-    //                 let res =
-    //                     c.Execute acc
-    //                     |> Result.bind (fun (res, e) -> res |> Ok)
-    //                 res    
-    //             )
-    //         ) (h |> Ok)
-    
+                forceRunNAggregateCommands
+                    (aggregateIds: List<Guid>)
+                    (eventStore: IEventStore<'F>)
+                    (eventBroker: IEventBroker<'F>)
+                    (commands: List<AggregateCommand<'A1, 'E1>>)
     
     let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -848,6 +856,91 @@ module CommandHandler =
                 let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
 
+    let inline runSagaNAggregateCommands<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (member Serialize: 'F)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A : (static member SnapshotsInterval: int)
+        and 'A : (static member StorageName: string)
+        and 'A : (static member Version: string)
+        >
+        (aggregateIds: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (commands: List<AggregateCommand<'A, 'E>>)
+        =
+            let commandHasUndoers = commands |> List.forall (fun x -> x.Undoer.IsSome)
+            if (commandHasUndoers) then
+                let idsWithCommands = List.zip aggregateIds commands
+                let iteratedExecutionOfCommands =
+                    idsWithCommands
+                    |> List.fold
+                        (fun acc (id, c) ->
+                            let guard = acc |> fst
+                            let futureUndoers = acc |> snd
+                            if not guard then (false, futureUndoers) else
+                                let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
+                                let futureUndo =
+                                    let aggregateStateViewer: AggregateViewer<'A> = fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore
+                                    match c.Undoer, state with
+                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewer)
+                                    | _ -> None
+                                let undoers = [futureUndo]
+                                let myRes = runAggregateCommand id eventStore eventBroker c
+                                match myRes with
+                                | Ok _ -> (guard, futureUndoers @ undoers)
+                                | Error _ -> (false, futureUndoers)
+                        )
+                        (true, [])
+                match iteratedExecutionOfCommands with
+                | (true, _) -> Ok ()
+                | (false, undoers) ->
+                    let undoerRun =
+                        fun () ->
+                            result {
+                                let! compensatingStream =
+                                    undoers
+                                    |>> fun x -> x
+                                    |> List.traverseOptionM (fun x -> x)
+                                    |> Option.toResultWith (sprintf "compensatingStream %s" 'A.StorageName)
+                                let! extractedCompensator =
+                                    compensatingStream
+                                    |> List.traverseResultM (fun x -> x) 
+                                let! extractedCompensatorApplied =
+                                    extractedCompensator
+                                    |> List.traverseResultM (fun x -> x())
+                                let extractedEvents =
+                                    let exCompLen = extractedCompensatorApplied.Length
+                                    List.zip3
+                                        (aggregateIds |> List.take exCompLen)
+                                        ((aggregateIds |> List.skip exCompLen)
+                                         |>> (eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName))
+                                        extractedCompensatorApplied
+                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+                                let addEventsStreamA =
+                                    extractedEvents
+                                    |> List.traverseResultM
+                                        (fun (id, eventId, events) ->
+                                            eventStore.AddAggregateEvents eventId 'A.Version 'A.StorageName id events
+                                        )
+                                match addEventsStreamA with
+                                | Ok _ -> return ()
+                                | Error e -> return! Error e
+                            }
+                    let lookupName = sprintf "%s" 'A.StorageName
+                    let tryCompensations =
+                        MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                    
+                    let _ =
+                        match tryCompensations with
+                        | Error x -> log.Error x
+                        | Ok _ -> log.Info "compensation Saga succeeded"
+                    Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
+                else
+                    Error (sprintf "failed the precondition of applicability of the runSagaNAggregateCommands. All of these must be true: commandHasUndoers %A" commandHasUndoers) 
+    
     let inline runSagaTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -873,8 +966,8 @@ module CommandHandler =
         (commands1: List<AggregateCommand<'A1, 'E1>>)
         (commands2: List<AggregateCommand<'A2, 'E2>>)
         =
-            let command1HasUndoers = commands1 |> List.exists (fun x -> x.Undoer.IsSome)
-            let command2HasUndoers = commands2 |> List.exists (fun x -> x.Undoer.IsSome)
+            let command1HasUndoers = commands1 |> List.forall (fun x -> x.Undoer.IsSome)
+            let command2HasUndoers = commands2 |> List.forall (fun x -> x.Undoer.IsSome)
             let lengthMustBeTheSame = commands1.Length = commands2.Length
             if (command1HasUndoers && command2HasUndoers && lengthMustBeTheSame) then
                 let pairOfCommands = List.zip commands1 commands2
@@ -983,7 +1076,7 @@ module CommandHandler =
                          | Ok _ -> log.Info "compensations has been succesfull"
                      Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
                 else      
-                    Error (sprintf "falied the precondition of applicability of the runSagaTwoNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers lengthMustBeTheSame)
+                    Error (sprintf "failed the precondition of applicability of the runSagaTwoNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers lengthMustBeTheSame)
                 
                 
     

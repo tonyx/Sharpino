@@ -11,7 +11,7 @@ open FsToolkit.ErrorHandling
 open log4net
 open log4net.Config
 
-// will be dismissed or unmaintained
+// todo: this part will be dismissed as we focus on using only postgres at the moment
 module LightCommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     // you can configure log here, or in the main program (see tests)

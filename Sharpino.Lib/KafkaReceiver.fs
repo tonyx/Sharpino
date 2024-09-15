@@ -22,7 +22,7 @@ open FSharpPlus.Operators
 
 // to be removed/rewritten
 
-// in progress: don't use it
+// todo: this part will be revised
 module KafkaReceiver =
     let getStrAggregateMessage message =
         ResultCE.result {

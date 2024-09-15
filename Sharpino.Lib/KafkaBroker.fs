@@ -20,6 +20,7 @@ open log4net.Config
 open FsToolkit.ErrorHandling.ResultCE
 open FSharp.Core
 
+// todo: this part will be revised
 module KafkaBroker =
 
     // let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
