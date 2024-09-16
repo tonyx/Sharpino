@@ -41,13 +41,13 @@
     
     <PackageReference Update="FSharp.Core" Version="8.*" />
     
-    <PackageReference Include="Sharpino" Version="2.5.5" />
+<!--    <PackageReference Include="Sharpino" Version="2.5.5" />-->
   </ItemGroup>
 
 <!--  -->
-<!--  <ItemGroup>-->
-<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
-<!--  </ItemGroup> -->
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup> 
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />

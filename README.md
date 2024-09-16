@@ -173,6 +173,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 - Adapt the examples to the new version of the library (2.0.0)
 - Write more examples (porting examples from Equinox would be fine)
+- Write a full proper implementation of a Saga based transaction mechanism involving commands related to "any" type of aggregates
 
 ## Comparison with other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
@@ -190,6 +191,7 @@ See these examples to compare:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News
+- Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
 - Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
