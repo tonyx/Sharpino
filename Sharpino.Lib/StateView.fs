@@ -167,24 +167,24 @@ module StateView =
         'A: (static member StorageName: string) and
         'A: (static member Version: string)>
         (id: Guid)
-        (storage: IEventStore<'F>)
+        (eventStore: IEventStore<'F>)
         = 
         log.Debug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         
         async {
             return
                 result {
-                    let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName storage
+                    let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
                     | Some (Some eventId, state) ->
-                        let! events = storage.GetAggregateEventsAfterId 'A.Version 'A.StorageName id eventId
+                        let! events = eventStore.GetAggregateEventsAfterId 'A.Version 'A.StorageName id eventId
                         let result =
                             (eventId |> Some, state, events)
                         return result
                     | Some (None, state) ->
-                        let! events = storage.GetAggregateEvents 'A.Version 'A.StorageName id 
+                        let! events = eventStore.GetAggregateEvents 'A.Version 'A.StorageName id 
                         let result =
                             (None, state, events)
                         return result
@@ -202,14 +202,14 @@ module StateView =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
         >
-        (storage: IEventStore<'F>) =
+        (eventStore: IEventStore<'F>) =
             Async.RunSynchronously
                 (async {
                     let result =        
                         let computeNewState =
                             fun () ->
                                 result {
-                                    let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> storage
+                                    let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
                                     let! deserEvents =
                                         events 
                                         |>> snd 
@@ -220,7 +220,7 @@ module StateView =
                                 }
             
                         // remove kafka info always
-                        let lastEventId = storage.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                        let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                         let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
                         match state with
                         | Ok state' -> 
@@ -240,13 +240,13 @@ module StateView =
         and 'A: (static member Version: string)
         >
         (id: Guid)
-        (storage: IEventStore<'F>)
+        (eventStore: IEventStore<'F>)
         =
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
                     result { 
-                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id storage
+                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
                         let! deserEvents =
                             events 
                             |>> snd 
@@ -255,7 +255,7 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let lastEventId = storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
+            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
             log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
@@ -264,5 +264,33 @@ module StateView =
             | Error e -> 
                 log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
-            
+   
+    let inline getFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        =
+            log.Debug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            let allEventsInTimeInterval = eventStore.GetAggregateEventsInATimeInterval 'A.Version 'A.StorageName id start end_
+            result
+                {
+                    let! deserEvents =
+                        allEventsInTimeInterval
+                        |>> snd 
+                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                    let filteredEvents = 
+                        deserEvents
+                        |> List.filter predicate
+                    return filteredEvents
+                }
+
+             
                 

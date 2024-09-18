@@ -619,6 +619,31 @@ module PgBinaryStore =
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     []
 
+           
+            member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
+                log.Debug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                                |> Sql.execute ( fun read ->
+                                    (
+                                        read.int "id",
+                                        readAsBinary read "event"
+                                    )
+                                )
+                                |> Seq.toList
+                            }, evenStoreTimeout)
+                    with
+                    | _ as ex ->
+                        log.Error (sprintf "an error occurred: %A" ex.Message)
+                        []
+            
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name

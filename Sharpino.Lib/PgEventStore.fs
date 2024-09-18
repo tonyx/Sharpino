@@ -633,6 +633,7 @@ module PgStorage =
                         log.Error (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
             
+            // next release those will use Result to send the error to the caller
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -643,7 +644,7 @@ module PgStorage =
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["dateFrom", Sql.timestamptz dateFrom; "dateTo", Sql.timestamptz dateTo]
+                                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
                                 |> Sql.execute ( fun read ->
                                     (
                                         read.int "id",
@@ -656,6 +657,32 @@ module PgStorage =
                 | _ as ex ->
                     log.Error (sprintf "an error occurred: %A" ex.Message)
                     []
+            
+            member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
+                log.Debug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                try
+                    let result =
+                        Async.RunSynchronously
+                            (async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query query
+                                    |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                                    |> Sql.execute ( fun read ->
+                                        (
+                                            read.int "id",
+                                            readAsText read "event"
+                                        )
+                                    )
+                                    |> Seq.toList
+                                }, evenStoreTimeout)
+                    result        
+                with
+                | _ as ex ->
+                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                    []        
 
             member this.TryGetLastSnapshotId version name =
                 log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
