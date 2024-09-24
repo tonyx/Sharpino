@@ -409,6 +409,16 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.EventId, x.Id)
 
+            member this.TryGetFirstSnapshot version name aggregateId =
+                log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name aggregateId)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                    Error "not found"
+                else     
+                    aggregate_snapshots_dic.[version].[name].[aggregateId]
+                    |> List.tryHead
+                    |> Result.ofOption "not found"
+                    >>= (fun x -> (x.Id, x.Snapshot) |> Ok)
+            
             member this.TryGetSnapshotById version name id =
                 log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name id)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then

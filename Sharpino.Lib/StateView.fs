@@ -292,5 +292,17 @@ module StateView =
                     return filteredEvents
                 }
 
-             
-                
+    let inline getInitialAggregateSnapshot<'A, 'F
+        when 'A :> Aggregate<'F>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        =
+            log.Debug (sprintf "getFirstAggregateSnapshot %A - %s - %s" id 'A.Version 'A.StorageName)
+            eventStore.TryGetFirstSnapshot 'A.Version 'A.StorageName id
+            >>= (fun x -> 'A.Deserialize (snd x))
+            
+    
