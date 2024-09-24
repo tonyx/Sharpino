@@ -136,25 +136,12 @@ I have two rows of seats related to two different streams of events. Each row ha
    Answer: yes because in-memory and Postgres event-store implementation as single sources of truth are transactional. The runTwoCommands in the Command Handler is transactional.
 2) Can it handle more rows?
    up to tre. (runThreeCommands in the Command Handler)
-3) Is feasible to scale to thousands of seats/hundreds of rows (even though we know that few rows will be actually involved in a single booking operation)?
-   Not yet.
 3) Is Apache Kafka integration included in this example?
    No.
-4) Is EventStoreDb integration included in this example?
-   Not yet (it will show the "undo" feature of commands to do rollback commands on multiple streams of events).
 
 ## Problem 2
 There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row.
 This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
-
-### Questions:
-1) can you solve this problem without using locks?
-   Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However they will be skipped by the "evolve" function anyway.
-2) Where are more info about how to test this behavior?
-   Answer: See the testList called hackingEventInStorageTest.
-   It will simply add invalid events and show that the current state is not affected by them.
-3) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
-   Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
 
 ## Sample application 4
@@ -185,19 +172,31 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 ## help wanted:
 - Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
 - Adapt the examples to the new version of the library (2.0.0)
-- Write more examples (porting classic examples would be fine)
+- Write more examples (porting examples from Equinox would be fine)
+- Write a full proper implementation of a Saga based transaction mechanism involving commands related to "any" type of aggregates
+
+## Comparison with other event-sourcing libraries
+- [Equinox](https://github.com/jet/equinox)
+
+See these examples to compare:
+- [Counter in Sharpino](https://github.com/tonyx/SharpinoCounter3)
+- [Counter in Equinox](https://github.com/jet/equinox/blob/master/samples/Tutorial/Counter.fsx)
+- [Invoices in Sharpino](https://github.com/tonyx/sharpinoinvoices)
+- [Invoices in Equinox](https://github.com/nordfjord/minimal-equinox/tree/main)
+
+
+
+## Acknowledgements
+
+A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News
-- Version 2.5.9: Added the possibility via StateView to retrieve the initial state/initial snapshot of any aggregate to allow retrieving the data that the users claims. So when users unsubscribe to any app then they have the rights to get any data. This is possibile by getting the initial states and any following event. I think it will be ok to give the user a json of the  initial snapshots and any events via an anonymous record and then let the use download that JSON.
-- Version 2.5.8: Added query for aggregate events in a time interval. StateView/Readmodel can use it passing a predicate to filter events (example: Query all the payment events). Aggregate should not keep those list ob objects to avoid unlimited grow.
-- A short pdf: [why do we need upcastors for aggregates and not for events](https://drive.google.com/file/d/1DKx8IXqakc14qjQbrymzwHAJQEbhxZGq/view?usp=share_link) (sorry for typos)
-- Blog post: [Upcasting aggregates in Sharpino](https://medium.com/@tonyx1/upcast-to-read-aggregates-in-an-older-format-in-a-sharpino-based-solution-839b807265f9)
-- Blog post: comparing the example of the "Counter" app in Equnox and in Sharpino https://medium.com/@tonyx1/equinox-vs-sharpino-comparing-the-counter-example-0e2bd6e9bbf2 
+- Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
+- Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
   (A short example will come but here is an idea, pretending the aggregate types can be two, and not three: A1, A2, A3, A3 needs to merge into An: I cannot run the "indpendent" saga-free version of running 
  multiple commands (pairs) because I should repeat the id of An many times which is invalid, so I run the saga version that executes the single "merge" i.e. merge A1 into An, then merge A2 into An etc...: if somethings goes wrong I have accuulted the "future undoers" that may rollback the eventually suffessful merges)
-Probably the runSagaTwoNAggregateCommands and runSagaSingleNAggregateCommands may come soon.
 
 - A "porting" of an example from Equinox https://github.com/tonyx/sharpinoinvoices
 - Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!
@@ -209,7 +208,6 @@ Probably the runSagaTwoNAggregateCommands and runSagaSingleNAggregateCommands ma
                     |> Result.map (fun x -> (x, [NameUpdated name]))
 
 ```
-
 Any application needs a little rewrite in the command part (vim macros may be helpful).
 
 In this way the commandhandler takes advantage of it to be able to memoize the state in the cache, so that virtually
@@ -294,10 +292,6 @@ module CartCommands =
                                 }
                         )
  ```
-
-
-
- 
 
 
 - WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.

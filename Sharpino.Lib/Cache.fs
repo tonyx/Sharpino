@@ -1,5 +1,6 @@
 namespace Sharpino
 
+open System.Linq
 open Sharpino
 open Sharpino.Core
 open Sharpino.Definitions
@@ -92,7 +93,7 @@ module Cache =
                 dic.Clear()
                 queue.Clear()
                 ()
-
+        
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
             match arg with
             | 0, _ ->

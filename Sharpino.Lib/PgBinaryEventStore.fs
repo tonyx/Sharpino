@@ -932,4 +932,53 @@ module PgBinaryStore =
                                 log.Error (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
                     }, evenStoreTimeout)
+            
+            member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
+                log.Debug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
+                let conn = new NpgsqlConnection(connection)
+                let sqlReplaceAllAggregates = (sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE aggregate_id = @aggregateId" version name)
+                let sqlReplaceAllEvents = (sprintf "UPDATE events%s%s SET event = @event WHERE aggregate_id = @aggregateId" version name)
+                
+                conn.Open()
+                let transaction = conn.BeginTransaction()
+                Async.RunSynchronously
+                    (async {
+                        let result =
+                            try
+                                let _ =
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransaction
+                                        [
+                                            sqlReplaceAllAggregates,
+                                                [
+                                                    [
+                                                        ("@snapshot", sqlBinary snapshot);
+                                                        ("@aggregateId", Sql.uuid aggregateId)
+                                                    ]
+                                                ]
+                                            sqlReplaceAllEvents,
+                                                [
+                                                    [
+                                                        ("@event", sqlBinary event);
+                                                        ("@aggregateId", Sql.uuid aggregateId)
+                                                    ]
+                                                ]
+                                        ]
+                                transaction.Commit()
+                                Ok ()
+                            with
+                            | _ as ex -> 
+                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
+                                ex.Message |> Error
+                        try
+                            return result
+                        finally
+                            conn.Close()
+                    }, evenStoreTimeout)
+                
+                
+                
+                
                     

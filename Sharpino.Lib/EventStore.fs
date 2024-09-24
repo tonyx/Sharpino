@@ -105,6 +105,8 @@ module Storage =
         
         abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> List<EventId * 'F >
         
+        abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> Guid -> 'F -> 'F -> Result<unit, string>
+        
 
     type IEventBroker<'F> =
         {

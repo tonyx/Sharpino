@@ -548,4 +548,9 @@ module MemoryStorage =
                         EventId = eventId |> Some
                     }
                 addAggregateSnapshots version name aggregateId state
-                () |> Ok     
+                () |> Ok
+                
+            member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
+                // in memory storage does not need to be compliant to GDPR as it is used only for tests
+                log.Debug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
+                () |> Ok
