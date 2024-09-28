@@ -191,6 +191,14 @@ See these examples to compare:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News
+
+- Version 2.6.1: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core asp.net app).
+- Version 2.6.0: Added a function for the GDPR in command handler able to virtuallty delete snapshots and events, i.e. replace any event with an events that returns an empty version of the state and also replace any snapshot with the voided/empty version of that state (and also fill the cache with that empty value).
+- Version 2.5.9: Added the possibility via StateView to retrieve the initial state/initial snapshot of any aggregate to allow retrieving the data that the users claims. So when users unsubscribe to any app then they have the rights to get any data. This is possibile by getting the initial states and any following event. I think it will be ok to give the user a json of the  initial snapshots and any events via an anonymous record and then let the use download that JSON.
+- Version 2.5.8: Added query for aggregate events in a time interval. StateView/Readmodel can use it passing a predicate to filter events (example: Query all the payment events). Aggregate should not keep those list ob objects to avoid unlimited grow.
+- A short pdf: [why do we need upcastors for aggregates and not for events](https://drive.google.com/file/d/1DKx8IXqakc14qjQbrymzwHAJQEbhxZGq/view?usp=share_link) (sorry for typos)
+- Blog post: [Upcasting aggregates in Sharpino](https://medium.com/@tonyx1/upcast-to-read-aggregates-in-an-older-format-in-a-sharpino-based-solution-839b807265f9)
+- Blog post: comparing the example of the "Counter" app in Equnox and in Sharpino https://medium.com/@tonyx1/equinox-vs-sharpino-comparing-the-counter-example-0e2bd6e9bbf2
 - Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
 - Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.

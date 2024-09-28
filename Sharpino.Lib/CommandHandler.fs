@@ -6,6 +6,11 @@ open System
 open FSharp.Core
 open FSharpPlus
 
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Cache
 open Sharpino.Conf
 open Sharpino.Core
@@ -24,8 +29,16 @@ open log4net.Config
 module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
+    let host = Host.CreateApplicationBuilder().Build()
+    
+    let factory: ILoggerFactory = LoggerFactory.Create(fun builder -> builder.AddConsole() |> ignore)
+    
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
-
+   
+    let logger: ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: ILogger) =
+        logger := newLogger
+    
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {
@@ -83,6 +96,7 @@ module CommandHandler =
         > 
         (storage: IEventStore<'F>) =
             let stateViewer = getStorageFreshStateViewer<'A, 'E, 'F> storage
+            logger.Value.LogDebug (sprintf "mkSnapshot %A %A" 'A.Version 'A.StorageName)
             Async.RunSynchronously(
                 async {
                     return
@@ -106,6 +120,7 @@ module CommandHandler =
         > 
         (storage: IEventStore<'F>) 
         (aggregateId: AggregateId) =
+            logger.Value.LogDebug (sprintf "mkAggregateSnapshot %A" aggregateId)
             let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E, 'F> storage
             Async.RunSynchronously 
                 (async {
@@ -131,7 +146,7 @@ module CommandHandler =
         and 'E: (member Serialize: 'F)
         >
         (storage: IEventStore<'F>) =
-            log.Debug "mkSnapshotIfIntervalPassed"
+            logger.Value.LogDebug "mkSnapshotIfIntervalPassed"
             Async.RunSynchronously
                 (async {
                     return
@@ -161,7 +176,7 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>)
         (aggregateId: AggregateId) =
-            log.Debug "mkAggregateSnapshotIfIntervalPassed"
+            logger.Value.LogDebug "mkAggregateSnapshotIfIntervalPassed"
             Async.RunSynchronously
                 (async {
                     return
@@ -194,7 +209,7 @@ module CommandHandler =
         (storage: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
         (command: Command<'A, 'E>) =
-            log.Debug (sprintf "runCommand %A\n" command)
+            logger.Value.LogDebug (sprintf "runCommand %A\n" command)
             let command = fun ()  ->
                 result {
                     let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
@@ -242,7 +257,8 @@ module CommandHandler =
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
         =
-            log.Debug (sprintf "runInitAndCommand %A %A" 'A1.StorageName command)
+            logger.Value.LogDebug (sprintf "runInitAndCommand %A %A" 'A.StorageName command)
+            
             let command = fun () ->
                 result {
                     let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
@@ -290,8 +306,9 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>)
         (initialInstance: 'A2)
         (command: AggregateCommand<'A1, 'E1>)
-        = 
-            log.Debug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+        =
+            logger.Value.LogError (sprintf "XXXXXX. runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            
             let command = fun () ->
                 result {
                     let! (eventId, state) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId storage
@@ -349,7 +366,7 @@ module CommandHandler =
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         =
-            log.Debug "runInitAndTwoAggregateCommands"
+            logger.Value.LogDebug (sprintf "runInitAndTwoAggregateCommands %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName command1 command2 aggregateId1 aggregateId2)
             let command = fun () ->
                 result {
                     let! (eventId1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -433,7 +450,7 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
         =
-            log.Debug "runInitAndThreeAggregateCommands"
+            logger.Value.LogDebug (sprintf "runInitAndThreeAggregateCommands %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
             let command = fun () ->
                 result {
                     let! (eventId1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -504,9 +521,8 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>) 
         (command: AggregateCommand<'A, 'E>)
         =
-            log.Debug (sprintf "runAggregateCommand %A" command)
+            logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let command = fun () ->
-                
                 result {
                     let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
                     let! (newState, events) =
@@ -552,6 +568,7 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
+            logger.Value.LogDebug "forceRunNAggregateCommands" 
             let commands = fun () ->
                 result {
                     let! states =
@@ -625,7 +642,7 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
-            log.Debug "runNAggregateCommands"
+            logger.Value.LogDebug "runNAggregateCommands"
             let aggregateIdsAreUnique = aggregateIds |> List.distinct |> List.length = aggregateIds.Length
             if (not aggregateIdsAreUnique) then
                 Error "aggregateIds are not unique"
@@ -762,8 +779,8 @@ module CommandHandler =
             // tryCompensations    
             let _ =
                 match tryCompensations with
-                | Error x -> log.Error x
-                | Ok _ -> log.Info "compensation Saga succeeded"
+                | Error x -> logger.Value.LogError x
+                | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
             Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
     
     let inline forceRunTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
@@ -791,6 +808,7 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
+            logger.Value.LogDebug "forceRunTwoNAggregateCommands"
             let commands = fun () ->
                 result {
                     let! states1 =
@@ -944,6 +962,7 @@ module CommandHandler =
         (command2: List<AggregateCommand<'A2, 'E2>>)
         : Result<unit, string>
         =
+            logger.Value.LogDebug "runSagaNAggregatesCommandsAndForceTwoMAggregateCommands"
             let commandsHaveUndoers = commands |> List.forall (fun x -> x.Undoer.IsSome)
             if (commandsHaveUndoers) then 
                 let idsWithCommands = List.zip aggregateIds commands
@@ -1006,6 +1025,7 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
+            logger.Value.LogDebug "runTwoNAggregateCommands"
             let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
             let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
             if (not aggregateId1AreUnique) then
@@ -1100,8 +1120,8 @@ module CommandHandler =
                     
                     let _ =
                         match tryCompensations with
-                        | Error x -> log.Error x
-                        | Ok _ -> log.Info "compensation Saga succeeded"
+                        | Error x -> logger.Value.LogError x
+                        | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
                     Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
                 else
                     Error (sprintf "failed the precondition of applicability of the runSagaNAggregateCommands. All of these must be true: commandHasUndoers %A" commandHasUndoers) 
@@ -1131,6 +1151,7 @@ module CommandHandler =
         (commands1: List<AggregateCommand<'A1, 'E1>>)
         (commands2: List<AggregateCommand<'A2, 'E2>>)
         =
+            logger.Value.LogDebug "runSagaTwoNAggregateCommands"
             let command1HasUndoers = commands1 |> List.forall (fun x -> x.Undoer.IsSome)
             let command2HasUndoers = commands2 |> List.forall (fun x -> x.Undoer.IsSome)
             let lengthMustBeTheSame = commands1.Length = commands2.Length
@@ -1278,7 +1299,8 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
-        = 
+        =
+            logger.Value.LogDebug "runThreeNAggregateCommands"
             let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
             let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
             let aggregateId3AreUnique = aggregateIds3 |> List.distinct |> List.length = aggregateIds3.Length
@@ -1479,6 +1501,7 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
         =
+            logger.Value.LogDebug "runThreeAggregateCommands"
             let commands = fun () ->
                 result {
                     let! (id1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -1584,6 +1607,7 @@ module CommandHandler =
         (commandA22: List<AggregateCommand<'A22, 'E22>>)
         : Result<unit, string>
         =
+            logger.Value.LogDebug "runSagaTwoNAggregateCommandsAndForceTwoMAggregateCommands"
             let runUndoers (undoers: (Result<(unit -> Result<List<'E11>,string>),string> option * Result<(unit -> Result<List<'E12>,string>),string> option) list) =
                 let undoerRun =
                     fun () ->
@@ -1745,6 +1769,7 @@ module CommandHandler =
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
         =
+            logger.Value.LogDebug "runSagaThreeNAggregateCommands"
             let command1HasUndoers = command1 |> List.forall (fun x -> x.Undoer.IsSome)
             let command2HasUndoers = command2 |> List.forall (fun x -> x.Undoer.IsSome)
             let command3HasUndoers = command3 |> List.forall (fun x -> x.Undoer.IsSome)
@@ -1956,7 +1981,8 @@ module CommandHandler =
             (command1: Command<'A1, 'E1>) 
             (command2: Command<'A2, 'E2>)
             =
-            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            
+            logger.Value.LogDebug (sprintf "runTwoCommands %A %A" command1 command2)
             let commands = fun () ->
                 result {
 
@@ -2037,7 +2063,7 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) 
             =
-            log.Debug (sprintf "runTwoCommands %A %A" command1 command2)
+            logger.Value.LogDebug (sprintf "runThreeCommands %A %A %A" command1 command2 command3)
             
             let commands = fun () ->
                 result {
@@ -2112,6 +2138,7 @@ module CommandHandler =
         (emptyGDPRState: 'A)
         (emptyGDPREvent: 'E)
         =
+        logger.Value.LogDebug (sprintf "GDPRResetSnapshotsAndEventsOfAnAggregate %A" aggregateId)
         let reset = fun () ->
             result {
                 let! _ = eventStore.GDPRReplaceSnapshotsAndEventsOfAnAggregate 'A.Version 'A.StorageName aggregateId emptyGDPRState.Serialize emptyGDPREvent.Serialize
