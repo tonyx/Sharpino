@@ -307,7 +307,7 @@ module CommandHandler =
         (initialInstance: 'A2)
         (command: AggregateCommand<'A1, 'E1>)
         =
-            logger.Value.LogError (sprintf "XXXXXX. runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            logger.Value.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
             
             let command = fun () ->
                 result {
