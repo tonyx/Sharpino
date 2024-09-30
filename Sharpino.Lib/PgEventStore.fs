@@ -659,6 +659,34 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     []
+            
+            member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
+                logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, aggregate_id, timestamp, snapshot FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                try
+                    let result =
+                        Async.RunSynchronously
+                            (async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query query
+                                    |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                                    |> Sql.execute ( fun read ->
+                                        (
+                                            read.int "id",
+                                            read.uuid "aggregate_id",
+                                            read.dateTime "timestamp",
+                                            readAsText read "snapshot"
+                                        )
+                                    )
+                                    |> Seq.toList
+                                }, evenStoreTimeout)
+                    result |> Ok       
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    ex.Message |> Error
 
             member this.TryGetLastSnapshotId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)

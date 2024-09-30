@@ -105,6 +105,8 @@ module Storage =
         
         abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> List<EventId * 'F >
         
+        abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * Guid * DateTime * 'F >, string>
+        
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> Guid -> 'F -> 'F -> Result<unit, string>
         
 

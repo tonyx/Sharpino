@@ -72,29 +72,6 @@ module LightCommandHandler =
                 return (lastEventId, newState) 
             }
 
-    // let inline runUndoCommand<'A, 'E
-    //     when 'A: (static member Zero: 'A)
-    //     and 'A: (static member StorageName: string)
-    //     and 'A: (static member Version: string)
-    //     and 'A: (static member Lock: obj)
-    //     and 'E :> Event<'A>> (storage: ILightStorage) (undoer: Undoer<'A, 'E>)  =
-    //     log.Debug "runUndoCommand"
-    //
-    //     lock 'A.Lock <| fun () ->
-    //         async {
-    //             return
-    //                 result {
-    //                     let! (_, state) = storage |> getState<'A, 'E> 
-    //                     let! events =
-    //                         state
-    //                         |> undoer 
-    //                     let serEvents = 
-    //                         events 
-    //                     return! storage.AddEvents 'A.Version serEvents 'A.StorageName 
-    //                 } 
-    //         }
-    //         |> Async.RunSynchronously
-
     let inline runCommand<'A, 'E
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)

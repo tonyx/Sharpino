@@ -291,6 +291,30 @@ module StateView =
                         |> List.filter predicate
                     return filteredEvents
                 }
+    let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
+        when 'A :> Aggregate<'F>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'A -> bool)
+        =
+            log.Debug (sprintf "getfilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! allSnapshotsInTimeInterval = eventStore.GetAggregateSnapshotsInATimeInterval 'A.Version 'A.StorageName start end_
+                    let! usersGot =
+                        allSnapshotsInTimeInterval
+                        |>> (fun (_, _, date, snapshot) -> (date, snapshot))
+                        |> List.traverseResultM (fun (date, x) -> 'A.Deserialize x |> Result.map (fun x -> (date, x)))
+                    let result = 
+                        usersGot
+                        |> List.filter (fun (_, x) -> predicate x)
+                    return result     
+                }
 
     let inline getInitialAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F>

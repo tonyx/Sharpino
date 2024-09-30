@@ -450,6 +450,20 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |>> (fun (id, event) -> id, event)
 
+            member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
+                log.Debug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_snapshots_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> List.map (fun x -> aggregate_snapshots_dic.[version].[name].[x])
+                    |> List.collect (fun x -> x)
+                    |> List.filter (fun x -> x.TimeStamp >= dateFrom && x.TimeStamp <= dateTo)
+                    |>> (fun x -> x.Id, x.AggregateId, x.TimeStamp, x.Snapshot)
+                    |> Ok
+            
             member this.GetAggregateEventsInATimeInterval (version: Version) (name: Name) (aggregateId: AggregateId) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 if
