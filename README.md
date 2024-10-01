@@ -139,10 +139,11 @@ __Faq__:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## help wanted:
-- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
-- Adapt the examples to the new version of the library (2.0.0)
-- Write more examples (porting classic DDD examples implemented to test other libraries is fine)
-- Write a full proper implementation of a Saga based transaction mechanism involving commands related to arbitrary aggregates types (as we have essentially fixed types of aggregates involved in any multiple command transaction).
+- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples).
+- Implementing event store using Postgres event store but using Azure sql instead (I used some stored procedures, which I think can also be translated into Azure sql).
+- Adapt the examples to the new version of the library (2.0.0).
+- Write more examples (porting classic DDD examples implemented to test other libraries is fine).
+- Write a full-Saga/Process manager multiple run command involving arbitrary types of commands.
 
 ## Comparison with the style of examples in other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
