@@ -84,7 +84,7 @@ module CommandHandler =
             log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
             Conf.defaultConf
 
-    let inline private mkSnapshot<'A, 'E, 'F
+    let inline mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
@@ -109,7 +109,7 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)
 
-    let inline private mkAggregateSnapshot<'A, 'E, 'F
+    let inline mkAggregateSnapshot<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
         and 'E :> Event<'A>
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
