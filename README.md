@@ -138,12 +138,12 @@ __Faq__:
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
-## help wanted:
-- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples).
-- Implementing event store using Postgres event store but using Azure sql instead (I used some stored procedures, which I think can also be translated into Azure sql).
-- Adapt the examples to the new version of the library (2.0.0).
+## Todo list. Help welcome:
+- Rewrite from scratch the Kafka integration making it work as is supposed to (send and and forget with limited retries or transactional outbox pattern). Implement aggregate state viewer based on processing events via messages with some way to resync data when in trouble.
+- Implementing event store using Postgres event store but using Azure sql instead.
+- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging. 
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
-- Write a full-Saga/Process manager multiple run command involving arbitrary types of commands.
+- Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
 
 ## Comparison with the style of examples in other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
@@ -160,7 +160,7 @@ See these examples to compare:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
-
+- Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
 - Version 2.6.3: Stateview added  ```getFilteredAggregateSnapshotsInATimeInterval```which returns a list of snapshots of a specific type/version of aggregate in a time interval filtered by some criteria no matter if any context contains references to those aggregates, so you can retrieve aggregates even if no context has references to them (for instance "inactive users").  
 - Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
 - Version 2.6.0: Added a function for the GDPR in command handler able to virtuallty delete snapshots and events, i.e. replace any event with an events that returns an empty version of the state and also replace any snapshot with the voided/empty version of that state (and also fill the cache with that empty value).
