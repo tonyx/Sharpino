@@ -561,9 +561,9 @@ module PgBinaryStore =
                 logger.Value.LogDebug "entered in setAggregateSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
                 let tryEvent = ((this :> IEventStore<byte array>).TryGetEvent version eventId name)
-                match tryEvent with
-                | None -> Error (sprintf "event %d not found" eventId)
-                | Some event -> 
+                match (tryEvent, eventId) with
+                | (None, x) when x <> 0 -> Error (sprintf "event %d not found" eventId)
+                | (Some event, _) -> 
                     try
                         Async.RunSynchronously (
                             async {
@@ -587,6 +587,32 @@ module PgBinaryStore =
                                 |> Ok
                     with
                     | _ as ex -> 
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        ex.Message |> Error
+                | None, 0 ->
+                    let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, null, @snapshot, @timestamp)" version name
+                    try
+                        Async.RunSynchronously (
+                            async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransaction
+                                        [
+                                            command,
+                                                [
+                                                    [
+                                                        ("@aggregate_id", Sql.uuid aggregateId);
+                                                        ("snapshot",  sqlBinary snapshot);
+                                                        ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
+                                                    ]
+                                                ]
+                                        ]
+                            }, evenStoreTimeout)
+                        |> ignore
+                        |> Ok
+                    with    
+                    | _ as ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
             
