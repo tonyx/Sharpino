@@ -297,7 +297,7 @@ module PgStorage =
                             | _ as ex ->
                                 logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
-                    }, 1000)
+                    }, evenStoreTimeout)
 
             member this.SetSnapshot version (id: int, snapshot: Json) name =
                 logger.Value.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
@@ -439,7 +439,7 @@ module PgStorage =
                 let transaction = conn.BeginTransaction()
                 let lastEventId =
                     (this :> IEventStore<string>).TryGetLastAggregateEventId contextVersion contextName secondAggregateId
-                    |>> (fun x -> x)
+                    // |>> (fun x -> x)
                 
                 Async.RunSynchronously
                     (async {
@@ -508,7 +508,7 @@ module PgStorage =
                     events 
                     |>> 
                     fun (_, _, version, name, aggrId) -> 
-                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) |>> (fun x -> x)
+                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
                 
                 let eventIds =
                     events
@@ -863,7 +863,7 @@ module PgStorage =
                 let transaction = conn.BeginTransaction() 
                 let lastEventId = 
                     (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
-                    |>> (fun x -> x)
+                    // |>> (fun x -> x)
                 Async.RunSynchronously
                     (async {
                         let result =
@@ -906,7 +906,7 @@ module PgStorage =
                     arg 
                     |>> 
                     fun (_, _, version, name, aggregateId) -> 
-                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId) |>> (fun x -> x)
+                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId) // |>> (fun x -> x)
 
                 let eventIds = 
                     arg

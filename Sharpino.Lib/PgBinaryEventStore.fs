@@ -426,7 +426,7 @@ module PgBinaryStore =
                 let transaction = conn.BeginTransaction()
                 let lastEventId =
                     (this :> IEventStore<byte[]>).TryGetLastAggregateEventId contextVersion contextName secondAggregateId
-                    |>> (fun x -> x)
+                    // |>> (fun x -> x)
                 Async.RunSynchronously
                     (async {
                         let result =
@@ -492,7 +492,7 @@ module PgBinaryStore =
                 let lastEventIds =
                     events
                     |>> fun (_, _, version, name, aggrId) -> 
-                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId) |>> (fun x -> x)
+                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId) // |>> (fun x -> x)
                 
                 let eventIds =
                     events
@@ -843,7 +843,7 @@ module PgBinaryStore =
                 let transaction = conn.BeginTransaction() 
                 let lastEventId = 
                     (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
-                    |>> (fun x -> x)
+                    // |>> (fun x -> x)
                 Async.RunSynchronously    
                     (async {
                         let result =
@@ -887,7 +887,7 @@ module PgBinaryStore =
                     arg 
                     |>> 
                     fun ( _, _, version, name, aggregateId) -> 
-                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId) |>> (fun x -> x)
+                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId) // |>> (fun x -> x)
 
                 let eventIds =
                     arg 
