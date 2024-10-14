@@ -159,9 +159,40 @@ See these examples to compare:
 
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
+
+## Upcasting techniques.
+In this section I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
+
+Goal: being able to make evolution changes to a Type that is involved in a serialization. 
+Deserialize snapshots stored in the previous version of TypeX so that after deployed a new version including an evolution of TypeX then the app with be able to read old.
+TypeX into the newer one. TypeX can be an aggregate or an object used by an aggregate.
+
+1. The following  premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/and specific converters).
+2. Now you can do evolution changes to TypeX that make it different from the old TypeX/TypeX001: change the source code of TypeX (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic injection" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.
+3. Define the Upcast function/instance member form TypeX001 that actually implements that conversion from an instance of the old typeX to an instance of the new typeX.
+4. Define a "fallback" action in the deserialization related to the new typeX so that it can, in case of failure because of encountering an old TypeX/TypeX001, apply the deserialization obtaining a typeX001 instance and use its Upcastor to get, finally, the equivalent instance of TypeX.
+
+Now you can deploy the new version and in case the code try to read an old TypeX/TypeX001 it must be able to correctly interpret it as the new TypeX by adopting the following steps in deserialization of existing snapshot:
+
+try to read and deserialize it as TypeX
+if Ok then Ok
+if it fails then
+try to read it as TypeX001 and then upcast to TypeX
+
+5. If it is not expensive, transform any snapshot of old typeX/TypeX001 into the new TypeX in one shot: make a massive upfront aggregate upcast and re-snapshot: retrieve all the existing current state of aggregates of old TypeX/TypeX001 (that will do upcast under the neath) and generate and store snapshots for all of them so that those snapshot will surely respect the format of the new TypeX. After doing it, assume that the fallback action of reading old versions and then upcasting will never be necessary again and that part of code can be simply deleted from TypeX.
+6. If you decided to not do the previous step 6 or if there is the possibility that you'll need to downgrade again the new TypeX to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate the things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error prone recursive chain of fallback/upcast among older versions. So rather you will prefer doing the full step 7 to make sure that the upgrade will affect all the snapshots.
+7. Last but not least. Having events that depends strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as argument for whatever event.
+
+
+
+
+
+
+
+
 ## News/Updates
 
-- Version 2.5.6: Can create snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
+- Version 2.5.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
 - Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
 - Version 2.6.3: Stateview added  ```getFilteredAggregateSnapshotsInATimeInterval```which returns a list of snapshots of a specific type/version of aggregate in a time interval filtered by some criteria no matter if any context contains references to those aggregates, so you can retrieve aggregates even if no context has references to them (for instance "inactive users").  
 - Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
