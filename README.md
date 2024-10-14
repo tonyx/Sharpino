@@ -164,8 +164,7 @@ A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have genero
 In this section I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
 
 Goal: being able to make evolution changes to a Type that is involved in a serialization. 
-Deserialize snapshots stored in the previous version of TypeX so that after deployed a new version including an evolution of TypeX then the app with be able to read old.
-TypeX into the newer one. TypeX can be an aggregate or an object used by an aggregate.
+Deserialize snapshots stored in the previous version of TypeX so that after deployed a new version including an evolution of TypeX then the app with be able to read old TypeX into the newer one. TypeX can be an aggregate or an object used by an aggregate.
 
 1. The following  premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/and specific converters).
 2. Now you can do evolution changes to TypeX that make it different from the old TypeX/TypeX001: change the source code of TypeX (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic injection" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.

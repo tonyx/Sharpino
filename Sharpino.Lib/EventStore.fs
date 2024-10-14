@@ -1,7 +1,6 @@
 namespace Sharpino
 open System
 open Sharpino.Definitions
-open log4net
 
 module Storage =
     open Confluent.Kafka
