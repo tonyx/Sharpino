@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>2.6.5</Version>
+    <Version>2.6.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -44,7 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Confluent.Kafka" Version="2.5.3" />
+    <PackageReference Include="Confluent.Kafka" Version="2.6.0" />
     <PackageReference Include="EventStore.Client.Grpc.Streams" Version="23.3.5" />
     <PackageReference Include="Expecto" Version="10.2.1" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.1" />
@@ -56,7 +56,7 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.17.0" />
 
-    <PackageReference Include="librdkafka.redist" Version="2.5.3" />
+    <PackageReference Include="librdkafka.redist" Version="2.6.0" />
 
     <PackageReference Include="Log4net" Version="3.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
@@ -76,7 +76,7 @@
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql" Version="8.0.4" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
     <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
 

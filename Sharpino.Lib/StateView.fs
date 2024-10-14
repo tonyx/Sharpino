@@ -219,7 +219,6 @@ module StateView =
                                     return newState
                                 }
             
-                        // remove kafka info always
                         let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                         let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
                         match state with

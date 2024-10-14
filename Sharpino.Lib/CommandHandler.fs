@@ -109,6 +109,7 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)
 
+    
     let inline mkAggregateSnapshot<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
         and 'E :> Event<'A>
@@ -163,6 +164,40 @@ module CommandHandler =
                                         () |> Ok
                             }
                 }, Commons.generalAsyncTimeOut)    
+                
+    let inline mkSnapshotIfIntervalPassed2<'A, 'E, 'F
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
+        >
+        (storage: IEventStore<'F>)
+        (state: 'A)
+        (eventId: int)
+        =
+            logger.Value.LogDebug "mkSnapshotIfIntervalPassed"
+            Async.RunSynchronously
+                (async {
+                    return
+                        result
+                            {
+                                let! lastEventId = 
+                                    storage.TryGetLastEventId 'A.Version 'A.StorageName 
+                                    |> Result.ofOption "lastEventId is None"
+                                let snapEventId = storage.TryGetLastSnapshotEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
+                                return! 
+                                    if ((lastEventId - snapEventId)) > 'A.SnapshotsInterval || snapEventId = 0 then
+                                        let result = storage.SetSnapshot 'A.Version (eventId, state.Serialize) 'A.StorageName
+                                        result
+                                    else
+                                        () |> Ok
+                            }
+                }, Commons.generalAsyncTimeOut)    
             
     let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
@@ -194,6 +229,41 @@ module CommandHandler =
                                 return! result
                             }
                 }, Commons.generalAsyncTimeOut)
+   
+    let inline mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string)
+        and 'A : (static member SnapshotsInterval : int)
+        and 'A : (static member Version: string) 
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        >
+        (storage: IEventStore<'F>)
+        (aggregateId: AggregateId)
+        (state: 'A)
+        (eventId: int)
+        =
+            logger.Value.LogDebug "mkAggregateSnapshotIfIntervalPassed"
+            Async.RunSynchronously
+                (async {
+                    return
+                        ResultCE.result
+                            {
+                                let lastEventId = 
+                                    storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
+                                    |> Option.defaultValue 0
+                                let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
+                                let result =
+                                    if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
+                                        storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, state.Serialize) 'A.StorageName
+                                        // mkAggregateSnapshot<'A, 'E, 'F > storage aggregateId 
+                                    else
+                                        () |> Ok
+                                return! result
+                            }
+                }, Commons.generalAsyncTimeOut)
 
     let inline runCommand<'A, 'E, 'F 
         when 'A: (static member Zero: 'A)
@@ -211,6 +281,7 @@ module CommandHandler =
         (command: Command<'A, 'E>) =
             logger.Value.LogDebug (sprintf "runCommand %A\n" command)
             let command = fun ()  ->
+                
                 result {
                     let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
                     let! (newState, events) =
@@ -224,6 +295,7 @@ module CommandHandler =
                         events' |> storage.AddEvents eventId 'A.Version 'A.StorageName
                     
                     StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
 
                     if (eventBroker.notify.IsSome) then
                         let f =
@@ -232,9 +304,12 @@ module CommandHandler =
                                 |> ignore
                         f |> postToProcessor |> ignore
 
-                    let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
+                    // reminder: this old version of mkSnapshot will actually process stored events to build the snapshot 
+                    // let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
+                    
                     return ()
                 }
+                
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
     
@@ -273,6 +348,9 @@ module CommandHandler =
                         events' |> storage.SetInitialAggregateStateAndAddEvents eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName
                     
                     StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
+                    
+                    AggregateCache<'A1,'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
 
                     if (eventBroker.notify.IsSome) then
                         let f =
@@ -282,7 +360,8 @@ module CommandHandler =
                                 |> ignore
                         f |> postToProcessor |> ignore
 
-                    let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
+                    // reminder: this old version of mkSnapshot will actually process stored events to build the snapshot 
+                    // let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                     return ()
                 }
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
@@ -330,8 +409,10 @@ module CommandHandler =
                         f |> postToProcessor |> ignore
                         
                     AggregateCache<'A1, 'F>.Instance.Memoize2 (newState |> Ok) ((ids |> List.last, aggregateId))
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
 
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
                     return ()
                 }
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
@@ -403,9 +484,13 @@ module CommandHandler =
                     
                     AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((ids.[0] |> List.last, aggregateId1))
                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((ids.[1] |> List.last, aggregateId2))
+                    AggregateCache<'A3, 'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
                      
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
                     return ()
                 }
             let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
@@ -497,9 +582,15 @@ module CommandHandler =
                     AggregateCache<'A1,'F>.Instance.Memoize2 (newState1 |> Ok) ((ids.[0] |> List.last, aggregateId1))
                     AggregateCache<'A2,'F>.Instance.Memoize2 (newState2 |> Ok) ((ids.[1] |> List.last, aggregateId2))
                     AggregateCache<'A3,'F>.Instance.Memoize2 (newState3 |> Ok) ((ids.[2] |> List.last, aggregateId3))
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore aggregateId3
+                    
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore aggregateId3
+                    
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (ids.[2] |> List.last)
+                    
                     return ()
                 }
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
@@ -547,7 +638,8 @@ module CommandHandler =
                             f |> postToProcessor |> ignore
                             // f()
                     
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId newState (ids |> List.last)
                     return ()
                 }
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
@@ -604,6 +696,7 @@ module CommandHandler =
                         
                     for i in 0..(aggregateIds.Length - 1) do
                         AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
                         
                     let aggregateIdsWithEventIds =
                         List.zip aggregateIds eventIds
@@ -614,9 +707,12 @@ module CommandHandler =
                         kafkaParameters
                         |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
                         |> ignore
-                    let _ =
-                        aggregateIds
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                        
+                    // old version of mkSnapshot    
+                    // let _ =
+                    //     aggregateIds
+                    //     |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
+                    
                     return ()    
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -718,8 +814,12 @@ module CommandHandler =
                                 |> ignore
                         f |> postToProcessor |> ignore
                     
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
+                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
+                   
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (idLists.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (idLists.[1] |> List.last)
+                    
                     return ()     
                 }
             let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
@@ -886,9 +986,11 @@ module CommandHandler =
                             
                     for i in 0..(aggregateIds1.Length - 1) do
                         AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
                     
                     for i in 0..(aggregateIds2.Length - 1) do
                         AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
+                        mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2.[i] |> List.last) |> ignore
                      
                     let aggregateIdsWithEventIds1 =
                         List.zip aggregateIds1 eventIds1
@@ -911,12 +1013,7 @@ module CommandHandler =
                         |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
                         |> ignore
                         
-                    let _ =
-                        aggregateIds1
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                    let _ =
-                        aggregateIds2
-                        |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
+                        
                     return ()
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -997,7 +1094,6 @@ module CommandHandler =
                     | Error e -> 
                         runSagaNAggregateCommandsUndoers<'A, 'E, 'F> aggregateIds eventStore eventBroker undoers
             else Error "no undoers"
-    
      
             
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
@@ -1415,10 +1511,13 @@ module CommandHandler =
 
                         for i in 0..(aggregateIds1.Length - 1) do
                             AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
                         for i in 0..(aggregateIds2.Length - 1) do
                             AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2.[i] |> List.last) |> ignore
                         for i in 0..(aggregateIds3.Length - 1) do
                             AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((eventIds3.[i] |> List.last, aggregateIds3.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (eventIds3.[i] |> List.last) |> ignore
 
                         let aggregateIdsWithEventIds1 =
                             List.zip aggregateIds1 eventIds1
@@ -1447,16 +1546,7 @@ module CommandHandler =
                             kafkaParameters3
                             |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A3.Version 'A3.StorageName x |> ignore)
                             |> ignore
-
-                        let _ =
-                            aggregateIds1
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                        let _ =
-                            aggregateIds2
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                        let _ =
-                            aggregateIds3
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore
+                            
                         return ()
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -1615,10 +1705,13 @@ module CommandHandler =
 
                         for i in 0..(aggregateIds1.Length - 1) do
                             AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
                         for i in 0..(aggregateIds2.Length - 1) do
                             AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2.[i] |> List.last) |> ignore
                         for i in 0..(aggregateIds3.Length - 1) do
                             AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((eventIds3.[i] |> List.last, aggregateIds3.[i]))
+                            mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (eventIds3.[i] |> List.last) |> ignore
 
                         let aggregateIdsWithEventIds1 =
                             List.zip aggregateIds1 eventIds1
@@ -1647,16 +1740,7 @@ module CommandHandler =
                             kafkaParameters3
                             |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A3.Version 'A3.StorageName x |> ignore)
                             |> ignore
-
-                        let _ =
-                            aggregateIds1
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                        let _ =
-                            aggregateIds2
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
-                        let _ =
-                            aggregateIds3
-                            |>> mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore
+                            
                         return ()
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -1739,6 +1823,10 @@ module CommandHandler =
                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last, aggregateId2)
                     AggregateCache<'A3, 'F>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last, aggregateId3)
 
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (idLists.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (idLists.[1] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (idLists.[2] |> List.last)
+                    
                     if (eventBroker.notifyAggregate.IsSome) then
                         let idAndEvents1 = List.zip idLists.[0] events1'
                         let idAndEvents2 = List.zip idLists.[1] events2'
@@ -1748,9 +1836,6 @@ module CommandHandler =
                         postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId3 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
                         ()
 
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
-                    let _ = mkAggregateSnapshotIfIntervalPassed<'A3, 'E3, 'F> eventStore aggregateId3
                     return ()
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -2211,6 +2296,8 @@ module CommandHandler =
                             ]
                     StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
                     StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore newState1 (idLists.[0] |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore newState2 (idLists.[1] |> List.last)
                      
                     if (eventBroker.notify.IsSome) then
                         let idAndEvents1 = List.zip idLists.[0] events1'
@@ -2218,9 +2305,7 @@ module CommandHandler =
                         postToProcessor (fun () -> tryPublish eventBroker 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
                         postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
                         ()
-
-                    let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
-                    let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore
+                    
                     return ()
                 }
                     
@@ -2302,6 +2387,10 @@ module CommandHandler =
                     StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
                     StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
                     StateCache<'A3>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last)
+                    
+                    let _ = mkSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage newState1 (idLists.[0] |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A2, 'E2, 'F> storage newState2 (idLists.[1] |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A3, 'E3, 'F> storage newState3 (idLists.[2] |> List.last)
                         
                     if (eventBroker.notify.IsSome) then
                         let idAndEvents1 = List.zip idLists.[0] events1'
@@ -2312,10 +2401,6 @@ module CommandHandler =
                         postToProcessor (fun () -> tryPublish eventBroker 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
                         postToProcessor (fun () -> tryPublish eventBroker 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
                         ()
-
-                    let _ = mkSnapshotIfIntervalPassed<'A1, 'E1, 'F> storage
-                    let _ = mkSnapshotIfIntervalPassed<'A2, 'E2, 'F> storage
-                    let _ = mkSnapshotIfIntervalPassed<'A3, 'E3, 'F> storage
 
                     return ()
                 } 
