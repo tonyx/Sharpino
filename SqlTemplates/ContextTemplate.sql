@@ -41,7 +41,7 @@ ALTER TABLE ONLY public.snapshots{Version}{ContextStorageName}
 
 
 CREATE OR REPLACE FUNCTION insert{Version}{ContextStorageName}_event_and_return_id(
-    IN event_in TEXT
+    IN event_in {Format}
 )
 RETURNS int
        

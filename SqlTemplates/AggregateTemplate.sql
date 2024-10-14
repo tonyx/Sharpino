@@ -61,7 +61,7 @@ ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
     ADD CONSTRAINT aggregate_events{Version}_fk  FOREIGN KEY (event_id) REFERENCES public.events{Version}{AggregateStorageName} (id) MATCH FULL ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION insert{Version}{AggregateStorageName}_event_and_return_id(
-    IN event_in TEXT,
+    IN event_in {Format},
     IN aggregate_id uuid
 )
 RETURNS int
@@ -78,7 +78,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION insert{Version}{AggregateStorageName}_aggregate_event_and_return_id(
-    IN event_in TEXT,
+    IN event_in {Format},
     IN aggregate_id uuid 
 )
 RETURNS int
