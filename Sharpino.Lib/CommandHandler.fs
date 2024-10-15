@@ -276,14 +276,14 @@ module CommandHandler =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F) 
         >
-        (storage: IEventStore<'F>) 
+        (eventStore: IEventStore<'F>) 
         (eventBroker: IEventBroker<'F>) 
         (command: Command<'A, 'E>) =
             logger.Value.LogDebug (sprintf "runCommand %A\n" command)
             let command = fun ()  ->
                 
                 result {
-                    let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
+                    let! (eventId, state) = getFreshState<'A, 'E, 'F> eventStore
                     let! (newState, events) =
                         state
                         |> command.Execute
@@ -292,20 +292,19 @@ module CommandHandler =
                         events
                         |>> fun x -> x.Serialize
                     let! ids =
-                        events' |> storage.AddEvents eventId 'A.Version 'A.StorageName
+                        events' |> eventStore.AddEvents eventId 'A.Version 'A.StorageName
                     
                     StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
-                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
 
+                    
+                    // todo: consider a different policy than "send and forget"
                     if (eventBroker.notify.IsSome) then
                         let f =
                             fun () ->
                                 tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
                                 |> ignore
                         f |> postToProcessor |> ignore
-
-                    // reminder: this old version of mkSnapshot will actually process stored events to build the snapshot 
-                    // let _ = mkSnapshotIfIntervalPassed<'A, 'E, 'F> storage
                     
                     return ()
                 }
