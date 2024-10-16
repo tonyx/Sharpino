@@ -278,19 +278,18 @@ module StateView =
         (predicate: 'E -> bool)
         =
             log.Debug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
-            // result
-            //     {
-            //         let! allEventsInTimeInterval = eventStore.GetEventsInATimeInterval 'A.Version 'A.StorageName start end_
-            //         let! deserEvents =
-            //             allEventsInTimeInterval
-            //             |>> snd 
-            //             |> List.traverseResultM (fun x -> 'E.Deserialize x)
-            //         let filteredEvents = 
-            //             deserEvents
-            //             |> List.filter predicate
-            //         return filteredEvents
-            //     }
-            ()
+            result
+                {
+                    let! allEventsInTimeInterval = eventStore.GetEventsInATimeInterval 'A.Version 'A.StorageName start end_
+                    let! deserEvents =
+                        allEventsInTimeInterval
+                        |>> snd 
+                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                    let filteredEvents = 
+                        deserEvents
+                        |> List.filter predicate
+                    return filteredEvents
+                }
      
     let inline getFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
