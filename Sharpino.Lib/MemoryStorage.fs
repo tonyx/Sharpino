@@ -443,12 +443,13 @@ module MemoryStorage =
             member this.GetEventsInATimeInterval (version: Version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
                 log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
-                    []
+                    [] |> Ok
                 else
                     events_dic.[version].[name]
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |>> (fun (id, event) -> id, event)
+                    |> Ok
 
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
                 log.Debug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
@@ -471,14 +472,30 @@ module MemoryStorage =
                     || (aggregate_events_dic.[version].ContainsKey name |> not)
                     || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not )
                 then
-                    []
+                    [] |> Ok
                 else
                     aggregate_events_dic.[version].[name].[aggregateId]
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)
-                    |>> (fun (id, event) -> id, event) 
+                    |>> (fun (id, event) -> id, event)
+                    |> Ok
+                    
             
-            member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId> ) =
+            member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
+                log.Debug (sprintf "GetAllaggregateEventsInAtimeInterval %s %s %A %A" version name dateFrom dateTo)
+                if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_events_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> List.map (fun x -> aggregate_events_dic.[version].[name].[x])
+                    |> List.collect (fun x -> x)
+                    |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                    |>> (fun x -> x.Id, x.JsonEvent)
+                    |> Ok
+            
+            member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId>) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg

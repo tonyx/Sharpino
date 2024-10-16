@@ -46,16 +46,6 @@ module Storage =
     type KafkaOffset = int64
     type KafkaPartitionId = int
 
-    [<Obsolete "use IEventStore and Postgres/InMemory">]
-    type ILightStorage =
-        abstract member AddEvents: Version -> List<'E> -> Name -> Result<unit, string>
-        abstract member ResetEvents: Version -> Name -> unit
-        abstract member ResetSnapshots: Version -> Name -> unit
-        abstract member AddSnapshot: UInt64 -> Version -> 'A -> Name -> unit
-        abstract member ConsumeEventsFromPosition: Version -> Name -> uint64 -> (uint64 * 'E) list
-        abstract member TryGetLastSnapshot: Version -> Name -> Option<UInt64 * 'A>
-        abstract member ConsumeEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<uint64 * 'E>
-
     type IEventStore<'F> =
         abstract member Reset: Version -> Name -> unit
 
@@ -100,9 +90,10 @@ module Storage =
         abstract member GetAggregateEventsAfterId: Version ->  Name -> Guid -> EventId-> Result< List< EventId * 'F >, string >
         abstract member GetAggregateEvents: Version ->  Name -> Guid -> Result< List< EventId * 'F >, string >
 
-        abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> List<EventId * 'F >
+        abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
-        abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> List<EventId * 'F >
+        abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
+        abstract member GetAllAggregateEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
         abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * Guid * DateTime * 'F >, string>
         

@@ -208,8 +208,11 @@ module App =
             }
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
+            // let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             result {
+                let! events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo
+                let events = events |>> snd
+                // let! events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo >>= snd
                 let! events'' = 
                     events |> List.traverseResultM (fun x -> TodoEvents.TodoEvent.Deserialize x)
                 return 
@@ -388,8 +391,10 @@ module App =
             }
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            let events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo |>> snd
+            // let events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo |>> snd
             result {
+                let! events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo 
+                let events = events |>> snd
                 let! events'' = 
                     events |> List.traverseResultM (fun x -> TodoEvents.TodoEvent'.Deserialize x)
                 return 

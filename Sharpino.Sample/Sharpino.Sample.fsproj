@@ -24,7 +24,6 @@
     <Compile Include="reports/TodosReport.fs" />
     <Compile Include="JSON/Converters.fs" />
     <Compile Include="App.fs" />
-    <Compile Include="EventStoreApp.fs" />
     <Compile Include="AppVersions.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>
@@ -35,13 +34,8 @@
    
     <!-- include to test from the nuget repository -->
     
-<!--    <PackageReference Include="Sharpino" Version="2.1.1" />-->
-    
-    <!-- <PackageReference Include="Sharpino.Core" Version="1.1.4" /> -->
-    
     <PackageReference Update="FSharp.Core" Version="8.*" />
     
-<!--    <PackageReference Include="Sharpino" Version="2.5.5" />-->
   </ItemGroup>
 
 <!--  -->

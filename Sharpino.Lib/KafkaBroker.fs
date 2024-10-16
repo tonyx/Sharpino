@@ -1,26 +1,14 @@
 
 namespace Sharpino
 open Sharpino.Storage
-open Sharpino.Commons
-open FsKafka
-open Confluent.Kafka
-open System.Net
 open System
-open FsToolkit.ErrorHandling
-open FsToolkit.ErrorHandling.ResultCE
 open Npgsql
-open Npgsql.FSharp
-open FSharpPlus
 open Sharpino
-open Sharpino.Definitions
-open Sharpino.Utils
-open Sharpino.Storage
 open log4net
-open log4net.Config
-open FsToolkit.ErrorHandling.ResultCE
 open FSharp.Core
 
 // todo: this part will be revised
+// leaving the code under comment just for me, just for now
 module KafkaBroker =
 
     // let serializer = Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
@@ -62,71 +50,73 @@ module KafkaBroker =
     // log4net.Config.BasicConfigurator.Configure() |> ignore
 
     let getKafkaBroker (bootStrapServer: string) =
-        let log = Serilog.LoggerConfiguration().CreateLogger()
-        let batching = Batching.Linger (System.TimeSpan.FromMilliseconds 10.)
-        let producerConfig = KafkaProducerConfig.Create("MyClientId", bootStrapServer, Acks.All, batching)
-        try 
-            let notifier: IEventBroker<_> =
-                {
-                    notify = 
-                        (fun version name events -> 
-                            let topic = name + "-" + version |> String.replace "_" ""
-                            let producer = KafkaProducer.Create(log, producerConfig, topic)
-                            let key = topic
-                            let deliveryResults =
-                                events 
-                                |> List.map 
-                                    (fun (id, x) -> 
-                                        let brokerMessageRef = {
-                                            EventId = id
-                                            BrokerEvent = StrEvent x
-                                        }
-                                        // decide which format will be used (probably binary and then text encoded)
-                                        let binPicled = binPicklerSerializer.Serialize x
-                                        // let jsonPickled = jsonPicklerSerializer.Serialize x
-                                        let encoded = Convert.ToBase64String binPicled
-                                        // producer.ProduceAsync(key, x) |> Async.RunSynchronously // |> ignore
-                                        producer.ProduceAsync(key, encoded) |> Async.RunSynchronously // |> ignore
-                                    )
-                            deliveryResults
-                        )
-                        |> Some
-                    notifyAggregate =
-                        (fun version name aggregateId events ->
-                            let topic = name + "-" + version |> String.replace "_" ""
-                            let producer = KafkaProducer.Create(log, producerConfig, topic)
-                            let key = aggregateId.ToString() 
-                            let deliveryResults =
-                                events 
-                                |> List.map 
-                                    (fun (id, x) -> 
-                                        let brokerAggregateMessageRef = {
-                                            AggregateId = aggregateId
-                                            EventId = id
-                                            BrokerEvent = StrEvent x
-                                        }
-                                        // ok go for binary and then text encoded
-                                        let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
-                                        let encoded = Convert.ToBase64String binPickled
-                                        // todo: to be fixed
-                                        // producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
-                                        let res =
-                                            Async.RunSynchronously (producer.ProduceAsync (key, encoded), 1000)
-                                        res
-                                    )
-                            deliveryResults
-                        )
-                        |> Some
-                }
-            notifier
-        with
-        | _ as e -> 
-            printf "error getting kafka broker %A\n" e
-            log.Error e.Message
-            {
-                notify = None
-                notifyAggregate = None
-            }
+        failwith "unimplemented"
+        
+        // let log = Serilog.LoggerConfiguration().CreateLogger()
+        // let batching = Batching.Linger (System.TimeSpan.FromMilliseconds 10.)
+        // let producerConfig = KafkaProducerConfig.Create("MyClientId", bootStrapServer, Acks.All, batching)
+        // try 
+        //     let notifier: IEventBroker<_> =
+        //         {
+        //             notify = 
+        //                 (fun version name events -> 
+        //                     let topic = name + "-" + version |> String.replace "_" ""
+        //                     let producer = KafkaProducer.Create(log, producerConfig, topic)
+        //                     let key = topic
+        //                     let deliveryResults =
+        //                         events 
+        //                         |> List.map 
+        //                             (fun (id, x) -> 
+        //                                 let brokerMessageRef = {
+        //                                     EventId = id
+        //                                     BrokerEvent = StrEvent x
+        //                                 }
+        //                                 // decide which format will be used (probably binary and then text encoded)
+        //                                 let binPicled = binPicklerSerializer.Serialize x
+        //                                 // let jsonPickled = jsonPicklerSerializer.Serialize x
+        //                                 let encoded = Convert.ToBase64String binPicled
+        //                                 // producer.ProduceAsync(key, x) |> Async.RunSynchronously // |> ignore
+        //                                 producer.ProduceAsync(key, encoded) |> Async.RunSynchronously // |> ignore
+        //                             )
+        //                     deliveryResults
+        //                 )
+        //                 |> Some
+        //             notifyAggregate =
+        //                 (fun version name aggregateId events ->
+        //                     let topic = name + "-" + version |> String.replace "_" ""
+        //                     let producer = KafkaProducer.Create(log, producerConfig, topic)
+        //                     let key = aggregateId.ToString() 
+        //                     let deliveryResults =
+        //                         events 
+        //                         |> List.map 
+        //                             (fun (id, x) -> 
+        //                                 let brokerAggregateMessageRef = {
+        //                                     AggregateId = aggregateId
+        //                                     EventId = id
+        //                                     BrokerEvent = StrEvent x
+        //                                 }
+        //                                 // ok go for binary and then text encoded
+        //                                 let binPickled = binPicklerSerializer.Serialize brokerAggregateMessageRef 
+        //                                 let encoded = Convert.ToBase64String binPickled
+        //                                 // todo: to be fixed
+        //                                 // producer.ProduceAsync (key, encoded) |> Async.RunSynchronously // |> ignore
+        //                                 let res =
+        //                                     Async.RunSynchronously (producer.ProduceAsync (key, encoded), 1000)
+        //                                 res
+        //                             )
+        //                     deliveryResults
+        //                 )
+        //                 |> Some
+        //         }
+        //     notifier
+        // with
+        // | _ as e -> 
+        //     printf "error getting kafka broker %A\n" e
+        //     log.Error e.Message
+        //     {
+        //         notify = None
+        //         notifyAggregate = None
+        //     }
 
     let tryPublish eventBroker version name idAndEvents =
         async {

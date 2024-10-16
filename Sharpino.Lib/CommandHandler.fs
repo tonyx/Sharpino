@@ -6,25 +6,18 @@ open System
 open FSharp.Core
 open FSharpPlus
 
-open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Cache
-open Sharpino.Conf
 open Sharpino.Core
 open Sharpino.Storage
-open Sharpino.Utils
 open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.KafkaBroker
-open System.Runtime.CompilerServices
 
 open FsToolkit.ErrorHandling
 open log4net
-
-open log4net.Config
 
 module CommandHandler =
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
@@ -633,11 +626,8 @@ module CommandHandler =
                                     List.zip ids events'
                                     |> tryPublishAggregateEvent eventBroker aggregateId 'A.Version 'A.StorageName
                                     |> ignore
-                            // FOCUS todo: fix the notification getting stuck 
                             f |> postToProcessor |> ignore
-                            // f()
                     
-                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F> storage aggregateId
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId newState (ids |> List.last)
                     return ()
                 }
@@ -706,11 +696,6 @@ module CommandHandler =
                         kafkaParameters
                         |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
                         |> ignore
-                        
-                    // old version of mkSnapshot    
-                    // let _ =
-                    //     aggregateIds
-                    //     |>> mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore
                     
                     return ()    
                 }
@@ -812,9 +797,6 @@ module CommandHandler =
                                 tryPublishAggregateEvent eventBroker aggregateId2 'A2.Version 'A2.StorageName (List.zip (idLists.[1]) events2')
                                 |> ignore
                         f |> postToProcessor |> ignore
-                    
-                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A1, 'E1, 'F> eventStore aggregateId1
-                    // let _ = mkAggregateSnapshotIfIntervalPassed<'A2, 'E2, 'F> eventStore aggregateId2
                    
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (idLists.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (idLists.[1] |> List.last)
@@ -875,7 +857,6 @@ module CommandHandler =
             let lookupName = sprintf "%s" 'A.StorageName
             let tryCompensations =
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
-            // tryCompensations    
             let _ =
                 match tryCompensations with
                 | Error x -> logger.Value.LogError x

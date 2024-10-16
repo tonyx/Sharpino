@@ -5,14 +5,9 @@ open Sharpino.Cache
 open Sharpino.Storage
 open Sharpino.Utils
 
-open Sharpino.Sample.Entities.Todos
-open Sharpino.Sample.Entities.Categories
-open Sharpino.Sample.Entities.Tags
 open Sharpino.Sample.TodosContext
 open Sharpino.Sample.TagsContext
 open Sharpino.Sample.CategoriesContext
-open Sharpino.Sample.EventStoreApp
-open Sharpino.Sample.Entities.TodosReport
 
 open Sharpino.Sample.Shared.Entities
 
@@ -20,8 +15,6 @@ open Sharpino.Sample
 open Newtonsoft.Json
 open System
 open Sharpino.Definitions
-
-open Confluent.Kafka
 
 module AppVersions =
     // beware that this is the test db and so we can reset it for testing
@@ -42,8 +35,9 @@ module AppVersions =
     let pgStorage = PgStorage.PgEventStore(connection)
 
     let memoryStorage = MemoryStorage.MemoryStorage()
+    
     let currentPgApp = App.CurrentVersionApp(pgStorage)
-
+    
     let upgradedPgApp = App.UpgradedApp(pgStorage)
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
     let upgradedMemApp = App.UpgradedApp(memoryStorage)

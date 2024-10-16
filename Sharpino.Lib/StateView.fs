@@ -264,6 +264,34 @@ module StateView =
                 log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
    
+    let inline getFilteredEventsInATimeInterval<'A, 'E, 'F
+        when 'A: (static member Zero: 'A)
+        and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        =
+            log.Debug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
+            // result
+            //     {
+            //         let! allEventsInTimeInterval = eventStore.GetEventsInATimeInterval 'A.Version 'A.StorageName start end_
+            //         let! deserEvents =
+            //             allEventsInTimeInterval
+            //             |>> snd 
+            //             |> List.traverseResultM (fun x -> 'E.Deserialize x)
+            //         let filteredEvents = 
+            //             deserEvents
+            //             |> List.filter predicate
+            //         return filteredEvents
+            //     }
+            ()
+     
     let inline getFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -278,9 +306,9 @@ module StateView =
         (predicate: 'E -> bool)
         =
             log.Debug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
-            let allEventsInTimeInterval = eventStore.GetAggregateEventsInATimeInterval 'A.Version 'A.StorageName id start end_
             result
                 {
+                    let! allEventsInTimeInterval = eventStore.GetAggregateEventsInATimeInterval 'A.Version 'A.StorageName id start end_
                     let! deserEvents =
                         allEventsInTimeInterval
                         |>> snd 
@@ -290,6 +318,33 @@ module StateView =
                         |> List.filter predicate
                     return filteredEvents
                 }
+                
+    let inline getAllFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        =
+            log.Debug (sprintf "getAllFilteredAggregateEventsInATimeInterval %A - %s " 'A.Version 'A.StorageName)
+            result
+                {
+                    let! allEventsInTimeInterval = eventStore.GetAllAggregateEventsInATimeInterval 'A.Version 'A.StorageName start end_
+                    let! deserEvents =
+                        allEventsInTimeInterval
+                        |>> snd 
+                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                    let filteredEvents = 
+                        deserEvents
+                        |> List.filter predicate
+                    return filteredEvents
+                }
+    
     let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
         when 'A :> Aggregate<'F>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)

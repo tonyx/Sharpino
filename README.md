@@ -182,6 +182,7 @@ Goal: using upcast techniques to be able to read old (serialized) version of typ
 
 ## News/Updates
 
+- Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).
 - Version 2.6.7: Optimize snapshotting by using the in-memory cached value to avoid multiple reads of the same aggregate.
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
 - Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
