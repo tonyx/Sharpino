@@ -24,13 +24,13 @@
     <Compile Include="PubSystem.fs" />
   </ItemGroup> 
 <ItemGroup>
-<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
 <!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
   </ItemGroup> 
 
-  <ItemGroup>
-    <PackageReference Include="Sharpino" Version="2.5.3" />
-  </ItemGroup>
+<!--  <ItemGroup>-->
+<!--    <PackageReference Include="Sharpino" Version="2.5.3" />-->
+<!--  </ItemGroup>-->
 
 
 </Project>
