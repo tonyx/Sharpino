@@ -42,7 +42,7 @@ let doNothingBroker: IEventBroker<string> =
         notifyAggregate = None
     }
 
-let eventBroker = getKafkaBroker "localhost:9092"
+// let eventBroker = getKafkaBroker "localhost:9092"
 
 // let stadiumSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_stadium", "sharpinoClient") |> Result.get
 // let rowSubscriber = KafkaSubscriber.Create("localhost:9092", "_01", "_seatrow", "sharpinoRowClient") |> Result.get
