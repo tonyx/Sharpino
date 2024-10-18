@@ -16,5 +16,5 @@ module Row1Command =
                     match this with
                     | BookSeats booking ->
                         x.BookSeats booking
-                        |> Result.map (fun ctx -> [ SeatsBooked booking ])
+                        |> Result.map (fun ctx -> (ctx,[ SeatsBooked booking ]))
                 member this.Undoer = None

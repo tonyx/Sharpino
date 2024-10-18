@@ -861,7 +861,7 @@ module CommandHandler =
                 match tryCompensations with
                 | Error x -> logger.Value.LogError x
                 | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
-            Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
+            Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
     
     let inline forceRunTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1133,7 +1133,7 @@ module CommandHandler =
         (commands: List<AggregateCommand<'A, 'E>>)
         =
             let commandHasUndoers = commands |> List.forall (fun x -> x.Undoer.IsSome)
-            if (commandHasUndoers) then
+            if commandHasUndoers then
                 let idsWithCommands = List.zip aggregateIds commands
                 let iteratedExecutionOfCommands =
                     idsWithCommands

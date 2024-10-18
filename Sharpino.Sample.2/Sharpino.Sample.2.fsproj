@@ -29,13 +29,13 @@
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="sharpino" Version="2.3.0" />
+<!--    <PackageReference Include="sharpino" Version="2.3.0" />-->
 
   </ItemGroup>
-<!-- -->
-<!--  <ItemGroup>-->
-<!--    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
-<!--  </ItemGroup>-->
+ 
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup>
 
 
 
