@@ -6,7 +6,25 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Library.fs"/>
+        <Compile Include="Library.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Include="Domain/Seat/Row.fs" />
+      <Compile Include="Domain/Seat/Events.fs" />
+      <Compile Include="Domain/Seat/Commands.fs" />
+      <Compile Include="Domain/Booking/Booking.fs" />
+      <Compile Include="Domain\Booking\Events.fs" />
+      <Compile Include="Domain\Booking\Commands.fs" />
+      <Compile Include="Api/SeatBooking.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Include="Context\SeatBookings.fs" />
     </ItemGroup>
 
 </Project>
