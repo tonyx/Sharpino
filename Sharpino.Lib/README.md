@@ -204,7 +204,7 @@ A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have genero
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
   (A short example will come but here is an idea, pretending the aggregate types can be two, and not three: A1, A2, A3, A3 needs to merge into An: I cannot run the "indpendent" saga-free version of running 
- multiple commands (pairs) because I should repeat the id of An many times which is invalid, so I run the saga version that executes the single "merge" i.e. merge A1 into An, then merge A2 into An etc...: if somethings goes wrong I have accuulted the "future undoers" that may rollback the eventually suffessful merges)
+ multiple commands (pairs) because I should repeat the id of An many times which is invalid, so I run the saga version that executes the single "merge" i.e. merge A1 into An, then merge A2 into An etc...: if somethings goes wrong I have ... the "future undoers" that may rollback the eventually suffessful merges)
 
 - A "porting" of an example from Equinox https://github.com/tonyx/sharpinoinvoices
 - Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!

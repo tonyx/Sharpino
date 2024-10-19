@@ -14,17 +14,24 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Include="Domain/Seat/Row.fs" />
-      <Compile Include="Domain/Seat/Events.fs" />
-      <Compile Include="Domain/Seat/Commands.fs" />
+      <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+
+      <Compile Include="Domain\Rows\Row.fs" />
+      <Compile Include="Domain\Rows\Events.fs" />
+      <Compile Include="Domain\Rows\Commands.fs" />
       <Compile Include="Domain/Booking/Booking.fs" />
-      <Compile Include="Domain\Booking\Events.fs" />
-      <Compile Include="Domain\Booking\Commands.fs" />
+      <Compile Include="Domain/Booking/Events.fs" />
+      <Compile Include="Domain/Booking/Commands.fs" />
+      <Compile Include="Context/SeatBookings.fs" />
+      <Compile Include="Context/Events.fs" />
+      <Compile Include="Context/Commands.fs" />
       <Compile Include="Api/SeatBooking.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <Compile Include="Context\SeatBookings.fs" />
+      <Compile Include="Context\Events.fs" />
+      <Compile Include="Context\Commands.fs" />
     </ItemGroup>
 
 </Project>

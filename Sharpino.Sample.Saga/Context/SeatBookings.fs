@@ -9,33 +9,28 @@ open FsToolkit.ErrorHandling
 
 open System
 
-type SeatAndBookings = {
+type Theater = {
     Bookings: List<Guid>
     Rows: List<Guid>
 }
 with
-    member this.AddSeats (rowId: Guid) =
+    member this.AddRowReference (rowId: Guid) =
         { this with Rows = rowId :: this.Rows } |> Ok
-    member this.AddBooking (bookingId: Guid) =
+    member this.AddBookingReference (bookingId: Guid) =
         { this with Bookings = bookingId :: this.Bookings } |> Ok
-    member this.RemoveBooking (bookingId: Guid) =
+    member this.RemoveBookingReference (bookingId: Guid) =
         { this with Bookings = this.Bookings |> List.filter (fun x -> x <> bookingId) } |> Ok
-    member this.RemoveRow (rowId: Guid) =
+    member this.RemoveRowReference (rowId: Guid) =
         { this with Rows = this.Rows |> List.filter (fun x -> x <> rowId) } |> Ok
     
     static member Zero = { Bookings = []; Rows = [] }
   
     static member StorageName = "_seatBookings"
     static member Version = "_01"
+    static member SnapshotsInterval = 15
     static member Deserialize(x: string) =
-        jsonPSerializer.Deserialize<SeatAndBookings> x
+        jsonPSerializer.Deserialize<Theater> x
    
     member this.Serialize =
         jsonPSerializer.Serialize this
         
-
-
-
-
-
-
