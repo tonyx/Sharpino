@@ -333,6 +333,16 @@ let tests =
             let row = seatBookingService.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 10 "should be equal"
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+            Expect.equal booking1.OkValue.RowId None "should be equal"
+            let booking2 = seatBookingService.GetBooking booking2.Id
+            Expect.isOk booking2 "should be ok"    
+            Expect.equal booking2.OkValue.RowId None "should be equal"
+
+
+
+
 
     ]
     |> testSequenced
