@@ -12,9 +12,9 @@ type SeatCommands =
         member this.Execute (x: Row) =
             match this with
             | ReserveMultiple n ->
-                x.AddReservations n |> Result.map (fun s -> (s, [SeatEvents.ReservationsAdded n]))
+                x.AddBookings n |> Result.map (fun s -> (s, [SeatEvents.ReservationsAdded n]))
             | Reserve ->
-                x.AddReservation () |> Result.map (fun s -> (s, [SeatEvents.ReservationAdded]))
+                x.AddBooking () |> Result.map (fun s -> (s, [SeatEvents.ReservationAdded]))
             | Free ->
-                x.FreeReservation () |> Result.map (fun s -> (s, [SeatEvents.ReservationFreed]))
+                x.FreeBookings () |> Result.map (fun s -> (s, [SeatEvents.ReservationFreed]))
         member this.Undoer = None

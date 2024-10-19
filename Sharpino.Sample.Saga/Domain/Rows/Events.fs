@@ -12,9 +12,9 @@ type SeatEvents =
         member
             this.Process (x: Row) =
                 match this with
-                | ReservationsAdded n -> x.AddReservations n
-                | ReservationAdded -> x.AddReservation ()
-                | ReservationFreed -> x.FreeReservation ()
+                | ReservationsAdded n -> x.AddBookings n
+                | ReservationAdded -> x.AddBooking ()
+                | ReservationFreed -> x.FreeBookings ()
 
     member
         this.Serialize =

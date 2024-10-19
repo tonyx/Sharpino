@@ -10,29 +10,29 @@ open FsToolkit.ErrorHandling
 
 type Row = {
     size: int
-    currentReservations: int
+    currentBookings: int
     Id: Guid
 }
 
 with
-    member this.IsFull = this.currentReservations >= this.size 
-    member this.AddReservation() =
+    member this.IsFull = this.currentBookings >= this.size 
+    member this.AddBooking() =
         if this.IsFull then
             Error "row is full"
         else
-            Ok { this with currentReservations = this.currentReservations + 1 }
+            Ok { this with currentBookings = this.currentBookings + 1 }
     
-    member this.AddReservations(n: int) =
-        if this.currentReservations + n > this.size then
+    member this.AddBookings (n: int) =
+        if this.currentBookings + n > this.size then
             Error "row is full"
         else
-            Ok { this with currentReservations = this.currentReservations + n }
+            Ok { this with currentBookings = this.currentBookings + n }
     
-    member this.FreeReservation() =
-        if this.currentReservations <= 0 then
+    member this.FreeBookings() =
+        if this.currentBookings <= 0 then
             Error "row is free"
         else
-            Ok { this with currentReservations = this.currentReservations - 1 }
+            Ok { this with currentBookings = this.currentBookings - 1 }
 
     static member Deserialize(x: string) =
         jsonPSerializer.Deserialize<Row> x
