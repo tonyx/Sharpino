@@ -167,10 +167,8 @@ module SeatBooking =
                     List.zip rowIds rows
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)
                     
-                printf "XXXXXX YYYYY 1\n"
                 let! result =
                     runSagaTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
-                printf "XXXXXX YYYYY 2\n"
                 return result
             }   
                 

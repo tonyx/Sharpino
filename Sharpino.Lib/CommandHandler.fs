@@ -1231,13 +1231,11 @@ module CommandHandler =
             let command1HasUndoers = commands1 |> List.forall (fun x -> x.Undoer.IsSome)
             let command2HasUndoers = commands2 |> List.forall (fun x -> x.Undoer.IsSome)
             let lengthMustBeTheSame = commands1.Length = commands2.Length
-            printf "YYYYYYYYYYYYYYYYYYY 100\n"
             if (command1HasUndoers && command2HasUndoers && lengthMustBeTheSame) then
                 let pairOfCommands = List.zip commands1 commands2
                 let pairsOfIds = List.zip aggregateIds1 aggregateIds2
                 let idsWithCommands = List.zip pairsOfIds pairOfCommands
                 
-                printf "YYYYYYYYYYYYYYYYYYY 200\n"
                 let iteratedExecutionOfPairOfCommands =
                     idsWithCommands
                     |> List.fold
@@ -1267,7 +1265,6 @@ module CommandHandler =
                 match iteratedExecutionOfPairOfCommands with
                 | (true, _) -> Ok ()
                 | (false, undoers) ->
-                     printf "YYYYYYYYYYYYYYYYYYY 300\n"
                      let undoerRun =
                         fun () ->
                             result {
@@ -1297,41 +1294,48 @@ module CommandHandler =
                                 let! extractedCompenatorE2Applied =
                                     extractedCompensatorE2
                                     |> List.traverseResultM (fun x -> x())
-                                
-                                printf "YYYYYYYYYYYYYYYYYYY 400\n"
+                               
+                                // let exCompLen = extractedCompensatorE1Applied.Length
+                                // printf "YYYYYYYYYYYYYYYYYYY 300.7 zip2arg %A\n"
+                                //         ((aggregateIds1 |> List.skip exCompLen)
+                                //          |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
+                                // printf "YYYYYYYYYYYYYYYYYYY 300.8 zip3arg %A\n"
+                                //         extractedCompensatorE1Applied  
+
+                                 
                                 let extractedEventsForE1 =
                                     let exCompLen = extractedCompensatorE1Applied.Length
-                                    printf "YYYYYYYYY excomplensize  400.1 %A\n" exCompLen
-                                    printf "YYYYYYYYY aggregateIds1  400.2 %A\n" aggregateIds1
-                                    printf "YYYYYYYYY aggregateIds1  400.3 %A\n" aggregateIds1.Length
-                                    printf "YYYYYYYYY aggregateIds1  400.4 %A\n" (aggregateIds1 |> List.take exCompLen)
-                                    printf "YYYYYYYYY aggregateIds1  400.5 %A\n" (aggregateIds1 |> List.skip exCompLen)
-                                    printf "YYYYYYYYY aggregateIds1  400.6 %A\n" extractedCompensatorE1Applied
+                                    // printf "YYYYYYYYY excomplensize  400.1 %A\n" exCompLen
+                                    // printf "YYYYYYYYY aggregateIds1  400.2 %A\n" aggregateIds1
+                                    // printf "YYYYYYYYY aggregateIds1  400.3 %A\n" aggregateIds1.Length
+                                    // printf "YYYYYYYYY aggregateIds1  400.4 %A\n" (aggregateIds1 |> List.take exCompLen)
+                                    // printf "YYYYYYYYY aggregateIds1  400.5 %A\n" (aggregateIds1 |> List.skip exCompLen)
+                                    // printf "YYYYYYYYY aggregateIds1  400.6 %A\n" extractedCompensatorE1Applied
                                     List.zip3
                                         (aggregateIds1 |> List.take exCompLen)
-                                        ((aggregateIds1 |> List.skip exCompLen)
+                                        ((aggregateIds1 |> List.take exCompLen)
                                          |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
                                         extractedCompensatorE1Applied  
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                
-                                printf "YYYYYYYYYYYYYYYYYYY 500\n"
+                               
+                                // printf "YYYYYYYYYYYYYYYYYYY 500\n"
                                 let extractedEventsForE2 =
                                     let exCompLen = extractedCompenatorE2Applied.Length
                                     List.zip3
                                         (aggregateIds2 |> List.take exCompLen)
-                                        ((aggregateIds2 |> List.skip exCompLen)
+                                        ((aggregateIds2 |> List.take exCompLen)
                                          |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
                                         extractedCompenatorE2Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
                                     
-                                printf "YYYYYYYYYYYYYYYYYYY extractedEventsForE1 600 %A\n" extractedEventsForE1
+                                // printf "YYYYYYYYYYYYYYYYYYY extractedEventsForE1 600 %A\n" extractedEventsForE1
                                 let addEventsStreamA1 =
                                     // extractedCompensatorE1Applied
                                     extractedEventsForE1
                                     |> List.traverseResultM
                                         (fun (id, lastId, events) -> eventStore.AddAggregateEvents lastId 'A1.Version 'A1.StorageName id events)
                                 
-                                printf "YYYYYYYYYYYYYYYYYYY 700\n"
+                                // printf "YYYYYYYYYYYYYYYYYYY 700\n"
                                 let addEventsStreamA2 =
                                     extractedEventsForE2
                                     |> List.traverseResultM
@@ -1925,7 +1929,7 @@ module CommandHandler =
                                 let exCompLen = extractedCompensatorE1Applied.Length
                                 List.zip3
                                     (aggregateIdsA1 |> List.take exCompLen)
-                                    ((aggregateIdsA1 |> List.skip exCompLen)
+                                    ((aggregateIdsA1 |> List.take exCompLen)
                                      |>> (eventStore.TryGetLastAggregateEventId 'A11.Version 'A12.StorageName))
                                     extractedCompensatorE1Applied  
                                 |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
@@ -1934,7 +1938,7 @@ module CommandHandler =
                                 let exCompLen = extractedCompenatorE2Applied.Length
                                 List.zip3
                                     (aggregateIdsA2 |> List.take exCompLen)
-                                    ((aggregateIdsA2 |> List.skip exCompLen)
+                                    ((aggregateIdsA2 |> List.take exCompLen)
                                      |>> (eventStore.TryGetLastAggregateEventId 'A12.Version 'A12.StorageName))
                                     extractedCompenatorE2Applied
                                 |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)

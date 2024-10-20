@@ -181,6 +181,7 @@ Goal: using upcast techniques to be able to read old (serialized) version of typ
 
 ## News/Updates
 
+- Version 2.7.0: Fix bug in Saga-ish multi-command and added some tests for it.
 - Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).
 - Version 2.6.7: Optimize snapshotting by using the in-memory cached value to avoid multiple reads of the same aggregate.
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)

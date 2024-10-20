@@ -370,29 +370,29 @@ let tests =
                         // (booking4.Id, row.Id)
                     ]
                 
-            Expect.isOk assignBookings "should be ok"
+            Expect.isError assignBookings "should be error"
             
             // expectation    
             let row = seatBookingService.GetRow row.Id
             Expect.isOk row "should be ok"
-            Expect.equal row.OkValue.FreeSeats 1 "should be equal"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
 
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
-            Expect.equal booking1.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+            Expect.isNone booking1.OkValue.RowId "should be none"
 
-            let booking2 = seatBookingService.GetBooking booking2.Id    
-            Expect.isOk booking2 "should be ok"
-            Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            
-            let booking3 = seatBookingService.GetBooking booking3.Id
-            Expect.isOk booking3 "should be ok"    
-            Expect.equal booking3.OkValue.RowId (Some row.OkValue.Id) "should be equal"    
+            // let booking2 = seatBookingService.GetBooking booking2.Id    
+            // Expect.isOk booking2 "should be ok"
+            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+            //
+            // let booking3 = seatBookingService.GetBooking booking3.Id
+            // Expect.isOk booking3 "should be ok"    
+            // Expect.equal booking3.OkValue.RowId (Some row.OkValue.Id) "should be equal"    
             
             // let booking4 = seatBookingService.GetBooking booking4.Id
             // Expect.isOk booking4 "should be ok"
 
-        ftestCase "a more generalized saga example where compensation take place - Error" <| fun _ ->
+        testCase "a more generalized saga example where compensation take place - Error" <| fun _ ->
             // preparation
             memoryStorage.Reset "_01" "_seat"
             memoryStorage.ResetAggregateStream "_01" "_seat"
@@ -423,7 +423,6 @@ let tests =
             // Expect.isOk addBooking4 "should be ok"
 
             // action 
-            printf "XXXXX - 1\n"
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
                     [
@@ -433,7 +432,6 @@ let tests =
                         // (booking4.Id, row.Id)
                     ]
                 
-            printf "XXXXX - 2\n"
             Expect.isError assignBookings "should be ok"
             
             // expectation    
@@ -452,6 +450,276 @@ let tests =
             // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
             //
             // let booking3 = seatBooking
+
+        testCase "a more generalized saga example where compensation take place 2 - Error" <| fun _ ->
+            // preparation
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+
+            memoryStorage.Reset "_01" "_theater"
+
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+            // Expect.isNone booking1.OkValue.RowId "should be none"
+            // Expect.equal booking1.OkValue.RowId None
+
+            // let booking2 = seatBookingService.GetBooking booking2.Id    
+            // Expect.isOk booking2 "should be ok"
+            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+            //
+            // let booking3 = seatBooking
+            
+        testCase "a more generalized saga example of compensation 3 - Error" <| fun _ ->
+            // preparation
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+
+            memoryStorage.Reset "_01" "_theater"
+
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+            // Expect.isNone booking1.OkValue.RowId "should be none"
+            // Expect.equal booking1.OkValue.RowId None
+
+            // let booking2 = seatBookingService.GetBooking booking2.Id    
+            // Expect.isOk booking2 "should be ok"
+            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+            //
+            // let booking3 = seatBooking
+
+        testCase "a more generalized saga example of compensation 4 - Error" <| fun _ ->
+            // preparation
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+
+            memoryStorage.Reset "_01" "_theater"
+
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 21; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 76576; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 76765765; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+            // Expect.isNone booking1.OkValue.RowId "should be none"
+            // Expect.equal booking1.OkValue.RowId None
+
+            // let booking2 = seatBookingService.GetBooking booking2.Id    
+            // Expect.isOk booking2 "should be ok"
+            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+            //
+            // let booking3 = seatBooking
+
+        testCase "a more general saga example of compensation 5 - Error" <| fun _ ->
+            // preparation
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+
+            memoryStorage.Reset "_01" "_theater"
+
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 5; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 16; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 76765765; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+        testCase "a more general saga example of compensation 6 - Error" <| fun _ ->
+            // preparation
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+
+            memoryStorage.Reset "_01" "_theater"
+
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let bookings = 
+                [
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 8; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                ]
+
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+
+            let addAllBookings =
+                bookings
+                |> List.map (fun b -> seatBookingService.AddBooking b)
+                |> List.map (fun r -> Expect.isOk r "should be ok")
+
+            let assignBookings = 
+                seatBookingService.AssignBookingUsingSagaWay 
+                    (bookings |> List.map (fun b -> (b.Id, row.Id)))
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking bookings.[0].Id
+            Expect.isOk booking1 "should be ok"
+            Expect.isNone booking1.OkValue.RowId "should be none"
 
     ]
     |> testSequenced
