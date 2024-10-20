@@ -1231,11 +1231,13 @@ module CommandHandler =
             let command1HasUndoers = commands1 |> List.forall (fun x -> x.Undoer.IsSome)
             let command2HasUndoers = commands2 |> List.forall (fun x -> x.Undoer.IsSome)
             let lengthMustBeTheSame = commands1.Length = commands2.Length
+            printf "YYYYYYYYYYYYYYYYYYY 100\n"
             if (command1HasUndoers && command2HasUndoers && lengthMustBeTheSame) then
                 let pairOfCommands = List.zip commands1 commands2
                 let pairsOfIds = List.zip aggregateIds1 aggregateIds2
                 let idsWithCommands = List.zip pairsOfIds pairOfCommands
                 
+                printf "YYYYYYYYYYYYYYYYYYY 200\n"
                 let iteratedExecutionOfPairOfCommands =
                     idsWithCommands
                     |> List.fold
@@ -1265,6 +1267,7 @@ module CommandHandler =
                 match iteratedExecutionOfPairOfCommands with
                 | (true, _) -> Ok ()
                 | (false, undoers) ->
+                     printf "YYYYYYYYYYYYYYYYYYY 300\n"
                      let undoerRun =
                         fun () ->
                             result {
@@ -1295,8 +1298,15 @@ module CommandHandler =
                                     extractedCompensatorE2
                                     |> List.traverseResultM (fun x -> x())
                                 
+                                printf "YYYYYYYYYYYYYYYYYYY 400\n"
                                 let extractedEventsForE1 =
                                     let exCompLen = extractedCompensatorE1Applied.Length
+                                    printf "YYYYYYYYY excomplensize  400.1 %A\n" exCompLen
+                                    printf "YYYYYYYYY aggregateIds1  400.2 %A\n" aggregateIds1
+                                    printf "YYYYYYYYY aggregateIds1  400.3 %A\n" aggregateIds1.Length
+                                    printf "YYYYYYYYY aggregateIds1  400.4 %A\n" (aggregateIds1 |> List.take exCompLen)
+                                    printf "YYYYYYYYY aggregateIds1  400.5 %A\n" (aggregateIds1 |> List.skip exCompLen)
+                                    printf "YYYYYYYYY aggregateIds1  400.6 %A\n" extractedCompensatorE1Applied
                                     List.zip3
                                         (aggregateIds1 |> List.take exCompLen)
                                         ((aggregateIds1 |> List.skip exCompLen)
@@ -1304,6 +1314,7 @@ module CommandHandler =
                                         extractedCompensatorE1Applied  
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
                                 
+                                printf "YYYYYYYYYYYYYYYYYYY 500\n"
                                 let extractedEventsForE2 =
                                     let exCompLen = extractedCompenatorE2Applied.Length
                                     List.zip3
@@ -1313,11 +1324,14 @@ module CommandHandler =
                                         extractedCompenatorE2Applied
                                     |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
                                     
+                                printf "YYYYYYYYYYYYYYYYYYY extractedEventsForE1 600 %A\n" extractedEventsForE1
                                 let addEventsStreamA1 =
+                                    // extractedCompensatorE1Applied
                                     extractedEventsForE1
                                     |> List.traverseResultM
                                         (fun (id, lastId, events) -> eventStore.AddAggregateEvents lastId 'A1.Version 'A1.StorageName id events)
                                 
+                                printf "YYYYYYYYYYYYYYYYYYY 700\n"
                                 let addEventsStreamA2 =
                                     extractedEventsForE2
                                     |> List.traverseResultM
@@ -1331,7 +1345,9 @@ module CommandHandler =
                             }
                      let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
                      let tryCompensations =
-                         MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                         undoerRun ()
+                         
+                         // MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                      let _ =
                          match tryCompensations with
                          | Error x -> log.Error x
