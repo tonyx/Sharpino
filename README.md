@@ -145,6 +145,7 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
 - Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging. 
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
 - Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
+- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging.
 
 ## Comparison with the style of examples in other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
