@@ -25,7 +25,6 @@ open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
 module BookingTests =
 
-    let eventBroker = getKafkaBroker "localhost:9092"
 
     let seatBookings =
         let memoryStorage = MemoryStorage.MemoryStorage()
