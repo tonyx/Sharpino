@@ -27,6 +27,7 @@ Support for Event-sourcing in F#.
 - Note: I am not using examples on the basis of a fully distributed architecture and therefore I haven't implemented Kafka or any other message broker. However the library is ready to be extended to use actual message brokers (any command can virtually publish any event after storing them is a "send and forget" style).
 
 ## Warning: the mini gitbook is outdated.
+Info: - The various SAGA-like functions are "under investigation"(more tests and fixes needed). The "malboxprocessor" could also be removed as it has a little potential advantage but less control (in debug for example).
 
 ## Projects
 __Sharpino.Lib.Core__:
