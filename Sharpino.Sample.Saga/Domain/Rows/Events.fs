@@ -7,6 +7,8 @@ open System
 type RowEvents =
     | BookingAdded of Guid * int
     | BookingFreed of Guid * int
+    | SeatsAdded of int
+    | SeatsRemoved of int
     
     interface Event<Row> with
         member
@@ -14,6 +16,8 @@ type RowEvents =
                 match this with
                 | BookingAdded (id, n) -> x.AddBooking (id, n)
                 | BookingFreed (id, n) -> x.FreeBooking (id, n)
+                | SeatsAdded n -> x.AddSeats n
+                | SeatsRemoved n -> x.RemoveSeats n
 
     member
         this.Serialize =

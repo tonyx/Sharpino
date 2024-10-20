@@ -63,6 +63,40 @@ module SeatBooking =
                     runInitAndCommand<Theater, TheaterEvents, Row, string> eventStore eventBroker row addRowReferenceCommand
                 return result    
             }
+            
+        member this.AddSeatsToRow (rowId, n) =
+            result {
+                let! (_, row) = seatsViewer rowId
+                let addSeatsCommand = RowCommands.AddSeats n
+                let! result =
+                    runAggregateCommand<Row, RowEvents, string> rowId eventStore eventBroker addSeatsCommand
+                return result    
+            }
+       
+        member this.RemoveSeatsFromRow (rowId, n) =
+            result {
+                let! (_, row) = seatsViewer rowId
+                let removeSeatsCommand = RowCommands.RemoveSeats n
+                let! result =
+                    runAggregateCommand<Row, RowEvents, string> rowId eventStore eventBroker removeSeatsCommand
+                return result    
+            }
+            
+        member this.RemoveSeatsFromRow (rowId, ns: List<int>) =
+            if (ns.Length = 0) then
+                Ok ()
+            else
+                result {
+                    let! (_, row) = seatsViewer rowId
+                    let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
+                        = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
+                    let rowIds =
+                        [ for i in 1 .. ns.Length -> rowId ]
+                        
+                    let! result =
+                        runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                    return result    
+                }
         
         member this.GetBooking id =
             result {

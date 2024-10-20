@@ -407,8 +407,6 @@ let tests =
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
 
-            // let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
-            // let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok" 
             let addBooking1 = seatBookingService.AddBooking booking1
@@ -450,6 +448,154 @@ let tests =
             // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
             //
             // let booking3 = seatBooking
+
+        testCase "add a row and then new seats to that row - Ok" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok"
+            let addSeats = seatBookingService.AddSeatsToRow (row.Id, 10)
+            Expect.isOk addSeats "should be ok"
+            let retrievedRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrievedRow "should be ok"
+            Expect.equal retrievedRow.OkValue.FreeSeats 30 "should be equal"
+
+        testCase "add a row and then remove seats from that row - Ok" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok"
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, 10)
+            Expect.isOk removeSeats "should be ok"
+            let retrievedRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrievedRow "should be ok"
+            Expect.equal retrievedRow.OkValue.FreeSeats 10 "should be equal"
+        
+        testCase "add a row, then add a booking, then remove some of the seats that are left free - Ok" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok"
+            let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
+            let addBooking = seatBookingService.AddBooking booking
+            Expect.isOk addBooking "should be ok"
+            let bookingAssigned = seatBookingService.AssignBooking booking.Id row.Id 
+            Expect.isOk bookingAssigned "should be ok"    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 10 "should be equal"
+
+        testCase "add a row, then add a booking, try to remove more seats that available - Error" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok"
+            let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
+            let addBooking = seatBookingService.AddBooking booking
+            Expect.isOk addBooking "should be ok"
+            let bookingAssigned = seatBookingService.AssignBooking booking.Id row.Id 
+            Expect.isOk bookingAssigned "should be ok"    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 10 "should be equal"
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.OkValue.Id, 11) 
+            Expect.isError removeSeats "should be error"
+
+            let reRetrieveRow = seatBookingService.GetRow row.OkValue.Id
+            Expect.isOk reRetrieveRow "should be ok"
+            Expect.equal reRetrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        testCase "remove zero seats using saga like multicommand - Ok" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row1.Id, [1])
+            Expect.isOk removeSeats "should be ok"
+
+            let row = seatBookingService.GetRow row1.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 19 "should be equal"
+
+        testCase "remove three seats using saga like multicommand, two different removals, - Ok" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row1.Id, [1; 2])
+            Expect.isOk removeSeats "should be ok"
+
+            let row = seatBookingService.GetRow row1.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 17 "should be equal"
+        
+        testCase "trying to remove more seats than existing ones, one shot - Error" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [11])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        ftestCase "trying to remove more seats than existing ones, three shots - Error" <| fun _ ->
+            memoryStorage.Reset "_01" "_seat"
+            memoryStorage.ResetAggregateStream "_01" "_seat"
+            memoryStorage.Reset "_01" "_booking"
+            memoryStorage.ResetAggregateStream "_01" "_booking"
+            memoryStorage.Reset "_01" "_theater"
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [4; 4; 3])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
         testCase "a more generalized saga example where compensation take place 2 - Error" <| fun _ ->
             // preparation

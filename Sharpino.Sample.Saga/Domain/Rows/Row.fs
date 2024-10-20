@@ -8,6 +8,7 @@ open FSharpPlus
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 
+let maximumSeats = 100
 type Row = {
     totalSeats: int
     numberOfSeatsBooked: int
@@ -33,7 +34,33 @@ with
                                 AssociatedBookings = bookingId :: this.AssociatedBookings
                     }
             }
+            
+    member this.AddSeats (n: int) =
+        result
+            {       
+                do!
+                    n > 0
+                    |> Result.ofBool "n must be greater than 0"
+                do!
+                    this.totalSeats + n <= maximumSeats
+                    |> Result.ofBool "total seats must be less than 100"
+                return
+                    { this with totalSeats = this.totalSeats + n }
+            }
     
+    member this.RemoveSeats (n: int) =
+        result
+            {
+                do!
+                    n > 0
+                    |> Result.ofBool "n must be greater than 0"
+                do!
+                    this.FreeSeats - n >= 0
+                    |> Result.ofBool "not enough seats"
+                return
+                    { this with totalSeats = this.totalSeats - n }   
+            }
+            
     member this.AddBookings (n: int) =
         if this.numberOfSeatsBooked + n > this.totalSeats then
             Error "row is full"

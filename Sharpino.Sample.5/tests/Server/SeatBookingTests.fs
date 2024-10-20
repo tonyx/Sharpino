@@ -25,7 +25,6 @@ open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 
 module BookingTests =
 
-
     let seatBookings =
         let memoryStorage = MemoryStorage.MemoryStorage()
         let pgStorage = PgStorage.PgEventStore(connection)
