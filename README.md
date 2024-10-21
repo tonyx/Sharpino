@@ -184,7 +184,6 @@ Goal: using upcast techniques to be able to read old (serialized) version of typ
 
 - Version 2.7.2: Support metadata field in db (any command has the correspondent commandMd that accepts any string as metadata). Those metadata can be used for debugging purposes. To use them any event table in the db needs a new nullable text field called "md". 
 New db functions are also needed. See the functions like "insert_md{Version}{AggregateStorageName}_events_and_return_id" in the sql scripts in the SqlTemplate dir doing a proper substitution in {Version} and {Format} and {AggregateStorageName}. Similar function is in the ContextTemplate.sql.
- 
 - Version 2.7.1: Bug fix
 - Version 2.7.0: Fix bug in Saga-ish multi-command and added some tests for it.
 - Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).

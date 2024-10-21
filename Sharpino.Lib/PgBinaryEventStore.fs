@@ -347,6 +347,7 @@ module PgBinaryStore =
                         finally
                             conn.Close()
                     }, evenStoreTimeout)
+                    
             member this.GetEventsAfterId version id name =
                 logger.Value.LogDebug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
@@ -1326,7 +1327,7 @@ module PgBinaryStore =
                                         |>>
                                             fun (_, events, version,  name, aggregateId) ->
                                                 let stream_name = version + name
-                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
+                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                 events
                                                 |>> 
                                                     fun event ->
