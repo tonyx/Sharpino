@@ -5,7 +5,8 @@ CREATE TABLE public.events{Version}{AggregateStorageName} (
                                           aggregate_id uuid NOT NULL,
                                           event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
-                                          "timestamp" timestamp without time zone NOT NULL
+                                          "timestamp" timestamp without time zone NOT NULL,
+                                          md text 
 );
 
 ALTER TABLE public.events{Version}{AggregateStorageName} ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
