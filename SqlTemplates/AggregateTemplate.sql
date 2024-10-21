@@ -77,6 +77,24 @@ return inserted_id;
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION insert_md{Version}{AggregateStorageName}_event_and_return_id(
+    IN event_in {Format},
+    IN aggregate_id uuid,
+    IN md text
+)
+RETURNS int
+       
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events{Version}{AggregateStorageName}(event, aggregate_id, timestamp, md)
+VALUES(event_in::{Format}, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION insert{Version}{AggregateStorageName}_aggregate_event_and_return_id(
     IN event_in {Format},
     IN aggregate_id uuid 
@@ -96,8 +114,6 @@ VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
-
-
 
 
 

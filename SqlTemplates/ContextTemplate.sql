@@ -4,7 +4,8 @@ CREATE TABLE public.events{Version}{ContextStorageName} (
                                           id integer NOT NULL,
                                           event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
-                                          "timestamp" timestamp without time zone NOT NULL
+                                          "timestamp" timestamp without time zone NOT NULL,
+                                          md text 
 );
 
 ALTER TABLE public.events{Version}{ContextStorageName} ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -56,6 +57,24 @@ BEGIN
 
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION insert_md{Version}{ContextStorageName}_event_and_return_id(
+    IN event_in {Format}, md_in text
+)
+RETURNS int
+       
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events{Version}{ContextStorageName}(event, timestamp, md)
+VALUES(event_in::{Format}, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
+
+END;
+$$;
+
 
 -- migrate:down
 

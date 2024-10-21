@@ -45,6 +45,7 @@ module Storage =
 
     type KafkaOffset = int64
     type KafkaPartitionId = int
+    type Metadata = string // this needs to be moved
 
     type IEventStore<'F> =
         abstract member Reset: Version -> Name -> unit
@@ -73,17 +74,26 @@ module Storage =
         abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
 
         abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
+        abstract member AddEventsMd: EventId -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
         abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
+        abstract member SetInitialAggregateStateAndAddEventsMd: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
-        abstract member SetInitialAggregateStateAndMultiAddAggregateEvents: AggregateId -> Version -> Name -> 'F -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
+        abstract member SetInitialAggregateStateAndMultiAddAggregateEvents: AggregateId -> Version -> Name -> 'F -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
+        
+        // the string is a metadata:
+        abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd: AggregateId -> Version -> Name -> 'F -> Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
         
         abstract member SetInitialAggregateStateAndAddAggregateEvents: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
+        abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
+        abstract member AddAggregateEventsMd: EventId -> Version -> Name -> AggregateId ->  Metadata -> List<'F> -> Result<List<EventId>, string>
 
-        abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
+        abstract member MultiAddEventsMd:  Metadata -> List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
         abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId>  -> Result<List<List<EventId>>, string>
+        abstract member MultiAddAggregateEventsMd: Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * 'F >, string >
 

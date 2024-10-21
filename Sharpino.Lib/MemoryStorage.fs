@@ -250,7 +250,37 @@ module MemoryStorage =
                 storeEvents version name events
                 let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
+                
+            // not handling metadata in memory storage      
+            member this.AddEventsMd _ version name md xs: Result<List<int>, string> = 
+                log.Debug (sprintf "AddEvents %s %s" version name)
+                let newEvents =
+                    [ for e in xs do
+                        yield {
+                            Id = next_event_id version name
+                            JsonEvent = e
+                            Timestamp = DateTime.UtcNow
+                        }
+                    ]
+                let events = getExistingEvents version name @ newEvents
+                storeEvents version name events
+                let ids = newEvents |>> (fun x -> x.Id)
+                ids |> Ok
             member this.SetInitialAggregateStateAndAddEvents _ aggregateId aggregateVersion aggregatename json contextVersion contextName events =
+                let initialState =
+                    {
+                        Id = next_snapshot_id aggregateVersion aggregatename
+                        AggregateId = aggregateId
+                        Snapshot = json
+                        TimeStamp = DateTime.UtcNow
+                        EventId = None
+                    }
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add (aggregateId, [initialState])
+                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
+                (this:> IEventStore<string>).AddEvents 0 contextVersion contextName events
+                
+            member this.SetInitialAggregateStateAndAddEventsMd _ aggregateId aggregateVersion aggregatename json contextVersion contextName _ events =
                 let initialState =
                     {
                         Id = next_snapshot_id aggregateVersion aggregatename
@@ -277,8 +307,35 @@ module MemoryStorage =
                 snapshots.Add (aggregateId, [initialState])
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
                 (this:> IEventStore<string>).AddAggregateEvents 0 contextVersion contextName secondAggregateId events
+            member this.SetInitialAggregateStateAndAddAggregateEventsMd _ aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName _ events  =
+                let initialState =
+                    {
+                        Id = next_snapshot_id aggregateVersion aggregatename
+                        AggregateId = aggregateId
+                        Snapshot = json
+                        TimeStamp = DateTime.UtcNow
+                        EventId = None
+                    }
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add (aggregateId, [initialState])
+                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
+                (this:> IEventStore<string>).AddAggregateEvents 0 contextVersion contextName secondAggregateId events
                 
             member this.SetInitialAggregateStateAndMultiAddAggregateEvents aggregateId Version Name jsonSnapshot events =
+                let initialState =
+                    {
+                        Id = next_snapshot_id Version Name
+                        AggregateId = aggregateId
+                        Snapshot = jsonSnapshot
+                        TimeStamp = DateTime.UtcNow
+                        EventId = None
+                    }
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add (aggregateId, [initialState])
+                addAggregateSnapshots Version Name aggregateId initialState
+                (this:> IEventStore<string>).MultiAddAggregateEvents events
+                
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId Version Name jsonSnapshot md events =
                 let initialState =
                     {
                         Id = next_snapshot_id Version Name
@@ -311,7 +368,17 @@ module MemoryStorage =
                             (this :> IEventStore<string>).AddEvents 0 version name xs |> Result.get
                         ) 
                 cmds |> Ok
-
+                
+            member this.MultiAddEventsMd md (arg: List< _ * List<Json> * Version * Name>) =
+                log.Debug (sprintf "MultiAddEvents %A" arg)
+                let cmds =
+                    arg 
+                    |> List.map 
+                        (fun (_, xs, version, name) ->
+                            (this :> IEventStore<string>).AddEvents 0 version name xs |> Result.get
+                        ) 
+                cmds |> Ok
+                
             member this.SetSnapshot  version (id, snapshot) name =
                 log.Debug (sprintf "SetSnapshot %s %A %s" version id name)
                 let newSnapshot =
@@ -503,10 +570,40 @@ module MemoryStorage =
                         (fun (_, xs, version, name, aggregateId) ->
                             (this :> IEventStore<string>).AddAggregateEvents 0 version name aggregateId xs |> Result.get
                         )
+                cmds |> Ok
+                
+            member this.MultiAddAggregateEventsMd md (arg: List< _* List<Json> * Version * Name * AggregateId>) =
+                log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
+                let cmds =
+                    arg
+                    |> List.map
+                        (fun (_, xs, version, name, aggregateId) ->
+                            (this :> IEventStore<string>).AddAggregateEvents 0 version name aggregateId xs |> Result.get
+                        )
                 cmds |> Ok        
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddAggregateEvents _ version name aggregateId events =
+                log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
+                let newEvents =
+                    [
+                        for e in events do
+                            yield {
+                                AggregateId = aggregateId
+                                Id = next_aggregate_event_id version name aggregateId
+                                JsonEvent = e
+                                KafkaOffset = None
+                                KafkaPartition = None
+                                Timestamp = DateTime.UtcNow
+                            }
+                    ]
+                let events' = getExistingAggregateEvents version name aggregateId @ newEvents
+                storeAggregateEvents version name aggregateId events'
+                let ids = newEvents |>> (fun x -> x.Id)
+                ids |> Ok
+                
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
+            member this.AddAggregateEventsMd _ version name aggregateId _ events =
                 log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
