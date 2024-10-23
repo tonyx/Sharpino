@@ -381,16 +381,6 @@ let tests =
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
 
-            // let booking2 = seatBookingService.GetBooking booking2.Id    
-            // Expect.isOk booking2 "should be ok"
-            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            //
-            // let booking3 = seatBookingService.GetBooking booking3.Id
-            // Expect.isOk booking3 "should be ok"    
-            // Expect.equal booking3.OkValue.RowId (Some row.OkValue.Id) "should be equal"    
-            
-            // let booking4 = seatBookingService.GetBooking booking4.Id
-            // Expect.isOk booking4 "should be ok"
 
         testCase "a more generalized saga example where compensation take place - Error" <| fun _ ->
             // preparation
@@ -417,8 +407,6 @@ let tests =
             let addBooking3 = seatBookingService.AddBooking booking3
             Expect.isOk addBooking3 "should be ok"
 
-            // let addBooking4 = seatBookingService.AddBooking booking4
-            // Expect.isOk addBooking4 "should be ok"
 
             // action 
             let assignBookings = 
@@ -439,15 +427,6 @@ let tests =
 
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
-
-            // Expect.isNone booking1.OkValue.RowId "should be none"
-            // Expect.equal booking1.OkValue.RowId None
-
-            // let booking2 = seatBookingService.GetBooking booking2.Id    
-            // Expect.isOk booking2 "should be ok"
-            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            //
-            // let booking3 = seatBooking
 
         testCase "add a row and then new seats to that row - Ok" <| fun _ ->
             memoryStorage.Reset "_01" "_seat"
@@ -645,14 +624,6 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-            // Expect.isNone booking1.OkValue.RowId "should be none"
-            // Expect.equal booking1.OkValue.RowId None
-
-            // let booking2 = seatBookingService.GetBooking booking2.Id    
-            // Expect.isOk booking2 "should be ok"
-            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            //
-            // let booking3 = seatBooking
             
         testCase "a more generalized saga example of compensation 3 - Error" <| fun _ ->
             // preparation
@@ -702,15 +673,6 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-            // Expect.isNone booking1.OkValue.RowId "should be none"
-            // Expect.equal booking1.OkValue.RowId None
-
-            // let booking2 = seatBookingService.GetBooking booking2.Id    
-            // Expect.isOk booking2 "should be ok"
-            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            //
-            // let booking3 = seatBooking
-
         testCase "a more generalized saga example of compensation 4 - Error" <| fun _ ->
             // preparation
             memoryStorage.Reset "_01" "_seat"
@@ -758,15 +720,6 @@ let tests =
 
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
-
-            // Expect.isNone booking1.OkValue.RowId "should be none"
-            // Expect.equal booking1.OkValue.RowId None
-
-            // let booking2 = seatBookingService.GetBooking booking2.Id    
-            // Expect.isOk booking2 "should be ok"
-            // Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-            //
-            // let booking3 = seatBooking
 
         testCase "a more general saga example of compensation 5 - Error" <| fun _ ->
             // preparation
@@ -866,7 +819,6 @@ let tests =
             let booking1 = seatBookingService.GetBooking bookings.[0].Id
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
-
     ]
     |> testSequenced
 
