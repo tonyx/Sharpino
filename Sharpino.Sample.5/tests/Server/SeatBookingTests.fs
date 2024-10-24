@@ -38,7 +38,7 @@ module BookingTests =
             "Server=127.0.0.1;"+
             "Database=es_seat_booking;" +
             "User Id=safe;"+
-            "Password=Z45Elkj;"
+            "Password=safe;"
 
         let retrieveLastAggregateVersionId version name =
             let streamName  = sprintf "aggregate_events%s%s" version name
@@ -60,12 +60,13 @@ module BookingTests =
         // let stadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
 
         let setUp () =
-            pgStorage.Reset "_01" "_seatrow"
-            pgStorage.Reset "_01" "_stadium"
-            pgStorage.ResetAggregateStream "_01" "_seatrow"
-            AggregateCache<SeatsRow, string>.Instance.Clear()
-            StateCache<Stadium>.Instance.Clear()
-            ApplicationInstance.Instance.ResetGuid()
+            ()
+            // pgStorage.Reset "_01" "_seatrow"
+            // pgStorage.Reset "_01" "_stadium"
+            // pgStorage.ResetAggregateStream "_01" "_seatrow"
+            // AggregateCache<SeatsRow, string>.Instance.Clear()
+            // StateCache<Stadium>.Instance.Clear()
+            // ApplicationInstance.Instance.ResetGuid()
 
         let stadiumInstances =
             [
@@ -75,9 +76,8 @@ module BookingTests =
 
         // everything is in progress here:
         testList "seat bookings" [
-            multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
-                printf "first test\n"
-                setUp ()
+            fmultipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+                // setUp ()
 
                 // when
                 let rows = stadiumSystem.GetAllRowReferences ()
@@ -86,7 +86,7 @@ module BookingTests =
                 let result = rows |> Result.get
                 Expect.equal result.Length 0 "should be 0"
 
-            multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            fmultipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 printf "second test\n"
                 setUp()
 
@@ -118,7 +118,7 @@ module BookingTests =
                 printf "third test 700\n"
                 Expect.equal result.Seats.Length 1 "should be 1"
 
-            multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
+            fmultipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
                 printf "is this broken? 100\n"
 
                 setUp()
