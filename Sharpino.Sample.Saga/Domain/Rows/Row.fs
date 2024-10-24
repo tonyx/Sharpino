@@ -85,7 +85,7 @@ with
     static member Deserialize(x: string) =
         jsonPSerializer.Deserialize<Row> x
 
-    static member StorageName = "_seat"
+    static member StorageName = "_row"
     static member Version = "_01"
     static member SnapshotsInterval = 15
 
