@@ -15,15 +15,19 @@ open Sharpino.Sample
 open Newtonsoft.Json
 open System
 open Sharpino.Definitions
+open DotNetEnv
 
 module AppVersions =
     // beware that this is the test db and so we can reset it for testing
     // this should never be done in production
+    Env.Load() |> ignore
+    // set the password=password in .env file 
+    let password = Environment.GetEnvironmentVariable("password"); 
     let connection = 
         "Server=127.0.0.1;"+
         "Database=es_01;" +
         "User Id=safe;"+
-        "Password=safe;"
+        $"Password={password};"
 
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
     let jsonSerSettings = JsonSerializerSettings()

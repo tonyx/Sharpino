@@ -20,7 +20,6 @@ open DotNetEnv;
 [<Tests>]
 let tests =
     Env.Load()
-   // string dbHost = Environment.GetEnvironmentVariable("DB_HOST")
     let password = Environment.GetEnvironmentVariable("password")
     let connection =
         "Server=127.0.0.1;"+
