@@ -38,7 +38,7 @@ module BookingTests =
             "Server=127.0.0.1;"+
             "Database=es_seat_booking;" +
             "User Id=safe;"+
-            "Password=safe;"
+            "Password=XXX;"
 
         let retrieveLastAggregateVersionId version name =
             let streamName  = sprintf "aggregate_events%s%s" version name

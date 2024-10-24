@@ -15,14 +15,18 @@ open Sharpino.Utils
 open Sharpino.ApplicationInstance
 open Sharpino
 open Sharpino.Cache
+open DotNetEnv;
 
 [<Tests>]
 let tests =
+    Env.Load()
+   // string dbHost = Environment.GetEnvironmentVariable("DB_HOST")
+    let password = Environment.GetEnvironmentVariable("password")
     let connection =
         "Server=127.0.0.1;"+
         "Database=es_pub_system;" +
         "User Id=safe;"+
-        "Password=safe;"
+        $"Password={password};"
     let memEventStore: IEventStore<string> = MemoryStorage()
     let pgEventStore: IEventStore<string> = PgEventStore(connection)
     let setUp () =

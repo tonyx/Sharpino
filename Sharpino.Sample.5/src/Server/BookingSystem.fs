@@ -28,7 +28,7 @@ module StorageStadiumBookingSystem =
         "Server=127.0.0.1;"+
         "Database=es_seat_booking;" +
         "User Id=safe;"+
-        "Password=safe;"
+        "Password=XXXXX;"
 
     type StadiumBookingSystem
         (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
