@@ -183,6 +183,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Live example is here: [restaurant management system](https://orderssystem.azurewebsites.net) tech stack: Blazor as Front end, Sharpino as backend, Postgres as event store, Azure as hosting.
 
 - Version 2.7.2: Support metadata field in db (any command has the correspondent commandMd that accepts any string as metadata). Those metadata can be used for debugging purposes. To use them any event table in the db needs a new nullable text field called "md". 
 New db functions are also needed. See the functions like "insert_md{Version}{AggregateStorageName}_events_and_return_id" in the sql scripts in the SqlTemplate dir doing a proper substitution in {Version} and {Format} and {AggregateStorageName}. Similar function is in the ContextTemplate.sql.

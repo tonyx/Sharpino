@@ -12,6 +12,7 @@ open Tonyx.Sharpino.Pub.Ingredient
 open Tonyx.Sharpino.Pub.Supplier
 open System
 open Sharpino.Utils
+open Sharpino.TestUtils
 open Sharpino.ApplicationInstance
 open Sharpino
 open Sharpino.Cache
