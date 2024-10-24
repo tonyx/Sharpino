@@ -25,7 +25,7 @@ with
     
     static member Zero = { Bookings = []; Rows = [] }
   
-    static member StorageName = "_seatBookings"
+    static member StorageName = "_theater"
     static member Version = "_01"
     static member SnapshotsInterval = 15
     static member Deserialize(x: string) =

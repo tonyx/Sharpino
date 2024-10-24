@@ -558,7 +558,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
-        ftestCase "trying to remove more seats than existing ones, three shots - Error" <| fun _ ->
+        testCase "trying to remove more seats than existing ones, three shots - Error" <| fun _ ->
             memoryStorage.Reset "_01" "_seat"
             memoryStorage.ResetAggregateStream "_01" "_seat"
             memoryStorage.Reset "_01" "_booking"

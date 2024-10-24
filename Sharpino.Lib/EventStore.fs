@@ -2,6 +2,9 @@ namespace Sharpino
 open System
 open Sharpino.Definitions
 
+// the "md" version of any function is the one that takes a metadata parameter
+// the md requires an extra text md field in any event and a proper new funcion on the db side
+// like  insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id
 module Storage =
     open Confluent.Kafka
     type StoragePgEvent<'T> =
@@ -42,6 +45,7 @@ module Storage =
             Id: int
             Timestamp: System.DateTime
         }
+        
 
     type KafkaOffset = int64
     type KafkaPartitionId = int
@@ -81,7 +85,6 @@ module Storage =
         
         abstract member SetInitialAggregateStateAndMultiAddAggregateEvents: AggregateId -> Version -> Name -> 'F -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
         
-        // the string is a metadata:
         abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd: AggregateId -> Version -> Name -> 'F -> Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
         
         abstract member SetInitialAggregateStateAndAddAggregateEvents: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
