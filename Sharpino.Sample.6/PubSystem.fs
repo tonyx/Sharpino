@@ -31,7 +31,7 @@ module PubSystem =
         "Server=127.0.0.1;"+
         "Database=es_pub_sharpino;" +
         "User Id=safe;"+
-        "Password=safe;"
+        "Password=XXXXX;"
 
     type PubSystem (storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
             let kitchenStateViewer = getStorageFreshStateViewer<Kitchen, KitchenEvents, string> storage
