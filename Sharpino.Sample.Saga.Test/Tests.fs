@@ -1,6 +1,7 @@
 module Tests
 open System
 open Sharpino
+open Sharpino.PgStorage
 open Sharpino.CommandHandler
 open Sharpino.StateView
 open Sharpino.Commons
@@ -24,8 +25,10 @@ open Sharpino.Sample.Saga.Domain.Booking.Events
 open Expecto
 open Sharpino.MemoryStorage
 open Sharpino.Storage
+open DotNetEnv
 
 let memoryStorage: IEventStore<_> = new MemoryStorage()
+Env.Load() |> ignore
 
 let doNothingBroker: IEventBroker<_> =
     {
@@ -36,9 +39,41 @@ let teatherContextViewer = getStorageFreshStateViewer<Theater, TheaterEvents, st
 let seatsAggregateViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id memoryStorage 
 let bookingsAggregateViewer = fun id -> getAggregateFreshState<Booking, BookingEvents, string> id memoryStorage
 
+// put the password of db user safe in the .env file
+// in the format
+// Password=your_password
+let password = Environment.GetEnvironmentVariable("Password"); 
+
+let connection =
+    "Server=127.0.0.1;"+
+    "Database=sharpino_saga_sample;" +
+    "User Id=safe;"+
+    $"Password={password};"
+
+let setupEventStore =
+    fun () ->
+        let dbEventStore:IEventStore<string> = PgEventStore(connection)
+        dbEventStore.Reset "_01" "_row"
+        dbEventStore.Reset "_01" "_booking"
+        dbEventStore.ResetAggregateStream "_01" "_booking"
+        dbEventStore.Reset "_01" "_theater"
+        dbEventStore.ResetAggregateStream "_01" "_theater"
+
 [<Tests>]
 let tests =
     testList "samples" [
+        ftestCase "fresh seat has zero rows - Ok" <| fun _ ->
+            let dbEventStore:IEventStore<string> = PgEventStore(connection)
+            dbEventStore.Reset "_01" "_row"
+            dbEventStore.Reset "_01" "_booking"
+            dbEventStore.ResetAggregateStream "_01" "_booking"
+            dbEventStore.Reset "_01" "_theater"
+        
+            let seatBookingService = new SeatBookingService(dbEventStore, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let rows = seatBookingService.GetRows()
+            Expect.isOk rows "should be ok"
+            Expect.equal rows.OkValue.Length 0 "should be zero"
+        
         testCase "seat service has zero rows - Ok" <| fun _ ->
             let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let rows = seatBookingService.GetRows()
