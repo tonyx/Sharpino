@@ -13,72 +13,48 @@
 
 Support for Event-sourcing in F#.
 
-## Features
-- Supports in memory and Postgres event store. (EvenstoreDb is not supported anymore)
-- Support publishing events to Apache Kafka Event (unstable. Don't use it)
-- Example application with tests including Kafka subscriber. (unstable at the moment)
-- Contexts represent sets of collections of entities (e.g. a collection of todos, a collection of tags, a collection of categories, etc.) associated with events.
-- Aggregates are the same as contexts with many instances identified by Id (Guid).
-- A specific technique helps refactoring (migration) between different versions of the application.
+## Overview
+- Contexts: event sourced objects with no id, so only one instance is around
+- Aggregates: event sourced objecst with id (Guid).
+- Non-Saga transactions: execute multiple commands involving different aggregates as single db transactions.
+- Sagas-like transactions: execute sequencial multiple commands with undoers (to rollback the transaction in case of failure of any command).
+- Cache: Dictionary based cache of the current state of contexts or aggregates.
+- Gdpr: functions to overwrite snapshots and events in case the users ask to delete their data.
+- SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots in Postgres.
+- DbMate command line tool to setup eventstoredb (Postgres) tables (uses the templates to generate the scripts by substitution).
+- Optimistic lock: commands will remember the event ids of the specific states of the aggregates involved and such event state ids will be checked again before adding any event to the event store.
 
+- Note: I am not using examples on the basis of a fully distributed architecture and therefore I haven't implemented Kafka or any other message broker. However the library is ready to be extended to use actual message brokers (any command can virtually publish any event after storing them is a "send and forget" style).
+
+## Warning: the mini gitbook is outdated.
+Info: - The various SAGA-like functions are "under investigation"(more tests and fixes needed). The "malboxprocessor" could also be removed as it has a little potential advantage but less control (in debug for example).
 
 ## Projects
 __Sharpino.Lib.Core__:
 
-- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (the reverse of a command to be used if the used event store lacks transaction between streams). Definition of _EvolveUnForgivingErrors_ and "normal" _Evolve_. The former raises an error in processing invalid events.  The latter just skip those events. Some other types and functions are defined here. In a "SAFE stack" like project we may "safely" include the Core in a shared project (Fable Remoting style) in the sense that Fable can transpile it to JavaScript.
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator  in case of Saga)
 
 __Sharpino.Lib__:
 
 - [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): Gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
-- [LightCommandHandler.fs](Sharpino.Lib/LightCommandHandler.fs): it is unmaintained. Meant to  gets and stores snapshots, executes commands, produces and stores events using an event store that supports publish/subscribe ( EventStoreDB).
-- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistence of events in Postgres or in-memory respectively.
+- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistence of events in Postgres or in-memory respectively using string encoding (JSON)
+- [PgBinaryEventStore.fs](Sharpino.Lib/PgBinaryEventStore.fs): Manages persistence of events in Postgres using binary encoding (examples are based on Fspickler external lib)
 - [Cache.fs](Sharpino.Lib/Cache.fs). Caches the current state of contexts or aggregates. 
 
+
 __Sharpino.Sample__:
-You need a user called 'safe' with password 'safe' in your Postgres (if you want to use Postgres as Eventstore).
-
-It is an example of a library for managing todos with tags and categories. There are two versions in the sense of two different configurations concerning the distribution of the models (collection of entities) between the contexts. There is a strategy to test the migration between versions (contexts refactoring) that is described in the code (See: [AppVersions.fs](Sharpino.Sample/AppVersions.fs) and [MultiVersionsTests.fs](Sharpino.Sample.Test/MultiVersionsTests.fs) )
-.
-
-One way to write any application is to include the library from nuget and then write your own:
-- aggregates and contexts
-- events and commands
-- api layer.
-- testing
-
-Any example follows the same pattern.
+See the sources for the setup, and particularly for the database setup (username/password)
 
 It could be convenient to write the api layer so that it can refer to any eventstore (Postgres, or  in-memory) and an actual event broker (Kafka) or a neutral ("doNothing") event broker.
 There are some facilities in test to run them in a parametrized way respect to the actual instance of the api layer (with the actual db based eventstore or just the in-memory for example).
 
-Warning: some examples refers to previous version of the library as in the nuget repository.
+Warning: some examples may refer to previous version of the library as in the nuget repository.
 Check the .fsproj to make sure if you want to use them as a blueprint for your experiments/applications aligned with
 the latest version of the library.
  
 
-
--  __contexts__ (e.g. [TodosContext](Sharpino.Sample/Domain/Todos/Context.fs)) controls a partition of the collection of the entities and provides members to handle them. 
-
-- __contexts__ members have corresponding __events__ ([e.g. TagsEvents](Sharpino.Sample/clusters/Tags/Events.fs)) that are Discriminated Unions cases. Event types implement the [Process](Sharpino.Lib/Core.fs) interface. 
-
-- __contexts__ are related to __Commands__ (e.g. [TagCommand](Sharpino.Sample/clusters/Tags/Commands.fs)) that are Discriminated Unions cases that can return lists of events by implementing the [Executable](Sharpino.Lib/Core.fs) interface.
-
-__Commands__ defines also _undoers_ are functions that can undo the commands to reverse action in a multiple-stream operation for storage that doesn't support multiple-stream transactions (see _LightCommandHandler_).
-- A [Storage](Sharpino.Lib/DbStorage.fs) stores and retrieves _events_ and _snapshots_.
-- The [__api layer__ functions](Sharpino.Sample/App.fs) provide business logic involving one or more clusters by accessing their state, and by building one or more commands and sending them to the __CommandHandler__.
-- An example of how to handle multiple versions of the application to help refactoring and migration between different versions: [application versions](Sharpino.Sample/AppVersions.fs). 
-
-- __aggregates__ works as context and I can handle multiple instances of an aggregate identified by Id (Guid). The example is in the sample application 4 (see below).
-
-__Sharpino.Sample.tests__
-- tests for the sample application
-[Sharpino.Lib.fsproj](Sharpino.Lib%2FSharpino.Lib.fsproj)
-__Sharpino.Sample.Kafka__
-- scripts to set up Kafka topics corresponding to the contexts of the sample application.
-
-
 ## How to use it
-- You can run the sample application as a rest service by running the following command from Sharpino.Sample folder:
+- You can run the Sharpino.Sample application as a rest service by running the following command from Sharpino.Sample folder:
 ```bash
 dotnet run
 ```
@@ -99,13 +75,14 @@ dotnet run
 ```
 In the latter case, you get the output from _Expecto_ test runner (in this case the console shows eventual standard output/printf).
 
+This pattern is general for all the samles, even though it can changes (just dig into it to figure it out accurately).
+
 By default, the tests run only the in-memory implementation of the storage. You can set up the Postgres tables and db by using dbmate.
 In the Sharpino.Sample folder you can run the following command to set up the Postgres database:
 ```bash
 dbmate -e up
 ```
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
-If you have Eventstore the standard configuration should work. (I have tested it with Eventstore 20.10.2-alpha on M2 Apple Silicon chip under Docker).
 
 ## SAMPLE 4 
 Sample 4 uses SAFE stack (Fable/Elmish). The aggregates are rows of seats that I can book. A skeleton of Elmish client is provided.
@@ -131,30 +108,10 @@ The following line needs to stay commented out.
 ## Problem 1
 
 I have two rows of seats related to two different streams of events. Each row has 5 seats. I want to book a seat in row 1 and a seat in row 2. I want to do this in a single transaction so that if just one of the claimed seats is already booked then the entire multiple-row transaction fails and no seats are booked at all.
-### Questions:
-1) can you do this in a transactional way?
-   Answer: yes because in-memory and Postgres event-store implementation as single sources of truth are transactional. The runTwoCommands in the Command Handler is transactional.
-2) Can it handle more rows?
-   up to tre. (runThreeCommands in the Command Handler)
-3) Is feasible to scale to thousands of seats/hundreds of rows (even though we know that few rows will be actually involved in a single booking operation)?
-   Not yet.
-3) Is Apache Kafka integration included in this example?
-   No.
-4) Is EventStoreDb integration included in this example?
-   Not yet (it will show the "undo" feature of commands to do rollback commands on multiple streams of events).
 
 ## Problem 2
 There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row.
 This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
-
-### Questions:
-1) can you solve this problem without using locks?
-   Answer: yes. if I set PessimisticLocking to false then parallel command processing is allowed and invalid events can be stored in the eventstore. However they will be skipped by the "evolve" function anyway.
-2) Where are more info about how to test this behavior?
-   Answer: See the testList called hackingEventInStorageTest.
-   It will simply add invalid events and show that the current state is not affected by them.
-3) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
-   Answer: you can't. The user may need to do some refresh or wait a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
 
 ## Sample application 4
@@ -170,11 +127,11 @@ __Faq__:
     - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (the _under_ is returned as a lambda that retrieves the context for applying the undo and returns another lambda that actually can "undo" the command).
+        - The use of the lambda expression is a nice trick for the undoers (compensators for using Saga in multiple commands).
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project. 
-    - note: on my side, when I added Sharpino as a library into a web app, then I had to add the following line to the web app project file to avoid a false error (the error was "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration")
+    - note: if you gets in a setup errors like  "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration" then you may fix by adding this line in the .fsproj file:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
@@ -182,12 +139,76 @@ __Faq__:
 ## Useful info:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
-## help wanted:
-- Rewrite from scratch the Kafka integration making it work as is supposed to (i.e. Kafka "viewers" can be passed to application instances as in the examples)
-- Adapt the examples to the new version of the library (2.0.0)
+## Todo list. Help welcome:
+- Rewrite from scratch the Kafka integration making it work as is supposed to (send and and forget with limited retries or transactional outbox pattern). Implement aggregate state viewer based on processing events via messages with some way to resync data when in trouble.
+- Implementing event store using Postgres event store but using Azure sql instead.
+- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging. 
+- Write more examples (porting classic DDD examples implemented to test other libraries is fine).
+- Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
+- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging.
+
+## Comparison with the style of examples in other event-sourcing libraries
+- [Equinox](https://github.com/jet/equinox)
+
+See these examples to compare:
+- [Counter in Sharpino](https://github.com/tonyx/SharpinoCounter3)
+- [Counter in Equinox](https://github.com/jet/equinox/blob/master/samples/Tutorial/Counter.fsx)
+- [Invoices in Sharpino](https://github.com/tonyx/sharpinoinvoices)
+- [Invoices in Equinox](https://github.com/nordfjord/minimal-equinox/tree/main)
 
 
-## News
+## Acknowledgements
+
+A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
+
+
+## Upcasting techniques.
+
+In this section, I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
+Goal: using upcast techniques to be able to read the old (serialized) version of typeX into a new version of it.
+1. The following premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as the target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/or specific converters).
+2. Now you can make some changes to TypeX that make it different from the old TypeX/TypeX001 (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic immersion" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.
+3. Define the Upcast function/instance member form TypeX001 that actually implements that conversion from an instance of the old typeX to an instance of the new typeX.
+4. Define a "fallback" action in the deserialization related to the new TypeX so that it can, in case of failure because of encountering an old TypeX/TypeX001, apply the deserialization obtaining a typeX001 instance and use its Upcastor to get, finally, the equivalent instance of TypeX.
+
+- Now you can deploy the new version and in case the code tries to read an old TypeX/TypeX001 it must be able to correctly interpret it as the new TypeX by adopting the following steps in deserialization of the existing snapshot:
+- try to read and deserialize it as TypeX
+- if Ok then Ok
+- if it fails try to read it as TypeX001 and then upcast to TypeX
+ 
+5. If it is not expensive, transform any snapshot of old typeX/TypeX001 into the new TypeX in one shot: make a massive upfront aggregate upcast and re-snapshot: retrieve all the existing current state of aggregates of old TypeX/TypeX001 (that will do upcast under the neath) and generate and store snapshots for all of them so that those snapshot will surely respect the format of the new TypeX. After doing it, assume that the fallback action of reading old versions and then upcasting will never be necessary again and that part of the code can be simply deleted from TypeX.
+6. If you decided not to do the previous step 5 or if there is the possibility that you'll need to downgrade the new TypeX again to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error-prone recursive chain of fallback/upcast among older versions. So rather you will prefer to doing the full step 7 to make sure that the upgrade will affect all the snapshots.
+7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
+
+
+
+## News/Updates
+- Live example is here: [restaurant management system](https://orderssystem.azurewebsites.net) tech stack: Blazor as Front end, Sharpino as backend, Postgres as event store, Azure as hosting.
+
+- Version 2.7.2: Support metadata field in db (any command has the correspondent commandMd that accepts any string as metadata). Those metadata can be used for debugging purposes. To use them any event table in the db needs a new nullable text field called "md". 
+New db functions are also needed. See the functions like "insert_md{Version}{AggregateStorageName}_events_and_return_id" in the sql scripts in the SqlTemplate dir doing a proper substitution in {Version} and {Format} and {AggregateStorageName}. Similar function is in the ContextTemplate.sql.
+- Version 2.7.1: Bug fix
+- Version 2.7.0: Fix bug in Saga-ish multi-command and added some tests for it.
+- Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).
+- Version 2.6.7: Optimize snapshotting by using the in-memory cached value to avoid multiple reads of the same aggregate.
+- Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
+- Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
+- Version 2.6.3: Stateview added  ```getFilteredAggregateSnapshotsInATimeInterval```which returns a list of snapshots of a specific type/version of aggregate in a time interval filtered by some criteria no matter if any context contains references to those aggregates, so you can retrieve aggregates even if no context has references to them (for instance "inactive users").  
+- Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
+- Version 2.6.0: Added a function for the GDPR in command handler able to virtuallty delete snapshots and events, i.e. replace any event with an events that returns an empty version of the state and also replace any snapshot with the voided/empty version of that state (and also fill the cache with that empty value).
+- Version 2.5.9: Added the possibility via StateView to retrieve the initial state/initial snapshot of any aggregate to allow retrieving the data that the users claims. So when users unsubscribe to any app then they have the rights to get any data. This is possibile by getting the initial states and any following event. I think it will be ok to give the user a json of the  initial snapshots and any events via an anonymous record and then let the use download that JSON.
+- Version 2.5.8: Added query for aggregate events in a time interval. StateView/Readmodel can use it passing a predicate to filter events (example: Query all the payment events). Aggregate should not keep those list ob objects to avoid unlimited grow.
+- A short pdf: [why do we need upcastors for aggregates and not for events](https://drive.google.com/file/d/1DKx8IXqakc14qjQbrymzwHAJQEbhxZGq/view?usp=share_link) (sorry for typos)
+- Blog post: [Upcasting aggregates in Sharpino](https://medium.com/@tonyx1/upcast-to-read-aggregates-in-an-older-format-in-a-sharpino-based-solution-839b807265f9)
+- Blog post: comparing the example of the "Counter" app in Equnox and in Sharpino https://medium.com/@tonyx1/equinox-vs-sharpino-comparing-the-counter-example-0e2bd6e9bbf2
+- Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
+- Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
+- Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
+- Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
+  (A short example will come but here is an idea, pretending the aggregate types can be two, and not three: A1, A2, A3, A3 needs to merge into An: I cannot run the "indpendent" saga-free version of running 
+ multiple commands (pairs) because I should repeat the id of An many times which is invalid, so I run the saga version that executes the single "merge" i.e. merge A1 into An, then merge A2 into An etc...: if somethings goes wrong I have accuulted the "future undoers" that may rollback the eventually suffessful merges)
+
+- A "porting" of an example from Equinox https://github.com/tonyx/sharpinoinvoices
 - Version 2.5.2. add the runThreeNAggregateCommands (means being able to run simultaneusly n-ples of commands related to three different kind of aggregates)!
 - Kafka status: No update. Use the only database version of the events and the "doNothing" broker for (not) publishing.
 - Version 4.5.0 changed the signature of any command in user application. Commands  and AggregateCommands return also the new computed state and not only the related events. Example:
@@ -197,7 +218,6 @@ Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE 
                     |> Result.map (fun x -> (x, [NameUpdated name]))
 
 ```
-
 Any application needs a little rewrite in the command part (vim macros may be helpful).
 
 In this way the commandhandler takes advantage of it to be able to memoize the state in the cache, so that virtually
@@ -284,10 +304,6 @@ module CartCommands =
  ```
 
 
-
- 
-
-
 - WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
 - Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
 ```json
@@ -317,7 +333,6 @@ Example of line in your .fsproj or .csproj file:
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 ```
-
  
 - Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
 - Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)
@@ -341,13 +356,12 @@ For an example of app that has been upagraded to the newest version of library s
 Note: the current examples provided are still referencing the previous 1.6.6 version. 
 [Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
 
-- added some videos (in Italian) about the library and the sample applications.
+- Old videos (I need to review them because they may contain some errors or outdated info):
+
 https://youtu.be/OQKD5uluFPc
 https://youtu.be/ToZ_I_xRA-g
 https://youtu.be/WtGEQqznPnQ
 https://youtu.be/j2XoLkCt31c
-
-
 
 - added a few new examples (can be used for dojos)
 [pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
@@ -366,9 +380,13 @@ The other option is:
 ```
     "PgSqlJsonFormat":{"Case":"PgJson"}
 ```    
-the tables should be coherent: use PlainText when json fields are of type text and PgJson when they are of type json or jsonb.
-Why bother? In this example I use FsPickler to serialize/deserialize https://github.com/tonyx/shoppingCartWithSharpino
-It won't work with jsonb fields because it needs the same order of fields in the json string whereas json/jsonb fields are stored in a way that doesn't preserve the order of fields.
+Basically you may wan to write json fields into text fields  for various reasons
+(on my side I exprienced that an external library may require further tuning to properly work with jsonb fields in Postgres, so in that case a quick fix is just using text fields).
+Remember that we don't necessarily need Json fields as at the moment we just do serialize/deserialize and not querying on the json fields (at the moment).
+
+
+
+
 
 - version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 

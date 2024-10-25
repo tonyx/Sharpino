@@ -54,11 +54,9 @@ let teatherContextdbViewer = getStorageFreshStateViewer<Theater, TheaterEvents, 
 let seatsAggregatedbViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id dbEventStore 
 let bookingsAggregatedbViewer = fun id -> getAggregateFreshState<Booking, BookingEvents, string> id dbEventStore
 
-
 // put the password of db user safe in the .env file
 // in the format
 // Password=your_password
-
 
 let setupDbEventStore =
     fun () ->
@@ -82,11 +80,12 @@ let setupMemoryStorage =
         StateCache<Theater>.Instance.Clear ()
         AggregateCache<Row, string>.Instance.Clear ()
         AggregateCache<Booking, string>.Instance.Clear
-        ()    
+        ()
 
 let appVersionsEnvs =
     [
         (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
+        // enable postgres db only if you properly handled the postgres db setup
         // (setupDbEventStore, "postgres db", fun () -> SeatBookingService(dbEventStore, doNothingBroker, teatherContextdbViewer, seatsAggregatedbViewer, bookingsAggregatedbViewer))
     ]
 
@@ -101,14 +100,11 @@ let tests =
             Expect.isOk rows "should be ok"
             Expect.equal rows.OkValue.Length 0 "should be zero"
 
-        ptestCase "fresh seat has zero rows - Ok" <| fun _ ->
-            let dbEventStore:IEventStore<string> = PgEventStore(connection)
-            dbEventStore.Reset "_01" "_row"
-            dbEventStore.Reset "_01" "_booking"
-            dbEventStore.ResetAggregateStream "_01" "_booking"
-            dbEventStore.Reset "_01" "_theater"
+        multipleTestCase "fresh seat has zero rows - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
         
-            let seatBookingService = new SeatBookingService(dbEventStore, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let seatBookingService = service ()
+            // let seatBookingService = new SeatBookingService(dbEventStore, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let rows = seatBookingService.GetRows()
             Expect.isOk rows "should be ok"
             Expect.equal rows.OkValue.Length 0 "should be zero"
@@ -349,7 +345,8 @@ let tests =
             Expect.equal row2.OkValue.FreeSeats 9 "should be equal"
 
         // this test is to show wrong results in forcing parallel execution using repeated ids
-        multipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok but the resulting state is not correct - _NOT_ OK" appVersionsEnvs  <| fun (setup, _, service) ->
+        // the presence of the cache will make the result wrong.
+        multipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is correct only because happens that the global result is still valid  - OK" appVersionsEnvs  <| fun (setup, _, service) ->
             setup ()
             // preparation
             let seatBookingService = service () 
@@ -368,7 +365,7 @@ let tests =
 
             let row = seatBookingService.GetRow row.Id
             Expect.isOk row "should be ok"
-            Expect.equal row.OkValue.FreeSeats 9 "should be equal"
+            Expect.equal row.OkValue.FreeSeats 6 "should be equal"
 
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"    
@@ -378,6 +375,44 @@ let tests =
             let booking2 = seatBookingService.GetBooking booking2.Id
             Expect.isOk booking2 "should be ok"
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+
+
+        // About the following test: this result shows the potential inconsistency of using "non-saga" way in specific circumstances. I would like no bookings take place, but they happen anyway
+        // that's because the target object (the row) is the same for both the commands.
+        // Run parallel command (transaction for multiple aggregates-stremas) work only if they are different, otherwise use saga way.
+        // Still, there is still room to fix this by using pre-validation/post-validation instead of saga. However, that's it at the moment. Will produce examples about later.
+
+        pmultipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is not correct because globally the result is not valid  - Error" appVersionsEnvs  <| fun (setup, _, service) ->
+            setup ()
+            // preparation
+            let seatBookingService = service () 
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 6; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            let addBooking1 = seatBookingService.AddBooking booking1
+            let addBooking2 = seatBookingService.AddBooking booking2
+            
+            // action
+            let assignBookings = seatBookingService.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
+
+            // expectation
+            Expect.isOk assignBookings "should be ok"
+
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            
+            // will be wrong here: 
+            Expect.equal row.OkValue.FreeSeats 10 "should be equal"
+            
+            // will be wrong in the followings too: 
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"    
+            Expect.equal booking1.OkValue.RowId None "should be equal"
+
+            let booking2 = seatBookingService.GetBooking booking2.Id
+            Expect.isOk booking2 "should be ok"
+            Expect.equal booking2.OkValue.RowId None "should be equal"
 
         multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct - OK" appVersionsEnvs <| fun (setup, _, service) ->
 
@@ -453,9 +488,6 @@ let tests =
             let addBooking3 = seatBookingService.AddBooking booking3
             Expect.isOk addBooking3 "should be ok"
 
-            // let addBooking4 = seatBookingService.AddBooking booking4
-            // Expect.isOk addBooking4 "should be ok"
-
             // action 
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
@@ -463,7 +495,6 @@ let tests =
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
                         (booking3.Id, row.Id);
-                        // (booking4.Id, row.Id)
                     ]
                 
             Expect.isError assignBookings "should be error"
@@ -477,11 +508,8 @@ let tests =
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
 
-
-        pmultipleTestCase "a more generalized saga example where compensation take place - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "a more generalized saga example where compensation take place - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
-            
-            // preparation
 
             let seatBookingService = service ()
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
@@ -499,7 +527,6 @@ let tests =
             let addBooking3 = seatBookingService.AddBooking booking3
             Expect.isOk addBooking3 "should be ok"
 
-
             // action 
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
@@ -507,7 +534,6 @@ let tests =
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
                         (booking3.Id, row.Id)
-                        // (booking4.Id, row.Id)
                     ]
                 
             Expect.isError assignBookings "should be ok"
@@ -520,13 +546,10 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-        testCase "add a row and then new seats to that row - Ok" <| fun _ ->
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
-            memoryStorage.Reset "_01" "_theater"
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+        multipleTestCase "add a row and then new seats to that row - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            
+            let seatBookingService = service ()
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
@@ -536,13 +559,10 @@ let tests =
             Expect.isOk retrievedRow "should be ok"
             Expect.equal retrievedRow.OkValue.FreeSeats 30 "should be equal"
 
-        ftestCase "add a row and then remove seats from that row - Ok" <| fun _ ->
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
-            memoryStorage.Reset "_01" "_theater"
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+        multipleTestCase "add a row and then remove seats from that row - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+            
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
@@ -552,13 +572,10 @@ let tests =
             Expect.isOk retrievedRow "should be ok"
             Expect.equal retrievedRow.OkValue.FreeSeats 10 "should be equal"
         
-        testCase "add a row, then add a booking, then remove some of the seats that are left free - Ok" <| fun _ ->
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
-            memoryStorage.Reset "_01" "_theater"
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+        multipleTestCase "add a row, then add a booking, then remove some of the seats that are left free - Ok" appVersionsEnvs  <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
@@ -571,10 +588,9 @@ let tests =
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 10 "should be equal"
 
-        pmultipleTestCase "add a row, then add a booking, try to remove more seats that available - Error" appVersionsEnvs  <| fun (setup, _, service) ->
+        multipleTestCase "add a row, then add a booking, try to remove more seats that available - Error" appVersionsEnvs  <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
@@ -608,12 +624,11 @@ let tests =
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 19 "should be equal"
 
-        // focus
         multipleTestCase "remove three seats using saga like multicommand, two different removals, - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
             
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            // let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
@@ -623,11 +638,11 @@ let tests =
             let row = seatBookingService.GetRow row1.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 17 "should be equal"
-        // focus 
+
         multipleTestCase "trying to remove more seats than existing ones, one shot - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+
             let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
@@ -639,11 +654,55 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
-        // focus
+        multipleTestCase "trying to remove more seats than existing ones, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 8; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [4; 5])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
+
+        multipleTestCase "trying to remove more seats than existing ones, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [5; 6])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        multipleTestCase "trying to remove more seats than existing ones, three shots, case 1 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 3; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [1; 2; 1])
+            Expect.isError removeSeats "should be error"
+            //
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 3 "should be equal"
+
         multipleTestCase "trying to remove more seats than existing ones, three shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+
             let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
@@ -658,9 +717,8 @@ let tests =
         multipleTestCase "a more generalized saga example where compensation take place 2 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
-
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
@@ -698,11 +756,10 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-        fmultipleTestCase "a more generalized saga example of compensation 3 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "a more generalized saga example of compensation 3 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
 
-            // let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -741,16 +798,10 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-        testCase "a more generalized saga example of compensation 4 - Error" <| fun _ ->
-            // preparation
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
+        multipleTestCase "a more generalized saga example of compensation 4 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
 
-            memoryStorage.Reset "_01" "_theater"
-
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 21; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 76576; RowId = None}
@@ -789,16 +840,11 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-        testCase "a more general saga example of compensation 5 - Error" <| fun _ ->
+        multipleTestCase "a more general saga example of compensation 5 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             // preparation
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
+            setup()
+            let seatBookingService = service ()
 
-            memoryStorage.Reset "_01" "_theater"
-
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 5; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 16; RowId = None}
@@ -837,16 +883,11 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
-        testCase "a more general saga example of compensation 6 - Error" <| fun _ ->
-            // preparation
-            memoryStorage.Reset "_01" "_seat"
-            memoryStorage.ResetAggregateStream "_01" "_seat"
-            memoryStorage.Reset "_01" "_booking"
-            memoryStorage.ResetAggregateStream "_01" "_booking"
+        multipleTestCase "a more general saga example of compensation 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+    
+            let seatBookingService = service () 
 
-            memoryStorage.Reset "_01" "_theater"
-
-            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
             let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let bookings = 
                 [

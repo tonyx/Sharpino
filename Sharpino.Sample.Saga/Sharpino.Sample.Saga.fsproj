@@ -34,4 +34,10 @@
       <Compile Include="Context\Commands.fs" />
     </ItemGroup>
 
+<!--    -->
+<!--    <ItemGroup>-->
+<!--      <PackageReference Include="Sharpino" Version="2.7.4" />-->
+<!--    </ItemGroup>-->
+
+<!--    -->
 </Project>
