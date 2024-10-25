@@ -3289,6 +3289,7 @@ module CommandHandler =
                                 (id2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
                                 (id3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
                             ]
+                            
                     AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last, aggregateId1)
                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last, aggregateId2)
                     AggregateCache<'A3, 'F>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last, aggregateId3)
@@ -3958,6 +3959,7 @@ module CommandHandler =
                                     | _ -> None 
                                 let undoers = [futureUndo1, futureUndo2, futureUndo3]
                                 let myRes = runThreeAggregateCommandsMd id1 id2 id3 eventStore eventBroker md c1 c2 c3
+                                // let myRes = runThreeAggregateCommands id1 id2 id3 eventStore eventBroker c1 c2 c3
                                 match myRes with
                                 | Ok _ -> (guard, futureUndoers @ undoers)
                                 | Error _ -> (false, futureUndoers)
@@ -4045,19 +4047,20 @@ module CommandHandler =
                                     extractedEventsForE1
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
+                                            // eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
+                                            eventStore.AddAggregateEvents quickFixLastEventId 'A1.Version 'A1.StorageName id  ev)
                                 
                                 let addEventsStreamA2 =
                                     extractedEventsForE2
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A2.Version 'A2.StorageName id md ev)
+                                            eventStore.AddAggregateEvents quickFixLastEventId 'A2.Version 'A2.StorageName id ev)
                                
                                 let addEventsStreamA3 =
                                     extractedEventsForE3
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A3.Version 'A3.StorageName id md ev)
+                                            eventStore.AddAggregateEvents quickFixLastEventId 'A3.Version 'A3.StorageName id  ev)
                              
                                 // todo: recap. for uniformity and precautions may want to preprocess the events before adding them to the eventstore
                                 // put result in the cache and should also

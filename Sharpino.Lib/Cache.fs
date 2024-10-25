@@ -44,9 +44,6 @@ module Cache =
                 ()
 
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId) =
-            // FOCUS disable for test
-            // f ()
-            
             let (b, res) = dic.TryGetValue arg
             if b then
                 res
@@ -54,11 +51,14 @@ module Cache =
                 let res = f()
                 this.TryAddToDictionary(arg, res)
                 res
+                
+            // sometimes you skip cache for test
+            // f ()
         
         member this.Memoize2 (x: Result<'A, string>) (arg: EventId)  =
-            // FOCUS disable for test 
-            // ()
             this.TryAddToDictionary(arg, x)  
+            // sometimes you skip cache for test
+            // ()
                 
         member this.LastEventId() =
             dic.Keys  
@@ -100,6 +100,7 @@ module Cache =
                 ()
         
         member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
+            // sometimes you want to bypass cache for test 
             // f()
             
             match arg with
@@ -115,8 +116,8 @@ module Cache =
                     res
         
         member this.Memoize2 (x: Result<'A, string>) (arg: EventId * AggregateId)  =
-            // FOCUS 
             this.TryAddToDictionary(arg, x)
+            // sometimes you want to bypass cache for test 
             // ()    
                      
         member this.LastEventId() =
