@@ -3418,7 +3418,6 @@ module CommandHandler =
                                 |> List.traverseResultM
                                     (fun (id, lastId, events) ->
                                      let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A11.Version 'A12.StorageName id |> Option.defaultValue 0
-                                     // eventStore.AddAggregateEvents lastId 'A11.Version 'A12.StorageName id events)
                                      eventStore.AddAggregateEvents quickFixLastEventId 'A11.Version 'A12.StorageName id events)
                             
                             let addEventsStreamA2 =
@@ -3426,7 +3425,6 @@ module CommandHandler =
                                 |> List.traverseResultM
                                     (fun (id, lastId, events) ->
                                         let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A12.Version 'A12.StorageName id |> Option.defaultValue 0 
-                                        // eventStore.AddAggregateEvents lastId 'A12.Version 'A12.StorageName id events)
                                         eventStore.AddAggregateEvents quickFixLastEventId 'A12.Version 'A12.StorageName id events)
                           
                             match addEventsStreamA1, addEventsStreamA2 with
@@ -3662,11 +3660,6 @@ module CommandHandler =
             else
                 Error (sprintf "error precondition not satisfied, one of those commands miss undoers %A %A\n" commandA11 commandA12)
    
-    // this one is based on the idea of folding the single triplets of commands accumulating the
-    // undoers and applying the undoers if one triplet of the commands fails.
-    // test of this are in a private application (will add public tests soon)
-    // this is a very experimental function and should be used with caution
-    // note: minor issues are here but will fix them
     let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -3959,7 +3952,6 @@ module CommandHandler =
                                     | _ -> None 
                                 let undoers = [futureUndo1, futureUndo2, futureUndo3]
                                 let myRes = runThreeAggregateCommandsMd id1 id2 id3 eventStore eventBroker md c1 c2 c3
-                                // let myRes = runThreeAggregateCommands id1 id2 id3 eventStore eventBroker c1 c2 c3
                                 match myRes with
                                 | Ok _ -> (guard, futureUndoers @ undoers)
                                 | Error _ -> (false, futureUndoers)
@@ -4047,20 +4039,23 @@ module CommandHandler =
                                     extractedEventsForE1
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName id |> Option.defaultValue 0
-                                            // eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
-                                            eventStore.AddAggregateEvents quickFixLastEventId 'A1.Version 'A1.StorageName id  ev)
+                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
+                                            // eventStore.AddAggregateEvents quickFixLastEventId 'A1.Version 'A1.StorageName id  ev)
+                                    // must use Md here: next release will fix
                                 
                                 let addEventsStreamA2 =
                                     extractedEventsForE2
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEvents quickFixLastEventId 'A2.Version 'A2.StorageName id ev)
+                                            // eventStore.AddAggregateEvents quickFixLastEventId 'A2.Version 'A2.StorageName id ev)
+                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A2.Version 'A2.StorageName id md ev)
                                
                                 let addEventsStreamA3 =
                                     extractedEventsForE3
                                     |> List.traverseResultM (fun (id, evid, ev) ->
                                             let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEvents quickFixLastEventId 'A3.Version 'A3.StorageName id  ev)
+                                            // eventStore.AddAggregateEvents quickFixLastEventId 'A3.Version 'A3.StorageName id ev)
+                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A3.Version 'A3.StorageName id md ev)
                              
                                 // todo: recap. for uniformity and precautions may want to preprocess the events before adding them to the eventstore
                                 // put result in the cache and should also
