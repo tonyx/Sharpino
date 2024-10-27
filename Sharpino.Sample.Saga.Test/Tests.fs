@@ -344,44 +344,6 @@ let tests =
             Expect.equal row1.OkValue.FreeSeats 9 "should be equal"
             Expect.equal row2.OkValue.FreeSeats 9 "should be equal"
 
-        // this test is to show wrong results in forcing parallel execution using repeated ids
-        // the presence of the cache will make the result wrong.
-        multipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is correct only because happens that the global result is still valid  - OK" appVersionsEnvs  <| fun (setup, _, service) ->
-            setup ()
-            // preparation
-            let seatBookingService = service () 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
-            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
-            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-            let addRow = seatBookingService.AddRow row    
-            let addBooking1 = seatBookingService.AddBooking booking1
-            let addBooking2 = seatBookingService.AddBooking booking2
-            
-            // action
-            let assignBookings = seatBookingService.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
-
-            // expectation
-            Expect.isOk assignBookings "should be ok"
-
-            let row = seatBookingService.GetRow row.Id
-            Expect.isOk row "should be ok"
-            Expect.equal row.OkValue.FreeSeats 6 "should be equal"
-
-            let booking1 = seatBookingService.GetBooking booking1.Id
-            Expect.isOk booking1 "should be ok"    
-            Expect.equal booking1.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-
-            // both the bookings are associated to the row which is wrong but it what happens
-            let booking2 = seatBookingService.GetBooking booking2.Id
-            Expect.isOk booking2 "should be ok"
-            Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
-
-
-        // About the following test: this result shows the potential inconsistency of using "non-saga" way in specific circumstances. I would like no bookings take place, but they happen anyway
-        // that's because the target object (the row) is the same for both the commands.
-        // Run parallel command (transaction for multiple aggregates-stremas) work only if they are different, otherwise use saga way.
-        // Still, there is still room to fix this by using pre-validation/post-validation instead of saga. However, that's it at the moment. Will produce examples about later.
-
         pmultipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is not correct because globally the result is not valid  - Error" appVersionsEnvs  <| fun (setup, _, service) ->
             setup ()
             // preparation
@@ -442,6 +404,35 @@ let tests =
             let booking2 = seatBookingService.GetBooking booking2.Id
             Expect.isOk booking2 "should be ok"
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+
+        multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
+
+            // preparation
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            let addBooking1 = seatBookingService.AddBooking booking1
+            let addBooking2 = seatBookingService.AddBooking booking2
+            
+            // action
+            let assignBookings = seatBookingService.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
+
+            // expectation
+            Expect.isOk assignBookings "should be ok"
+
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 6 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"    
+            Expect.equal booking1.OkValue.RowId (Some row.OkValue.Id) "should be equal"
+
+            let booking2 = seatBookingService.GetBooking booking2.Id
+            Expect.isOk booking2 "should be ok"
+            Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
         
         multipleTestCase "do in sequence using saga way a transaction that will exceeds the available seats and so it will rollback - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
@@ -456,6 +447,32 @@ let tests =
 
             // action
             let assignBookings = seatBookingService.AssignBookingUsingSagaWay ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
+
+            // expectation    
+            Expect.isError assignBookings "should be error"
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 10 "should be equal"
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+            Expect.equal booking1.OkValue.RowId None "should be equal"
+            let booking2 = seatBookingService.GetBooking booking2.Id
+            Expect.isOk booking2 "should be ok"    
+            Expect.equal booking2.OkValue.RowId None "should be equal"
+
+        multipleTestCase "do in sequence using prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            // preparation
+            let seatBookingService = service () 
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            let addBooking1 = seatBookingService.AddBooking booking1
+            let addBooking2 = seatBookingService.AddBooking booking2
+
+            // action
+            let assignBookings = seatBookingService.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
 
             // expectation    
             Expect.isError assignBookings "should be error"
@@ -508,6 +525,45 @@ let tests =
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
 
+        multipleTestCase "a more generalized saga example, use prevalidation  - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            service ()
+            // preparation
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id);
+                    ]
+                
+            Expect.isError assignBookings "should be error"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+            Expect.isNone booking1.OkValue.RowId "should be none"
+
         multipleTestCase "a more generalized saga example where compensation take place - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
 
@@ -530,6 +586,44 @@ let tests =
             // action 
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+        multipleTestCase "a more generalized saga example where compensation take place (use 'force' without saga) - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+
+            let seatBookingService = service ()
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -876,6 +970,48 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
+        multipleTestCase "a more generalized example using prevalidation instead of saga - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
         multipleTestCase "a more generalized saga example of compensation 3 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
@@ -918,6 +1054,48 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
+        multipleTestCase "a more generalized example using pre-validation instead of saga 3 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
         multipleTestCase "a more generalized saga example of compensation 4 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             let seatBookingService = service ()
@@ -943,6 +1121,48 @@ let tests =
             // action 
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
+        multipleTestCase "a more generalized example using prevalidation instead of saga 4 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 21; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 76576; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 76765765; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -1003,6 +1223,49 @@ let tests =
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
 
+        multipleTestCase "a more general example using compensation instead of saga 5 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            // preparation
+            setup()
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 5; RowId = None}
+            let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 16; RowId = None}
+            let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
+            let booking4 = { Id = Guid.NewGuid(); ClaimedSeats = 76765765; RowId = None}
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+
+            let addBooking4 = seatBookingService.AddBooking booking4
+            Expect.isOk addBooking4 "should be ok"
+
+            // action 
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
+                    [
+                        (booking1.Id, row.Id);
+                        (booking2.Id, row.Id);
+                        (booking3.Id, row.Id)
+                        (booking4.Id, row.Id)
+                    ]
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking booking1.Id
+            Expect.isOk booking1 "should be ok"
+
         multipleTestCase "a more general saga example of compensation 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
     
@@ -1036,6 +1299,52 @@ let tests =
 
             let assignBookings = 
                 seatBookingService.AssignBookingUsingSagaWay 
+                    (bookings |> List.map (fun b -> (b.Id, row.Id)))
+                
+            Expect.isError assignBookings "should be ok"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+
+            let booking1 = seatBookingService.GetBooking bookings.[0].Id
+            Expect.isOk booking1 "should be ok"
+            Expect.isNone booking1.OkValue.RowId "should be none"
+
+        multipleTestCase "a more general example of using prevalidation instead of saga 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+    
+            let seatBookingService = service () 
+
+            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let bookings = 
+                [
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 8; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                ]
+
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+
+            let addAllBookings =
+                bookings
+                |> List.map (fun b -> seatBookingService.AddBooking b)
+                |> List.map (fun r -> Expect.isOk r "should be ok")
+
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
                     (bookings |> List.map (fun b -> (b.Id, row.Id)))
                 
             Expect.isError assignBookings "should be ok"

@@ -175,8 +175,8 @@ module SeatBooking =
                     runTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
         
-        // deprecated: this will return wrong results if the target seat is repeated
-        // however it can still work by using prevalidation (there are similar cases in this same file)
+        // even though without saga forcing running commands toward the same aggregate id could fail
+        // we can prevent this by using prevalidation 
         member this.ForceAssignBookings  (bookingAndRows: List<Guid * Guid>) =
             result {
                 let rowIds = bookingAndRows |> List.map snd
@@ -188,7 +188,35 @@ module SeatBooking =
                 let! rows =
                     rowIds
                     |> List.traverseResultM (seatsViewer >> Result.map snd)
+               
+                // pre-validation is a pain here, only because I wanted to use forceRunTwoNAggregateCommands with no-saga
+                let uniqueRows =
+                    rows |> List.distinctBy (fun r -> r.Id)
+
+                let rowsPerBookings =
+                    bookingAndRows
+                    |> List.groupBy snd
+                    |> List.map (fun (rowId, bookingAndRows) -> rowId, bookingAndRows |> List.map fst)
+             
+                let claimsPerRows =
+                    rowsPerBookings
+                    |> Map.ofList
+                    
+                let seatsClaimedPerRow =
+                    rowsPerBookings
+                    |> List.map (fun (rowId, bookingIds) -> (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats  , bookingIds |> List.sumBy (fun bookingId -> bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
+                    
+                let! enoughFreeSeats =
+                    seatsClaimedPerRow
+                    |> List.forall (fun (totalSeats, totalClaimedSeats) -> totalSeats >= totalClaimedSeats)
+                    |> Result.ofBool "not enough free seats"
                 
+                // prevalidation finished:
+                // what I have got here (also thanks copilot) is
+                // for each row, considering all the booking, the total number of seats claimed is less than the total number of free seats
+                // only if this fits I can proceed with the forceRunTwoNAggregateCommands
+                    
+                    
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings
                     |> List.map (fun (bookingId, booking) -> RowCommands.Book (bookingId, booking.ClaimedSeats)) 
