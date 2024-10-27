@@ -624,7 +624,7 @@ let tests =
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 19 "should be equal"
 
-        fmultipleTestCase "remove zero seats prevalidation - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "remove zero seats prevalidation - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             service ()
             
@@ -654,7 +654,7 @@ let tests =
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 17 "should be equal"
             
-        fmultipleTestCase "remove three seats using prevalidation, two different removals, - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "remove three seats using prevalidation, two different removals, - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
             
@@ -699,7 +699,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
 
-        fmultipleTestCase "trying to remove more seats than existing ones, prevalidation  - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "trying to remove more seats than existing ones, prevalidation  - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 
@@ -744,7 +744,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
-        fmultipleTestCase "trying to remove more seats than existing ones, prevalidation, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "trying to remove more seats than existing ones, prevalidation, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 
@@ -759,7 +759,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
-        fmultipleTestCase "trying to remove more seats than existing ones, two shots, use prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "trying to remove more seats than existing ones, two shots, use prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 
@@ -789,7 +789,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 3 "should be equal"
 
-        fmultipleTestCase "trying to remove more seats than existing ones, three shots, case 1, (no saga: prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "trying to remove more seats than existing ones, three shots, case 1, (no saga: prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 
@@ -819,7 +819,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
-        fmultipleTestCase "trying to remove more seats than existing ones, three shots (no saga, rather prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "trying to remove more seats than existing ones, three shots (no saga, rather prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 

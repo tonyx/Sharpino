@@ -51,7 +51,7 @@ module SeatBooking =
                 let rowReferences = theater.Rows
                 let! rows =
                     rowReferences
-                    |> List.traverseResultM (seatsViewer >> Result.map (fun (_, row) -> row))
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
                 return rows    
             }
         
@@ -137,7 +137,7 @@ module SeatBooking =
                 let bookingReferences = theater.Bookings
                 let! bookings =
                     bookingReferences
-                    |> List.traverseResultM (bookingsViewer >> Result.map (fun (_, booking) -> booking))
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
                 return bookings    
             }
         member this.AssignBooking bookingId rowId =
@@ -158,10 +158,10 @@ module SeatBooking =
                 
                 let! bookings =
                     bookingIds
-                    |> List.traverseResultM (bookingsViewer >> Result.map (fun (_, booking) -> booking))
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
                 let! rows =
                     rowIds
-                    |> List.traverseResultM (seatsViewer >> Result.map (fun (_, row) -> row))
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
                
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings
@@ -176,6 +176,7 @@ module SeatBooking =
             }
         
         // deprecated: this will return wrong results if the target seat is repeated
+        // however it can still work by using prevalidation (there are similar cases in this same file)
         member this.ForceAssignBookings  (bookingAndRows: List<Guid * Guid>) =
             result {
                 let rowIds = bookingAndRows |> List.map snd
@@ -183,10 +184,10 @@ module SeatBooking =
                 
                 let! bookings =
                     bookingIds
-                    |> List.traverseResultM (bookingsViewer >> Result.map (fun (_, booking) -> booking))
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
                 let! rows =
                     rowIds
-                    |> List.traverseResultM (seatsViewer >> Result.map (fun (_, row) -> row))
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
                 
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings
@@ -207,10 +208,10 @@ module SeatBooking =
                 
                 let! bookings =
                     bookingIds
-                    |> List.traverseResultM (bookingsViewer >> Result.map (fun (_, booking) -> booking))
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
                 let! rows =
                     rowIds
-                    |> List.traverseResultM (seatsViewer >> Result.map (fun (_, row) -> row))
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
                 
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings
@@ -225,6 +226,4 @@ module SeatBooking =
                 return result
             }   
                 
-            
-        member this.Foo() = "bar"
             
