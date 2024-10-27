@@ -949,7 +949,7 @@ module CommandHandler =
                     let! eventIds =
                         eventStore.MultiAddAggregateEvents packParametersForDb
                         
-                    // bypass cache in doing "focerun" commands
+                    // bypass cache in doing "forcerun" commands
                     // for i in 0..(aggregateIds.Length - 1) do
                     //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
                     //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
@@ -1637,7 +1637,6 @@ module CommandHandler =
                         |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
                         |> ignore
                         
-                        
                     return ()
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -1896,9 +1895,9 @@ module CommandHandler =
                 let iteratedExecutionOfCommands =
                     idsWithCommands
                     |> List.fold
-                        (fun acc (id, c) ->
-                            let guard = acc |> fst
-                            let futureUndoers = acc |> snd
+                        (fun (guard, futureUndoers) (id, c) ->
+                            //let guard = acc |> fst
+                            // let futureUndoers = acc |> snd
                             if not guard then (false, futureUndoers) else
                                 let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
                                 let futureUndo =
@@ -1987,9 +1986,9 @@ module CommandHandler =
                 let iteratedExecutionOfCommands =
                     idsWithCommands
                     |> List.fold
-                        (fun acc (id, c) ->
-                            let guard = acc |> fst
-                            let futureUndoers = acc |> snd
+                        (fun (guard, futureUndoers) (id, c) ->
+                            // let guard = acc |> fst
+                            // let futureUndoers = acc |> snd
                             if not guard then (false, futureUndoers) else
                                 let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
                                 let futureUndo =

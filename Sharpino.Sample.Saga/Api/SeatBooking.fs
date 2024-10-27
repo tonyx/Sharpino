@@ -97,6 +97,25 @@ module SeatBooking =
                         runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
                     return result    
                 }
+        member this.RemoveSeatsFromRowPreValidation (rowId, ns: List<int>) =
+            if (ns.Length = 0) then
+                Ok ()
+            else
+                result {
+                    let! (_, row) = seatsViewer rowId
+                    let totalNumberOfRowsToBeRemoved = ns |> List.sum
+                    let totalNumberOfSeats = row.FreeSeats
+                    let! validation =
+                        totalNumberOfRowsToBeRemoved <= totalNumberOfSeats
+                        |> Result.ofBool "total number of seats to be removed is greater than the total number of seats"
+                    let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
+                        = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
+                    let rowIds =
+                        [ for i in 1 .. ns.Length -> rowId ]
+                    let! result =
+                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                    return result    
+                }
         
         member this.GetBooking id =
             result {

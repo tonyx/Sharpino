@@ -624,6 +624,21 @@ let tests =
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 19 "should be equal"
 
+        fmultipleTestCase "remove zero seats prevalidation - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            service ()
+            
+            let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row1.Id, [1])
+            Expect.isOk removeSeats "should be ok"
+
+            let row = seatBookingService.GetRow row1.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 19 "should be equal"
+
         multipleTestCase "remove three seats using saga like multicommand, two different removals, - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let seatBookingService = service ()
@@ -633,6 +648,21 @@ let tests =
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row1.Id, [1; 2])
+            Expect.isOk removeSeats "should be ok"
+
+            let row = seatBookingService.GetRow row1.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 17 "should be equal"
+            
+        fmultipleTestCase "remove three seats using prevalidation, two different removals, - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            
+            // let seatBookingService = new SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer)
+            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row1.Id, [1; 2])
             Expect.isOk removeSeats "should be ok"
 
             let row = seatBookingService.GetRow row1.Id
@@ -669,6 +699,21 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
 
+        fmultipleTestCase "trying to remove more seats than existing ones, prevalidation  - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 8; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row.Id, [4; 5])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
+
         multipleTestCase "trying to remove more seats than existing ones, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
@@ -678,6 +723,51 @@ let tests =
             Expect.isOk addRow "should be ok"
 
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [5; 6])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        multipleTestCase "trying to remove more seats than existing ones with prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row.Id, [5; 6])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        fmultipleTestCase "trying to remove more seats than existing ones, prevalidation, two shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [5; 6])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        fmultipleTestCase "trying to remove more seats than existing ones, two shots, use prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row.Id, [5; 6])
             Expect.isError removeSeats "should be error"
 
             let retrieveRow = seatBookingService.GetRow row.Id
@@ -699,6 +789,21 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 3 "should be equal"
 
+        fmultipleTestCase "trying to remove more seats than existing ones, three shots, case 1, (no saga: prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 3; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row.Id, [1; 2; 1])
+            Expect.isError removeSeats "should be error"
+            //
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 3 "should be equal"
+
         multipleTestCase "trying to remove more seats than existing ones, three shots - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
@@ -708,6 +813,21 @@ let tests =
             Expect.isOk addRow "should be ok"
 
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, [4; 4; 3])
+            Expect.isError removeSeats "should be error"
+
+            let retrieveRow = seatBookingService.GetRow row.Id
+            Expect.isOk retrieveRow "should be ok"
+            Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
+
+        fmultipleTestCase "trying to remove more seats than existing ones, three shots (no saga, rather prevalidation) - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()    
+            let seatBookingService = service ()
+
+            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+
+            let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row.Id, [4; 4; 3])
             Expect.isError removeSeats "should be error"
 
             let retrieveRow = seatBookingService.GetRow row.Id
