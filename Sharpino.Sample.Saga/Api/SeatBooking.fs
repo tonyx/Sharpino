@@ -190,8 +190,6 @@ module SeatBooking =
                     |> List.traverseResultM (seatsViewer >> Result.map snd)
                
                 // pre-validation is a pain here, only because I wanted to use forceRunTwoNAggregateCommands with no-saga
-                let uniqueRows =
-                    rows |> List.distinctBy (fun r -> r.Id)
 
                 let rowsPerBookings =
                     bookingAndRows
@@ -204,7 +202,11 @@ module SeatBooking =
                     
                 let seatsClaimedPerRow =
                     rowsPerBookings
-                    |> List.map (fun (rowId, bookingIds) -> (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats  , bookingIds |> List.sumBy (fun bookingId -> bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
+                    |> List.map
+                           (fun (rowId, bookingIds) ->
+                                (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats  ,
+                                    bookingIds |> List.sumBy (fun bookingId ->
+                                        bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
                     
                 let! enoughFreeSeats =
                     seatsClaimedPerRow
@@ -212,9 +214,7 @@ module SeatBooking =
                     |> Result.ofBool "not enough free seats"
                 
                 // prevalidation finished:
-                // what I have got here (also thanks copilot) is
                 // for each row, considering all the booking, the total number of seats claimed is less than the total number of free seats
-                // only if this fits I can proceed with the forceRunTwoNAggregateCommands
                     
                     
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
