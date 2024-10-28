@@ -35,8 +35,8 @@ module Core =
         events
         |> List.fold
             (fun (acc: Result<'A, string>) (e: 'E) ->
-                acc |> Result.bind (fun acc ->
-                    e.Process acc
+                acc |> Result.bind (fun s ->
+                    e.Process s
                 )
             ) (h |> Ok)
 
@@ -61,6 +61,7 @@ module Core =
             | Ok h' ->
                 evolveSkippingErrors (h' |> Ok) es h'
         | Ok h, [] -> h |> Ok
-
+        
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
         evolveSkippingErrors (h |> Ok) events h 
+        // evolveUNforgivingErrors h events
