@@ -183,7 +183,7 @@ module App =
 
         member this.GetAllTags () =
             result {
-                let! (_, state) = tagsStateViewer () // storage |> getState<TagsCluster, TagEvent>
+                let! (_, state) = tagsStateViewer () 
                 return state.GetTags()
             }
 

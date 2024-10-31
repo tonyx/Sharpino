@@ -27,26 +27,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_tags(event, timestamp)
-    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
     VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_01_tags_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_tags_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_01_tags(event, timestamp, context_state_id)
-    -- VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
-    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -63,26 +44,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_todo(event, timestamp)
-    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
     VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_01_todo_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_todo_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_01_todo(event, timestamp, context_state_id)
-    -- VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
-    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -99,25 +61,7 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_02_categories(event, timestamp)
-    -- VALUES(event_in::text, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
     VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_02_categories_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_02_categories_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_02_categories(event, timestamp, context_state_id)
-    VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
 $$;
@@ -141,23 +85,6 @@ $$;
 
 
 --
--- Name: insert_02_todo_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_02_todo_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_02_todo(event, timestamp, context_state_id)
-    VALUES(event_in::text, (now() at time zone 'utc'), context_state_id) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
-
-
---
 -- Name: insert_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -168,7 +95,6 @@ DECLARE
     inserted_id integer;
 BEGIN
     INSERT INTO events_01_todo(event, timestamp)
-    -- VALUES(event_in, (now() at time zone 'utc')) RETURNING id INTO inserted_id;
     VALUES(event_in, now()) RETURNING id INTO inserted_id;
     return inserted_id;
 END;
@@ -176,121 +102,35 @@ $$;
 
 
 --
--- Name: set_classic_optimistic_lock_01_categories(); Type: PROCEDURE; Schema: public; Owner: -
+-- Name: insert_md_01_tags_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_categories()
+CREATE FUNCTION public.insert_md_01_tags_event_and_return_id(event_in text, md_in text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
+DECLARE
+inserted_id integer;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_categories_context_state_id_unique') THEN
-ALTER TABLE events_01_categories
-    ADD CONSTRAINT context_events_01_categories_context_state_id_unique UNIQUE (context_state_id);
-END IF;
+INSERT INTO events_01_tags(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
 END;
 $$;
 
 
 --
--- Name: set_classic_optimistic_lock_01_tags(); Type: PROCEDURE; Schema: public; Owner: -
+-- Name: insert_md_01_todo_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_tags()
+CREATE FUNCTION public.insert_md_01_todo_event_and_return_id(event_in text, md_in text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
+DECLARE
+inserted_id integer;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_tags_context_state_id_unique') THEN
-ALTER TABLE events_01_tags
-    ADD CONSTRAINT context_events_01_tags_context_state_id_unique UNIQUE (context_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_01_todo(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_01_todo()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_01_todo_context_state_id_unique') THEN
-ALTER TABLE events_01_todo
-    ADD CONSTRAINT context_events_01_todo_context_state_id_unique UNIQUE (context_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: set_classic_optimistic_lock_02_todo(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.set_classic_optimistic_lock_02_todo()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'context_events_02_todo_context_state_id_unique') THEN
-ALTER TABLE events_02_todo
-    ADD CONSTRAINT context_events_02_todo_context_state_id_unique UNIQUE (context_state_id);
-END IF;
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_categories(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_categories()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE events_01_categories
-DROP CONSTRAINT IF EXISTS context_events_01_categories_context_state_id_unique;
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_tags(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_tags()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE events_01_tags
-DROP CONSTRAINT IF EXISTS context_events_01_tags_context_state_id_unique;
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_01_todo(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_01_todo()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-ALTER TABLE events_01_todo
-DROP CONSTRAINT IF EXISTS context_events_01_todo_context_state_id_unique;
-END;
-$$;
-
-
---
--- Name: un_set_classic_optimistic_lock_02_todo(); Type: PROCEDURE; Schema: public; Owner: -
---
-
-CREATE PROCEDURE public.un_set_classic_optimistic_lock_02_todo()
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    ALTER TABLE events_02_todo
-    DROP CONSTRAINT IF EXISTS context_events_02_todo_context_state_id_unique;
+INSERT INTO events_01_todo(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
 END;
 $$;
 
@@ -307,10 +147,8 @@ CREATE TABLE public.events_01_tags (
     id integer NOT NULL,
     event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
-    context_state_id uuid
+    md text,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -336,10 +174,8 @@ CREATE TABLE public.events_01_todo (
     id integer NOT NULL,
     event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
-    context_state_id uuid
+    md text,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -365,10 +201,8 @@ CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
     event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
-    context_state_id uuid
+    md text,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -394,10 +228,8 @@ CREATE TABLE public.events_02_todo (
     id integer NOT NULL,
     event text NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
-    context_state_id uuid
+    md text,
+    published boolean DEFAULT false NOT NULL
 );
 
 
@@ -643,19 +475,8 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20231023131031'),
     ('20231023131113'),
     ('20231029111640'),
-    ('20231029143915'),
     ('20231029144006'),
-    ('20231029144032'),
-    ('20231029144106'),
     ('20231214160437'),
-    ('20231214160632'),
     ('20231214162357'),
-    ('20231214162513'),
-    ('20231216070623'),
-    ('20231216070924'),
-    ('20231216071037'),
-    ('20231216071515'),
     ('20240311163944'),
-    ('20240311164334'),
-    ('20240311164540'),
-    ('20240311164703');
+    ('20240311164334');

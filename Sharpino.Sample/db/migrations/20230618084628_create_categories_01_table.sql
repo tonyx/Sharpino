@@ -3,7 +3,8 @@
 CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
     event text NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    md text
 );
 
 ALTER TABLE public.events_02_categories ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -37,15 +38,6 @@ ALTER TABLE ONLY public.snapshots_02_categories
 
 ALTER TABLE ONLY public.snapshots_02_categories
     ADD CONSTRAINT event_02_categories_fk FOREIGN KEY (event_id) REFERENCES public.events_02_categories(id) MATCH FULL ON DELETE CASCADE;
-
--- for developing and testing is ok to grant ALL on user 'events'
--- however, in production we may prefer to grant only the necessary permissions (write)
-
-GRANT ALL ON TABLE public.events_02_categories TO safe;
-GRANT ALL ON TABLE public.snapshots_02_categories TO safe;
-GRANT ALL ON SEQUENCE public.snapshots_02_categories_id_seq TO safe;
-GRANT ALL ON SEQUENCE public.events_02_categories_id_seq TO safe;
-
 
 -- migrate:down
 
