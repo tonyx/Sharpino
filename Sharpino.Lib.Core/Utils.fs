@@ -16,6 +16,7 @@ module Definitions =
     type AggregateStateId = Guid
     type ContextStateId = Guid
 
+// not needed
 module ApplicationInstance =
     type ApplicationInstance() =
         let mutable ApplicationGuid = Guid.NewGuid()

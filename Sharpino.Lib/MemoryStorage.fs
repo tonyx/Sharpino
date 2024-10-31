@@ -561,6 +561,21 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
+           
+            member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
+                log.Debug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
+                if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_events_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> List.filter (fun x -> aggregateIds |> List.contains x)
+                    |> List.map (fun x -> aggregate_events_dic.[version].[name].[x])
+                    |> List.collect (fun x -> x)
+                    |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                    |>> (fun x -> x.Id, x.AggregateId, x.JsonEvent)
+                    |> Ok
             
             member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId>) =
                 log.Debug (sprintf "MultiAddAggregateEvents %A" arg)

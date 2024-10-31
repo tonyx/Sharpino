@@ -317,6 +317,34 @@ module StateView =
                         |> List.filter predicate
                     return filteredEvents
                 }
+    
+    let inline getFilteredMultipleAggregateEventsInATimeInterval<'A, 'E, 'F            
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (ids: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        =
+            log.Debug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
+            result
+                {
+                    let! allEventsInAtimeInterval = eventStore.GetMultipleAggregateEventsInATimeInterval 'A.Version 'A.StorageName ids start end_
+                    let! deserEvents =
+                        allEventsInAtimeInterval
+                        |>> (fun (_, aggregateId, e) -> (aggregateId, e))
+                        |> List.traverseResultM (fun (id, x) -> 'E.Deserialize x |> Result.map (fun x -> (id, x)))
+                    let aggregatesIdsAndEvents =
+                        deserEvents
+                        |> List.filter (fun (_, y) -> predicate y)
+                    return aggregatesIdsAndEvents    
+                }
+            
                 
     let inline getAllFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>

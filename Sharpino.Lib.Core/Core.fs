@@ -1,21 +1,14 @@
 namespace Sharpino
 open FSharp.Core
-open FSharpPlus
-open FSharpPlus.Data
 open Sharpino.Definitions
-open log4net
-open log4net.Config
 open System
-open Sharpino.Utils
 
 module Core =
-    type AggregateId = Guid
-    
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
-    type AggregateViewer<'A> = Guid -> Result<EventId * 'A,string>
+    type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
     
     type Aggregate<'F> =
-        abstract member Id: Guid // use this one to be able to filter related events from same string
+        abstract member Id: AggregateId // use this one to be able to filter related events from same string
         abstract member Serialize: 'F
     
     type Event<'A> =
@@ -40,7 +33,7 @@ module Core =
                 )
             ) (h |> Ok)
 
-    // [<TailCall>] // fight with .net version 7
+    // [<TailCall>] // fights with .net version 7
     let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
         match acc, events with
         // if the accumulator is an error then skip it, and use the guard instead which was the 

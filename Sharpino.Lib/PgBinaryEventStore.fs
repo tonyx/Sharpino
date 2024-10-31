@@ -987,6 +987,33 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
+           
+            member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
+                let aggregateIdsArray = aggregateIds |> Array.ofList
+                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregateIds", Sql.uuidArray aggregateIdsArray; "dateFrom", Sql.timestamptz dateFrom; "dateTo", Sql.timestamptz dateTo]
+                                |> Sql.execute ( fun read ->
+                                    (
+                                        read.int "id",
+                                        read.uuid "aggregate_id",
+                                        readAsBinary read "event"
+                                    )
+                                )
+                                |> Seq.toList
+                            }, evenStoreTimeout)
+                    |> Ok
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
                       
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
