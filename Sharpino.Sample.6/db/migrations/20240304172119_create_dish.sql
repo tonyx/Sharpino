@@ -5,8 +5,6 @@ CREATE TABLE public.events_01_dish (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean NOT NULL DEFAULT false,
-    kafkaoffset BIGINT,
-    kafkapartition INTEGER,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -31,7 +29,6 @@ CREATE TABLE public.snapshots_01_dish (
     snapshot text NOT NULL,
     event_id integer, -- the initial snapshot has no event_id associated so it can be null
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     "timestamp" timestamp without time zone NOT NULL
 );
 

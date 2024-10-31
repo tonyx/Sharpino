@@ -5,7 +5,8 @@ CREATE TABLE public.events_01_supplier (
                                        aggregate_id uuid NOT NULL,
                                        event text NOT NULL,
                                        published boolean NOT NULL DEFAULT false,
-                                       "timestamp" timestamp without time zone NOT NULL
+                                       "timestamp" timestamp without time zone NOT NULL,
+                                       md text
 );
 
 ALTER TABLE public.events_01_supplier ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -96,6 +97,29 @@ VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
+
+
+CREATE OR REPLACE FUNCTION insert_md_01_supplier_aggregate_event_and_return_id(
+    IN event_in text,
+    IN aggregate_id uuid,
+    IN md text   
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_supplier_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
 
     
 

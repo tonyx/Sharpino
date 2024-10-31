@@ -4,7 +4,8 @@ CREATE TABLE public.events_01_kitchen (
                                           id integer NOT NULL,
                                           event text NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
-                                          "timestamp" timestamp without time zone NOT NULL
+                                          "timestamp" timestamp without time zone NOT NULL,
+                                          md text
 );
 
 ALTER TABLE public.events_01_kitchen ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -55,9 +56,25 @@ BEGIN
     return inserted_id;
 
 END;
-$$
+$$;
 
 
+CREATE OR REPLACE FUNCTION insert_md_01_kitchen_event_and_return_id(
+    IN event_in text, md_in text
+)
+RETURNS int
+       
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_kitchen(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
+
+END;
+$$;
 
 
 -- migrate:down

@@ -5,9 +5,8 @@ CREATE TABLE public.events_01_ingredient (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean NOT NULL DEFAULT false,
-    kafkaoffset BIGINT,
-    kafkapartition INTEGER,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    md text
 );
 
 ALTER TABLE public.events_01_ingredient ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -31,7 +30,6 @@ CREATE TABLE public.snapshots_01_ingredient (
     snapshot text NOT NULL,
     event_id integer, -- the initial snapshot has no event_id associated so it can be null
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -54,7 +52,6 @@ CREATE SEQUENCE public.aggregate_events_01_ingredient_id_seq
 CREATE TABLE public.aggregate_events_01_ingredient (
     id integer DEFAULT nextval('public.aggregate_events_01_ingredient_id_seq') NOT NULL,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     event_id integer
 );
 
@@ -101,6 +98,26 @@ return event_id;
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION insert_md_01_ingredient_aggregate_event_and_return_id(
+    IN event_in text,
+    IN aggregate_id uuid,
+    IN md text   
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_ingredient_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
 
 
 -- migrate:down

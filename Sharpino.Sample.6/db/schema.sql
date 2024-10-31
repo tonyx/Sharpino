@@ -163,6 +163,84 @@ $$;
 
 
 --
+-- Name: insert_md_01_ingredient_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_ingredient_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_ingredient_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_kitchen_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_kitchen_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_kitchen_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_kitchen(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_kitchen_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_kitchen_event_and_return_id(event_in text, md_in text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_kitchen(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
+
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_supplier_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_supplier_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_supplier_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: aggregate_events_01_dish_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -208,7 +286,6 @@ CREATE SEQUENCE public.aggregate_events_01_ingredient_id_seq
 CREATE TABLE public.aggregate_events_01_ingredient (
     id integer DEFAULT nextval('public.aggregate_events_01_ingredient_id_seq'::regclass) NOT NULL,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     event_id integer
 );
 
@@ -245,8 +322,6 @@ CREATE TABLE public.events_01_dish (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -274,9 +349,8 @@ CREATE TABLE public.events_01_ingredient (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    kafkaoffset bigint,
-    kafkapartition integer,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    md text
 );
 
 
@@ -303,6 +377,7 @@ CREATE TABLE public.events_01_kitchen (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
+    md text,
     context_state_id uuid
 );
 
@@ -330,7 +405,8 @@ CREATE TABLE public.events_01_supplier (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    md text
 );
 
 
@@ -378,7 +454,6 @@ CREATE TABLE public.snapshots_01_dish (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     "timestamp" timestamp without time zone NOT NULL
 );
 
@@ -404,7 +479,6 @@ CREATE TABLE public.snapshots_01_ingredient (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    aggregate_state_id uuid,
     "timestamp" timestamp without time zone NOT NULL
 );
 
