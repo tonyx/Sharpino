@@ -59,7 +59,7 @@ let tests =
         ]
         
     testList "samples" [
-        multipleTestCase "initial state no seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "initial state no seats X - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
