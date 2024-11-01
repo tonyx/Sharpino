@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Sharpino.Sample._3</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="Stadium/Stadium.fs" />
+    <Compile Include="Stadium/Events.fs" />
+    <Compile Include="Stadium/Commands.fs" />
+    <Compile Include="Rows/Row.fs" />
+    <Compile Include="Rows/Events.fs" />
+    <Compile Include="Rows/Commands.fs" />
+    <Compile Include="StadiumSystem.fs" />
+    <Content Include="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Sharpino" Version="2.7.5" />
+  </ItemGroup>
+
+</Project>

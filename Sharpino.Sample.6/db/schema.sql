@@ -47,7 +47,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_dish(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -84,7 +84,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_ingredient(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -100,9 +100,9 @@ CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text) RETU
 DECLARE
 inserted_id integer;
 BEGIN
-    INSERT INTO events_01_kitchen(event, timestamp)
-    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
+INSERT INTO events_01_kitchen(event, timestamp)
+VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+return inserted_id;
 
 END;
 $$;
@@ -156,7 +156,44 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_supplier(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_dish_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_dish_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_dish_event_and_return_id(event_in, aggregate_id, md);
+
+INSERT INTO aggregate_events_01_dish(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_dish_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_dish_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_dish(event, aggregate_id, timestamp, md)
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -178,6 +215,23 @@ BEGIN
 INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_ingredient_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_ingredient_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_ingredient(event, aggregate_id, timestamp, md)
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
 END;
 $$;
 
@@ -236,6 +290,23 @@ BEGIN
 INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_supplier_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_supplier_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_supplier(event, aggregate_id, timestamp, md)
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
 END;
 $$;
 
@@ -322,7 +393,8 @@ CREATE TABLE public.events_01_dish (
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    md text
 );
 
 
@@ -697,7 +769,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240304170702'),
     ('20240304171643'),
     ('20240304172119'),
-    ('20240304172910'),
     ('20240309151856'),
-    ('20240309152430'),
-    ('20240311195419');
+    ('20240311195419'),
+    ('20240904172910'),
+    ('20240909152430');

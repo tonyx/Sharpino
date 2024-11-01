@@ -27,12 +27,6 @@ module PubSystem =
             notify = None
             notifyAggregate = None
         }
-    let connection =
-        "Server=127.0.0.1;"+
-        "Database=es_pub_sharpino;" +
-        "User Id=safe;"+
-        "Password=XXXXX;"
-
     type PubSystem (storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
             let kitchenStateViewer = getStorageFreshStateViewer<Kitchen, KitchenEvents, string> storage
             let dishStateViewer = getAggregateStorageFreshStateViewer<Dish, DishEvents, string> storage
@@ -42,39 +36,39 @@ module PubSystem =
             new (storage: IEventStore<string>) =
                 PubSystem(storage, doNothingBroker)
             member this.AddDish (dish: Dish) =
-                ResultCE.result {
+                result {
                     let addDishReference = KitchenCommands.AddDishReference dish.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Dish, string> storage eventBroker dish addDishReference
+                    let! result = runInitAndCommandMd<Kitchen, KitchenEvents, Dish, string> storage eventBroker dish "metadata" addDishReference
                     return result
                 }
             member this.AddIngredient (ingredientId: Guid, name: string) =
-                ResultCE.result {
+                result {
                     let ingredient = Ingredient.Ingredient(ingredientId, name, [], [])
                     let addIngredientReference = KitchenCommands.AddIngredientReference ingredient.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Ingredient, string> storage eventBroker ingredient addIngredientReference
+                    let! result = runInitAndCommandMd<Kitchen, KitchenEvents, Ingredient, string> storage eventBroker ingredient "metadata" addIngredientReference
                     return result
                 }
             member this.AddSupplier (supplier: Supplier) =
-                ResultCE.result {
+                result {
                     let addSupplierReference = KitchenCommands.AddSupplierReference supplier.Id
-                    let! result = runInitAndCommand<Kitchen, KitchenEvents, Supplier, string> storage eventBroker supplier addSupplierReference
+                    let! result = runInitAndCommandMd<Kitchen, KitchenEvents, Supplier, string> storage eventBroker supplier "metadata" addSupplierReference
                     return result
                 }
             member this.GetAllSuppliers ()      =
-                ResultCE.result {
+                result {
                     let! (_, kitchen) = kitchenStateViewer ()
                     let suppliersRefs = kitchen.supplierReferences |>> snd
                     return suppliersRefs
                 }
                 
             member this.GetAllDishReferences () =
-                ResultCE.result {
+                result {
                     let! (_, kitchen) = kitchenStateViewer ()
                     let dishesRefs = kitchen.dishReferences |>> snd
                     return dishesRefs
                 }
             member this.GetAllDishes () =
-                ResultCE.result {
+                result {
                     let! dishesRefs = this.GetAllDishReferences ()
                     let! dishes = 
                         dishesRefs 
@@ -82,36 +76,35 @@ module PubSystem =
                     return dishes
                 }
             member this.GetAllIngredientReferences () =
-                ResultCE.result {
+                result {
                     let! (_, kitchen) = kitchenStateViewer ()
                     let ingredientRefs = kitchen.GetIngredientReferences ()
                     return ingredientRefs
                 }
             member this.GetIngredient (guid: Guid) =
-                ResultCE.result {
+                result {
                     let! (_, ingredient) = ingredientStateViewer guid
                     return ingredient
                 }
             member this.GetAllIngredients () =
-                ResultCE.result {
+                result {
                     let! ingredientRefs = this.GetAllIngredientReferences ()
                     let! ingredients = 
                         ingredientRefs 
                         |> List.traverseResultM ingredientStateViewer
                     return ingredients
                 }
-
             member this.AddTypeToIngredient ( guid: Guid, ingredientType: IngredientType) =
-                ResultCE.result {
+                result {
                     let! ingredient = this.GetIngredient guid
                     let addIngredientType = IngredientCommands.AddIngredientType ingredientType 
-                    let! result = runAggregateCommand<Ingredient, IngredientEvents, string> guid storage eventBroker addIngredientType 
+                    let! result = runAggregateCommandMd<Ingredient, IngredientEvents, string> guid storage eventBroker "metadata" addIngredientType 
                     return result
                 }
             member this.AddMeasureType ( guid: Guid, measureType: MeasureType) =
-                ResultCE.result {
+                result {
                     let! ingredient = this.GetIngredient guid
                     let addMeasureType = IngredientCommands.AddMeasureType measureType
-                    let! result = runAggregateCommand<Ingredient, IngredientEvents, string> guid storage eventBroker addMeasureType 
+                    let! result = runAggregateCommandMd<Ingredient, IngredientEvents, string> guid storage eventBroker "metadata" addMeasureType 
                     return result
                 }     

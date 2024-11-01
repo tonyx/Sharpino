@@ -1,12 +1,12 @@
 -- migrate:up
 
 CREATE TABLE public.events_01_supplier (
-                                       id integer NOT NULL,
-                                       aggregate_id uuid NOT NULL,
-                                       event text NOT NULL,
-                                       published boolean NOT NULL DEFAULT false,
-                                       "timestamp" timestamp without time zone NOT NULL,
-                                       md text
+                                           id integer NOT NULL,
+                                           aggregate_id uuid NOT NULL,
+                                           event text NOT NULL,
+                                           published boolean NOT NULL DEFAULT false,
+                                           "timestamp" timestamp without time zone NOT NULL,
+                                           md text
 );
 
 ALTER TABLE public.events_01_supplier ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -26,11 +26,11 @@ CREATE SEQUENCE public.snapshots_01_supplier_id_seq
     CACHE 1;
 
 CREATE TABLE public.snapshots_01_supplier (
-                                          id integer DEFAULT nextval('public.snapshots_01_supplier_id_seq'::regclass) NOT NULL,
-                                          snapshot text NOT NULL,
-                                          event_id integer, -- the initial snapshot has no event_id associated so it can be null
-                                          aggregate_id uuid NOT NULL,
-                                          "timestamp" timestamp without time zone NOT NULL
+                                              id integer DEFAULT nextval('public.snapshots_01_supplier_id_seq'::regclass) NOT NULL,
+                                              snapshot text NOT NULL,
+                                              event_id integer, -- the initial snapshot has no event_id associated so it can be null
+                                              aggregate_id uuid NOT NULL,
+                                              "timestamp" timestamp without time zone NOT NULL
 );
 
 ALTER TABLE ONLY public.events_01_supplier
@@ -50,9 +50,9 @@ CREATE SEQUENCE public.aggregate_events_01_supplier_id_seq
     CACHE 1;
 
 CREATE TABLE public.aggregate_events_01_supplier (
-                                                 id integer DEFAULT nextval('public.aggregate_events_01_supplier_id_seq') NOT NULL,
-                                                 aggregate_id uuid NOT NULL,
-                                                 event_id integer
+                                                     id integer DEFAULT nextval('public.aggregate_events_01_supplier_id_seq') NOT NULL,
+                                                     aggregate_id uuid NOT NULL,
+                                                     event_id integer
 );
 
 ALTER TABLE ONLY public.aggregate_events_01_supplier
@@ -62,7 +62,7 @@ ALTER TABLE ONLY public.aggregate_events_01_supplier
     ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_supplier (id) MATCH FULL ON DELETE CASCADE;
 
 CREATE OR REPLACE FUNCTION insert_01_supplier_event_and_return_id(
-    IN event_in TEXT,
+    IN event_in text,
     IN aggregate_id uuid
 )
 RETURNS int
@@ -73,13 +73,31 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_supplier(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id, now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION insert_md_01_supplier_event_and_return_id(
+    IN event_in text,
+    IN aggregate_id uuid,
+    IN md text
+)
+RETURNS int
+       
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_supplier(event, aggregate_id, timestamp, md)
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
 
 CREATE OR REPLACE FUNCTION insert_01_supplier_aggregate_event_and_return_id(
-    IN event_in TEXT,
+    IN event_in text,
     IN aggregate_id uuid 
 )
 RETURNS int
@@ -120,8 +138,4 @@ return event_id;
 END;
 $$;
 
-
-    
-
 -- migrate:down
-

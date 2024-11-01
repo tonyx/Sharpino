@@ -87,7 +87,6 @@ module BookingTests =
                 Expect.equal result.Length 0 "should be 0"
 
             fmultipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, _, _) ->
-                printf "second test\n"
                 setUp()
 
                 // when
@@ -96,7 +95,6 @@ module BookingTests =
 
                 // then
                 Expect.isError row "should be error"
-                Expect.isTrue true "true"
 
             multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem,_,_ ) ->
                 setUp()
@@ -283,7 +281,6 @@ module BookingTests =
                 setUp()
 
                 // given
-                // let stadiumSystem = StadiumBookingSystem(pgStorage, doNothingBroker)
 
                 // when
                 let rowId = Guid.NewGuid()
@@ -546,7 +543,6 @@ module BookingTests =
                 Expect.equal retrievedRow2.OkValue.Seats.Length 2 "should be equal"
 
             multipleTestCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" stadiumInstances <| fun (stadiumSystem, _, _) ->
-
 
                 setUp()
 
