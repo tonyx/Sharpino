@@ -24,11 +24,12 @@ CREATE FUNCTION public.insert_01_tags_event_and_return_id(event_in text) RETURNS
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
 BEGIN
-    INSERT INTO events_01_tags(event, timestamp)
-    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
+INSERT INTO events_01_tags(event, timestamp)
+VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+return inserted_id;
+
 END;
 $$;
 
@@ -41,11 +42,12 @@ CREATE FUNCTION public.insert_01_todo_event_and_return_id(event_in text) RETURNS
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
 BEGIN
-    INSERT INTO events_01_todo(event, timestamp)
-    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
+INSERT INTO events_01_todo(event, timestamp)
+VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+return inserted_id;
+
 END;
 $$;
 
@@ -58,11 +60,12 @@ CREATE FUNCTION public.insert_02_categories_event_and_return_id(event_in text) R
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
 BEGIN
-    INSERT INTO events_02_categories(event, timestamp)
-    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
+INSERT INTO events_02_categories(event, timestamp)
+VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+return inserted_id;
+
 END;
 $$;
 
@@ -75,28 +78,12 @@ CREATE FUNCTION public.insert_02_todo_event_and_return_id(event_in text) RETURNS
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
 BEGIN
-    INSERT INTO events_02_todo(event, timestamp)
-    VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
+INSERT INTO events_02_todo(event, timestamp)
+VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+return inserted_id;
 
-
---
--- Name: insert_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_event_and_return_id(event_in text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_01_todo(event, timestamp)
-    VALUES(event_in, now()) RETURNING id INTO inserted_id;
-    return inserted_id;
 END;
 $$;
 
@@ -114,6 +101,7 @@ BEGIN
 INSERT INTO events_01_tags(event, timestamp, md)
 VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
 return inserted_id;
+
 END;
 $$;
 
@@ -131,6 +119,43 @@ BEGIN
 INSERT INTO events_01_todo(event, timestamp, md)
 VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
 return inserted_id;
+
+END;
+$$;
+
+
+--
+-- Name: insert_md_02_categories_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_02_categories_event_and_return_id(event_in text, md_in text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_02_categories(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
+
+END;
+$$;
+
+
+--
+-- Name: insert_md_02_todo_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_02_todo_event_and_return_id(event_in text, md_in text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_02_todo(event, timestamp, md)
+VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+return inserted_id;
+
 END;
 $$;
 
@@ -146,9 +171,9 @@ SET default_table_access_method = heap;
 CREATE TABLE public.events_01_tags (
     id integer NOT NULL,
     event text NOT NULL,
+    published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    published boolean DEFAULT false NOT NULL
+    md text
 );
 
 
@@ -173,9 +198,9 @@ ALTER TABLE public.events_01_tags ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 CREATE TABLE public.events_01_todo (
     id integer NOT NULL,
     event text NOT NULL,
+    published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    published boolean DEFAULT false NOT NULL
+    md text
 );
 
 
@@ -200,9 +225,9 @@ ALTER TABLE public.events_01_todo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 CREATE TABLE public.events_02_categories (
     id integer NOT NULL,
     event text NOT NULL,
+    published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    published boolean DEFAULT false NOT NULL
+    md text
 );
 
 
@@ -227,9 +252,9 @@ ALTER TABLE public.events_02_categories ALTER COLUMN id ADD GENERATED ALWAYS AS 
 CREATE TABLE public.events_02_todo (
     id integer NOT NULL,
     event text NOT NULL,
+    published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    published boolean DEFAULT false NOT NULL
+    md text
 );
 
 
@@ -353,27 +378,19 @@ CREATE TABLE public.snapshots_02_todo (
 
 
 --
--- Name: events_01_todo events_01_todo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events_01_todo
-    ADD CONSTRAINT events_01_todo_pkey PRIMARY KEY (id);
-
-
---
--- Name: events_02_categories events_02_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events_02_categories
-    ADD CONSTRAINT events_02_categories_pkey PRIMARY KEY (id);
-
-
---
 -- Name: events_02_todo events_02_todo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.events_02_todo
     ADD CONSTRAINT events_02_todo_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: events_02_categories events_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events_02_categories
+    ADD CONSTRAINT events_categories_pkey PRIMARY KEY (id);
 
 
 --
@@ -385,27 +402,19 @@ ALTER TABLE ONLY public.events_01_tags
 
 
 --
+-- Name: events_01_todo events_todo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events_01_todo
+    ADD CONSTRAINT events_todo_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
-
-
---
--- Name: snapshots_01_todo snapshots_01_todos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.snapshots_01_todo
-    ADD CONSTRAINT snapshots_01_todos_pkey PRIMARY KEY (id);
-
-
---
--- Name: snapshots_02_categories snapshots_02_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.snapshots_02_categories
-    ADD CONSTRAINT snapshots_02_categories_pkey PRIMARY KEY (id);
 
 
 --
@@ -417,11 +426,27 @@ ALTER TABLE ONLY public.snapshots_02_todo
 
 
 --
+-- Name: snapshots_02_categories snapshots_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_02_categories
+    ADD CONSTRAINT snapshots_categories_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: snapshots_01_tags snapshots_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.snapshots_01_tags
     ADD CONSTRAINT snapshots_tags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: snapshots_01_todo snapshots_todo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_01_todo
+    ADD CONSTRAINT snapshots_todo_pkey PRIMARY KEY (id);
 
 
 --
@@ -469,14 +494,4 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20230618084021'),
     ('20230618084147'),
     ('20230618084416'),
-    ('20230618084628'),
-    ('20231023130328'),
-    ('20231023130943'),
-    ('20231023131031'),
-    ('20231023131113'),
-    ('20231029111640'),
-    ('20231029144006'),
-    ('20231214160437'),
-    ('20231214162357'),
-    ('20240311163944'),
-    ('20240311164334');
+    ('20230618084628');

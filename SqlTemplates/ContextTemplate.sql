@@ -32,10 +32,10 @@ CREATE TABLE public.snapshots{Version}{ContextStorageName} (
 );
 
 ALTER TABLE ONLY public.events{Version}{ContextStorageName}
-    ADD CONSTRAINT events{ContextStorageName}_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT events{Version}{ContextStorageName}_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots{Version}{ContextStorageName}
-    ADD CONSTRAINT snapshots{ContextStorageName}_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT snapshots{Version}{ContextStorageName}_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots{Version}{ContextStorageName}
     ADD CONSTRAINT event{Version}{ContextStorageName}_fk FOREIGN KEY (event_id) REFERENCES public.events{Version}{ContextStorageName}(id) MATCH FULL ON DELETE CASCADE;

@@ -1,3 +1,6 @@
+cd Sharpino.Sample.Test
+dotnet run
+cd ..
 cd Sharpino.Sample.2.Test
 dotnet run
 cd ..

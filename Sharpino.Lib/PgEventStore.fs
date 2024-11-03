@@ -231,7 +231,7 @@ module PgStorage =
             member this.AddEventsMd eventId version name metadata events =
                 logger.Value.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert_md%s_event_and_return_id(@event);" stream_name
+                let command = sprintf "SELECT insert_md%s_event_and_return_id(@event,@md);" stream_name
                 let conn = new NpgsqlConnection(connection)
 
                 conn.Open()

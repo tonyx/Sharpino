@@ -265,51 +265,6 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)
 
-    let inline runCommand<'A, 'E, 'F 
-        when 'A: (static member Zero: 'A)
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (member Serialize: 'F)
-        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
-        and 'A: (static member SnapshotsInterval : int)
-        and 'E :> Event<'A>
-        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
-        and 'E: (member Serialize: 'F) 
-        >
-        (eventStore: IEventStore<'F>) 
-        (eventBroker: IEventBroker<'F>) 
-        (command: Command<'A, 'E>) =
-            logger.Value.LogDebug (sprintf "runCommand %A\n" command)
-            let command = fun ()  ->
-                
-                result {
-                    let! (eventId, state) = getFreshState<'A, 'E, 'F> eventStore
-                    let! (newState, events) =
-                        state
-                        |> command.Execute
-                        
-                    let events' =
-                        events
-                        |>> fun x -> x.Serialize
-                    let! ids =
-                        events' |> eventStore.AddEvents eventId 'A.Version 'A.StorageName
-                    
-                    StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
-                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
-                    
-                    // todo: consider a different policy than "send and forget"
-                    if (eventBroker.notify.IsSome) then
-                        let f =
-                            fun () ->
-                                tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
-                                |> ignore
-                        f |> postToProcessor |> ignore
-                    
-                    return ()
-                }
-                
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
-            MailBoxProcessors.postToTheProcessor processor command
     
     let inline runCommandMd<'A, 'E, 'F 
         when 'A: (static member Zero: 'A)
@@ -357,6 +312,53 @@ module CommandHandler =
                 
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
+            
+    let inline runCommand<'A, 'E, 'F 
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F) 
+        >
+        (eventStore: IEventStore<'F>) 
+        (eventBroker: IEventBroker<'F>) 
+        (command: Command<'A, 'E>) =
+            logger.Value.LogDebug (sprintf "runCommand %A\n" command)
+            // runCommandMd eventStore eventBroker String.Empty command
+           
+            let command = fun ()  ->
+                result {
+                    let! (eventId, state) = getFreshState<'A, 'E, 'F> eventStore
+                    let! (newState, events) =
+                        state
+                        |> command.Execute
+                        
+                    let events' =
+                        events
+                        |>> fun x -> x.Serialize
+                    let! ids =
+                        events' |> eventStore.AddEvents eventId 'A.Version 'A.StorageName
+                    
+                    StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
+                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
+                    
+                    if (eventBroker.notify.IsSome) then
+                        let f =
+                            fun () ->
+                                tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
+                                |> ignore
+                        f |> postToProcessor |> ignore
+                    
+                    return ()
+                }
+                
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
+            
     let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)
         and 'A: (static member StorageName: string)
@@ -1996,8 +1998,6 @@ module CommandHandler =
                     idsWithCommands
                     |> List.fold
                         (fun (guard, futureUndoers) (id, c) ->
-                            //let guard = acc |> fst
-                            // let futureUndoers = acc |> snd
                             if not guard then (false, futureUndoers) else
                                 let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
                                 let futureUndo =
@@ -2087,8 +2087,6 @@ module CommandHandler =
                     idsWithCommands
                     |> List.fold
                         (fun (guard, futureUndoers) (id, c) ->
-                            // let guard = acc |> fst
-                            // let futureUndoers = acc |> snd
                             if not guard then (false, futureUndoers) else
                                 let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
                                 let futureUndo =
@@ -2244,7 +2242,6 @@ module CommandHandler =
                                 let! extractedCompenatorE2Applied =
                                     extractedCompensatorE2
                                     |> List.traverseResultM (fun x -> x())
-
                                  
                                 let extractedEventsForE1 =
                                     let exCompLen = extractedCompensatorE1Applied.Length
