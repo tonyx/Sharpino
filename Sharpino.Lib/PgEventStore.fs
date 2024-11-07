@@ -935,7 +935,6 @@ module PgStorage =
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
             
-            // next release those will use Result to send the error to the caller
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name

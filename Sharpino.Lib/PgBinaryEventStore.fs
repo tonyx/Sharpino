@@ -432,6 +432,7 @@ module PgBinaryStore =
                                                     ]
                                                 ]
                                         ]
+                                    //  needed?
                                     |> Async.AwaitTask
                                     |> Async.RunSynchronously
                                 () |> Ok
