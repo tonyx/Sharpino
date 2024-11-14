@@ -8,7 +8,6 @@ open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino
 open Sharpino.Lib.Core.Commons
-open System.Text.RegularExpressions
 open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
@@ -24,15 +23,16 @@ module Supplier =
         member this.Email = email
         member this.Phone = phone
         member this.ChangePhone(newPhone: string) =
-            let matches = Regex.Matches (newPhone, phonePattern)
-            if matches.Count > 0 then
                Supplier(this.Id, this.Name, this.Email, newPhone) |> Ok
-            else "Phone number must have 10 digits" |> Error
+            // let matches = Regex.Matches (newPhone, phonePattern)
+            // if matches.Count > 0 then
+            //    Supplier(this.Id, this.Name, this.Email, newPhone) |> Ok
+            // else "Phone number must have 10 digits" |> Error
         member this.ChangeEmail(newEmail: string) =
-           let matches = Regex.Matches (newEmail, emailPattern)
-           if matches.Count > 0 then
+           // let matches = Regex.Matches (newEmail, emailPattern)
+           // if matches.Count > 0 then
                Supplier(this.Id, this.Name, newEmail, this.Phone) |> Ok
-           else "Invalid email" |> Error
+           // else "Invalid email" |> Error
         static member Deserialize json =
             serializer.Deserialize<Supplier> json
         static member StorageName =

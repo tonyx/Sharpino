@@ -240,7 +240,7 @@ module SeatBooking =
                     rowsPerBookings
                     |> List.map
                            (fun (rowId, bookingIds) ->
-                                (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats  ,
+                                (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats,
                                     bookingIds |> List.sumBy (fun bookingId ->
                                         bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
                     
@@ -251,7 +251,6 @@ module SeatBooking =
                 
                 // prevalidation finished:
                 // for each row, considering all the booking, the total number of seats claimed is less than the total number of free seats
-                    
                     
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings

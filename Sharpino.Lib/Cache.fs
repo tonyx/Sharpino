@@ -111,15 +111,23 @@ module Cache =
                 if b then
                     res
                 else
+                    this.Clean (arg |> snd)
                     let res = f()
                     this.TryAddToDictionary(arg, res)
                     res
         
         member this.Memoize2 (x: Result<'A, string>) (arg: EventId * AggregateId)  =
+            this.Clean (arg |> snd)
             this.TryAddToDictionary(arg, x)
             // sometimes you want to bypass cache for test 
             // ()    
-                     
+       
+        member this.Clean (aggregateId: AggregateId) =
+            let keys = dic.Keys
+            let keys' = keys |> List.ofSeq |> List.filter (fun (_, aggregateId') -> aggregateId = aggregateId')
+            keys' |> List.iter (fun key -> dic.Remove key |> ignore)
+            ()
+            
         member this.LastEventId() =
             dic.Keys  
             |> List.ofSeq 

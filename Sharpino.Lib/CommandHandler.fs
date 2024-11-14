@@ -786,8 +786,8 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             runAggregateCommandMd<'A, 'E, 'F> aggregateId storage eventBroker Metadata.Empty command
     
-    // many examples show that "forcing" running multiple commands using repeated aggregates ends up in
-    // inconsistent states: Rather use the "saga" if you need to run multiple commands involving the same aggregates
+    // problem of those "force" functions is that the state used to "decide" needs to depend on the actions
+    // of commands that are alreay there if related to the same aggregate (must be feasible, but not yet done)
     let inline forceRunNAggregateCommandsMd<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -843,6 +843,9 @@ module CommandHandler =
                     // for i in 0..(aggregateIds.Length - 1) do
                     //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
                     //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                    
+                    for i in 0..(aggregateIds.Length - 1) do
+                        AggregateCache<'A1, 'F>.Instance.Clean (aggregateIds.[i])
                         
                     let aggregateIdsWithEventIds =
                         List.zip aggregateIds eventIds
@@ -933,8 +936,11 @@ module CommandHandler =
                         eventStore.MultiAddAggregateEventsMd md packParametersForDb
                     
                     for i in 0..(aggregateIds.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
-                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                        AggregateCache<'A1, 'F>.Instance.Clean aggregateIds.[i]
+                     
+                    // for i in 0..(aggregateIds.Length - 1) do
+                    //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+                    //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
                         
                     let aggregateIdsWithEventIds =
                         List.zip aggregateIds eventIds
@@ -1073,7 +1079,8 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         =
             runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateId1 aggregateId2 eventStore eventBroker String.Empty command1 command2
-    
+   
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1104,6 +1111,18 @@ module CommandHandler =
                         let! extractedCompensatorApplied =
                             extractedCompensator
                             |> List.traverseResultM (fun x -> x())
+                        let! currentStatesOfAggregates =
+                            aggregateIds
+                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                        let stateAndEvents =
+                            List.zip (currentStatesOfAggregates |>> snd) extractedCompensatorApplied
+                            
+                        // this precomputation of future states will be ok for the future versions of the cache (without eventid)
+                        // and for making sure that those events succeeds
+                        let! futureStates =
+                            stateAndEvents
+                            |> List.traverseResultM (fun (state, compensator) -> evolveUNforgivingErrors state compensator)
+                                
                         let extractedEvents =
                             let exCompLen = extractedCompensatorApplied.Length
                             List.zip3
@@ -1119,7 +1138,10 @@ module CommandHandler =
                                     eventStore.AddAggregateEventsMd eventId 'A.Version 'A.StorageName id md events
                                 )
                         match addEventsStreamA with
-                        | Ok _ -> return ()
+                        | Ok _ ->
+                            for i in 0..(aggregateIds.Length - 1) do
+                                AggregateCache<'A, 'F>.Instance.Clean aggregateIds.[i]
+                            return ()
                         | Error e -> return! Error e
                     }
                 
@@ -1132,6 +1154,7 @@ module CommandHandler =
                 | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
             Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
             
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregateCommandsUndoers<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1251,14 +1274,22 @@ module CommandHandler =
                     let eventIds1 = eventIds |> List.take aggregateIds1.Length
                     let eventIds2 = eventIds |> List.skip aggregateIds1.Length
                             
+                            // deliberately avoid caching atm
                     // the cache will may return wrong results if we use force run when the target aggregate is the same for some commands
                     // for i in 0..(aggregateIds1.Length - 1) do
                     //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
                     //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
                     
-                    // for i in 0..(aggregateIds2.Length - 1) do
-                    //    AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
-                    //    mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2.[i] |> List.last) |> ignore
+                    // clean 
+                    for i in 0..(aggregateIds1.Length - 1) do
+                        AggregateCache<'A1, 'F>.Instance.Clean aggregateIds1.[i]
+                    
+                    for i in 0..(aggregateIds2.Length - 1) do
+                       AggregateCache<'A2, 'F>.Instance.Clean aggregateIds2.[i]
+                    
+                    // for i in 0..(aggregateIds1.Length - 1) do
+                    //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
+                    //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
                      
                     let aggregateIdsWithEventIds1 =
                         List.zip aggregateIds1 eventIds1
@@ -1317,6 +1348,7 @@ module CommandHandler =
             logger.Value.LogDebug "forceRunTwoNAggregateCommands"
             forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker String.Empty command1 command2
             
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregatesCommandsAndForceTwoMAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1372,7 +1404,7 @@ module CommandHandler =
                                     | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewer)
                                     | _ -> None
                                 let undoers = [futureUndo]
-                                let myRes = runAggregateCommand id eventStore eventBroker c
+                                let myRes = runAggregateCommandMd id eventStore eventBroker md c
                                 match myRes with
                                 | Ok _ -> (guard, futureUndoers @ undoers)
                                 | Error _ -> (false, futureUndoers)
@@ -1387,9 +1419,10 @@ module CommandHandler =
                     match runMWithNoSaga with
                     | Ok _ -> Ok ()
                     | Error e -> 
-                        runSagaNAggregateCommandsUndoers<'A, 'E, 'F> aggregateIds eventStore eventBroker undoers
+                        runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F> aggregateIds eventStore eventBroker md undoers
             else Error "no undoers"
             
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregatesCommandsAndForceTwoMAggregateCommands<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1603,6 +1636,7 @@ module CommandHandler =
             logger.Value.LogDebug "runTwoNAggregateCommands"
             runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker Metadata.Empty command1 command2
     
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregateCommandsMd<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1691,6 +1725,7 @@ module CommandHandler =
                     Error (sprintf "failed the precondition of applicability of the runSagaNAggregateCommands. All of these must be true: commandHasUndoers %A" commandHasUndoers)
                     
                     
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaNAggregateCommands<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1707,6 +1742,7 @@ module CommandHandler =
         (commands: List<AggregateCommand<'A, 'E>>)
         = runSagaNAggregateCommandsMd<'A, 'E, 'F> aggregateIds eventStore eventBroker Metadata.Empty commands
                
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -1852,6 +1888,7 @@ module CommandHandler =
                 else      
                     Error (sprintf "failed the precondition of applicability of the runSagaTwoNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers lengthMustBeTheSame)
     
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline runSagaTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -1880,6 +1917,7 @@ module CommandHandler =
             logger.Value.LogDebug "runSagaTwoNAggregateCommands"
             runSagaTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker Metadata.Empty commands1 commands2
     
+    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
     let inline forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>

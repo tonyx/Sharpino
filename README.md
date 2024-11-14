@@ -183,6 +183,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 3.0.0: some cache improvements, supporting net9.0 and net8.0 (ditched net7.0)
 - Version 2.7.7: The md field is mandatory for any event table: Any run(Aggregate)Commands are redirecting to the equivalent 'run(Aggregate)CommandsMd' that accepts metadata as a string.
 - Version 2.7.5: Can view history of events related to a set of aggregates in a time interval (StateView.getFilteredMultipleAggregateEventsInATimeInterval)
 - Version 2.7.4: A (quick)fix allows adding compensating events in pgEventstore in saga-ish that were rejected because of strict eventId control 

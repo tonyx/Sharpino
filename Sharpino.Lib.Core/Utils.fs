@@ -34,12 +34,14 @@ module Utils =
     serSettings.TypeNameHandling <- TypeNameHandling.Objects
     serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    [<Obsolete("ISerializer is deprecated, please use Pickle based Serialization in the Sharpino.lib instead")>]     
+    // can't stand the warning. Just use pickler one
+    // [<Obsolete("ISerializer is deprecated, please use Pickle based Serialization in the Sharpino.lib instead")>]     
     type ISerializer =
         abstract member Deserialize<'A> : Json -> Result<'A, string>
         abstract member Serialize<'A> : 'A -> Json
         
-    [<Obsolete("Newtonsoft serialization is deprecated, please use Pickle based Serialization instead.")>]     
+    // can't stand the warning    
+    // [<Obsolete("Newtonsoft serialization is deprecated, please use Pickle based Serialization instead.")>]     
     type JsonSerializer (serSettings: JsonSerializerSettings) =
         interface ISerializer with
             member this.Deserialize<'A> (json: string): Result<'A, string> =

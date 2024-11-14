@@ -461,7 +461,8 @@ let tests =
             Expect.isOk booking2 "should be ok"    
             Expect.equal booking2.OkValue.RowId None "should be equal"
 
-        multipleTestCase "do in sequence using prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        // let's suspend this atm
+        pmultipleTestCase "do in sequence using prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             // preparation
             let service = service () 

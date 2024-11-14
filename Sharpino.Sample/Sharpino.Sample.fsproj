@@ -35,7 +35,7 @@
    
     <!-- include to test from the nuget repository -->
     
-    <PackageReference Update="FSharp.Core" Version="8.*" />
+    <PackageReference Update="FSharp.Core" Version="9.*" />
     
   </ItemGroup>
 

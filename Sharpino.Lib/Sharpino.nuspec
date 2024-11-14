@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>2.7.7</version>
+    <version>3.0.0</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -11,6 +11,37 @@
     <license type="expression">MIT</license>
     <readme>README.md</readme>
     <dependencies>
+      <group targetFramework="net9.0">
+        <dependency id="Confluent.Kafka" version="2.6.0" />
+        <dependency id="Expecto" version="10.2.1" />
+        <dependency id="Expecto.FsCheck" version="10.2.1" />
+        <dependency id="FsCheck" version="2.16.6" />
+        <dependency id="FsToolkit.ErrorHandling" version="4.18.0" />
+        <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
+        <dependency id="FsPickler" version="5.3.2" />
+        <dependency id="FsPickler.Json" version="5.3.2" />
+        <dependency id="Log4net" version="3.0.3" />
+        <dependency id="Microsoft.Extensions.Configuration" version="9.0.0" />
+        <dependency id="Microsoft.Extensions.Configuration.Binder" version="9.0.0" />
+        <dependency id="Microsoft.Extensions.Configuration.Json" version="9.0.0" />
+        <dependency id="Microsoft.Extensions.Hosting" version="9.0.0" />
+        <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="9.0.0" />
+        <dependency id="Microsoft.Extensions.Logging" version="9.0.0" />
+        <dependency id="Sharpino.Core" version="2.1.6" />
+
+        <dependency id="System.Data.Common" version="4.3.0" />
+        <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
+        <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
+
+        <dependency id="Farmer" version="1.9.5" />
+        <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
+        <dependency id="FSharp.Data" version="6.4.0" />
+        <dependency id="FSharpPlus" version="1.6.1" />
+        <dependency id="Newtonsoft.Json" version="13.0.3" />
+        <dependency id="Npgsql" version="8.0.5" />
+        <dependency id="Npgsql.FSharp" version="5.7.0" />
+        <dependency id="System.collections" version="4.3.0" />
+      </group>
       <group targetFramework="net8.0">
         <dependency id="Confluent.Kafka" version="2.6.0" />
         <dependency id="Expecto" version="10.2.1" />
@@ -27,47 +58,13 @@
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
-        <dependency id="Sharpino.Core" version="2.1.5" />
+        <dependency id="Sharpino.Core" version="2.1.6" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.9.2" />
-        <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
-        <dependency id="FSharp.Data" version="6.4.0" />
-        <dependency id="FSharpPlus" version="1.6.1" />
-        <dependency id="Newtonsoft.Json" version="13.0.3" />
-        <dependency id="Npgsql" version="8.0.5" />
-        <dependency id="Npgsql.FSharp" version="5.7.0" />
-        <dependency id="System.collections" version="4.3.0" />
-      </group>
-
-      <group targetFramework="net7.0">
-        <dependency id="Confluent.Kafka" version="2.6.0" />
-        <dependency id="Expecto" version="10.2.1" />
-        <dependency id="Expecto.FsCheck" version="10.2.1" />
-        <dependency id="FsCheck" version="2.16.6" />
-        <dependency id="FsToolkit.ErrorHandling" version="4.18.0" />
-        <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
-        <dependency id="FsPickler" version="5.3.2" />
-        <dependency id="FsPickler.Json" version="5.3.2" />
-        <dependency id="Log4net" version="3.0.2" />
-        <dependency id="Microsoft.Extensions.Configuration" version="8.0.0" />
-        
-        <dependency id="Microsoft.Extensions.Configuration.Binder" version="8.0.2" />
-        <dependency id="Microsoft.Extensions.Configuration.Json" version="8.0.1" />
-        <dependency id="Microsoft.Extensions.Hosting" version="8.0.1" />
-        <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.1" />
-        <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
-        
-        <dependency id="Sharpino.Core" version="2.1.5" />
-        
-        <dependency id="System.Data.Common" version="4.3.0" />
-        <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
-        <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
-
-        <dependency id="Farmer" version="1.9.2" />
+        <dependency id="Farmer" version="1.9.5" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />
