@@ -103,10 +103,11 @@ module Cache =
             // sometimes you want to bypass cache for test 
             // f()
             
-            match arg with
-            | 0, _ ->
-                f()
-            | _ ->
+            // why  I decided to not cache the initial value?
+            // match arg with
+            // | 0, _ ->
+            //     f()
+            // | _ ->
                 let (b, res) = dic.TryGetValue arg
                 if b then
                     res
