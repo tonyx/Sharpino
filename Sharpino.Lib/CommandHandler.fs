@@ -293,6 +293,8 @@ module CommandHandler =
                     let! ids =
                         events' |> eventStore.AddEventsMd eventId 'A.Version 'A.StorageName md
                     
+                    StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
+                   
                     StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
                     
@@ -303,7 +305,6 @@ module CommandHandler =
                                 tryPublish eventBroker 'A.Version 'A.StorageName (List.zip ids events')
                                 |> ignore
                         f |> postToProcessor |> ignore
-                    
                     return ()
                 }
                 
@@ -362,6 +363,7 @@ module CommandHandler =
                     let! ids =
                         events' |> storage.SetInitialAggregateStateAndAddEventsMd eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName md
                     
+                    StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
                     StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
                     
@@ -2039,7 +2041,6 @@ module CommandHandler =
                         statesAndEvents3
                         |>> fun (state, _) -> state
 
-                    // don't cache        
                     let packParametersForDb1 =
                         List.zip3 eventIds1 serializedEvents1 aggregateIds1
                         |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
@@ -2068,6 +2069,19 @@ module CommandHandler =
                     // for i in 0..(aggregateIds3.Length - 1) do
                     //     AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((eventIds3.[i] |> List.last, aggregateIds3.[i]))
                     //     mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (eventIds3.[i] |> List.last) |> ignore
+                   
+                    for id in aggregateIds1 do
+                        AggregateCache<'A1, 'F>.Instance.Clean id
+                    for id in aggregateIds2 do
+                        AggregateCache<'A2, 'F>.Instance.Clean id
+                    for id in aggregateIds3 do
+                        AggregateCache<'A3, 'F>.Instance.Clean id    
+                        
+                    // for i in 0..(aggregateIds1.Length - 1) do
+                    //     AggregateCache<'A1, 'F>.Instance.Clean i
+                    // for i in 0..(aggregateIds2.Length - 1) do
+                    //     AggregateCache<'A2, 'F>.Instance.Clean i
+                        
 
                     let aggregateIdsWithEventIds1 =
                         List.zip aggregateIds1 eventIds1
@@ -3037,6 +3051,9 @@ module CommandHandler =
                                 (eventId1, events1', 'A1.Version, 'A1.StorageName)
                                 (eventId2, events2', 'A2.Version, 'A2.StorageName)
                             ]
+                    StateCache2<'A1>.Instance.Memoize2 newState1 (idLists.[0] |> List.last)
+                    StateCache2<'A2>.Instance.Memoize2 newState2 (idLists.[1] |> List.last)
+                    
                     StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
                     StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore newState1 (idLists.[0] |> List.last)
@@ -3157,6 +3174,11 @@ module CommandHandler =
                                 (eventId2, events2', 'A2.Version, 'A2.StorageName)
                                 (eventId3, events3', 'A3.Version, 'A3.StorageName)
                             ]
+                            
+                    StateCache2<'A1>.Instance.Memoize2 newState1 (idLists.[0] |> List.last)
+                    StateCache2<'A2>.Instance.Memoize2 newState2 (idLists.[1] |> List.last)
+                    StateCache2<'A3>.Instance.Memoize2 newState3 (idLists.[2] |> List.last)
+                            
                     StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
                     StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
                     StateCache<'A3>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last)

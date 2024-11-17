@@ -21,6 +21,7 @@ module Cache =
             log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
             Conf.defaultConf
 
+    
     type StateCache<'A > private () =
         let dic = Generic.Dictionary<EventId, Result<'A, string>>()
         let queue = Generic.Queue<EventId>()
@@ -108,14 +109,14 @@ module Cache =
             // | 0, _ ->
             //     f()
             // | _ ->
-                let (b, res) = dic.TryGetValue arg
-                if b then
-                    res
-                else
-                    this.Clean (arg |> snd)
-                    let res = f()
-                    this.TryAddToDictionary(arg, res)
-                    res
+            let (b, res) = dic.TryGetValue arg
+            if b then
+                res
+            else
+                this.Clean (arg |> snd)
+                let res = f()
+                this.TryAddToDictionary(arg, res)
+                res
         
         member this.Memoize2 (x: Result<'A, string>) (arg: EventId * AggregateId)  =
             this.Clean (arg |> snd)
@@ -154,3 +155,34 @@ module Cache =
         member this.Clear() =
             dic.Clear()
             queue.Clear()
+    type StateCache2<'A> private () =
+        let mutable cachedValue: 'A option = None 
+        static let instance = StateCache2<'A>()
+        static member Instance = instance
+           
+        [<MethodImpl(MethodImplOptions.Synchronized)>]
+        member this.TryCache (res: 'A) =
+            cachedValue <- Some res
+               
+        member this.GetState() =
+            match cachedValue with
+            | Some res -> Ok res
+            | None -> Error "state not found"
+   
+        member this.Memoize (f: unit -> Result<'A, string>)  (eventId: EventId)=
+            match cachedValue with
+            | Some res -> Ok res
+            | _ ->
+                let res = f()
+                match res with
+                | Ok result ->
+                    let _  = this.TryCache result
+                    Ok result
+                | Error e ->
+                    Error (e.ToString())
+
+        member this.Memoize2 (x: 'A) (eventId: EventId) =
+            this.TryCache x
+             
+        member this.Invalidate() =
+            cachedValue <- None         

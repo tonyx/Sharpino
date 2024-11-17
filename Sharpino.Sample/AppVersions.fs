@@ -52,15 +52,19 @@ module AppVersions =
     let resetDb (db: IEventStore<string>) =
         db.Reset TodosContext.Version TodosContext.StorageName
         StateCache<TodosContext>.Instance.Clear()
+        StateCache2<TodosContext>.Instance.Invalidate()
 
         db.Reset TodosContextUpgraded.Version TodosContextUpgraded.StorageName 
         StateCache<TodosContext.TodosContextUpgraded>.Instance.Clear()
+        StateCache2<TodosContext.TodosContextUpgraded>.Instance.Invalidate()
 
         db.Reset TagsContext.Version TagsContext.StorageName
         StateCache<TagsContext>.Instance.Clear()
+        StateCache2<TagsContext>.Instance.Invalidate()
 
         db.Reset CategoriesContext.Version CategoriesContext.StorageName
         StateCache<CategoriesContext>.Instance.Clear()
+        StateCache2<CategoriesContext>.Instance.Invalidate()
 
     type IApplication =
         {
@@ -86,34 +90,34 @@ module AppVersions =
     [<CurrentVersion>]
     let currentPostgresApp =
         {
-            _notify =           currentPgApp._eventBroker.notify
-            _migrator  =        currentPgApp.Migrate |> Some
+            _notify =            currentPgApp._eventBroker.notify
+            _migrator  =         currentPgApp.Migrate |> Some
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
-            _reset =            fun () -> 
-                                    resetDb pgStorage
-                                    resetAppId()
-            _addEvents =        fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
-                                    let deser = e
-                                    (pgStorage :> IEventStore<string>).AddEvents eventId vers name deser |> ignore
-            _pingTodo =         currentPgApp.PingTodo
-            _pingCategories =   currentPgApp.PingCategory
-            _pingTags =         currentPgApp.PingTag
-            getAllTodos =       currentPgApp.GetAllTodos
-            addTodo =           currentPgApp.AddTodo
-            add2Todos =         currentPgApp.Add2Todos
-            removeTodo =        currentPgApp.RemoveTodo
-            getAllCategories =  currentPgApp.GetAllCategories
-            addCategory =       currentPgApp.AddCategory 
-            removeCategory =    currentPgApp.RemoveCategory
-            addTag =            currentPgApp.AddTag 
-            removeTag =         currentPgApp.RemoveTag
-            getAllTags =        currentPgApp.GetAllTags
+            _reset =             fun () -> 
+                                     resetDb pgStorage
+                                     resetAppId()
+            _addEvents =         fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
+                                      let deser = e
+                                      (pgStorage :> IEventStore<string>).AddEvents eventId vers name deser |> ignore
+            _pingTodo =           currentPgApp.PingTodo
+            _pingCategories =     currentPgApp.PingCategory
+            _pingTags =           currentPgApp.PingTag
+            getAllTodos =         currentPgApp.GetAllTodos
+            addTodo =             currentPgApp.AddTodo
+            add2Todos =           currentPgApp.Add2Todos
+            removeTodo =          currentPgApp.RemoveTodo
+            getAllCategories =    currentPgApp.GetAllCategories
+            addCategory =         currentPgApp.AddCategory 
+            removeCategory =      currentPgApp.RemoveCategory
+            addTag =              currentPgApp.AddTag 
+            removeTag =           currentPgApp.RemoveTag
+            getAllTags =          currentPgApp.GetAllTags
         }
 
     [<UpgradedVersion>]
     let upgradedPostgresApp =
         {
-            _notify =           upgradedPgApp._eventBroker.notify
+            _notify =             upgradedPgApp._eventBroker.notify
             _migrator  =        None
             _reset =            fun () -> 
                                     resetDb pgStorage

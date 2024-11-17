@@ -32,6 +32,7 @@ let tests =
     let setUp () =
         AggregateCache<Dish.Dish, string>.Instance.Clear()
         StateCache<Kitchen>.Instance.Clear()
+        StateCache2<Kitchen>.Instance.Invalidate()
         memEventStore.Reset Kitchen.Version Kitchen.StorageName
         memEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
         memEventStore.ResetAggregateStream Dish.Version Dish.StorageName

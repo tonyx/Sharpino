@@ -24,6 +24,8 @@ let hackingEventInStorageTest =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
@@ -39,6 +41,10 @@ let hackingEventInStorageTest =
             
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
@@ -47,10 +53,14 @@ let hackingEventInStorageTest =
             
             let bookingEvent = Row1Events.SeatsBooked invalidBookingViolatesInvariant
             let serializedEvent = bookingEvent.Serialize
+            
+// this shows that after adding events directly to the eventsrotre, justified for testing, then you need to reinvalidate the cache to force
+// reading those events (end user application don't do that stuff as they needs only command handler)
             (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent] |> ignore
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
-
 
         // this example simulates when one event that is not supposed to be added is added anyway because is processed
         // in parallel 
@@ -58,6 +68,9 @@ let hackingEventInStorageTest =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
@@ -69,6 +82,9 @@ let hackingEventInStorageTest =
             let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
             (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2] |> ignore
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 8 "should be equal"
 
@@ -76,6 +92,9 @@ let hackingEventInStorageTest =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
@@ -87,6 +106,8 @@ let hackingEventInStorageTest =
             let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
             (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName  [booking1; booking2] |> ignore
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
 
@@ -94,6 +115,9 @@ let hackingEventInStorageTest =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 10 "should be equal"
@@ -105,9 +129,11 @@ let hackingEventInStorageTest =
             let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize
             let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize
             (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3] |> ignore
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 7 "should be equal"
-            
     ]
     |> testSequenced
     
@@ -170,6 +196,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
 
             let booking = { id = 1; seats = [3;7] }
@@ -189,6 +218,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let booking = { id = 1; seats = [1;2;3;4;5] }
@@ -200,6 +231,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let booking1 = { id = 1; seats = [1;2;3;4;5] }
@@ -213,6 +246,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking2 = { id = 2; seats = [6;7;8;9;10] }
             let booked = app.BookSeats booking2 
@@ -225,6 +261,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking2 = { id = 2; seats = [6] }
             let booked = app.BookSeats booking2 
@@ -236,6 +275,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking = { id = 2; seats = [1] }
             let booked = app.BookSeats booking 
@@ -247,6 +289,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking = { id = 2; seats = [6;7] }
             let booked = app.BookSeats booking 
@@ -259,6 +304,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking = { id = 1; seats = [6] }
             let booked = app.BookSeats booking 
@@ -271,6 +319,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
             let booking = { id = 1; seats = [6] }
             let booked = app.BookSeats booking 
@@ -283,6 +333,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
             let booking  = { id = 3; seats = [6;7;8;9;10] }
             let booked = app.BookSeats booking
@@ -292,6 +344,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -301,6 +355,9 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
+
             let app = App(storage)
             let booking  = { id = 3; seats = [6;7;9;10] }
             let booked = app.BookSeats booking
@@ -312,6 +369,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let row1FreeSeats = app.GetAllAvailableSeats() |> Result.get
@@ -331,6 +390,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let booking1 = { id = 1; seats = [1;2;3;4;5] }
@@ -349,6 +410,8 @@ let apiTests =
             let storage = MemoryStorage()
             StateCache<Row1>.Instance.Clear()
             StateCache<Row2Context.Row2>.Instance.Clear()
+            StateCache2<Row1>.Instance.Invalidate()
+            StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
             let app = App(storage)
             let booking1 = { id = 1; seats = [1;2;3;4;5] }

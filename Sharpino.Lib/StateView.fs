@@ -97,7 +97,8 @@ module StateView =
                             else
                                 if lastCacheEventId >= snapshotEventId then
                                     let! state = 
-                                        Cache.StateCache<'A>.Instance.GestState lastCacheEventId
+                                        // Cache.StateCache<'A>.Instance.GestState lastCacheEventId
+                                        Cache.StateCache2<'A>.Instance.GetState ()
                                     return (lastCacheEventId, state)
                                 else
                                     let! (eventId, snapshot) = 
@@ -220,16 +221,16 @@ module StateView =
                                 }
             
                         let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                        let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
+                        // let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
+                        let state = StateCache2<'A>.Instance.Memoize computeNewState lastEventId
                         match state with
                         | Ok state' -> 
                             (lastEventId, state') |> Ok
                         | Error e -> 
-                            log.Error (sprintf "getState: %s" e)
+                            log.Error (sprintf "getState: %A" e)
                             Error e
                     return result
                 }, Commons.generalAsyncTimeOut)
-                 
 
     let inline getAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
