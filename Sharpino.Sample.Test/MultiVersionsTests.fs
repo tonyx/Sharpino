@@ -6,6 +6,7 @@ open FSharp.Core
 
 open Sharpino
 open Sharpino.ApplicationInstance
+open Sharpino.Cache
 open Sharpino.Sample
 open Sharpino.Sample.TodosContext
 open Sharpino.Sample.TagsContext
@@ -116,6 +117,7 @@ let testCoreEvolve =
             // I am adding the same event twice and the "evolve" will ignore it
             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()  )
             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid() )
+            
             let _ = ap._addEvents (lastEventId, TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
             let todos = ap.getAllTodos()

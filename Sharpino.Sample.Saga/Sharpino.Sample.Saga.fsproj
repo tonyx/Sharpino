@@ -26,12 +26,12 @@
       <Compile Include="Context\Commands.fs" />
     </ItemGroup>
     
-    <ItemGroup>
-      <PackageReference Include="Sharpino" Version="3.0.0" />
-    </ItemGroup>
-    
 <!--    <ItemGroup>-->
-<!--      <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />-->
+<!--      <PackageReference Include="Sharpino" Version="3.0.0" />-->
 <!--    </ItemGroup>-->
+    
+    <ItemGroup>
+      <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+    </ItemGroup>
 
 </Project>

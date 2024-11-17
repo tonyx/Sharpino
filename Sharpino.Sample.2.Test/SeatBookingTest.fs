@@ -22,8 +22,6 @@ let hackingEventInStorageTest =
     testList "hacks the events in the storage to make sure that invalid events will be skipped, and concurrency cannot end up in invariant rule violation " [
         ptestCase "add a booking event in the storage and show the result by the app - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
@@ -38,9 +36,6 @@ let hackingEventInStorageTest =
         
         testCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
 
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
@@ -66,8 +61,6 @@ let hackingEventInStorageTest =
         // in parallel 
         testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -90,8 +83,7 @@ let hackingEventInStorageTest =
 
         testCase "store events that books seat on the left and two seat on the right of the row 1, so they are both valid and there are 7 seats left free  - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
+
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -113,8 +105,6 @@ let hackingEventInStorageTest =
 
         testCase "store three single booking events that end up in a valid state - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -194,8 +184,6 @@ let apiTests =
         testCase "book seats affecting first and second row - Ok" <| fun _ ->
             // setup
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -216,8 +204,6 @@ let apiTests =
         testCase "book seats affecting only the first row - Ok" <| fun _ ->
             // setup
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -229,8 +215,6 @@ let apiTests =
         testCase "book all seats on row1 - Ok" <| fun _ ->
 
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -244,8 +228,6 @@ let apiTests =
 
         testCase "book all row2 - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -259,8 +241,6 @@ let apiTests =
 
         testCase "book only one seat at row2 " <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -273,8 +253,6 @@ let apiTests =
 
         testCase "book only one seat at row1 " <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -287,8 +265,6 @@ let apiTests =
 
         testCase "book seats partial row2 - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -302,8 +278,6 @@ let apiTests =
 
         testCase "book a seat that is already taken - Error " <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -317,8 +291,6 @@ let apiTests =
 
         testCase "try do a booking containing a seat that is already taken - Error " <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
@@ -331,8 +303,6 @@ let apiTests =
 
         testCase "reserve places related to the second row - Ok" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let app = App(storage)
@@ -342,8 +312,6 @@ let apiTests =
 
         testCase "no bookings, all seats are available" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -353,8 +321,6 @@ let apiTests =
 
         testCase "can't leave the single seat free in the middle - Error" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -367,8 +333,6 @@ let apiTests =
 
         testCase "try book already booked in first row - Error" <| fun _ -> 
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -388,8 +352,6 @@ let apiTests =
 
         testCase "reserve places related to already booked only in the second row and so no place is booked at all - Error" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -408,8 +370,6 @@ let apiTests =
 
         testCase "try booking seats on many rows, expecting that if one of them is not available than none of them is booked - Error" <| fun _ ->
             let storage = MemoryStorage()
-            StateCache<Row1>.Instance.Clear()
-            StateCache<Row2Context.Row2>.Instance.Clear()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 

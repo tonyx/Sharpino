@@ -66,7 +66,8 @@ let setupDbEventStore =
         dbEventStore.Reset "_01" "_booking"
         dbEventStore.ResetAggregateStream "_01" "_booking"
         dbEventStore.Reset "_01" "_theater"
-        StateCache<Theater>.Instance.Clear ()
+        // StateCache<Theater>.Instance.Clear ()
+        StateCache2<Theater>.Instance.Invalidate ()
         AggregateCache<Row, string>.Instance.Clear ()
         AggregateCache<Booking, string>.Instance.Clear
         ()
@@ -77,7 +78,7 @@ let setupMemoryStorage =
         memoryStorage.Reset "_01" "_booking"
         memoryStorage.ResetAggregateStream "_01" "_booking"
         memoryStorage.Reset "_01" "_theater"
-        StateCache<Theater>.Instance.Clear ()
+        StateCache2<Theater>.Instance.Invalidate ()
         AggregateCache<Row, string>.Instance.Clear ()
         AggregateCache<Booking, string>.Instance.Clear
         ()

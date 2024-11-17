@@ -295,7 +295,6 @@ module CommandHandler =
                     
                     StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
                    
-                    StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
                     
                     // todo: consider a different policy than "send and forget"
@@ -364,7 +363,7 @@ module CommandHandler =
                         events' |> storage.SetInitialAggregateStateAndAddEventsMd eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName md
                     
                     StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
-                    StateCache<'A>.Instance.Memoize2 (newState |> Ok) (ids |> List.last)
+                    
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
                     
                     AggregateCache<'A1,'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
@@ -3054,8 +3053,6 @@ module CommandHandler =
                     StateCache2<'A1>.Instance.Memoize2 newState1 (idLists.[0] |> List.last)
                     StateCache2<'A2>.Instance.Memoize2 newState2 (idLists.[1] |> List.last)
                     
-                    StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
-                    StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore newState1 (idLists.[0] |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore newState2 (idLists.[1] |> List.last)
                      
@@ -3178,10 +3175,6 @@ module CommandHandler =
                     StateCache2<'A1>.Instance.Memoize2 newState1 (idLists.[0] |> List.last)
                     StateCache2<'A2>.Instance.Memoize2 newState2 (idLists.[1] |> List.last)
                     StateCache2<'A3>.Instance.Memoize2 newState3 (idLists.[2] |> List.last)
-                            
-                    StateCache<'A1>.Instance.Memoize2 (newState1 |> Ok) (idLists.[0] |> List.last)
-                    StateCache<'A2>.Instance.Memoize2 (newState2 |> Ok) (idLists.[1] |> List.last)
-                    StateCache<'A3>.Instance.Memoize2 (newState3 |> Ok) (idLists.[2] |> List.last)
                     
                     let _ = mkSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage newState1 (idLists.[0] |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A2, 'E2, 'F> storage newState2 (idLists.[1] |> List.last)

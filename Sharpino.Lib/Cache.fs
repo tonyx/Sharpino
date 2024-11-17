@@ -21,64 +21,6 @@ module Cache =
             log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
             Conf.defaultConf
 
-    
-    type StateCache<'A > private () =
-        let dic = Generic.Dictionary<EventId, Result<'A, string>>()
-        let queue = Generic.Queue<EventId>()
-        static let instance = StateCache<'A>()
-        static member Instance = instance
-
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member private this.TryAddToDictionary (arg, res) =
-            try
-                dic.Add(arg, res)
-                queue.Enqueue arg
-                // I guess I can keep only the only one latest state
-                if (queue.Count > 1) then
-                    let removed = queue.Dequeue()
-                    dic.Remove removed |> ignore
-                ()
-            with :? _ as e -> 
-                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
-                dic.Clear()
-                queue.Clear()
-                ()
-
-        member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId) =
-            let (b, res) = dic.TryGetValue arg
-            if b then
-                res
-            else
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
-                
-            // sometimes you skip cache for test
-            // f ()
-        
-        member this.Memoize2 (x: Result<'A, string>) (arg: EventId)  =
-            this.TryAddToDictionary(arg, x)  
-            // sometimes you skip cache for test
-            // ()
-                
-        member this.LastEventId() =
-            dic.Keys  
-            |> List.ofSeq 
-            |> List.sort 
-            |> List.tryLast
-
-        member this.GestState (key: EventId) =
-            let (b, res) = dic.TryGetValue key
-            if b then
-                res
-            else
-                Error "state not found"
-
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member this.Clear() =
-            dic.Clear()
-            queue.Clear()
-
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
@@ -155,14 +97,18 @@ module Cache =
         member this.Clear() =
             dic.Clear()
             queue.Clear()
+
     type StateCache2<'A> private () =
-        let mutable cachedValue: 'A option = None 
+        let mutable cachedValue: 'A option = None
+        let mutable eventId: EventId = 0
         static let instance = StateCache2<'A>()
         static member Instance = instance
            
         [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member this.TryCache (res: 'A) =
+        member this.TryCache (res: 'A, evId: EventId) =
             cachedValue <- Some res
+            eventId <- evId
+            ()
                
         member this.GetState() =
             match cachedValue with
@@ -170,19 +116,33 @@ module Cache =
             | None -> Error "state not found"
    
         member this.Memoize (f: unit -> Result<'A, string>)  (eventId: EventId)=
+            // f ()
             match cachedValue with
             | Some res -> Ok res
             | _ ->
                 let res = f()
                 match res with
                 | Ok result ->
-                    let _  = this.TryCache result
+                    let _  = this.TryCache (result, eventId)
                     Ok result
                 | Error e ->
                     Error (e.ToString())
-
+        member this.GetEventIdAndState () =
+            // None
+            match cachedValue with
+            | Some res -> Some (eventId, res)
+            | None -> None
+            
         member this.Memoize2 (x: 'A) (eventId: EventId) =
-            this.TryCache x
-             
+            // ()
+            this.TryCache (x, eventId)
+       
+        member this.LastEventId() =
+            // 0
+            eventId
+
+        [<MethodImpl(MethodImplOptions.Synchronized)>]      
         member this.Invalidate() =
             cachedValue <- None         
+            eventId <- 0
+            ()

@@ -76,7 +76,26 @@ module StateView =
                             Error "not found"
                     return result
                 }, Commons.generalAsyncTimeOut)
-
+   
+    let inline private getLastSnapshot<'A, 'F 
+        when 'A: (static member Zero: 'A) 
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        >
+        (storage: IEventStore<'F>) =
+            result
+                {
+                    let lastSnapshot = storage.TryGetLastSnapshot 'A.Version 'A.StorageName
+                    match lastSnapshot with
+                    | Some (_, evId, snapshot) -> 
+                        let! deserializedSnapshot = 'A.Deserialize snapshot
+                        return (evId, deserializedSnapshot)
+                    | _ -> 
+                        return (0, 'A.Zero)
+                }
+                
     let inline private getLastSnapshotOrStateCache<'A, 'F
         when 'A: (static member Zero: 'A) 
         and 'A: (static member StorageName: string)
@@ -90,22 +109,15 @@ module StateView =
                 (async {
                     return
                         result {
-                            let lastCacheEventId = Cache.StateCache<'A>.Instance.LastEventId() |> Option.defaultValue 0
-                            let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotId 'A.Version 'A.StorageName |> Option.defaultValue (0, 0)
-                            if (lastSnapshotId = 0 && lastCacheEventId = 0) then
-                                return (0, 'A.Zero)
-                            else
-                                if lastCacheEventId >= snapshotEventId then
-                                    let! state = 
-                                        // Cache.StateCache<'A>.Instance.GestState lastCacheEventId
-                                        Cache.StateCache2<'A>.Instance.GetState ()
-                                    return (lastCacheEventId, state)
-                                else
-                                    let! (eventId, snapshot) = 
-                                        tryGetSnapshotByIdAndDeserialize<'A, 'F> lastSnapshotId storage
-                                    return (eventId, snapshot)
+                            let state = 
+                                match Cache.StateCache2<'A>.Instance.GetEventIdAndState () with
+                                | Some (evId, state) -> (evId, state) |> Ok
+                                | _ ->
+                                    getLastSnapshot<'A, 'F> storage
+                            return! state
                         }
-                }, Commons.generalAsyncTimeOut)
+                    }, Commons.generalAsyncTimeOut)
+                            
 
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
@@ -221,7 +233,6 @@ module StateView =
                                 }
             
                         let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
-                        // let state = StateCache<'A>.Instance.Memoize computeNewState lastEventId
                         let state = StateCache2<'A>.Instance.Memoize computeNewState lastEventId
                         match state with
                         | Ok state' -> 

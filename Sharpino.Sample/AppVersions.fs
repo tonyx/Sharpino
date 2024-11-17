@@ -51,19 +51,15 @@ module AppVersions =
 
     let resetDb (db: IEventStore<string>) =
         db.Reset TodosContext.Version TodosContext.StorageName
-        StateCache<TodosContext>.Instance.Clear()
         StateCache2<TodosContext>.Instance.Invalidate()
 
         db.Reset TodosContextUpgraded.Version TodosContextUpgraded.StorageName 
-        StateCache<TodosContext.TodosContextUpgraded>.Instance.Clear()
         StateCache2<TodosContext.TodosContextUpgraded>.Instance.Invalidate()
 
         db.Reset TagsContext.Version TagsContext.StorageName
-        StateCache<TagsContext>.Instance.Clear()
         StateCache2<TagsContext>.Instance.Invalidate()
 
         db.Reset CategoriesContext.Version CategoriesContext.StorageName
-        StateCache<CategoriesContext>.Instance.Clear()
         StateCache2<CategoriesContext>.Instance.Invalidate()
 
     type IApplication =
