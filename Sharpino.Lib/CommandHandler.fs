@@ -657,6 +657,7 @@ module CommandHandler =
                     let! ids =
                         eventStore.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A4.Version 'A4.StorageName initialInstance.Serialize md multiEvents
                     
+                    // for the future
                     if (eventBroker.notifyAggregate.IsSome) then
                         let f =
                             fun () ->
@@ -754,6 +755,7 @@ module CommandHandler =
                    
                     AggregateCache<'A, 'F>.Instance.Memoize2 (newState |> Ok) ((ids |> List.last, state.Id))
                         
+                    // for the future    
                     let publish =
                         if (eventBroker.notifyAggregate.IsSome) then
                             let f =
