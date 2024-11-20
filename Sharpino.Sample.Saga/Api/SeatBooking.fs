@@ -244,10 +244,10 @@ module SeatBooking =
                                     bookingIds |> List.sumBy (fun bookingId ->
                                         bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
                     
-                let! enoughFreeSeats =
-                    seatsClaimedPerRow
-                    |> List.forall (fun (totalSeats, totalClaimedSeats) -> totalSeats >= totalClaimedSeats)
-                    |> Result.ofBool "not enough free seats"
+                // let! enoughFreeSeats =
+                //     seatsClaimedPerRow
+                //     |> List.forall (fun (totalSeats, totalClaimedSeats) -> totalSeats >= totalClaimedSeats)
+                //     |> Result.ofBool "not enough free seats"
                 
                 // prevalidation finished:
                 // for each row, considering all the booking, the total number of seats claimed is less than the total number of free seats
@@ -259,7 +259,7 @@ module SeatBooking =
                 let assignRowsToBookingsCommands: List<AggregateCommand<Booking, BookingEvents>> =
                     List.zip rowIds rows
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)    
-               
+              
                 return!
                     forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
             }

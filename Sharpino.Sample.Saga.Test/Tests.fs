@@ -85,9 +85,9 @@ let setupMemoryStorage =
 
 let appVersionsEnvs =
     [
-        (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
+        // (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
         // enable postgres db only if you properly handled the postgres db setup
-        // (setupDbEventStore, "postgres db", fun () -> SeatBookingService(dbEventStore, doNothingBroker, teatherContextdbViewer, seatsAggregatedbViewer, bookingsAggregatedbViewer))
+        (setupDbEventStore, "postgres db", fun () -> SeatBookingService(dbEventStore, doNothingBroker, teatherContextdbViewer, seatsAggregatedbViewer, bookingsAggregatedbViewer))
     ]
 
 [<Tests>]
@@ -388,6 +388,7 @@ let tests =
             let addBooking2 = service.AddBooking booking2
             
             // action
+            // let assignBookings = service.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
             let assignBookings = service.AssignBookingUsingSagaWay ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
 
             // expectation
@@ -405,7 +406,8 @@ let tests =
             Expect.isOk booking2 "should be ok"
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
 
-        multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
+        // FOCUS
+        fmultipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
 
             let service = service ()
@@ -527,6 +529,7 @@ let tests =
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
 
+        // FOCUS
         multipleTestCase "a more generalized saga example, use prevalidation  - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let service = service ()

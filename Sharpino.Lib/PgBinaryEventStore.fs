@@ -1299,10 +1299,10 @@ module PgBinaryStore =
                                         |>>
                                             fun (_, events, version,  name, aggregateId) ->
                                                 let stream_name = version + name
-                                                let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
                                                 events
                                                 |>> 
                                                     fun event ->
+                                                        let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
                                                         let result = command.ExecuteScalar() 
@@ -1354,10 +1354,10 @@ module PgBinaryStore =
                                         |>>
                                             fun (_, events, version,  name, aggregateId) ->
                                                 let stream_name = version + name
-                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                 events
                                                 |>> 
                                                     fun event ->
+                                                        let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
                                                         command.Parameters.AddWithValue("md", md ) |> ignore

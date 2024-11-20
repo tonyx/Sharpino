@@ -20,11 +20,6 @@
       <Compile Include="Api/SeatBooking.fs" />
     </ItemGroup>
     
-    <ItemGroup>
-      <Compile Include="Context\Theater.fs" />
-      <Compile Include="Context\Events.fs" />
-      <Compile Include="Context\Commands.fs" />
-    </ItemGroup>
     
 <!--    <ItemGroup>-->
 <!--      <PackageReference Include="Sharpino" Version="3.0.0" />-->
