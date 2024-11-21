@@ -1,14 +1,9 @@
 namespace Sharpino.Sample.Saga.Api
-// module Sharpino.Sample.Saga.Api.SeatBooking
 open System
 open Sharpino
 open Sharpino.CommandHandler
-open Sharpino.StateView
-open Sharpino.Commons
 
 open Sharpino.Core
-open FSharpPlus
-open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 
 open Sharpino.Sample.Saga.Context.SeatBookings
@@ -119,40 +114,6 @@ module SeatBooking =
                     return result    
                 }
                 
-        // proof of concept: here I would use "postvalidation" to check if the state after the
-        // command is correct and if it is not, then run the "future undoers"        
-        // member this.RemoveSeatsFromRowPostValidation (rowId, ns: List<int>) =
-        //     if (ns.Length = 0) then
-        //         Ok ()
-        //     else
-        //         result {
-        //             let! (_, row) = seatsViewer rowId
-        //             let totalNumberOfRowsToBeRemoved = ns |> List.sum
-        //             let totalNumberOfSeats = row.FreeSeats
-        //            
-        //             let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
-        //                 = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
-        //             let! commandsHaveUndoers =
-        //                 ((RowCommands.RemoveSeats 0) :> AggregateCommand<Row, RowEvents>).Undoer.IsSome
-        //                 |> Result.ofBool "no undoer for remove seats command"
-        //            
-        //             let undoers =
-        //                 removeSeatsCommands
-        //                 |> List.map (fun c -> c.Undoer.Value)
-        //                
-        //             let undoersRun =
-        //                 undoers
-        //                 |> List.map (fun u -> u row seatsViewer)
-        //                 
-        //             let rowIds =
-        //                 [ for i in 1 .. ns.Length -> rowId ]
-        //             let! result =
-        //                 forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
-        //             // postvalidation and eventually "future undoers" here
-        //             
-        //             return result    
-        //         }
-        
         member this.GetBooking id =
             result {
                 let! (_, booking) = bookingsViewer id
@@ -161,7 +122,6 @@ module SeatBooking =
        
         member this.AddBooking (booking: Booking) =
             result {
-                let! (_, theater) = viewer ()
                 let addBookingReferenceCommand = AddBookingReference (booking.Id)
                 let! result =
                     runInitAndCommand<Theater, TheaterEvents, Booking, string> eventStore eventBroker booking addBookingReferenceCommand
@@ -179,7 +139,6 @@ module SeatBooking =
         member this.AssignBooking bookingId rowId =
             result {
                 let! (_, booking) = bookingsViewer bookingId
-                let! (_, row) = seatsViewer rowId
                 let assignRowToBookingCommand = BookingCommands.Assign rowId
                 let assignBookingToRowCommand = RowCommands.Book (bookingId, booking.ClaimedSeats)
                 let! result =
@@ -211,8 +170,7 @@ module SeatBooking =
                     runTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
         
-        // even though without saga forcing running commands toward the same aggregate id could fail
-        // we can prevent this by using prevalidation 
+        // we don't need prevalidation anymore: multiple commands toward the same aggregate id is fine (no saga-ish style involved)
         member this.ForceAssignBookings  (bookingAndRows: List<Guid * Guid>) =
             result {
                 let rowIds = bookingAndRows |> List.map snd
@@ -224,33 +182,6 @@ module SeatBooking =
                 let! rows =
                     rowIds
                     |> List.traverseResultM (seatsViewer >> Result.map snd)
-               
-                // pre-validation is a pain here, only because I wanted to use forceRunTwoNAggregateCommands with no-saga
-
-                let rowsPerBookings =
-                    bookingAndRows
-                    |> List.groupBy snd
-                    |> List.map (fun (rowId, bookingAndRows) -> rowId, bookingAndRows |> List.map fst)
-             
-                let claimsPerRows =
-                    rowsPerBookings
-                    |> Map.ofList
-                    
-                let seatsClaimedPerRow =
-                    rowsPerBookings
-                    |> List.map
-                           (fun (rowId, bookingIds) ->
-                                (rows |> List.find (fun x -> x.Id = rowId)).FreeSeats,
-                                    bookingIds |> List.sumBy (fun bookingId ->
-                                        bookings |> List.find (fun b -> b.Id = bookingId) |> fun b -> b.ClaimedSeats))
-                    
-                // let! enoughFreeSeats =
-                //     seatsClaimedPerRow
-                //     |> List.forall (fun (totalSeats, totalClaimedSeats) -> totalSeats >= totalClaimedSeats)
-                //     |> Result.ofBool "not enough free seats"
-                
-                // prevalidation finished:
-                // for each row, considering all the booking, the total number of seats claimed is less than the total number of free seats
                     
                 let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
                     List.zip bookingIds bookings

@@ -85,7 +85,7 @@ let setupMemoryStorage =
 
 let appVersionsEnvs =
     [
-        // (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
+        (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
         // enable postgres db only if you properly handled the postgres db setup
         (setupDbEventStore, "postgres db", fun () -> SeatBookingService(dbEventStore, doNothingBroker, teatherContextdbViewer, seatsAggregatedbViewer, bookingsAggregatedbViewer))
     ]
@@ -343,7 +343,7 @@ let tests =
             Expect.equal row1.OkValue.FreeSeats 9 "should be equal"
             Expect.equal row2.OkValue.FreeSeats 9 "should be equal"
 
-        pmultipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is not correct because globally the result is not valid  - Error" appVersionsEnvs  <| fun (setup, _, service) ->
+        multipleTestCase "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is not correct because globally the result is not valid  - Error" appVersionsEnvs  <| fun (setup, _, service) ->
             setup ()
             // preparation
             let service = service () 
@@ -358,22 +358,8 @@ let tests =
             let assignBookings = service.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
 
             // expectation
-            Expect.isOk assignBookings "should be ok"
+            Expect.isError assignBookings "should be error"
 
-            let row = service.GetRow row.Id
-            Expect.isOk row "should be ok"
-            
-            // will be wrong here: 
-            Expect.equal row.OkValue.FreeSeats 10 "should be equal"
-            
-            // will be wrong in the followings too: 
-            let booking1 = service.GetBooking booking1.Id
-            Expect.isOk booking1 "should be ok"    
-            Expect.equal booking1.OkValue.RowId None "should be equal"
-
-            let booking2 = service.GetBooking booking2.Id
-            Expect.isOk booking2 "should be ok"
-            Expect.equal booking2.OkValue.RowId None "should be equal"
 
         multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct - OK" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
@@ -407,7 +393,7 @@ let tests =
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
 
         // FOCUS
-        fmultipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
 
             let service = service ()
@@ -465,7 +451,7 @@ let tests =
             Expect.equal booking2.OkValue.RowId None "should be equal"
 
         // let's suspend this atm
-        pmultipleTestCase "do in sequence using prevalidation - Error" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "do in can't assign booking, not enough seats - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             // preparation
             let service = service () 
@@ -481,6 +467,7 @@ let tests =
 
             // expectation    
             Expect.isError assignBookings "should be error"
+            
             let row = service.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 10 "should be equal"
@@ -529,7 +516,6 @@ let tests =
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
 
-        // FOCUS
         multipleTestCase "a more generalized saga example, use prevalidation  - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
             let service = service ()

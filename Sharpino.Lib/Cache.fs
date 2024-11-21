@@ -46,7 +46,7 @@ module Cache =
             // sometimes you want to bypass cache for test 
             // f()
             
-            // why  I decided to not cache the initial value?
+            //  previously I decided to not cache the initial value
             // match arg with
             // | 0, _ ->
             //     f()

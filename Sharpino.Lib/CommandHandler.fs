@@ -1216,72 +1216,53 @@ module CommandHandler =
             logger.Value.LogDebug "forceRunTwoNAggregateCommands"
             let commands = fun () ->
                 result {
-                   
-                    printf "XXXXX- 100\n" 
                     let aggregateIdsWithCommands1 =
                         List.zip aggregateIds1 command1
                         |> List.groupBy fst
                         |> List.map (fun (id, cmds) -> id, cmds |> List.map snd)    
-                    
-                    printf "XXXXX- 200\n" 
+                   
+                    let uniqueAggregateIds1 =
+                        aggregateIdsWithCommands1
+                        |>> fst
+                        
                     let aggregateIdsWithCommands2 =
                         List.zip aggregateIds2 command2
                         |> List.groupBy fst
                         |> List.map (fun (id, cmds) -> id, cmds |> List.map snd)    
                        
-                    printf "XXXXX- 300\n" 
+                    let uniqueAggregateIds2 =
+                        aggregateIdsWithCommands2
+                        |>> fst
+                        
                     let! uniqueInitialstates1 =
                         aggregateIdsWithCommands1
                         |> List.traverseResultM (fun (id, _) -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
                         
-                    printf "XXXXX- 400\n" 
                     let! uniqueInitialstates2 =
                         aggregateIdsWithCommands2
                         |> List.traverseResultM (fun (id, _) -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
                         
-                    printf "XXXXX- 500\n" 
                     let uniquesStatesOnly1 =
                         uniqueInitialstates1 
                         |>> fun (_, state) -> state
                         
-                    printf "XXXXX- 600\n" 
                     let uniquesStatesOnly2 =
                         uniqueInitialstates2 
                         |>> fun (_, state) -> state
                         
-                    // printf "XXXXX- 700\n" 
-                    let lastEventIds1 =
-                        uniqueInitialstates1
-                        |>> fun (eventId, _) -> eventId
-                        
-                    // printf "XXXXX- 800\n" 
-                    let lastEventIds2 =
-                        uniqueInitialstates2
-                        |>> fun (eventId, _) -> eventId
-                        
-                    // printf "XXXXX- 900\n" 
                     let multicommands1 =
                         aggregateIdsWithCommands1
-                        |>> fun (id, cmds) -> cmds
+                        |>> fun (_, cmds) -> cmds
                         
-                    // printf "XXXXX- 1000\n" 
                     let multicommands2 =
                         aggregateIdsWithCommands2
-                        |>> fun (id, cmds) -> cmds
+                        |>> fun (_, cmds) -> cmds
                         
                     let statesAndMultiCommands1 =
                         List.zip uniquesStatesOnly1 multicommands1
                     let statesAndMultiCommands2 =
                         List.zip uniquesStatesOnly2 multicommands2
                   
-                    // let newStatesAndEvents1 =
-                    //     statesAndMultiCommands1
-                    //     |> List.map (fun (state, commands) -> foldCommands state commands)
-                    //
-                    // let newStatesAndEvents2 =
-                    //     statesAndMultiCommands2
-                    //     |> List.map (fun (state, commands) -> foldCommands state commands)
-                       
                     let! newStatesAndEvents1 =
                         statesAndMultiCommands1
                         |> List.traverseResultM (fun (state, commands) -> foldCommands state commands)
@@ -1289,47 +1270,18 @@ module CommandHandler =
                     let! newStatesAndEvents2 =
                         statesAndMultiCommands2
                         |> List.traverseResultM (fun (state, commands) -> foldCommands state commands)
-                         
-                    // will be obsolete
-                     
-                    let! states1 =
-                        aggregateIds1
-                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
-                    let! states2 =
-                        aggregateIds2
-                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
                         
-                    let states1' =
-                        states1 
-                        |>> fun (_, state) -> state
-                    let states2' =
-                        states2 
-                        |>> fun (_, state) -> state
-                        
-                    let eventIds1 =
-                        states1
-                        |>> fun (eventId, _) -> eventId
-                    let eventIds2 =
-                        states2
-                        |>> fun (eventId, _) -> eventId
-                        
-                    let statesAndCommands1 =
-                        List.zip states1' command1
-                    let statesAndCommands2 =
-                        List.zip states2' command2
-                        
-                    let! events1 =
-                        statesAndCommands1
-                        |>> fun (state, command) -> command.Execute state
-                        |> List.traverseResultM id
-                    let! events2 =
-                        statesAndCommands2
-                        |>> fun (state, command) -> command.Execute state
-                        |> List.traverseResultM id
-                   
                     let events1' =
                         newStatesAndEvents1
                         |>> snd
+                    
+                    let newStates1' =
+                        newStatesAndEvents1
+                        |>> fst
+                        
+                    let newStates2' =
+                        newStatesAndEvents2
+                        |>> fst    
                         
                     let events2' =
                         newStatesAndEvents2
@@ -1338,73 +1290,26 @@ module CommandHandler =
                     let serEvents1 =
                         events1'
                         |>> fun (x) -> x |>> fun (z: 'E1) -> z.Serialize
-                        // |> List.fold (fun acc x -> acc@x) []
-                        // |> List.map (fun e -> e.Serialize)
-                    //
+                    
                     let serEvents2 =
                         events2'
                         |>> fun (x) -> x |>> fun (z: 'E2) -> z.Serialize
-                        // |> List.fold (fun acc x -> acc@x) []
-                        // |> List.map (fun e -> e.Serialize)
-                    
-                    let serializedEvents1 =
-                        events1 
-                        |>> fun (_, x) -> x |>> fun (z: 'E1) -> z.Serialize
-                    let serializedEvents2 =
-                        events2 
-                        |>> fun (_, x) -> x |>> fun (z: 'E2) -> z.Serialize
                         
-                    let! statesAndEvents1 =
-                        statesAndCommands1
-                        |>> fun (state, command) -> (command.Execute state)
-                        |> List.traverseResultM id
-                    let! statesAndEvents2 =
-                        statesAndCommands2
-                        |>> fun (state, command) -> (command.Execute state)
-                        |> List.traverseResultM id
-
-                     
-                    
-                    let newStates1: List<'A1> =
-                        statesAndEvents1
-                        |>> fun (state, _) -> state
-                        
-                    let newStates2: List<'A2> =
-                        statesAndEvents2
-                        |>> fun (state, _) -> state    
-                    
-                   
                     let eventIds1' =
                         uniqueInitialstates1
                         |>> fst
-                    printf "XXXXX- 1100\n %A \n" eventIds1'
-                    printf "uniqueinit state2 %A \n" uniqueInitialstates2
+                        
                     let eventIds2' =
                         uniqueInitialstates2
                         |>> fst
-                    printf "XXXXX- 1200\n %A \n" eventIds2'
                     
                     let aggregateIds1' =
                         aggregateIdsWithCommands1
                         |>> fst
-                    printf "XXXX - 1300\n %A \n" aggregateIds1'   
+                        
                     let aggregateIds2' =
                         aggregateIdsWithCommands2
                         |>> fst
-                    // printf "XXXX - 1400\n %A \n" aggregateIds2'
-                
-                    printf "XXXXX- 1300\n aggregateIds1' %A \n" aggregateIds1'
-                    printf "XXXXX- 1400\n aggregateIds2' %A \n" aggregateIds2'
-                    printf "XXXXX- 1400\n aggregateIds1 %A \n" aggregateIds1
-                    printf "XXXXX- 1500\n aggregateIds2 %A \n" aggregateIds2
-                    printf "XXXXX- 1600\n eventIds1' %A \n" eventIds1'
-                    printf "XXXXX- 1700\n eventIds2' %A \n" eventIds2'
-                    printf "XXXXX- 1600\n eventIds1 %A \n" eventIds1
-                    printf "XXXXX- 1700\n eventIds2 %A \n" eventIds2
-                    printf "XXXXX- 1800\n serEvents1 %A \n" serEvents1
-                    printf "XXXXX- 2000\n serializedEvents1 %A \n" serializedEvents1
-                    printf "XXXXX- 1900\n serEvents2 %A \n" serEvents2
-                    printf "XXXXX- 2100\n serializedEvents2 %A \n" serializedEvents2
                     
                     let packParametersForDb1' =
                         List.zip3 eventIds1' serEvents1 aggregateIds1'
@@ -1413,77 +1318,30 @@ module CommandHandler =
                     let packParametersForDb2' =
                         List.zip3 eventIds2' serEvents2 aggregateIds2'
                         |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
-                        
-                    let packParametersForDb1 =
-                        List.zip3 eventIds1 serializedEvents1 aggregateIds1
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                        
-                    let packParametersForDb2 =
-                        List.zip3 eventIds2 serializedEvents2 aggregateIds2
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
-                    
-                    printf "XXX - 2200 adding \n"    
-                    let allPacked = packParametersForDb1 @ packParametersForDb2
-                   
-                    printf "XXXX - allpacked %A \n" allPacked
                     
                     let allPacked' = packParametersForDb1' @ packParametersForDb2'
-                    printf "XXXX - allpacked' %A \n" allPacked'
                     
                     let! eventIds =
                         allPacked'
                         |> eventStore.MultiAddAggregateEventsMd md
-                    printf "XXXX - 2300 added \n"
+                       
+                    let eventIds1' =
+                        eventIds
+                        |> List.take aggregateIds1'.Length
+                    let eventIds2' =
+                        eventIds
+                        |> List.skip aggregateIds1'.Length    
                     
-                    let eventIds1 = eventIds |> List.take aggregateIds1'.Length
-                    let eventIds2 = eventIds |> List.skip aggregateIds1'.Length
-                            
-                    printf "XXXX - 2400 after added \n"
-                    
-                            // deliberately avoid caching atm
-                    // the cache will may return wrong results if we use force run when the target aggregate is the same for some commands
-                    // for i in 0..(aggregateIds1.Length - 1) do
-                    //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
-                    //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
-                    
-                    // clean 
-                    for i in 0..(aggregateIds1.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Clean aggregateIds1.[i]
-                    
-                    printf "XXXX - 2600 after added \n"
-                    for i in 0..(aggregateIds2.Length - 1) do
-                       AggregateCache<'A2, 'F>.Instance.Clean aggregateIds2.[i]
-                    
-                    printf "XXXX - 2700 after added \n"
-                    // for i in 0..(aggregateIds1.Length - 1) do
-                    //     AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((eventIds1.[i] |> List.last, aggregateIds1.[i]))
-                    //     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1.[i] |> List.last) |> ignore
-                     
-                    // let aggregateIdsWithEventIds1 =
-                    //     List.zip aggregateIds1 eventIds1
-                    // let aggregateIdsWithEventIds2 =
-                    //     List.zip aggregateIds2 eventIds2
-                    //     
-                    // let kafkaParmeters1 =
-                    //     List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
-                    //     |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                    // let kafkaParameters2 =
-                    //     (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
-                    //     |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
-                    //    
-                    // // FOCUS todo: use the doNothingBroker (no notification)
-                    // if (eventBroker.notifyAggregate.IsSome) then
-                    //     kafkaParmeters1
-                    //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                    //     |> ignore
-                    //     kafkaParameters2
-                    //     |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                    //     |> ignore
+                    for i in 0 .. (uniqueAggregateIds1.Length - 1) do
+                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1'.[i] |> Ok) (eventIds1'.[i] |> List.last, uniqueAggregateIds1.[i])
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds1.[i] newStates1'.[i] (eventIds1'.[i] |> List.last) |> ignore
                         
+                    for i in 0 .. (uniqueAggregateIds2.Length - 1) do
+                        AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2'.[i] |> Ok) (eventIds2'.[i] |> List.last, uniqueAggregateIds2.[i])
+                        mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore uniqueAggregateIds2.[i] newStates2'.[i] (eventIds2'.[i] |> List.last) |> ignore
+                    // dithing the eventbroker  call for now and for the future
                     return ()
                 }
-            // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-            // let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
             
             let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
