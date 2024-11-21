@@ -275,11 +275,11 @@ module PgBinaryStore =
                                         |>>
                                             fun (_, events, version,  name) -> 
                                                 let stream_name = version + name
-                                                let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
 
                                                 events
                                                 |>> 
                                                     fun event ->
+                                                        let command = new NpgsqlCommand(sprintf "SELECT insert%s_event_and_return_id(@event);" stream_name, conn)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         let result = command.ExecuteScalar() 
                                                         result :?> int
@@ -321,11 +321,11 @@ module PgBinaryStore =
                                             // take this opportunity to evaluate if eventId cold be managed by the db function to do the check
                                             fun (eventId, events, version,  name) -> 
                                                 let stream_name = version + name
-                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" stream_name, conn)
 
                                                 events
                                                 |>> 
                                                     fun event ->
+                                                        let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" stream_name, conn)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("md", md ) |> ignore
                                                         let result = command.ExecuteScalar() 
@@ -726,10 +726,10 @@ module PgBinaryStore =
                                         |>>
                                             fun (_, events, version, name, aggId) -> 
                                                 let stream_name = version + name
-                                                let command' = new NpgsqlCommand(sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
                                                 events
                                                 |>> 
                                                     fun event ->
+                                                        let command' = new NpgsqlCommand(sprintf "SELECT insert%s_aggregate_event_and_return_id(@event, @aggregate_id);" stream_name, conn)
                                                         command'.Parameters.AddWithValue("event", event ) |> ignore
                                                         command'.Parameters.AddWithValue("@aggregate_id", aggId ) |> ignore
                                                         let result = command'.ExecuteScalar() 
@@ -807,11 +807,11 @@ module PgBinaryStore =
                                             (
                                                 fun (_, events, version, name, aggId) ->
                                                     let stream_name = version + name
-                                                    let command' = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                     events
                                                     |>> 
                                                         (
                                                             fun x ->
+                                                                let command' = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                                 command'.Parameters.AddWithValue("event", x ) |> ignore
                                                                 command'.Parameters.AddWithValue("@aggregate_id", aggId ) |> ignore
                                                                 command'.Parameters.AddWithValue("md", md ) |> ignore

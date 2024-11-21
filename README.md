@@ -183,6 +183,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 3.0.3: Fixed bug in multiple events writing in Postgres eventstore (a local branch of an incoming feature can reproduce this bub)
 - Version 3.0.2: StateCache substituted by StateCache2. Access cached contexts don't need checking lastEventId to the eventstore for comparison.
 - Version 3.0.0: some cache improvements, supporting net9.0 and net8.0 (ditched net7.0)
 - Version 2.7.7: The md field is mandatory for any event table: Any run(Aggregate)Commands are redirecting to the equivalent 'run(Aggregate)CommandsMd' that accepts metadata as a string.
