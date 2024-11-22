@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>3.0.4</version>
+    <version>3.0.5</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -12,7 +12,7 @@
     <readme>README.md</readme>
     <dependencies>
       <group targetFramework="net9.0">
-        <dependency id="Confluent.Kafka" version="2.6.0" />
+        <dependency id="Confluent.Kafka" version="2.6.1" />
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
         <dependency id="FsCheck" version="2.16.6" />
@@ -33,17 +33,17 @@
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.9.5" />
+        <dependency id="Farmer" version="1.9.6" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />
         <dependency id="Newtonsoft.Json" version="13.0.3" />
-        <dependency id="Npgsql" version="8.0.5" />
+        <dependency id="Npgsql" version="9.0.1" />
         <dependency id="Npgsql.FSharp" version="5.7.0" />
         <dependency id="System.collections" version="4.3.0" />
       </group>
       <group targetFramework="net8.0">
-        <dependency id="Confluent.Kafka" version="2.6.0" />
+        <dependency id="Confluent.Kafka" version="2.6.1" />
         <dependency id="Expecto" version="10.2.1" />
         <dependency id="Expecto.FsCheck" version="10.2.1" />
         <dependency id="FsCheck" version="2.16.6" />
@@ -64,7 +64,7 @@
         <dependency id="YoloDev.Expecto.TestSdk" version="0.*" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.9.5" />
+        <dependency id="Farmer" version="1.9.6" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.4.0" />
         <dependency id="FSharpPlus" version="1.6.1" />

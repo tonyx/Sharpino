@@ -780,6 +780,7 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
 
+        // FOCUS
         multipleTestCase "trying to remove more seats than existing ones, prevalidation  - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
