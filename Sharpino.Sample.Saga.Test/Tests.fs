@@ -83,6 +83,9 @@ let setupMemoryStorage =
         AggregateCache<Booking, string>.Instance.Clear
         ()
 
+let mkDefaultRow20Seats = fun () -> { TotalSeats = 20; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
+let mkDefaultRow10Seats = fun () -> { TotalSeats = 10; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
+
 let appVersionsEnvs =
     [
         (setupMemoryStorage, "memory db", fun () -> SeatBookingService(memoryStorage, doNothingBroker, teatherContextViewer, seatsAggregateViewer, bookingsAggregateViewer))
@@ -128,7 +131,8 @@ let tests =
             let service = service ()
             setup()
             let id = Guid.NewGuid()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = id }
+            let row = mkDefaultRow20Seats()
+            // let row = { TotalSeats = 10; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = id }
             dbEventStore.Reset "_01" "_theater"
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
@@ -149,7 +153,7 @@ let tests =
         multipleTestCase "assign a booking to a row and verify that the booking has a rowId set to that rowId - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
             let booking = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
@@ -166,7 +170,8 @@ let tests =
         multipleTestCase "assign a booking to a row and verify that the row has the bookingId in the AssociatedBookings list - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
+            // let row = { TotalSeats = 10; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
             let booking = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
@@ -183,7 +188,8 @@ let tests =
         multipleTestCase "assign a booking where the number of claimed seats is superior than the availability - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
+            // let row = { TotalSeats = 10; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
             let booking = { Id = Guid.NewGuid(); ClaimedSeats = 11; RowId = None}
@@ -197,7 +203,7 @@ let tests =
         multipleTestCase "in doing two consecutive bookings that succeeds, the number of free seats is the initial minus the sum of the claimed seats - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
@@ -220,7 +226,7 @@ let tests =
             setup()
             // preparation
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = service.AddRow row 
             Expect.isOk addRow "should be ok"
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
@@ -248,9 +254,9 @@ let tests =
             setup()
             // preparation
             let service = service ()
-            let row1 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row1 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row1)  "should be ok"
-            let row2 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row2 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row2) "should be ok"
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             Expect.isOk (service.AddBooking booking1) "should be ok"
@@ -269,13 +275,13 @@ let tests =
             Expect.equal row1.OkValue.FreeSeats 9 "should be equal"
             Expect.equal row2.OkValue.FreeSeats 9 "should be equal"
         
-        multipleTestCase "do parallel bookings on two different seats whereas one of the booking can't succeed, so all the bookings must fails - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+        multipleTestCase "do parallel bookings on two different seats whereas one of the booking can't succeed, so all the bookings must fail - Ok" appVersionsEnvs <| fun (setup, _, service) ->
             setup()
             // preparation
             let service = service() 
-            let row1 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row1 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row1)  "should be ok"
-            let row2 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row2 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row2) "should be ok"
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             Expect.isOk (service.AddBooking booking1) "should be ok"
@@ -300,7 +306,8 @@ let tests =
             setup()
             // preparation
             let service = service ()
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
+            
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             let addRow = service.AddRow row    
@@ -322,9 +329,9 @@ let tests =
             setup ()
             // preparation
             let service = service ()
-            let row1 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row1 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row1)  "should be ok"
-            let row2 = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row2 = mkDefaultRow10Seats()
             Expect.isOk (service.AddRow row2) "should be ok"
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             Expect.isOk (service.AddBooking booking1) "should be ok"
@@ -347,7 +354,7 @@ let tests =
             setup ()
             // preparation
             let service = service () 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 6; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let addRow = service.AddRow row    
@@ -366,7 +373,7 @@ let tests =
 
             // preparation
             let service = service() 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             let addRow = service.AddRow row    
@@ -392,14 +399,13 @@ let tests =
             Expect.isOk booking2 "should be ok"
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
 
-        // FOCUS
         multipleTestCase "do in sequence two bookings on the same row using saga so the resulting state is correct, use prevalidation - OK" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()
 
             let service = service ()
 
             // preparation
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 3; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
             let addRow = service.AddRow row    
@@ -428,7 +434,7 @@ let tests =
             setup ()
             // preparation
             let service = service () 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
             let addRow = service.AddRow row    
@@ -455,7 +461,7 @@ let tests =
             setup ()
             // preparation
             let service = service () 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 4; RowId = None}
             let addRow = service.AddRow row    
@@ -482,7 +488,7 @@ let tests =
             setup ()
             let service = service ()
             // preparation
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -520,7 +526,7 @@ let tests =
             setup ()
             let service = service ()
             // preparation
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -558,7 +564,8 @@ let tests =
             setup ()
 
             let service = service ()
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
+            // let row = { TotalSeats = 20; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -596,7 +603,7 @@ let tests =
             setup ()
 
             let service = service ()
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -634,7 +641,7 @@ let tests =
             setup()
             
             let seatBookingService = service ()
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
             let addSeats = seatBookingService.AddSeatsToRow (row.Id, 10)
@@ -647,7 +654,7 @@ let tests =
             setup()
             let seatBookingService = service ()
             
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, 10)
@@ -660,7 +667,7 @@ let tests =
             setup()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
             let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
@@ -676,7 +683,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let addRow = seatBookingService.AddRow row    
             Expect.isOk addRow "should be ok"
             let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
@@ -698,7 +705,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
             
-            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let row1 = mkDefaultRow20Seats()
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row1.Id, [1])
@@ -712,7 +719,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
             
-            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let row1 = mkDefaultRow20Seats()
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row1.Id, [1])
@@ -726,7 +733,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
             
-            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let row1 = mkDefaultRow20Seats()
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row1.Id, [1; 2])
@@ -740,7 +747,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
             
-            let row1 = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }    
+            let row1 = mkDefaultRow20Seats()
             let addRow1 = seatBookingService.AddRow row1
             Expect.isOk addRow1 "should be ok"
             let removeSeats = seatBookingService.RemoveSeatsFromRowPreValidation (row1.Id, [1; 2])
@@ -754,7 +761,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -769,7 +776,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 8; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = { TotalSeats = 8; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -780,12 +787,11 @@ let tests =
             Expect.isOk retrieveRow "should be ok"
             Expect.equal retrieveRow.OkValue.FreeSeats 8 "should be equal"
 
-        // FOCUS
         multipleTestCase "trying to remove more seats than existing ones, prevalidation  - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 8; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = { TotalSeats = 8; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -800,7 +806,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -815,7 +821,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -830,7 +836,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -845,7 +851,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -860,7 +866,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 3; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = { TotalSeats = 3; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -875,7 +881,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 3; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = { TotalSeats = 3; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -890,7 +896,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -905,7 +911,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 10; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow10Seats()
             let addRow = seatBookingService.AddRow row
             Expect.isOk addRow "should be ok"
 
@@ -920,7 +926,7 @@ let tests =
             setup ()    
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -962,7 +968,7 @@ let tests =
         multipleTestCase "a more generalized example using prevalidation instead of saga - Error" appVersionsEnvs <| fun (setup, _, service) ->
             setup ()    
             let seatBookingService = service ()
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -1005,7 +1011,9 @@ let tests =
             setup ()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
+            // let row = { TotalSeats = 20; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            // let row = { TotalSeats = 20; NumberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -1047,7 +1055,7 @@ let tests =
             setup ()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
@@ -1089,7 +1097,7 @@ let tests =
             setup()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 21; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 76576; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
@@ -1131,7 +1139,7 @@ let tests =
             setup()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 21; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 76576; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
@@ -1174,7 +1182,7 @@ let tests =
             setup()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 5; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 16; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
@@ -1217,7 +1225,7 @@ let tests =
             setup()
             let seatBookingService = service ()
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let booking1 = { Id = Guid.NewGuid(); ClaimedSeats = 5; RowId = None}
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 16; RowId = None}
             let booking3 = { Id = Guid.NewGuid(); ClaimedSeats = 887; RowId = None}
@@ -1260,7 +1268,7 @@ let tests =
     
             let seatBookingService = service () 
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let bookings = 
                 [
                     { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
@@ -1306,7 +1314,7 @@ let tests =
     
             let seatBookingService = service () 
 
-            let row = { totalSeats = 20; numberOfSeatsBooked = 0; AssociatedBookings = []; Id = Guid.NewGuid() }
+            let row = mkDefaultRow20Seats()
             let bookings = 
                 [
                     { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}

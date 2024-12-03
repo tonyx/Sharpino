@@ -15,7 +15,9 @@ open Sharpino.Sample.Saga.Domain.Seat.Events
 open Sharpino.Sample.Saga.Domain.Booking.Booking
 open Sharpino.Sample.Saga.Domain.Booking.Commands
 open Sharpino.Sample.Saga.Domain.Booking.Events
-
+open Sharpino.Sample.Saga.Domain.Vaucher.Voucher
+open Sharpino.Sample.Saga.Domain.Vaucher.Events
+open Sharpino.Sample.Saga.Domain.Vaucher.Commands
 open Sharpino.Storage
 module SeatBooking =
 
@@ -29,9 +31,10 @@ module SeatBooking =
     type SeatBookingService
         (eventStore: IEventStore<string>,
          eventBroker: IEventBroker<string>,
-         viewer: StateViewer<Theater>,
+         theaterViewer: StateViewer<Theater>,
          seatsViewer: AggregateViewer<Row>,
-         bookingsViewer: AggregateViewer<Booking>) 
+         bookingsViewer: AggregateViewer<Booking>)
+         // vouchersViewer: AggregateViewer<Voucher>) 
          =
         
         member this.GetRow id =
@@ -42,7 +45,7 @@ module SeatBooking =
             
         member this.GetRows() =
             result {
-                let! (_, theater) = viewer ()
+                let! (_, theater) = theaterViewer ()
                 let rowReferences = theater.Rows
                 let! rows =
                     rowReferences
@@ -52,7 +55,7 @@ module SeatBooking =
         
         member this.AddRow (row: Row) =
             result {
-                let! (_, theater) = viewer ()
+                let! (_, theater) = theaterViewer ()
                 let addRowReferenceCommand = AddRowReference (row.Id)
                 let! result =
                     runInitAndCommand<Theater, TheaterEvents, Row, string> eventStore eventBroker row addRowReferenceCommand
@@ -123,7 +126,7 @@ module SeatBooking =
             }
         member this.GetBookings() =
             result {
-                let! (_, theater) = viewer ()
+                let! (_, theater) = theaterViewer ()
                 let bookingReferences = theater.Bookings
                 let! bookings =
                     bookingReferences

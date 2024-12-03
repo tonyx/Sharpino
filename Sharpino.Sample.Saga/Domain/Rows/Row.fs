@@ -10,15 +10,16 @@ open FsToolkit.ErrorHandling
 
 let maximumSeats = 100
 type Row = {
-    totalSeats: int
-    numberOfSeatsBooked: int
+    TotalSeats: int
+    NumberOfSeatsBooked: int
     Id: Guid
     AssociatedBookings: List<Guid>
+    AssociatedVouchers: List<Guid>
 }
 
 with
-    member this.IsFull = this.numberOfSeatsBooked >= this.totalSeats
-    member this.FreeSeats = this.totalSeats - this.numberOfSeatsBooked
+    member this.IsFull = this.NumberOfSeatsBooked >= this.TotalSeats
+    member this.FreeSeats = this.TotalSeats - this.NumberOfSeatsBooked
     
     member this.AddBooking (bookingId: Guid, seatsAsked: int) =
         result
@@ -30,7 +31,7 @@ with
                     {
                         this
                             with
-                                numberOfSeatsBooked = this.numberOfSeatsBooked + seatsAsked
+                                NumberOfSeatsBooked = this.NumberOfSeatsBooked + seatsAsked
                                 AssociatedBookings = bookingId :: this.AssociatedBookings
                     }
             }
@@ -42,10 +43,10 @@ with
                     n > 0
                     |> Result.ofBool "n must be greater than 0"
                 do!
-                    this.totalSeats + n <= maximumSeats
+                    this.TotalSeats + n <= maximumSeats
                     |> Result.ofBool "total seats must be less than 100"
                 return
-                    { this with totalSeats = this.totalSeats + n }
+                    { this with TotalSeats = this.TotalSeats + n }
             }
     
     member this.RemoveSeats (n: int) =
@@ -58,14 +59,14 @@ with
                     this.FreeSeats - n >= 0
                     |> Result.ofBool "not enough seats"
                 return
-                    { this with totalSeats = this.totalSeats - n }   
+                    { this with TotalSeats = this.TotalSeats - n }   
             }
             
     member this.AddBookings (n: int) =
-        if this.numberOfSeatsBooked + n > this.totalSeats then
+        if this.NumberOfSeatsBooked + n > this.TotalSeats then
             Error "row is full"
         else
-            Ok { this with numberOfSeatsBooked = this.numberOfSeatsBooked + n }
+            Ok { this with NumberOfSeatsBooked = this.NumberOfSeatsBooked + n }
 
     member this.FreeBooking (bookingId: Guid, seatsFreed: int) =
         result
@@ -77,7 +78,7 @@ with
                     {
                         this
                             with
-                                numberOfSeatsBooked = this.numberOfSeatsBooked - seatsFreed
+                                NumberOfSeatsBooked = this.NumberOfSeatsBooked - seatsFreed
                                 AssociatedBookings = this.AssociatedBookings |> List.filter (fun x -> x <> bookingId)
                     }
             }

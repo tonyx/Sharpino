@@ -14,6 +14,9 @@
       <Compile Include="Domain/Booking/Booking.fs" />
       <Compile Include="Domain/Booking/Events.fs" />
       <Compile Include="Domain/Booking/Commands.fs" />
+      <Compile Include="Domain\Voucher\Voucher.fs" />
+      <Compile Include="Domain\Voucher\Events.fs" />
+      <Compile Include="Domain\Voucher\Commands.fs" />
       <Compile Include="Context/Theater.fs" />
       <Compile Include="Context/Events.fs" />
       <Compile Include="Context/Commands.fs" />

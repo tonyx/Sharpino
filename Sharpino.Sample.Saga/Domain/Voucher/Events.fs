@@ -1,19 +1,22 @@
-module Sharpino.Sample.Saga.Domain.Booking.Events
+module Sharpino.Sample.Saga.Domain.Vaucher.Events
 
 open System
 open Sharpino
 open Sharpino.Commons
 
 open Sharpino.Core
-open Sharpino.Sample.Saga.Domain.Booking.Booking
+open FSharpPlus
+open FSharpPlus.Operators
+open FsToolkit.ErrorHandling
+open Sharpino.Sample.Saga.Domain.Vaucher.Voucher
 
-type BookingEvents =
+type VoucherEvents =
     | Assigned of Guid
     | UnAssigned  
 
-    interface Event<Booking> with
+    interface Event<Voucher> with
         member
-            this.Process (x: Booking) =
+            this.Process (x: Voucher) =
                 match this with
                 | Assigned rowId -> x.Assign rowId
                 | UnAssigned -> x.UnAssign ()
@@ -22,5 +25,4 @@ type BookingEvents =
             jsonPSerializer.Serialize this
     static member
         Deserialize (x: string) =
-                jsonPSerializer.Deserialize<BookingEvents> x
-                
+                jsonPSerializer.Deserialize<VoucherEvents> x
