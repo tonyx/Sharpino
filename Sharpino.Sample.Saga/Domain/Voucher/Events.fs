@@ -11,15 +11,13 @@ open FsToolkit.ErrorHandling
 open Sharpino.Sample.Saga.Domain.Vaucher.Voucher
 
 type VoucherEvents =
-    | Assigned of Guid
-    | UnAssigned  
+    | Consumed of int
 
     interface Event<Voucher> with
         member
             this.Process (x: Voucher) =
                 match this with
-                | Assigned rowId -> x.Assign rowId
-                | UnAssigned -> x.UnAssign ()
+                | Consumed n -> x.Consume n
 
     member this.Serialize =
             jsonPSerializer.Serialize this

@@ -1,24 +1,33 @@
 module Sharpino.Sample.Saga.Domain.Vaucher.Voucher
 
 open System
+open FsToolkit.ErrorHandling
 open Sharpino
 open Sharpino.Commons
 
 open Sharpino.Core
+open Sharpino.Sample.Saga.Commons.Commons
 
 type Voucher = {
-    Id: Guid
-    NumberOfSeats: int
-    RowId: Option<Guid>
+    Id: VoucherId
+    Capacity: int
 }
 
 with
-    member this.IsAssigned = this.RowId.IsSome
-    member this.Assign (rowId: Guid) =
-        { this with RowId = Some rowId } |> Ok
-
-    member this.UnAssign () =
-        { this with RowId = None } |> Ok 
+    // member this.IsConsumed () = this.Consumed
+    member this.Consume (n: int) =
+        ResultCE.result
+            {
+                do!
+                    this.Capacity - n >= 0
+                    |> Result.ofBool "cannot assign vouchers to seats that are more than the voucher capacity" 
+               
+                return
+                    {
+                        this with
+                            Capacity = this.Capacity - n
+                    }
+            }
 
     static member Deserialize (x: string) =
         jsonPSerializer.Deserialize<Voucher> x

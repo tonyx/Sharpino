@@ -7,21 +7,23 @@ open Sharpino.Core
 open FSharpPlus
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
+open Sharpino.Sample.Saga.Commons.Commons
 
 let maximumSeats = 100
+// type RowId = Guid
 type Row = {
     TotalSeats: int
     NumberOfSeatsBooked: int
-    Id: Guid
-    AssociatedBookings: List<Guid>
-    AssociatedVouchers: List<Guid>
+    Id: RowId
+    AssociatedBookings: List<BookingId>
+    AssociatedVouchers: List<VoucherId>
 }
 
 with
     member this.IsFull = this.NumberOfSeatsBooked >= this.TotalSeats
     member this.FreeSeats = this.TotalSeats - this.NumberOfSeatsBooked
     
-    member this.AddBooking (bookingId: Guid, seatsAsked: int) =
+    member this.AddBooking (bookingId: BookingId, seatsAsked: int) =
         result
             {
                 do!
@@ -68,7 +70,7 @@ with
         else
             Ok { this with NumberOfSeatsBooked = this.NumberOfSeatsBooked + n }
 
-    member this.FreeBooking (bookingId: Guid, seatsFreed: int) =
+    member this.FreeBooking (bookingId: BookingId, seatsFreed: int) =
         result
             {
                 do!

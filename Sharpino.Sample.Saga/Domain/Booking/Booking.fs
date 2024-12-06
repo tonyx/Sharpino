@@ -5,17 +5,18 @@ open Sharpino
 open Sharpino.Commons
 
 open Sharpino.Core
+open Sharpino.Sample.Saga.Commons.Commons
 
 type Booking = {
-    Id: Guid
+    Id: BookingId
     ClaimedSeats: int
-    RowId: Option<Guid>
+    RowId: Option<RowId>
 }
 
 with
     member this.IsAssigned = this.RowId.IsSome
     
-    member this.Assign (rowId: Guid) =
+    member this.Assign (rowId: RowId) =
         { this with RowId = Some rowId } |> Ok
     member this.UnAssign () =
         { this with RowId = None } |> Ok

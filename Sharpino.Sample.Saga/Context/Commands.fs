@@ -16,6 +16,8 @@ type TheaterCommands =
     | RemoveRowReference of Guid
     | AddBookingReference of Guid
     | RemoveBookingReference of Guid
+    | AddVoucherReference of Guid
+    | RemoveVoucherReference of Guid
 
     interface Command<Theater, TheaterEvents> with
         member
@@ -33,5 +35,11 @@ type TheaterCommands =
                 | RemoveBookingReference bookingId ->
                     x.RemoveBookingReference bookingId
                     |> Result.map (fun s -> (s, [BookingReferenceRemoved bookingId]))
+                | AddVoucherReference voucherId ->
+                    x.AddVoucherReference voucherId
+                    |> Result.map (fun s -> (s, [VoucherReferenceAdded voucherId]))
+                | RemoveVoucherReference voucherId ->
+                    x.RemoveVoucherReference voucherId
+                    |> Result.map (fun s -> (s, [VoucherReferenceRemoved voucherId]))    
         member this.Undoer = None
         

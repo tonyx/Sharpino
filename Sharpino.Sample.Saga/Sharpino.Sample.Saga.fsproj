@@ -7,6 +7,7 @@
 
     <ItemGroup>
       <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+      <Compile Include="Commons.fs" />
 
       <Compile Include="Domain/Rows/Row.fs" />
       <Compile Include="Domain/Rows/Events.fs" />

@@ -15,6 +15,8 @@ type TheaterEvents =
     | SeatReferenceRemoved of Guid
     | BookingReferenceAdded of Guid
     | BookingReferenceRemoved of Guid
+    | VoucherReferenceAdded of Guid
+    | VoucherReferenceRemoved of Guid
     
     interface Event<Theater> with
         member
@@ -24,6 +26,8 @@ type TheaterEvents =
                 | SeatReferenceRemoved rowId -> x.RemoveRowReference rowId
                 | BookingReferenceAdded bookingId -> x.AddBookingReference bookingId
                 | BookingReferenceRemoved bookingId -> x.RemoveBookingReference bookingId
+                | VoucherReferenceAdded voucherId -> x.AddVoucherReference voucherId
+                | VoucherReferenceRemoved voucherId -> x.RemoveVoucherReference voucherId
     member this.Serialize =
         jsonPSerializer.Serialize this
     static member
