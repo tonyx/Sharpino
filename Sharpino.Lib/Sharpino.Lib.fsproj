@@ -63,13 +63,13 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.1.6" />
+    <PackageReference Include="Sharpino.Core" Version="2.1.7" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.9.6" />
+    <PackageReference Include="Farmer" Version="1.9.7" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
@@ -104,7 +104,7 @@
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.9.6" />
+    <PackageReference Include="Farmer" Version="1.9.7" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
     <PackageReference Include="FSharpPlus" Version="1.6.1" />
