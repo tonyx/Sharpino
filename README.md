@@ -92,8 +92,6 @@ Sample 5 will just replace SAMPLE 4. uses SAFE stack (Fable/Elmish). Use the com
 Please just look at the domain, and don't care that much about the u.i. (Elmish part). 
 
 
-## Tests on eventstoredb. EventStroreDb is not mantained that much at the moment
-
 The following line needs to stay commented out.
 
 ```Fsharp
@@ -118,6 +116,12 @@ This invariant rule must be preserved even if two concurrent transactions try to
 The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
 Invariants can be represented by quoted expressions so that, ideally, this may allow us to move toward a DSL (Example: "no booking can end up in leaving the only middle seat free in a row").
 
+## Sample application Saga 
+A Saga-like mechanism in single db to test the "undoers": if a chain of commands fails then the undoers will rollback the transaction.
+It is not a prescription about using Saga in single db but rather a way to test the undoers.
+In the Saga example there are tests that shows that the forceFun series of commands are safe as the decision function in any
+aggregate that presents more than once takes into account the effect of the previous commands in the same transaction.
+
 __Faq__: 
 - Why the name "Sharpino"? 
     - It's a mix of "Sharp" (as the '#' of  C# or F#) and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf". 
@@ -140,12 +144,11 @@ __Faq__:
 Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
 
 ## Todo list. Help welcome:
-- Rewrite from scratch the Kafka integration making it work as is supposed to (send and and forget with limited retries or transactional outbox pattern). Implement aggregate state viewer based on processing events via messages with some way to resync data when in trouble.
+- The event broker has been disabled. Possibly another way to distribute the events and the state across multiple instances of the application is needed (redis?)
 - Implementing event store using Postgres event store but using Azure sql instead.
-- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging. 
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
-- Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
-- Add metadata to events in json format. We should be able to pass those metadata via commands (example runAggregateCommandMd may be the same as runAggregateCommand with metadata added). That must be useful for debugging.
+- Not sure about this: Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
+- Write some way to runMultipleCommands with arbitrary types of aggregates in one shot: at the moment this is limited to three aggregates types
 
 ## Comparison with the style of examples in other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
@@ -181,10 +184,11 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 
-
 ## News/Updates
-- Version 3.0.5: forceRunNAggregateCommands has been improved (no need to worry about pre/postvalidation)
-- Version 3.0.4: forceRunTwoNAggregateCommands has been improved (no need to worry about pre/postvalidation)
+- blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 3](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-3-c4a9edc81467)
+- Version 3.0.6: forceRunThreeNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
+- Version 3.0.5: forceRunNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
+- Version 3.0.4: forceRunTwoNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
 - Version 3.0.3: Fixed bug in multiple events writing in Postgres eventstore (a local branch of an incoming feature can reproduce this bub)
 - Version 3.0.2: StateCache substituted by StateCache2. Access cached contexts don't need checking lastEventId to the eventstore for comparison.
 - Version 3.0.0: some cache improvements, supporting net9.0 and net8.0 (ditched net7.0)
