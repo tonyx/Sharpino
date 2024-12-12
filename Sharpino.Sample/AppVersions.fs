@@ -27,7 +27,10 @@ module AppVersions =
         "Server=127.0.0.1;"+
         "Database=es_01;" +
         "User Id=safe;"+
-        $"Password={password};"
+        $"Password={password};
+        Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100;"
+        
+        // let connectionString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase;Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100;"
 
     let eventStoreConnection = "esdb://localhost:2113?tls=false"
     let jsonSerSettings = JsonSerializerSettings()
