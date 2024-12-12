@@ -572,20 +572,20 @@ module CommandHandler =
                     let! (newState3, events3) =
                         state3
                         |> command3.Execute
-                    let events1' =
+                    let serEvents1 =
                         events1 
                         |>> fun x -> x.Serialize
-                    let events2' =
+                    let serEvents2 =
                         events2 
                         |>> fun x -> x.Serialize
-                    let events3' =
+                    let serEvents3 =
                         events3 
                         |>> fun x -> x.Serialize
                     let multiEvents =
                         [
-                            (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
-                            (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
-                            (eventId3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
+                            (eventId1, serEvents1, 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventId2, serEvents2, 'A2.Version, 'A2.StorageName, aggregateId2)
+                            (eventId3, serEvents3, 'A3.Version, 'A3.StorageName, aggregateId3)
                         ]
                     let! ids =
                         eventStore.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A4.Version 'A4.StorageName initialInstance.Serialize md multiEvents
@@ -668,11 +668,11 @@ module CommandHandler =
                     let! (newState, events) =
                         state
                         |> command.Execute
-                    let events' =
+                    let serEvents =
                         events 
                         |>> fun x -> x.Serialize
                     let! ids =
-                        events' |> storage.AddAggregateEventsMd eventId 'A.Version 'A.StorageName state.Id md
+                        serEvents |> storage.AddAggregateEventsMd eventId 'A.Version 'A.StorageName state.Id md
                    
                     AggregateCache<'A, 'F>.Instance.Memoize2 (newState |> Ok) ((ids |> List.last, state.Id))
                     
@@ -767,7 +767,7 @@ module CommandHandler =
                         newStatesAndEvents
                         |>> fst
                         
-                    let newEventsSerialized =
+                    let serializedNewEvents =
                         newEvents
                         |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
                         
@@ -779,12 +779,12 @@ module CommandHandler =
                         aggregateIdsWithCommands
                         |>> fst
                         
-                    let packParametersForDb' =
-                        List.zip3 initialStatesEventIds newEventsSerialized uniqueAggregateIds
-                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                    let currentEventIdsEventsAnAggregateIds =
+                        List.zip3 initialStatesEventIds serializedNewEvents uniqueAggregateIds
+                        |>> fun (currentStateEventId, events, id) -> (currentStateEventId, events, 'A1.Version, 'A1.StorageName, id)
                         
                     let! dbEventIds =
-                        packParametersForDb'
+                        currentEventIdsEventsAnAggregateIds
                         |> eventStore.MultiAddAggregateEventsMd md
                     
                     for i in 0 .. (uniqueAggregateIds.Length - 1) do
@@ -845,6 +845,8 @@ module CommandHandler =
                     let states' = 
                         states 
                         |>> fun (_, state) -> state
+                    // let! states' = 
+                    //     aggregateIds
                     let lastEventIds =
                         states
                         |>> fun (eventId, _) -> eventId
@@ -864,11 +866,11 @@ module CommandHandler =
                     let serializedEvents =
                         events 
                         |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
-                    let packParametersForDb =
+                    let currentStateEventIdEventsAndAggregateIds =
                         List.zip3 lastEventIds serializedEvents aggregateIds
                         |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
                     let! eventIds =
-                        eventStore.MultiAddAggregateEventsMd md packParametersForDb
+                        eventStore.MultiAddAggregateEventsMd md currentStateEventIdEventsAndAggregateIds
                     
                     for i in 0..(aggregateIds.Length - 1) do
                         AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
@@ -937,26 +939,26 @@ module CommandHandler =
                         state2
                         |> command2.Execute    
                     
-                    let events1' =
+                    let serializedEvents1 =
                         events1 
                         |>> fun x -> x.Serialize    
                  
-                    let events2' =
+                    let serializedEvents2 =
                         events2
                         |>> fun x -> x.Serialize
                     
-                    let! idLists =
+                    let! newLastStateIdsList =
                         eventStore.MultiAddAggregateEventsMd
                             md 
                             [
-                                (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
-                                (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                                (eventId1, serializedEvents1, 'A1.Version, 'A1.StorageName, aggregateId1)
+                                (eventId2, serializedEvents2, 'A2.Version, 'A2.StorageName, aggregateId2)
                             ]
-                    AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((idLists.[0] |> List.last, aggregateId1))
-                    AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((idLists.[1] |> List.last, aggregateId2))
+                    AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((newLastStateIdsList.[0] |> List.last, aggregateId1))
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((newLastStateIdsList.[1] |> List.last, aggregateId2))
                    
-                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (idLists.[0] |> List.last)
-                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (idLists.[1] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
                     
                     return ()     
                 }
@@ -1187,19 +1189,19 @@ module CommandHandler =
                         newStatesAndEvents2
                         |>> snd
                         
-                    let serEvents1 =
+                    let serializedEvents1 =
                         generatedEvents1
                         |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
                     
-                    let serEvents2 =
+                    let serializedEvents2 =
                         generatedEvents2
                         |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
                         
-                    let initialEventIds1 =
+                    let initialStateEventIds1 =
                         uniqueInitialstates1
                         |>> fst
                         
-                    let initialEventIds2 =
+                    let initialStateEventIds2 =
                         uniqueInitialstates2
                         |>> fst
                     
@@ -1211,25 +1213,25 @@ module CommandHandler =
                         aggregateIdsWithCommands2
                         |>> fst
                     
-                    let packParametersForDb1 =
-                        List.zip3 initialEventIds1 serEvents1 aggregateIds1
+                    let initialEventIds1Events1AndAggregateIds1 =
+                        List.zip3 initialStateEventIds1 serializedEvents1 aggregateIds1
                         |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
                     
-                    let packParametersForDb2 =
-                        List.zip3 initialEventIds2 serEvents2 aggregateIds2
+                    let initialEventIds2EventIds2AndAggregateIds2 =
+                        List.zip3 initialStateEventIds2 serializedEvents2 aggregateIds2
                         |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
                     
-                    let allPacked = packParametersForDb1 @ packParametersForDb2
+                    let allPacked = initialEventIds1Events1AndAggregateIds1 @ initialEventIds2EventIds2AndAggregateIds2
                     
-                    let! dbEventIds =
+                    let! dbNewStatesEventIds =
                         allPacked
                         |> eventStore.MultiAddAggregateEventsMd md
                        
                     let newDbBasedEventIds1 =
-                        dbEventIds
+                        dbNewStatesEventIds
                         |> List.take aggregateIds1.Length
                     let newDbBasedEventIds2 =
-                        dbEventIds
+                        dbNewStatesEventIds
                         |> List.skip aggregateIds1.Length    
                     
                     for i in 0 .. (uniqueAggregateIds1.Length - 1) do
