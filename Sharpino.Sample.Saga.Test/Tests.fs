@@ -66,22 +66,21 @@ let vouchersAggregatedbViewer = fun id -> getAggregateFreshState<Voucher, Vouche
 let setupDbEventStore =
     fun () ->
         let dbEventStore:IEventStore<string> = PgEventStore(connection)
-        dbEventStore.Reset "_01" "_row"
-        dbEventStore.ResetAggregateStream "_01" "_row"
-        dbEventStore.Reset "_01" "_booking"
-        dbEventStore.ResetAggregateStream "_01" "_booking"
-        dbEventStore.Reset "_01" "_theater"
-        // StateCache<Theater>.Instance.Clear ()
+        dbEventStore.Reset Row.Version Row.StorageName
+        dbEventStore.ResetAggregateStream Row.Version Row.StorageName
+        dbEventStore.Reset Booking.Version Booking.StorageName
+        dbEventStore.ResetAggregateStream Booking.Version Booking.StorageName
+        dbEventStore.Reset Theater.Version Theater.StorageName
         StateCache2<Theater>.Instance.Invalidate ()
         AggregateCache<Row, string>.Instance.Clear ()
         AggregateCache<Booking, string>.Instance.Clear ()
 let setupMemoryStorage =
     fun () ->
-        memoryStorage.Reset "_01" "_row"
-        memoryStorage.ResetAggregateStream "_01" "_row"
-        memoryStorage.Reset "_01" "_booking"
-        memoryStorage.ResetAggregateStream "_01" "_booking"
-        memoryStorage.Reset "_01" "_theater"
+        memoryStorage.Reset Row.Version Row.StorageName
+        memoryStorage.ResetAggregateStream Row.Version Row.StorageName
+        memoryStorage.Reset Booking.Version Booking.StorageName
+        memoryStorage.ResetAggregateStream Booking.Version Booking.StorageName
+        memoryStorage.Reset Theater.Version Theater.StorageName
         StateCache2<Theater>.Instance.Invalidate ()
         AggregateCache<Row, string>.Instance.Clear ()
         AggregateCache<Booking, string>.Instance.Clear ()
