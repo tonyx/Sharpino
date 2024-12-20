@@ -110,7 +110,7 @@ module SeatBooking =
                         runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
                     return result    
                 }
-        member this.RemoveSeatsFromRowPreValidation (rowId: RowId, ns: List<int>) =
+        member this.ForceRemoveSeatsFromRow (rowId: RowId, ns: List<int>) =
             if (ns.Length = 0) then
                 Ok ()
             else
@@ -182,7 +182,7 @@ module SeatBooking =
                     runTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
         
-        // we don't need prevalidation anymore: multiple commands toward the same aggregate id is fine (no saga-ish style involved)
+        // "force" means we can use the "force" version of the run multiple aggregates accepting repetition of the same aggregate ID
         member this.ForceAssignBookings  (bookingAndRows: List<BookingId * RowId>) =
             result {
                 let rowIds = bookingAndRows |> List.map snd
