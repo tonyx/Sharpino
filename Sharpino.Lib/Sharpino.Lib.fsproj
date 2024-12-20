@@ -39,6 +39,7 @@
     <Compile Include="CommandHandler.fs" />
     
     <Compile Include="KafkaReceiver.fs" />
+    
     <None Include="LICENSE" Pack="true" PackagePath="" />
     <None Include="README.md" Pack="true" PackagePath="" />
   </ItemGroup>
@@ -98,6 +99,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" /> 
+    
     <PackageReference Include="Sharpino.Core" Version="2.1.6" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
@@ -115,8 +117,6 @@
   </ItemGroup>
   
   <!-- needed if you are developing the core: -->
-  <!--  -->
-
 <!--  <ItemGroup>-->
 <!--   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
 <!--  </ItemGroup>-->

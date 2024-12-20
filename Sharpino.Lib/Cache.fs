@@ -1,24 +1,26 @@
 namespace Sharpino
 
-open System.Linq
+open Microsoft.Extensions.Logging
 open Sharpino
 open Sharpino.Core
 open Sharpino.Definitions
 open System.Runtime.CompilerServices
+open Microsoft.Extensions.Logging.Abstractions
 open System.Collections
 open FSharp.Core
-open log4net
 open System
 
 module Cache =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
+        logger := newLogger
     let config = 
         try
             Conf.config ()
         with
         | :? _ as ex -> 
             // if appSettings.json is missing
-            log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
+            printf "appSettings.json file not found using default!!! %A\n" ex
             Conf.defaultConf
 
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
@@ -37,7 +39,7 @@ module Cache =
                     dic.Remove removed |> ignore
                 ()
             with :? _ as e -> 
-                log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
+                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 dic.Clear()
                 queue.Clear()
                 ()
@@ -46,11 +48,6 @@ module Cache =
             // sometimes you want to bypass cache for test 
             // f()
             
-            //  previously I decided to not cache the initial value
-            // match arg with
-            // | 0, _ ->
-            //     f()
-            // | _ ->
             let (b, res) = dic.TryGetValue arg
             if b then
                 res

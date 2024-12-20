@@ -1,83 +1,88 @@
 
 namespace Sharpino
 
-open FsToolkit.ErrorHandling
-open FSharpPlus
-open Sharpino
-open Sharpino.Commons
-open Sharpino.CommandHandler
-open Sharpino.Storage
-open Sharpino.Definitions
-open Confluent.Kafka
+// open FsToolkit.ErrorHandling
+// open FSharpPlus
+// open Sharpino
+// open Sharpino.Commons
+// open Sharpino.CommandHandler
+// open Sharpino.Storage
+// open Sharpino.Definitions
+// open Confluent.Kafka
 open Sharpino.Core
-open Sharpino.Utils
-open Sharpino.KafkaBroker
-open System.Collections
+// open Sharpino.Utils
+// open Sharpino.KafkaBroker
+// open System.Collections
 open System
 open log4net
-open log4net.Config
-open Confluent.Kafka
+// open log4net.Config
+// open Confluent.Kafka
 // open FsKafka
 open FSharpPlus.Operators
 
 // to be removed/rewritten
 
-// todo: this part will be revised
+// todo: this part will be revised or removed or replaced
 // leaving code under comment just for me, just for now 
 module KafkaReceiver =
     let getStrAggregateMessage message =
-        ResultCE.result {
-            let base64Decoded = message |> Convert.FromBase64String 
-            let! binaryDecoded = binarySerializer.Deserialize<BrokerAggregateMessageRef> base64Decoded
-            return binaryDecoded
-        }
+        ()
+        // ResultCE.result {
+        //     let base64Decoded = message |> Convert.FromBase64String 
+        //     let! binaryDecoded = binarySerializer.Deserialize<BrokerAggregateMessageRef> base64Decoded
+        //     return binaryDecoded
+        // }
 
     let getFromMessage<'E> value =
-        ResultCE.result {
-            let! okBinaryDecoded = getStrAggregateMessage value
-
-            let id = okBinaryDecoded.AggregateId
-            let eventId = okBinaryDecoded.EventId
-
-            let message = okBinaryDecoded.BrokerEvent
-            let actual = 
-                match message with
-                    | StrEvent x -> jsonPicklerSerializer.Deserialize<'E> x |> Result.get
-                    | BinaryEvent x -> binPicklerSerializer.Deserialize<'E> x |> Result.get
-            return (eventId, id, actual)
-        }
+        ()
+        // ResultCE.result {
+        //     let! okBinaryDecoded = getStrAggregateMessage value
+        //
+        //     let id = okBinaryDecoded.AggregateId
+        //     let eventId = okBinaryDecoded.EventId
+        //
+        //     let message = okBinaryDecoded.BrokerEvent
+        //     let actual = 
+        //         match message with
+        //             | StrEvent x -> jsonPicklerSerializer.Deserialize<'E> x |> Result.get
+        //             | BinaryEvent x -> binPicklerSerializer.Deserialize<'E> x |> Result.get
+        //     return (eventId, id, actual)
+        // }
 
     let logger = LogManager.GetLogger (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     // beware of the string generic type in the aggregate. should work also with other types
     type ConsumerX<'A, 'E when 'E :> Event<'A> and 'A:> Aggregate<string>> 
         (topic: string, clientId: string, bootStrapServers: string, groupId: string, timeOut: int, fallBackViewer: AggregateViewer<'A>) =
-        let mutable currentStates: Map<Guid, EventId * 'A>  = [] |> Map.ofList
-        let mutable gMessages = []
-        member this.GMessages = gMessages
+        // let mutable currentStates: Map<Guid, EventId * 'A>  = [] |> Map.ofList
+        // let mutable gMessages = []
+        // member this.GMessages = gMessages
 
         member this.GetEventsByAggregate aggregateId =
-            ResultCE.result {
-                let! messages = 
-                    this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
-                let filtered = messages |> List.filter (fun (_, id, _) -> id = aggregateId)
-
-                let sorted = filtered |> List.sortBy (fun (evId, _, _) -> evId)
-                return sorted |>> fun (_, _, x) -> x
-            }
+            ()
+            // ResultCE.result {
+            //     let! messages = 
+            //         this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
+            //     let filtered = messages |> List.filter (fun (_, id, _) -> id = aggregateId)
+            //
+            //     let sorted = filtered |> List.sortBy (fun (evId, _, _) -> evId)
+            //     return sorted |>> fun (_, _, x) -> x
+            // }
         member this.GetEventsByAggregateNew aggregateId =
-            ResultCE.result {
-                let! messages = 
-                    this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
-                let filtered = messages |> List.filter (fun (_, id, _) -> id = aggregateId)
-
-                let sorted = filtered |> List.sortBy (fun (evId, _, _) -> evId)
-                return sorted |>> fun (eventId, _, x) -> (eventId, x)
-            }
+            ()
+            // ResultCE.result {
+            //     let! messages = 
+            //         this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getFromMessage<'E>)
+            //     let filtered = messages |> List.filter (fun (_, id, _) -> id = aggregateId)
+            //
+            //     let sorted = filtered |> List.sortBy (fun (evId, _, _) -> evId)
+            //     return sorted |>> fun (eventId, _, x) -> (eventId, x)
+            // }
 
         member this.GetMessages =
-            gMessages 
-            |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getStrAggregateMessage)
+            ()
+            // gMessages 
+            // |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getStrAggregateMessage)
 
         // member this.Consuming () =
         //     let log = Serilog.LoggerConfiguration().CreateLogger()
@@ -221,63 +226,70 @@ module KafkaReceiver =
             // gMessages <- []
             // ()
 
-        member this.GetState (id: Guid): Result<EventId * 'A, string> =
+        member this.GetState (id: Guid) = // : Result<EventId * 'A, string> =
+            ()
+            
             // printf "getting state for id %A\n" id
-            let foundState = currentStates.TryFind id
-            match foundState with
-            | Some state -> 
-                // printf "GGGGGG. found\n"; 
-                state |> Result.Ok
-            | _ -> 
-                // printf "QQQ. not found"
-                let state = fallBackViewer id
-                match state with
-                | Ok (eventId, state) -> 
-                    currentStates <- currentStates.Add(id, (eventId, state))
-                    (eventId, state) |> Result.Ok
-                | Error e -> e |> Result.Error
+            // let foundState = currentStates.TryFind id
+            // match foundState with
+            // | Some state -> 
+            //     // printf "GGGGGG. found\n"; 
+            //     state |> Result.Ok
+            // | _ -> 
+            //     // printf "QQQ. not found"
+            //     let state = fallBackViewer id
+            //     match state with
+            //     | Ok (eventId, state) -> 
+            //         currentStates <- currentStates.Add(id, (eventId, state))
+            //         (eventId, state) |> Result.Ok
+            //     | Error e -> e |> Result.Error
 
     let getStrContextMessage message =
-        ResultCE.result {
-            let base64Decoded = message |> Convert.FromBase64String 
-            let! binaryDecoded = binarySerializer.Deserialize<BrokerMessageRef> base64Decoded
-            return binaryDecoded
-        }
+        ()
+        // ResultCE.result {
+        //     let base64Decoded = message |> Convert.FromBase64String 
+        //     let! binaryDecoded = binarySerializer.Deserialize<BrokerMessageRef> base64Decoded
+        //     return binaryDecoded
+        // }
 
     let getContextEventFromMessage<'E> value =
-        ResultCE.result {
-            let! okBinaryDecoded = getStrContextMessage value
-
-            let eventId = okBinaryDecoded.EventId
-
-            let message = okBinaryDecoded.BrokerEvent
-            let actual = 
-                match message with
-                    | StrEvent x -> jsonPicklerSerializer.Deserialize<'E> x |> Result.get
-                    | BinaryEvent x -> binPicklerSerializer.Deserialize<'E> x |> Result.get
-            return (eventId, id, actual)
-        }
+        ()
+        // ResultCE.result {
+        //     let! okBinaryDecoded = getStrContextMessage value
+        //
+        //     let eventId = okBinaryDecoded.EventId
+        //
+        //     let message = okBinaryDecoded.BrokerEvent
+        //     let actual = 
+        //         match message with
+        //             | StrEvent x -> jsonPicklerSerializer.Deserialize<'E> x |> Result.get
+        //             | BinaryEvent x -> binPicklerSerializer.Deserialize<'E> x |> Result.get
+        //     return (eventId, id, actual)
+        // }
     
 
     type ConsumerY<'A, 'E when 'E :> Event<'A> >
         (topic: string, clientId: string, bootStrapServers: string, groupId: string, timeOut: int, start: 'A, fallbackViewer: StateViewer<'A>) =
-            let mutable currentState: 'A = start
+            // let mutable currentState: 'A = start
             // note that "start" must correspond to the same as fallbackViewer appied
-            let mutable gMessages = []
+            // let mutable gMessages = []
 
-            member this.GMessages = gMessages
+            // member this.GMessages = gMessages
 
             member this.GetEvents () =
-                ResultCE.result {
-                    let! messages = 
-                        this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getContextEventFromMessage<'E>)
-                    let sorted = messages |> List.sortBy (fun (evId, _, _) -> evId)
-                    return sorted
-                }
+                ()
+                
+                // ResultCE.result {
+                //     let! messages = 
+                //         this.GMessages |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getContextEventFromMessage<'E>)
+                //     let sorted = messages |> List.sortBy (fun (evId, _, _) -> evId)
+                //     return sorted
+                // }
 
             member this.GetMessages =
-                gMessages
-                |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getStrContextMessage)
+                ()
+                // gMessages
+                // |> List.map (fun (m: ConsumeResult<string, string>) -> m.Message.Value) |> List.traverseResultM (fun m -> m |> getStrContextMessage)
 
             member this.Consuming () =
                 ()
@@ -302,27 +314,30 @@ module KafkaReceiver =
                 // } |> Async.RunSynchronously
 
             member this.Update () =
-                this.Consuming () 
-                let events = this.GetEvents ()
-                if Result.isError events then
-                    log.Error "error" 
-                    ()
-                    // logger.Error (events |> Result.getError)
-                else
-                    let sortedEvents = 
-                        events |> Result.get
-                        |> List.sortBy (fun (evId, _, _) -> evId)
-                        |> List.map (fun (evId, _, x) -> x )
-                    // printf "this is the length of the events %A\n" sortedEvents.Length
-                    let result = evolveUNforgivingErrors currentState  sortedEvents
-                    match result with
-                    | Ok state -> currentState <- state
-                    | Error e -> log.Error e
-                    gMessages <- []
-                    ()
+                ()
+                
+                // this.Consuming () 
+                // let events = this.GetEvents ()
+                // if Result.isError events then
+                //     log.Error "error" 
+                //     ()
+                //     // logger.Error (events |> Result.getError)
+                // else
+                //     let sortedEvents = 
+                //         events |> Result.get
+                //         |> List.sortBy (fun (evId, _, _) -> evId)
+                //         |> List.map (fun (evId, _, x) -> x )
+                //     // printf "this is the length of the events %A\n" sortedEvents.Length
+                //     let result = evolveUNforgivingErrors currentState  sortedEvents
+                //     match result with
+                //     | Ok state -> currentState <- state
+                //     | Error e -> log.Error e
+                //     gMessages <- []
+                //     ()
                     
             member this.GetState () =
-                (0, currentState) |> Ok
+                ()
+                // (0, currentState) |> Ok
 
 
 

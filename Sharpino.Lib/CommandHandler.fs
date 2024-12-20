@@ -14,10 +14,8 @@ open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Definitions
 open Sharpino.StateView
-open Sharpino.KafkaBroker
 
 open FsToolkit.ErrorHandling
-open log4net
 
 // the "md" version of any function is the one that takes a metadata parameter
 // the md requires an extra text md field in any event and a proper new funcion on the db side
@@ -26,11 +24,11 @@ open log4net
 // after all what we are going for is leaving only the md version and keep the
 // non-md only for backward compatibility
 module CommandHandler =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
-    let host = Host.CreateApplicationBuilder().Build()
-    
-    let factory: ILoggerFactory = LoggerFactory.Create(fun builder -> builder.AddConsole() |> ignore)
+    // will play around DI to improve logging
+    // let host = Host.CreateApplicationBuilder().Build()
+    //
+    // let factory: ILoggerFactory = LoggerFactory.Create(fun builder -> builder.AddConsole() |> ignore)
     
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
    
@@ -80,7 +78,8 @@ module CommandHandler =
             Conf.config ()
         with
         | :? _ as ex -> 
-            log.Error (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
+            logger.Value.LogError (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
+            printf "appSettings.json file not found using defult!!! %A\n" ex
             Conf.defaultConf
 
     let inline mkSnapshot<'A, 'E, 'F
@@ -845,8 +844,6 @@ module CommandHandler =
                     let states' = 
                         states 
                         |>> fun (_, state) -> state
-                    // let! states' = 
-                    //     aggregateIds
                     let lastEventIds =
                         states
                         |>> fun (eventId, _) -> eventId
@@ -1511,21 +1508,6 @@ module CommandHandler =
                     let aggregateIdsWithEventIds2 =
                         List.zip aggregateIds2 eventIds2
                         
-                    let kafkaParmeters1 =
-                        List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
-                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                    let kafkaParameters2 =
-                        (List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
-                        |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents))
-                       
-                    // FOCUS todo: use the doNothingBroker (no notification)
-                    if (eventBroker.notifyAggregate.IsSome) then
-                        kafkaParmeters1
-                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                        |> ignore
-                        kafkaParameters2
-                        |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                        |> ignore
                         
                     return ()
                 }
@@ -1805,12 +1787,12 @@ module CommandHandler =
                      let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
                      let tryCompensations =
                          undoerRun ()
-                         // will dismiss Mailboxprocessor probably (no that much benefit, and more complexity to handle, difficulty in debug, etc...)
+                         // will dismiss Mailboxprocessor probably (only for Saga)
                          // MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                      let _ =
                          match tryCompensations with
-                         | Error x -> log.Error x
-                         | Ok _ -> log.Info "compensations has been succesfull"
+                         | Error x -> logger.Value.LogError x
+                         | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
                      Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
                 else      
                     Error (sprintf "failed the precondition of applicability of the runSagaTwoNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers lengthMustBeTheSame)
@@ -2265,34 +2247,6 @@ module CommandHandler =
                             AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((eventIds3.[i] |> List.last, aggregateIds3.[i]))
                             mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (eventIds3.[i] |> List.last) |> ignore
 
-                        let aggregateIdsWithEventIds1 =
-                            List.zip aggregateIds1 eventIds1
-                        let aggregateIdsWithEventIds2 =
-                            List.zip aggregateIds2 eventIds2
-                        let aggregateIdsWithEventIds3 =
-                            List.zip aggregateIds3 eventIds3
-
-                        let kafkaParmeters1 =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds1 serializedEvents1
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                        let kafkaParameters2 =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds2 serializedEvents2
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                        let kafkaParameters3 =
-                            List.map2 (fun idList serializedEvents -> (idList, serializedEvents)) aggregateIdsWithEventIds3 serializedEvents3
-                            |>> fun (((aggId: Guid), idList), serializedEvents) -> (aggId, List.zip idList serializedEvents)
-                        
-                        if (eventBroker.notifyAggregate.IsSome) then
-                            kafkaParmeters1
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A1.Version 'A1.StorageName x |> ignore)
-                            |> ignore
-                            kafkaParameters2
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A2.Version 'A2.StorageName x |> ignore)
-                            |> ignore
-                            kafkaParameters3
-                            |>> fun (id, x) -> postToProcessor (fun () -> tryPublishAggregateEvent eventBroker id 'A3.Version 'A3.StorageName x |> ignore)
-                            |> ignore
-                            
                         return ()
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
@@ -2418,15 +2372,6 @@ module CommandHandler =
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (idLists.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (idLists.[1] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (idLists.[2] |> List.last)
-                    
-                    if (eventBroker.notifyAggregate.IsSome) then
-                        let idAndEvents1 = List.zip idLists.[0] events1'
-                        let idAndEvents2 = List.zip idLists.[1] events2'
-                        let idAndEvents3 = List.zip idLists.[2] events3'
-                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId1 'A1.Version 'A1.StorageName idAndEvents1 |> ignore)
-                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId2 'A2.Version 'A2.StorageName idAndEvents2 |> ignore)
-                        postToProcessor (fun () -> tryPublishAggregateEvent eventBroker aggregateId3 'A3.Version 'A3.StorageName idAndEvents3 |> ignore)
-                        ()
 
                     return ()
                 }
@@ -2598,8 +2543,8 @@ module CommandHandler =
                      MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                 let _ =
                      match tryCompensations with
-                     | Error x -> log.Error x
-                     | Ok _ -> log.Info "compensations has been succesfull"
+                     | Error x -> logger.Value.LogError x
+                     | Ok _ -> logger.Value.LogInformation "compensations has been succesfull"
                 Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
             
             let commandA11HasUndoers = commandA11 |> List.forall (fun x -> x.Undoer.IsSome)
@@ -2904,8 +2849,8 @@ module CommandHandler =
                         MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                     let _ =
                         match tryCompensations with
-                        | Error x -> log.Error x
-                        | Ok _ -> log.Info "compensation has been succesful" 
+                        | Error x -> logger.Value.LogError x
+                        | Ok _ -> logger.Value.LogInformation "compensation has been succesful" 
                     Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
                 else                 
                     Error (sprintf "falied the precondition of applicability of the runSagaThreeNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)

@@ -24,7 +24,7 @@ open Sharpino.Sample.Todos.TodoEvents
 open Tests.Sharpino.Shared
 
 open Sharpino.TestUtils
-open Sharpino.KafkaReceiver
+// open Sharpino.KafkaReceiver
 open System.Threading
 open FsToolkit.ErrorHandling
 open Sharpino.KafkaBroker
