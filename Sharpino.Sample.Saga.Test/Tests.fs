@@ -1266,7 +1266,7 @@ let tests =
             Expect.isOk booking1 "should be ok"
             
         multipleTestCase "a more general saga example of compensation 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
-            setup()
+            setup ()
         
             let seatBookingService = service () 
         
@@ -1310,423 +1310,422 @@ let tests =
             let booking1 = seatBookingService.GetBooking bookings.[0].Id
             Expect.isOk booking1 "should be ok"
             Expect.isNone booking1.OkValue.RowId "should be none"
-        //
-        // multipleTestCase "a more general example of using prevalidation instead of saga 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //
-        //     let seatBookingService = service () 
-        //
-        //     let row = mkDefaultRow20Seats()
-        //     let bookings = 
-        //         [
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 8; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //             { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
-        //         ]
-        //
-        //     let addRow = seatBookingService.AddRow row    
-        //     Expect.isOk addRow "should be ok" 
-        //
-        //     let addAllBookings =
-        //         bookings
-        //         |> List.map (fun b -> seatBookingService.AddBooking b)
-        //         |> List.map (fun r -> Expect.isOk r "should be ok")
-        //
-        //     let assignBookings = 
-        //         seatBookingService.ForceAssignBookings 
-        //             (bookings |> List.map (fun b -> (b.Id, row.Id)))
-        //         
-        //     Expect.isError assignBookings "should be ok"
-        //     
-        //     // expectation    
-        //     let row = seatBookingService.GetRow row.Id
-        //     Expect.isOk row "should be ok"
-        //     Expect.equal row.OkValue.FreeSeats 20 "should be equal"
-        //
-        //     let booking1 = seatBookingService.GetBooking bookings.[0].Id
-        //     Expect.isOk booking1 "should be ok"
-        //     Expect.isNone booking1.OkValue.RowId "should be none"
-        //     
-        // multipleTestCase "add and retrieve a voucher - Error" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid(); Capacity = 10}
-        //     let addVoucher = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher "should be ok"
-        //     
-        //     let retrievedVoucher = seatBookingService.GetVoucher voucher.Id
-        //     Expect.isOk retrievedVoucher "should be ok"
-        //     let retrievedVoucherValue = retrievedVoucher.OkValue
-        //     Expect.equal retrievedVoucherValue.Id voucher.Id "should be equal"
-        //
-        // multipleTestCase "add a voucher, a row and a boooking, will be able to spend the voucher - Ok" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid(); Capacity = 10}
-        //     let addVoucher = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher "should be ok"
-        //     let row = mkDefaultRow10Seats()
-        //     let addRow = seatBookingService.AddRow row
-        //     Expect.isOk addRow "should be ok"
-        //     let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
-        //     let addBooking = seatBookingService.AddBooking booking
-        //     Expect.isOk addBooking "should be ok"
-        //     
-        //     let bookingId = booking.Id
-        //     let rowId = row.Id
-        //     let voucherId = voucher.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        // multipleTestCase "add a voucher, a row and a booking, seats are more than claimed booking - Error" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid(); Capacity = 10}
-        //     let addVoucher = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher "should be ok"
-        //     let row = mkDefaultRow20Seats()
-        //     let row = { TotalSeats = 9; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
-        //     let addRow = seatBookingService.AddRow row
-        //     Expect.isOk addRow "should be ok"
-        //     let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
-        //     let addBooking = seatBookingService.AddBooking booking
-        //     Expect.isOk addBooking "should be ok"
-        //     
-        //     let bookingId = booking.Id
-        //     let rowId = row.Id
-        //     let voucherId = voucher.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
-        //     Expect.isError assignBookingsSpendingVouchers "should be error"
-        //     let (Error e) = assignBookingsSpendingVouchers
-        //     Expect.equal e "not enough seats" "should be equal"
-        //     
-        // multipleTestCase "add a voucher, a row and a booking, voucher capacity is less than seats in the row - Error" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid(); Capacity = 7}
-        //     let addVoucher = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher "should be ok"
-        //     let row = mkDefaultRow20Seats()
-        //     let row = { TotalSeats = 9; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
-        //     let addRow = seatBookingService.AddRow row
-        //     Expect.isOk addRow "should be ok"
-        //     let booking = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
-        //     let addBooking = seatBookingService.AddBooking booking
-        //     Expect.isOk addBooking "should be ok"
-        //     
-        //     let bookingId = booking.Id
-        //     let rowId = row.Id
-        //     let voucherId = voucher.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
-        //     Expect.isError assignBookingsSpendingVouchers "should be error"
-        //     let (Error e) = assignBookingsSpendingVouchers
-        //     Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
-        //     
-        // multipleTestCase "add two vouchers, two rows and two booking, will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case - Ok " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher1 = { Id = Guid.NewGuid (); Capacity = 10}
-        //     let voucher2 = { Id = Guid.NewGuid (); Capacity = 10}
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher1
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let addVoucher2 = seatBookingService.AddVoucher voucher2
-        //     Expect.isOk addVoucher2 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let voucherId1 = voucher1.Id
-        //     let voucherId2 = voucher2.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.AssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        // multipleTestCase "add two vouchers, two rows and two booking, will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case, use forceAssign - Ok " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher1 = { Id = Guid.NewGuid (); Capacity = 10}
-        //     let voucher2 = { Id = Guid.NewGuid (); Capacity = 10}
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher1
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let addVoucher2 = seatBookingService.AddVoucher voucher2
-        //     Expect.isOk addVoucher2 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let voucherId1 = voucher1.Id
-        //     let voucherId2 = voucher2.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        //     let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
-        //     Expect.isOk retrievedVoucher1 "should be ok"
-        //     let retrievedVoucherValue1 = retrievedVoucher1.OkValue
-        //     Expect.equal retrievedVoucherValue1.Capacity  0 "should be equal"
-        //     let retrievedVoucher2 = seatBookingService.GetVoucher voucher2.Id
-        //     Expect.isOk retrievedVoucher2 "should be ok"
-        //     let retrievedVoucherValue2 = retrievedVoucher2.OkValue
-        //     Expect.equal retrievedVoucherValue2.Capacity  0 "should be equal"
-        //     
-        // multipleTestCase "add two vouchers, two rows and two booking, will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case, use forceAssign, some voucher are not left empty - Ok " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher1 = { Id = Guid.NewGuid (); Capacity = 12}
-        //     let voucher2 = { Id = Guid.NewGuid (); Capacity = 13}
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher1
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let addVoucher2 = seatBookingService.AddVoucher voucher2
-        //     Expect.isOk addVoucher2 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let voucherId1 = voucher1.Id
-        //     let voucherId2 = voucher2.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        //     let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
-        //     Expect.isOk retrievedVoucher1 "should be ok"
-        //     let retrievedVoucherValue1 = retrievedVoucher1.OkValue
-        //     Expect.equal retrievedVoucherValue1.Capacity  2 "should be equal"
-        //     let retrievedVoucher2 = seatBookingService.GetVoucher voucher2.Id
-        //     Expect.isOk retrievedVoucher2 "should be ok"
-        //     let retrievedVoucherValue2 = retrievedVoucher2.OkValue
-        //     Expect.equal retrievedVoucherValue2.Capacity  3 "should be equal"
-        //     
-        // multipleTestCase "reuse the same voucher more than once provided that it has enough capacity  - Ok " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher1 = { Id = Guid.NewGuid (); Capacity = 30}
-        //     
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher1
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let voucherId1 = voucher1.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId1)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        //     let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
-        //     Expect.isOk retrievedVoucher1 "should be ok"
-        //     let retrievedVoucherValue1 = retrievedVoucher1.OkValue
-        //     Expect.equal retrievedVoucherValue1.Capacity 10 "should be equal"
-        //     
-        // // FOCUS     
-        // multipleTestCase "the voucher capacity should be able to fulfill only the first row, so we expect an Error " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid (); Capacity = 10}
-        //     
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let voucherId = voucher.Id
-        //     
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId)]
-        //     Expect.isError assignBookingsSpendingVouchers "should be error"
-        //     let (Error e) = assignBookingsSpendingVouchers
-        //     Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
-        //     
-        //     let retrievedVoucher = seatBookingService.GetVoucher voucher.Id
-        //     Expect.isOk retrievedVoucher "should be ok"
-        //     let retrievedVoucherValue = retrievedVoucher.OkValue
-        //     Expect.equal retrievedVoucherValue.Capacity 10 "should be equal"
-        //     
-        //     let retrievedRow1 = seatBookingService.GetRow row1.Id
-        //     Expect.isOk retrievedRow1 "should be ok"
-        //     
-        //     let retrievedRow1Value = retrievedRow1.OkValue
-        //     Expect.equal retrievedRow1Value.NumberOfSeatsBooked 0 "should be equal"
-        //     Expect.equal retrievedRow1Value.FreeSeats 10 "should be equal"
-        //     Expect.equal retrievedRow1Value.AssociatedBookings.Length 0 "should be equal"
-        //     Expect.equal retrievedRow1Value.AssociatedVouchers.Length 0 "should be equal"
-        //     Expect.equal retrievedRow1Value.TotalSeats 10 "should be equal"
-        //     
-        //     let retrievedRow2 = seatBookingService.GetRow row2.Id
-        //     Expect.isOk retrievedRow2 "should be ok"
-        //     let retrievedRow2Value = retrievedRow2.OkValue
-        //     Expect.equal retrievedRow2Value.NumberOfSeatsBooked 0 "should be equal"
-        //     Expect.equal retrievedRow2Value.FreeSeats 10 "should be equal"
-        //    
-        // multipleTestCase "the voucher capacity should be able to fulfill only the first two rows, so we expect an Error " appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid (); Capacity = 20}
-        //     
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let row3 = mkDefaultRow10Seats ()
-        //     let addRow3 = seatBookingService.AddRow row3
-        //     Expect.isOk addRow3 "should be ok"
-        //     
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     let booking3 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking3 = seatBookingService.AddBooking booking3
-        //     Expect.isOk addBooking3 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let booking3Id = booking3.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let rowId3 = row3.Id
-        //     let voucherId = voucher.Id
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId); (booking3Id, rowId3, voucherId)]
-        //     Expect.isError assignBookingsSpendingVouchers "should be error"
-        //     let (Error e) = assignBookingsSpendingVouchers
-        //     Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
-        //     
-        // multipleTestCase "one voucher capient enough, three rows and three boookings enough for each rows - Ok" appVersionsEnvs <| fun (setup, _, service) ->
-        //     setup()
-        //     let seatBookingService = service ()
-        //     let voucher = { Id = Guid.NewGuid (); Capacity = 30}
-        //     
-        //     let addVoucher1 = seatBookingService.AddVoucher voucher
-        //     Expect.isOk addVoucher1 "should be ok"
-        //     let row1 = mkDefaultRow10Seats ()
-        //     let addRow1 = seatBookingService.AddRow row1
-        //     Expect.isOk addRow1 "should be ok"
-        //     let row2 = mkDefaultRow10Seats ()
-        //     let addRow2 = seatBookingService.AddRow row2
-        //     Expect.isOk addRow2 "should be ok"
-        //     let row3 = mkDefaultRow10Seats ()
-        //     let addRow3 = seatBookingService.AddRow row3
-        //     Expect.isOk addRow3 "should be ok"
-        //     
-        //     let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking1 = seatBookingService.AddBooking booking1
-        //     Expect.isOk addBooking1 "should be ok"
-        //     let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking2 = seatBookingService.AddBooking booking2
-        //     Expect.isOk addBooking2 "should be ok"
-        //     let booking3 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
-        //     let addBooking3 = seatBookingService.AddBooking booking3
-        //     Expect.isOk addBooking3 "should be ok"
-        //     
-        //     let bookingId1 = booking1.Id
-        //     let booking2Id = booking2.Id
-        //     let booking3Id = booking3.Id
-        //     let rowId1 = row1.Id
-        //     let rowId2 = row2.Id
-        //     let rowId3 = row3.Id
-        //     let voucherId = voucher.Id
-        //     let assignBookingsSpendingVouchers =
-        //         seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId); (booking3Id, rowId3, voucherId)]
-        //     Expect.isOk assignBookingsSpendingVouchers "should be ok"
-        //     
-        //     let retrievedRow1 = seatBookingService.GetRow row1.Id
-        //     let retrievedRow1Value = retrievedRow1.OkValue
-        //     Expect.equal retrievedRow1Value.NumberOfSeatsBooked 7 "should be equal"
-        //     Expect.equal retrievedRow1Value.FreeSeats 3 "should be equal"
-        //     Expect.equal retrievedRow1Value.AssociatedBookings.Length 1 "should be equal"
+        
+        multipleTestCase "a more general example of using 'force' instead of saga 6 - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+        
+            let seatBookingService = service () 
+        
+            let row = mkDefaultRow20Seats()
+            let bookings = 
+                [
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 2; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 8; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                    { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+                ]
+        
+            let addRow = seatBookingService.AddRow row    
+            Expect.isOk addRow "should be ok" 
+        
+            let addAllBookings =
+                bookings
+                |> List.map (fun b -> seatBookingService.AddBooking b)
+                |> List.map (fun r -> Expect.isOk r "should be ok")
+        
+            let assignBookings = 
+                seatBookingService.ForceAssignBookings 
+                    (bookings |> List.map (fun b -> (b.Id, row.Id)))
+                
+            Expect.isError assignBookings "should be Error"
+            
+            // expectation    
+            let row = seatBookingService.GetRow row.Id
+            Expect.isOk row "should be ok"
+            Expect.equal row.OkValue.FreeSeats 20 "should be equal"
+        
+            let booking1 = seatBookingService.GetBooking bookings.[0].Id
+            Expect.isOk booking1 "should be ok"
+            Expect.isNone booking1.OkValue.RowId "should be none"
+            
+        multipleTestCase "add and retrieve a voucher - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid(); Capacity = 10}
+            let addVoucher = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher "should be ok"
+            
+            let retrievedVoucher = seatBookingService.GetVoucher voucher.Id
+            Expect.isOk retrievedVoucher "should be ok"
+            let retrievedVoucherValue = retrievedVoucher.OkValue
+            Expect.equal retrievedVoucherValue.Id voucher.Id "should be equal"
+        
+        multipleTestCase "add a voucher, a row and a boooking, will be able to spend the voucher - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid(); Capacity = 10}
+            let addVoucher = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher "should be ok"
+            let row = mkDefaultRow10Seats()
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+            let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
+            let addBooking = seatBookingService.AddBooking booking
+            Expect.isOk addBooking "should be ok"
+            
+            let bookingId = booking.Id
+            let rowId = row.Id
+            let voucherId = voucher.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+             
+        multipleTestCase "add a voucher, a row and a booking, seats are more than claimed booking - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid(); Capacity = 10}
+            let addVoucher = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher "should be ok"
+            let row = mkDefaultRow20Seats()
+            let row = { TotalSeats = 9; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+            let booking = { Id = Guid.NewGuid(); ClaimedSeats = 10; RowId = None}
+            let addBooking = seatBookingService.AddBooking booking
+            Expect.isOk addBooking "should be ok"
+            
+            let bookingId = booking.Id
+            let rowId = row.Id
+            let voucherId = voucher.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
+            Expect.isError assignBookingsSpendingVouchers "should be error"
+            let (Error e) = assignBookingsSpendingVouchers
+            Expect.equal e "not enough seats" "should be equal"
+             
+        multipleTestCase "add a voucher, a row and a booking, voucher capacity is less than seats in the row - Error" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid(); Capacity = 7}
+            let addVoucher = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher "should be ok"
+            let row = mkDefaultRow20Seats()
+            let row = { TotalSeats = 9; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
+            let addRow = seatBookingService.AddRow row
+            Expect.isOk addRow "should be ok"
+            let booking = { Id = Guid.NewGuid(); ClaimedSeats = 7; RowId = None}
+            let addBooking = seatBookingService.AddBooking booking
+            Expect.isOk addBooking "should be ok"
+            
+            let bookingId = booking.Id
+            let rowId = row.Id
+            let voucherId = voucher.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.AssignBookingsSpendingVouchers [(bookingId, rowId, voucherId)]
+            Expect.isError assignBookingsSpendingVouchers "should be error"
+            let (Error e) = assignBookingsSpendingVouchers
+            Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
+            
+        multipleTestCase "add two vouchers, two rows and two booking, will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case - Ok " appVersionsEnvs <| fun (setup, _, service) ->
+            setup()
+            let seatBookingService = service ()
+            let voucher1 = { Id = Guid.NewGuid (); Capacity = 10}
+            let voucher2 = { Id = Guid.NewGuid (); Capacity = 10}
+            let addVoucher1 = seatBookingService.AddVoucher voucher1
+            Expect.isOk addVoucher1 "should be ok"
+            let addVoucher2 = seatBookingService.AddVoucher voucher2
+            Expect.isOk addVoucher2 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let voucherId1 = voucher1.Id
+            let voucherId2 = voucher2.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.AssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+             
+        multipleTestCase "add two vouchers, two rows and two booking, will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case, use forceAssign - Ok " appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher1 = { Id = Guid.NewGuid (); Capacity = 10}
+            let voucher2 = { Id = Guid.NewGuid (); Capacity = 10}
+            let addVoucher1 = seatBookingService.AddVoucher voucher1
+            Expect.isOk addVoucher1 "should be ok"
+            let addVoucher2 = seatBookingService.AddVoucher voucher2
+            Expect.isOk addVoucher2 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let voucherId1 = voucher1.Id
+            let voucherId2 = voucher2.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+            
+            let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
+            Expect.isOk retrievedVoucher1 "should be ok"
+            let retrievedVoucherValue1 = retrievedVoucher1.OkValue
+            Expect.equal retrievedVoucherValue1.Capacity  0 "should be equal"
+            let retrievedVoucher2 = seatBookingService.GetVoucher voucher2.Id
+            Expect.isOk retrievedVoucher2 "should be ok"
+            let retrievedVoucherValue2 = retrievedVoucher2.OkValue
+            Expect.equal retrievedVoucherValue2.Capacity  0 "should be equal"
+             
+        multipleTestCase "add two vouchers, two rows and two booking. Will be able to assign bookings and voucher as the voucher capacity and claimed seats are less than the seats in the row in each case, use forceAssign, some voucher are not left empty - Ok " appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher1 = { Id = Guid.NewGuid (); Capacity = 12}
+            let voucher2 = { Id = Guid.NewGuid (); Capacity = 13}
+            let addVoucher1 = seatBookingService.AddVoucher voucher1
+            Expect.isOk addVoucher1 "should be ok"
+            let addVoucher2 = seatBookingService.AddVoucher voucher2
+            Expect.isOk addVoucher2 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let voucherId1 = voucher1.Id
+            let voucherId2 = voucher2.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId2)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+            
+            let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
+            Expect.isOk retrievedVoucher1 "should be ok"
+            let retrievedVoucherValue1 = retrievedVoucher1.OkValue
+            Expect.equal retrievedVoucherValue1.Capacity  2 "should be equal"
+            let retrievedVoucher2 = seatBookingService.GetVoucher voucher2.Id
+            Expect.isOk retrievedVoucher2 "should be ok"
+            let retrievedVoucherValue2 = retrievedVoucher2.OkValue
+            Expect.equal retrievedVoucherValue2.Capacity  3 "should be equal"
+             
+        multipleTestCase "reuse the same voucher more than once provided that it has enough capacity  - Ok " appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher1 = { Id = Guid.NewGuid (); Capacity = 30}
+            
+            let addVoucher1 = seatBookingService.AddVoucher voucher1
+            Expect.isOk addVoucher1 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let voucherId1 = voucher1.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId1);(booking2Id, rowId2, voucherId1)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+            
+            let retrievedVoucher1 = seatBookingService.GetVoucher voucher1.Id
+            Expect.isOk retrievedVoucher1 "should be ok"
+            let retrievedVoucherValue1 = retrievedVoucher1.OkValue
+            Expect.equal retrievedVoucherValue1.Capacity 10 "should be equal"
+            
+        multipleTestCase "the voucher capacity should be able to fulfill only the first row, so we expect an Error " appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid (); Capacity = 10}
+            
+            let addVoucher1 = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher1 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let voucherId = voucher.Id
+            
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId)]
+            Expect.isError assignBookingsSpendingVouchers "should be error"
+            let (Error e) = assignBookingsSpendingVouchers
+            Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
+            
+            let retrievedVoucher = seatBookingService.GetVoucher voucher.Id
+            Expect.isOk retrievedVoucher "should be ok"
+            let retrievedVoucherValue = retrievedVoucher.OkValue
+            Expect.equal retrievedVoucherValue.Capacity 10 "should be equal"
+            
+            let retrievedRow1 = seatBookingService.GetRow row1.Id
+            Expect.isOk retrievedRow1 "should be ok"
+            
+            let retrievedRow1Value = retrievedRow1.OkValue
+            Expect.equal retrievedRow1Value.NumberOfSeatsBooked 0 "should be equal"
+            Expect.equal retrievedRow1Value.FreeSeats 10 "should be equal"
+            Expect.equal retrievedRow1Value.AssociatedBookings.Length 0 "should be equal"
+            Expect.equal retrievedRow1Value.AssociatedVouchers.Length 0 "should be equal"
+            Expect.equal retrievedRow1Value.TotalSeats 10 "should be equal"
+            
+            let retrievedRow2 = seatBookingService.GetRow row2.Id
+            Expect.isOk retrievedRow2 "should be ok"
+            let retrievedRow2Value = retrievedRow2.OkValue
+            Expect.equal retrievedRow2Value.NumberOfSeatsBooked 0 "should be equal"
+            Expect.equal retrievedRow2Value.FreeSeats 10 "should be equal"
+            
+        multipleTestCase "the voucher capacity should be able to fulfill only the first two rows, so we expect an Error " appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid (); Capacity = 20}
+            
+            let addVoucher1 = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher1 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let row3 = mkDefaultRow10Seats ()
+            let addRow3 = seatBookingService.AddRow row3
+            Expect.isOk addRow3 "should be ok"
+            
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            let booking3 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let booking3Id = booking3.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let rowId3 = row3.Id
+            let voucherId = voucher.Id
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId); (booking3Id, rowId3, voucherId)]
+            Expect.isError assignBookingsSpendingVouchers "should be error"
+            let (Error e) = assignBookingsSpendingVouchers
+            Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
+            
+        multipleTestCase "one voucher sufficient enough, three rows and three boookings enough for each rows - Ok" appVersionsEnvs <| fun (setup, _, service) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid (); Capacity = 30}
+            
+            let addVoucher1 = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher1 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let row3 = mkDefaultRow10Seats ()
+            let addRow3 = seatBookingService.AddRow row3
+            Expect.isOk addRow3 "should be ok"
+            
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            let booking3 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let booking3Id = booking3.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let rowId3 = row3.Id
+            let voucherId = voucher.Id
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchers [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId); (booking3Id, rowId3, voucherId)]
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+            
+            let retrievedRow1 = seatBookingService.GetRow row1.Id
+            let retrievedRow1Value = retrievedRow1.OkValue
+            Expect.equal retrievedRow1Value.NumberOfSeatsBooked 7 "should be equal"
+            Expect.equal retrievedRow1Value.FreeSeats 3 "should be equal"
+            Expect.equal retrievedRow1Value.AssociatedBookings.Length 1 "should be equal"
             
     ]
     |> testSequenced
