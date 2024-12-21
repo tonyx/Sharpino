@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>3.0.6</Version>
+    <Version>3.0.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -73,10 +73,10 @@
     <PackageReference Include="Farmer" Version="1.9.7" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
-    <PackageReference Include="FSharpPlus" Version="1.6.1" />
+    <PackageReference Include="FSharpPlus" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql" Version="9.0.1" />
-    <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
+    <PackageReference Include="Npgsql" Version="9.0.2" />
+    <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
 
@@ -100,7 +100,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" /> 
     
-    <PackageReference Include="Sharpino.Core" Version="2.1.6" />
+    <PackageReference Include="Sharpino.Core" Version="2.1.7" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
@@ -109,10 +109,10 @@
     <PackageReference Include="Farmer" Version="1.9.7" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.4.0" />
-    <PackageReference Include="FSharpPlus" Version="1.6.1" />
+    <PackageReference Include="FSharpPlus" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql" Version="8.0.5" />
-    <PackageReference Include="Npgsql.FSharp" Version="5.7.0" />
+    <PackageReference Include="Npgsql" Version="8.0.6" />
+    <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
   
