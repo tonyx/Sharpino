@@ -6,7 +6,6 @@ open Sharpino.Definitions
 // the md requires an extra text md field in any event and a proper new funcion on the db side
 // like  insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id
 module Storage =
-    open Confluent.Kafka
     type StoragePgEvent<'T> =
         {
             JsonEvent: 'T
@@ -116,8 +115,8 @@ module Storage =
 
     type IEventBroker<'F> =
         {
-            notify: Option<Version -> Name -> List<EventId * 'F> -> List<DeliveryResult<string, 'F>>>
-            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * 'F> -> List<DeliveryResult<string, string>>>
+            notify: Option<Version -> Name -> List<EventId * 'F> -> List<Result<string, 'F>>>
+            notifyAggregate: Option<Version -> Name -> AggregateId -> List<EventId * 'F> -> List<Result<string, string>>>
         }
 
     type RowReaderByFormat<'F> = RowReader -> string ->'F

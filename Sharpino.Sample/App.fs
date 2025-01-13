@@ -57,7 +57,7 @@ module App =
             getStorageFreshStateViewer<TodosContextUpgraded, TodoEvent', string> storage
 
         new(storage: IEventStore<string>) = CurrentVersionApp(storage, doNothingBroker)
-        member this._eventBroker = eventBroker
+        member this._eventBroker = doNothingBroker
 
         // must be storage based
         member this.PingTodo() =

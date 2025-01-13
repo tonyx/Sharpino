@@ -2,6 +2,7 @@
 namespace Sharpino.EventSourcing.Sample
 open Sharpino
 open Sharpino.Cache
+open Sharpino.Sample.App
 open Sharpino.Storage
 open Sharpino.Utils
 
@@ -67,7 +68,7 @@ module AppVersions =
 
     type IApplication =
         {
-            _notify:            Option<Version -> Name -> List<int * Json> -> List<Confluent.Kafka.DeliveryResult<string, string>>>
+            _notify:            Option<Version -> Name -> List<int * Json> -> List<Result<string, string>>>
             _migrator:          Option<unit -> Result<unit, string>>
             _reset:             unit -> unit
             _addEvents:         EventId * Version * List<Json> * Name * ContextStateId -> unit
@@ -89,7 +90,7 @@ module AppVersions =
     [<CurrentVersion>]
     let currentPostgresApp =
         {
-            _notify =            currentPgApp._eventBroker.notify
+            _notify =            doNothingBroker.notify
             _migrator  =         currentPgApp.Migrate |> Some
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =             fun () -> 
@@ -143,7 +144,7 @@ module AppVersions =
     [<CurrentVersion>]
     let currentMemoryApp =
         {
-            _notify =           currentMemApp._eventBroker.notify
+            _notify =           doNothingBroker.notify
             _migrator  =        currentMemApp.Migrate |> Some
             _reset =            fun () -> 
                                     resetDb memoryStorage
