@@ -1,20 +1,14 @@
 
 namespace Sharpino
 
-open System
-open System.Threading
-open FsToolkit.ErrorHandling
 open Npgsql.FSharp
 open Npgsql
 open FSharpPlus
-open FSharpPlus.Operators
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Sharpino
 open Sharpino.Storage
 open Sharpino.Definitions
-open log4net
-open log4net.Config
 
 module PgStorage =
     open Conf
@@ -31,10 +25,7 @@ module PgStorage =
     let readAsText<'F> = fun (r: RowReader) -> r.text 
     let readAsBinary:RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
 
-    // this logger will be deprecated in the next release
-    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    
-    //todo: will just use the constructors to pass the logger in next releases
+    // todo: should set the logger from outside or, better (next release), use the dependency injection infrastructure
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger
@@ -957,7 +948,7 @@ module PgStorage =
                         |> Ok
                 with
                 | _ as ex ->
-                    log.Error (sprintf "an error occurred: %A" ex.Message)
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
             
             member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =

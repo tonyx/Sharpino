@@ -7,16 +7,15 @@ open FSharpPlus.Operators
 open System
 open System.Collections
 open Sharpino.Storage
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Definitions
-
-open log4net
-open log4net.Config
 
 // should be called like InMemoryEventStore 
 module MemoryStorage =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // enable following line for debugging
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
+    let logger: ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: ILogger) =
+        logger := newLogger
 
     type MemoryStorage() =
         let event_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
@@ -30,7 +29,7 @@ module MemoryStorage =
         
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id version name =
-            log.Debug (sprintf "next_event_id %s %s" version name)
+            logger.Value.LogDebug (sprintf "next_event_id %s %s" version name)
             let event_id_seq =
                 if (event_id_seq_dic.ContainsKey version |> not) || (event_id_seq_dic.[version].ContainsKey name |> not) then
                     1
@@ -51,7 +50,7 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_aggregate_event_id version name aggregateId =
-            log.Debug (sprintf "next_aggregate_event_id %s %s %A" version name aggregateId)
+            logger.Value.LogDebug (sprintf "next_aggregate_event_id %s %s %A" version name aggregateId)
             let event_id_seq =
                 if (event_aggregate_id_seq_dic.ContainsKey version |> not) || (event_aggregate_id_seq_dic.[version].ContainsKey name |> not) || (event_aggregate_id_seq_dic.[version].[name].ContainsKey aggregateId |> not) then
                     1
@@ -79,7 +78,7 @@ module MemoryStorage =
            
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_snapshot_id version name =
-            log.Debug (sprintf "next_snapshot_id %s %s" version name)
+            logger.Value.LogDebug (sprintf "next_snapshot_id %s %s" version name)
 
             let snapshot_id_seq =
                 if (snapshot_id_seq_dic.ContainsKey version |> not) || (snapshot_id_seq_dic.[version].ContainsKey name |> not) then
@@ -101,7 +100,7 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
-            log.Debug (sprintf "storeEvents %s %s" version name)
+            logger.Value.LogDebug (sprintf "storeEvents %s %s" version name)
             if (events_dic.ContainsKey version |> not) then
                 let dic = new Generic.Dictionary<string, List<StoragePgEvent<_>>>()
                 dic.Add(name, events)
@@ -115,7 +114,7 @@ module MemoryStorage =
         
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeAggregateEvents version name aggregateId events =
-            log.Debug (sprintf "storeAggregateEvents %s %s %A" version name aggregateId)
+            logger.Value.LogDebug (sprintf "storeAggregateEvents %s %s %A" version name aggregateId)
             if (aggregate_events_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>()
                 let dic2 = Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>()
@@ -137,7 +136,7 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
-            log.Debug (sprintf "storeSnapshots %s %s" version name)
+            logger.Value.LogDebug (sprintf "storeSnapshots %s %s" version name)
             if (snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<string, List<StorageSnapshot>>()
                 dic.Add(name, snapshots)
@@ -151,7 +150,7 @@ module MemoryStorage =
                     
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let addAggregateSnapshots version name aggregateId snapshot =
-            log.Debug (sprintf "AddAggregateSnapshots %s %s" version name)
+            logger.Value.LogDebug (sprintf "AddAggregateSnapshots %s %s" version name)
             if (aggregate_snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<Name, Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>>()
                 let aggregateDic = Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>()
@@ -171,21 +170,21 @@ module MemoryStorage =
                         aggregate_snapshots_dic.[version].[name].[aggregateId] <- [snapshot]
                     
         let getExistingSnapshots version name =
-            log.Debug (sprintf "getExistingSnapshots %s %s" version name)
+            logger.Value.LogDebug (sprintf "getExistingSnapshots %s %s" version name)
             if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
                 []
             else
                 snapshots_dic.[version].[name]
 
         let getExistingEvents version name =
-            log.Debug (sprintf "getExistingEvents %s %s" version name)
+            logger.Value.LogDebug (sprintf "getExistingEvents %s %s" version name)
             if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                 []
             else
                 events_dic.[version].[name]
         
         let getExistingAggregateEvents version name aggregateId =
-            log.Debug (sprintf "getExistingAggregateEvents %s %s %A" version name aggregateId)
+            logger.Value.LogDebug (sprintf "getExistingAggregateEvents %s %s %A" version name aggregateId)
             if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
                 []
             else
@@ -193,7 +192,7 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
-            log.Debug (sprintf "storeSnapshots %s %s" version name)
+            logger.Value.LogDebug (sprintf "storeSnapshots %s %s" version name)
             if (snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<string, List<StorageSnapshot>>()
                 dic.Add(name, snapshots)
@@ -206,21 +205,21 @@ module MemoryStorage =
                     dic.[name] <- snapshots
 
         let getExistingSnapshots version name =
-            log.Debug (sprintf "getExistingSnapshots %s %s" version name)
+            logger.Value.LogDebug (sprintf "getExistingSnapshots %s %s" version name)
             if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
                 []
             else
                 snapshots_dic.[version].[name]
 
         let getExistingEvents version name =
-            log.Debug (sprintf "getExistingEvents %s %s" version name)
+            logger.Value.LogDebug (sprintf "getExistingEvents %s %s" version name)
             if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                 []
             else
                 events_dic.[version].[name]
 
         member this.Reset version name =
-            log.Debug (sprintf "Reset %s %s" version name)
+            logger.Value.LogDebug (sprintf "Reset %s %s" version name)
             events_dic.Clear()
             snapshots_dic.Clear()
             event_id_seq_dic.Clear()
@@ -236,8 +235,8 @@ module MemoryStorage =
                 this.Reset version name
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddEvents _ version name xs: Result<List<int>, string> = 
-                log.Debug (sprintf "AddEvents %s %s" version name)
+            member this.AddEvents _ version name xs: Result<List<int>, string> =
+                logger.Value.LogDebug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
                     [ for e in xs do
                         yield {
@@ -252,8 +251,8 @@ module MemoryStorage =
                 ids |> Ok
                 
             // not handling metadata in memory storage      
-            member this.AddEventsMd _ version name md xs: Result<List<int>, string> = 
-                log.Debug (sprintf "AddEvents %s %s" version name)
+            member this.AddEventsMd _ version name md xs: Result<List<int>, string> =
+                logger.Value.LogDebug (sprintf "AddEvents %s %s" version name)
                 let newEvents =
                     [ for e in xs do
                         yield {
@@ -350,7 +349,7 @@ module MemoryStorage =
                 (this:> IEventStore<string>).MultiAddAggregateEvents events
                 
             member this.GetEventsAfterId version id name =
-                log.Debug (sprintf "GetEventsAfterId %s %A %s" version id name)
+                logger.Value.LogDebug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
@@ -360,7 +359,7 @@ module MemoryStorage =
                     |> Ok
                     
             member this.MultiAddEvents (arg: List< _ * List<Json> * Version * Name>) =
-                log.Debug (sprintf "MultiAddEvents %A" arg)
+                logger.Value.LogDebug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
                     |> List.map 
@@ -370,7 +369,7 @@ module MemoryStorage =
                 cmds |> Ok
                 
             member this.MultiAddEventsMd md (arg: List< _ * List<Json> * Version * Name>) =
-                log.Debug (sprintf "MultiAddEvents %A" arg)
+                logger.Value.LogDebug (sprintf "MultiAddEvents %A" arg)
                 let cmds =
                     arg 
                     |> List.map 
@@ -380,7 +379,7 @@ module MemoryStorage =
                 cmds |> Ok
                 
             member this.SetSnapshot  version (id, snapshot) name =
-                log.Debug (sprintf "SetSnapshot %s %A %s" version id name)
+                logger.Value.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
                 let newSnapshot =
                     {
                         Id = next_snapshot_id version name
@@ -393,7 +392,7 @@ module MemoryStorage =
                 () |> Ok
 
             member this.TryGetEvent version id name =
-                log.Debug (sprintf "TryGetEvent %s %A %s" version id name)
+                logger.Value.LogDebug (sprintf "TryGetEvent %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -416,8 +415,8 @@ module MemoryStorage =
                 addAggregateSnapshots version name aggregateId initialState
                 () |> Ok
                 
-            member this.TryGetLastEventId  version  name = 
-                log.Debug (sprintf "TryGetLastEventId %s %s" version name)
+            member this.TryGetLastEventId  version  name =
+                logger.Value.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -425,7 +424,7 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.Id)
             member this.TryGetLastSnapshot version name =
-                log.Debug (sprintf "TryGetLastSnapshot %s %s" version name)
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshot %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -438,7 +437,7 @@ module MemoryStorage =
                         Some (x.Id, x.EventId, x.Snapshot)
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                log.Debug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || 
                    (aggregate_snapshots_dic.[version].ContainsKey name |> not) || 
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
@@ -449,7 +448,7 @@ module MemoryStorage =
                     |>> (fun x -> (x.EventId, x.Id))
 
             member this.TryGetLastSnapshotEventId version name =
-                log.Debug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -468,7 +467,7 @@ module MemoryStorage =
                     |> Option.bind (fun x -> x)
                 
             member this.TryGetLastSnapshotId version name =
-                log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -477,7 +476,7 @@ module MemoryStorage =
                     |>> (fun x -> x.EventId, x.Id)
 
             member this.TryGetFirstSnapshot version name aggregateId =
-                log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name aggregateId)
+                logger.Value.LogDebug (sprintf "TryGetFirstSnapshot %s %s %A" version name aggregateId)
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
                     Error "not found"
                 else     
@@ -487,7 +486,7 @@ module MemoryStorage =
                     >>= (fun x -> (x.Id, x.Snapshot) |> Ok)
             
             member this.TryGetSnapshotById version name id =
-                log.Debug (sprintf "TryGetSnapshotById %s %s %A" version name id)
+                logger.Value.LogDebug  (sprintf "TryGetSnapshotById %s %s %A" version name id)
                 if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
                     None
                 else
@@ -508,7 +507,7 @@ module MemoryStorage =
                     
             // Issue: it will not survive after a version migration because the timestamps will be different
             member this.GetEventsInATimeInterval (version: Version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
-                log.Debug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
@@ -519,7 +518,7 @@ module MemoryStorage =
                     |> Ok
 
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
-                log.Debug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
@@ -533,7 +532,7 @@ module MemoryStorage =
                     |> Ok
             
             member this.GetAggregateEventsInATimeInterval (version: Version) (name: Name) (aggregateId: AggregateId) (dateFrom: DateTime) (dateTo: DateTime) =
-                log.Debug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
+                logger.Value.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 if
                     ( aggregate_events_dic.ContainsKey version |> not)
                     || (aggregate_events_dic.[version].ContainsKey name |> not)
@@ -549,7 +548,7 @@ module MemoryStorage =
                     
             
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
-                log.Debug (sprintf "GetAllaggregateEventsInAtimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.Value.LogDebug (sprintf "GetAllaggregateEventsInAtimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
@@ -563,7 +562,7 @@ module MemoryStorage =
                     |> Ok
            
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
-                log.Debug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
+                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
                 if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
                     [] |> Ok
                 else
@@ -578,7 +577,7 @@ module MemoryStorage =
                     |> Ok
             
             member this.MultiAddAggregateEvents (arg: List< _* List<Json> * Version * Name * AggregateId>) =
-                log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
+                logger.Value.LogDebug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg
                     |> List.map
@@ -588,7 +587,7 @@ module MemoryStorage =
                 cmds |> Ok
                 
             member this.MultiAddAggregateEventsMd md (arg: List< _* List<Json> * Version * Name * AggregateId>) =
-                log.Debug (sprintf "MultiAddAggregateEvents %A" arg)
+                logger.Value.LogDebug (sprintf "MultiAddAggregateEvents %A" arg)
                 let cmds =
                     arg
                     |> List.map
@@ -599,7 +598,7 @@ module MemoryStorage =
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddAggregateEvents _ version name aggregateId events =
-                log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
+                logger.Value.LogDebug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
                         for e in events do
@@ -619,7 +618,7 @@ module MemoryStorage =
                 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddAggregateEventsMd _ version name aggregateId _ events =
-                log.Debug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
+                logger.Value.LogDebug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
                 let newEvents =
                     [
                         for e in events do
@@ -638,7 +637,7 @@ module MemoryStorage =
                 ids |> Ok
                     
             member this.TryGetLastAggregateEventId(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId> =
-                log.Debug (sprintf "TryGetLastEentdByAggregateId %s %s %A"  name version aggregateId)
+                logger.Value.LogDebug (sprintf "TryGetLastAggregateEventId %s %s %A" version name aggregateId)
                 if (aggregate_events_dic.ContainsKey version |> not) then 
                     None
                 else
@@ -667,7 +666,7 @@ module MemoryStorage =
                             |>> (fun x -> x.Id, x.JsonEvent)
                             |> Ok
             member this.GetAggregateEvents version name aggregateId: Result<List<EventId * Json>,string> =
-                log.Debug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
                 if (aggregate_events_dic.ContainsKey version |> not) then
                     [] |> Ok
                 else
@@ -695,5 +694,5 @@ module MemoryStorage =
                 
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
                 // in memory storage does not need to be compliant to GDPR as it is used only for tests
-                log.Debug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
+                logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
                 () |> Ok

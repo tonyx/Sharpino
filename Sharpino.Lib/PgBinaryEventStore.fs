@@ -14,12 +14,8 @@ open Sharpino
 open Sharpino.Storage
 open Sharpino.PgStorage
 open Sharpino.Definitions
-open log4net
-open log4net.Config
 
 module PgBinaryStore =
-    open Conf
-    // let log = LogManager.GetLogger (System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
 
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
@@ -1425,8 +1421,8 @@ module PgBinaryStore =
                                 |> Seq.toList
                                 |> Ok
                             with
-                            | _ as ex -> 
-                                log.Error (sprintf "an error occurred: %A" ex.Message)
+                            | _ as ex ->
+                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                 ex.Message |> Error
                     }, evenStoreTimeout)
             

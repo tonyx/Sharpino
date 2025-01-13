@@ -6,7 +6,6 @@ open System
 open FSharp.Core
 open FSharpPlus
 
-open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Cache

@@ -1,12 +1,18 @@
 namespace Sharpino
 open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 open log4net
 open FSharp.Data
 open Newtonsoft.Json
 open System
 
 module Conf =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let logger: ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: ILogger) =
+        logger := newLogger
+
     type Serialization = JsonSer | BinarySer // for future use
     // this will go away and the difference between test and prod db will be handled differently
     let isTestEnv = true
@@ -48,9 +54,14 @@ module Conf =
         with
         | _ as ex ->
             printf "there is no sharpinoSettings.json file, using default configuration\n"
-            log.Error("Error reading configuration", ex)
-            log.Error("consider using or editing this configuration in your appSettings.json:")
-            log.Error(JsonConvert.SerializeObject(defaultConf))
+            logger.Value.LogError("Error reading configuration", ex)
+            // log.Error("Error reading configuration", ex)
+            // log.Error("consider using or editing this configuration in your appSettings.json:")
+            logger.Value.LogError("Consider using or editing this configuration in your appSettings.json:")
+            // log.Error(JsonConvert.SerializeObject(defaultConf))
+            logger.Value.LogError("Using default configuration")
+            logger.Value.LogError(JsonConvert.SerializeObject(defaultConf))
+            
             defaultConf
 
         

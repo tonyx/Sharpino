@@ -2,24 +2,23 @@
 namespace Sharpino
 
 open Sharpino
-open Sharpino.Core
-open Sharpino.Definitions
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
-open log4net
-open System.Runtime.CompilerServices
-open System
 
 module MailBoxProcessors =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let logger: ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: ILogger) =
+        logger := newLogger
     let config = 
         try
             Conf.config ()
         with
         | :? _ as ex -> 
             // if appSettings.json is missing
-            log.Error (sprintf "appSettings.json file not found using default!!! %A\n" ex)
+            logger.Value.LogError (sprintf "appSettings.json file not found using default!!! %A\n" ex)
             Conf.defaultConf
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
@@ -45,8 +44,9 @@ module MailBoxProcessors =
                     let processor = processors.[removed]
                     processor.Dispose()
                     processors.Remove removed |> ignore
-                with :? _ as e -> 
-                    log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
+                with :? _ as e ->
+                    logger.Value.LogError(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                    // log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
                 
             let processor = this.createProcessor ()
             processors.Add(name, processor)

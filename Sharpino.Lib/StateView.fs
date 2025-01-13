@@ -1,5 +1,4 @@
 namespace Sharpino
-open FSharpPlus.Data
 
 open FSharp.Core
 open FSharpPlus
@@ -7,16 +6,16 @@ open FSharpPlus
 open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Cache
-open Sharpino.Utils
-open Sharpino.Definitions
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 
 open FsToolkit.ErrorHandling
-open log4net
-open log4net.Config
 open System
 
 module StateView =
-    let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
+    let logger: ILogger ref = ref NullLogger.Instance
+    let setLogger (newLogger: ILogger) =
+        logger := newLogger
 
     let inline private tryGetSnapshotByIdAndDeserialize<'A, 'F
         when 'A: (static member Zero: 'A) 
@@ -37,8 +36,9 @@ module StateView =
                             let eventid = snapshot |>> fst
                             match deserSnapshot with
                             | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
-                            | Error e -> 
-                                log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
+                            | Error e ->
+                                logger.Value.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
+                                // log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                                 Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                         | None ->
                             (0, 'A.Zero) |> Ok
@@ -66,11 +66,13 @@ module StateView =
                             match deserSnapshot, eventId with
                             | Ok deserSnapshot, Some evId  ->
                                 (evId, deserSnapshot) |> Ok
-                            | Error e, _-> 
-                                log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
+                            | Error e, _->
+                                logger.Value.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
+                                // log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                                 Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
-                            | _ -> 
-                                log.Error (sprintf "deserialization error for snapshot %A" snapshot')
+                            | _ ->
+                                logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
+                                // log.Error (sprintf "deserialization error for snapshot %A" snapshot')
                                 Error (sprintf "deserialization error for snapshot %A" snapshot')
                         | None ->
                             Error "not found"
@@ -104,7 +106,7 @@ module StateView =
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (storage: IEventStore<'F>) =
-            log.Debug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -128,7 +130,7 @@ module StateView =
         (storageName: string)
         (storage: IEventStore<'F>) 
         =
-            log.Debug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -160,8 +162,8 @@ module StateView =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
         >
-        (storage: IEventStore<'F>) = 
-        log.Debug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
+        (storage: IEventStore<'F>) =
+        logger.Value.LogDebug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
         Async.RunSynchronously
             (async {
                 return
@@ -182,7 +184,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         = 
-        log.Debug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
+        logger.Value.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         
         async {
             return
@@ -237,8 +239,9 @@ module StateView =
                         match state with
                         | Ok state' -> 
                             (lastEventId, state') |> Ok
-                        | Error e -> 
-                            log.Error (sprintf "getState: %A" e)
+                        | Error e ->
+                            logger.Value.LogError (sprintf "getState: %A" e)
+                            // log.Error (sprintf "getState: %A" e)
                             Error e
                     return result
                 }, Commons.generalAsyncTimeOut)
@@ -253,7 +256,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
                     result { 
@@ -267,13 +270,15 @@ module StateView =
                         return newState
                     }
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
-            log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            // log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
                 (lastEventId, state) |> Ok
-            | Error e -> 
-                log.Error (sprintf "getAggregateFreshState: %s" e)
+            | Error e ->
+                logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
+                // log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
    
     let inline getFilteredEventsInATimeInterval<'A, 'E, 'F
@@ -289,7 +294,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            log.Debug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetEventsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -316,7 +321,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            log.Debug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetAggregateEventsInATimeInterval 'A.Version 'A.StorageName id start end_
@@ -343,7 +348,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            log.Debug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInAtimeInterval = eventStore.GetMultipleAggregateEventsInATimeInterval 'A.Version 'A.StorageName ids start end_
@@ -356,7 +361,6 @@ module StateView =
                         |> List.filter (fun (_, y) -> predicate y)
                     return aggregatesIdsAndEvents    
                 }
-            
                 
     let inline getAllFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
@@ -370,7 +374,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            log.Debug (sprintf "getAllFilteredAggregateEventsInATimeInterval %A - %s " 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getAllFilteredAggregateEventsInATimeInterval %A - %s " 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetAllAggregateEventsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -395,7 +399,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'A -> bool)
         =
-            log.Debug (sprintf "getfilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getfilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allSnapshotsInTimeInterval = eventStore.GetAggregateSnapshotsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -418,7 +422,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            log.Debug (sprintf "getFirstAggregateSnapshot %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getInitialAggregateSnapshot %A - %s - %s" id 'A.Version 'A.StorageName)
             eventStore.TryGetFirstSnapshot 'A.Version 'A.StorageName id
             >>= (fun x -> 'A.Deserialize (snd x))
             
