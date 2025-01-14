@@ -51,17 +51,6 @@ module Supermarket =
                 let! (_, state) = goodsViewer goodId
                 return state.Quantity
             }
-        // member this.GetGoodsQuantityAsync (goodId: Guid) = 
-        //     Async.RunSynchronously
-        //         (async {
-        //             return
-        //                 result {
-        //                     let! esists = this.GetGood goodId
-        //                     let! (_, state) = goodsViewer goodId
-        //                     return state.Quantity
-        //                 }
-        //         }, 100)
-        //     //./ |> Async.StartAsTask
 
         member this.AddQuantity (goodId: Guid, quantity: int) = 
             result {

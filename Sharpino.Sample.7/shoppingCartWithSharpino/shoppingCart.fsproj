@@ -20,7 +20,6 @@
     <Compile Include="GoodsContainer/Commands.fs" />
     <Compile Include="SuperMarket.fs" />
     <Compile Include="Tests.fs" />
-    <!-- <Compile Include="TestsOfKafka.fs" /> -->
     <Compile Include="Main.fs" />
   </ItemGroup>
 

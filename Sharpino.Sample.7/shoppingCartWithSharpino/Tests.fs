@@ -7,14 +7,21 @@ open ShoppingCart.GoodsContainer
 open ShoppingCart.GoodsContainer
 open ShoppingCart.Supermarket
 open ShoppingCart.Cart
+open ShoppingCart.GoodEvents
+open ShoppingCart.GoodCommands
+open ShoppingCart.CartEvents
+open ShoppingCart.GoodEvents
+open ShoppingCart.GoodsContainerEvents
 open System
 open Sharpino.Storage
+open Sharpino.Core
 open Sharpino.PgStorage
 open Sharpino.KafkaBroker
 open Sharpino.TestUtils
 open Sharpino.PgBinaryStore
 open Expecto
 open Sharpino.MemoryStorage
+open Sharpino.CommandHandler
 open ShoppingCart.Supermarket
 open ShoppingCart.Cart
 open Sharpino.TestUtils
@@ -23,17 +30,6 @@ open Expecto
 open Sharpino.Definitions
 open Sharpino.KafkaBroker
 open Sharpino.Cache
-
-// open FsKafka
-
-// open Confluent.Kafka
-open Sharpino.CommandHandler
-open ShoppingCart.CartEvents
-open ShoppingCart.GoodEvents
-open Sharpino.KafkaReceiver
-open ShoppingCart.GoodsContainerEvents
-open ShoppingCart.GoodCommands
-open Sharpino.Core
 open DotNetEnv
 
 let setUp (eventStore: IEventStore<'F>) =
@@ -69,8 +65,8 @@ let byteAConnection =
         "User Id=safe;"+
         $"Password={password};"
 
-let eventStoreMemory = MemoryStorage() //:> IEventStore<string>
-let eventStorePostgres = PgEventStore(connection) //:> IEventStore<string>
+let eventStoreMemory = MemoryStorage() 
+let eventStorePostgres = PgEventStore(connection)
 
 let goodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, 'F> eventStorePostgres
 let cartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, 'F> eventStorePostgres
@@ -231,7 +227,7 @@ let tests =
             let addedToCart = supermarket.AddGoodToCart(cartId, Guid.NewGuid(), 1)
             Expect.isError addedToCart "should be an error" 
 
-        fmultipleTestCase "add multiple goods to a cart - Ok" marketInstances <| fun (supermarket, eventStore, setup, refresh) ->
+        multipleTestCase "add multiple goods to a cart - Ok" marketInstances <| fun (supermarket, eventStore, setup, refresh) ->
             setup ()
 
             let cartId = Guid.NewGuid()
@@ -435,7 +431,6 @@ let tests =
             let result = undoerEventsResult |> Result.get
             Expect.equal result.Length 1 "should be the same quantity"
             Expect.equal result.[0] (QuantityRemoved 1) "should be the same quantity"
-
 
         multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, eventStore, setup, refresh) ->
             setup ()
