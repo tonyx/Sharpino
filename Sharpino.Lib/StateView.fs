@@ -17,34 +17,6 @@ module StateView =
     let setLogger (newLogger: ILogger) =
         logger := newLogger
 
-    let inline private tryGetSnapshotByIdAndDeserialize<'A, 'F
-        when 'A: (static member Zero: 'A) 
-        and 'A: (static member StorageName: string)
-        and 'A: (static member Version: string)
-        and 'A: (member Serialize: 'F)
-        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
-        >
-        (id: int)
-        (storage: IEventStore<'F>) =
-            Async.RunSynchronously
-                (async {
-                    let result =
-                        let snapshot = storage.TryGetSnapshotById 'A.Version 'A.StorageName id
-                        match snapshot |>> snd with
-                        | Some snapshot' ->
-                            let deserSnapshot = 'A.Deserialize  snapshot'
-                            let eventid = snapshot |>> fst
-                            match deserSnapshot with
-                            | Ok deserSnapshot -> (eventid.Value, deserSnapshot) |> Ok
-                            | Error e ->
-                                logger.Value.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
-                                // log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
-                                Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
-                        | None ->
-                            (0, 'A.Zero) |> Ok
-                    return result         
-                }, Commons.generalAsyncTimeOut)
-
     let inline private tryGetAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F> and
         'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -241,7 +213,6 @@ module StateView =
                             (lastEventId, state') |> Ok
                         | Error e ->
                             logger.Value.LogError (sprintf "getState: %A" e)
-                            // log.Error (sprintf "getState: %A" e)
                             Error e
                     return result
                 }, Commons.generalAsyncTimeOut)
@@ -271,14 +242,12 @@ module StateView =
                     }
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
-            // log.Debug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             match state with
             | Ok state -> 
                 (lastEventId, state) |> Ok
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
-                // log.Error (sprintf "getAggregateFreshState: %s" e)
                 Error e
    
     let inline getFilteredEventsInATimeInterval<'A, 'E, 'F
