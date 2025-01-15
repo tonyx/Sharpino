@@ -44,7 +44,6 @@ module StateView =
                                 Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                             | _ ->
                                 logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
-                                // log.Error (sprintf "deserialization error for snapshot %A" snapshot')
                                 Error (sprintf "deserialization error for snapshot %A" snapshot')
                         | None ->
                             Error "not found"
