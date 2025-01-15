@@ -67,7 +67,7 @@ let doNothingBroker: IEventBroker<string> =
 
 let marketInstances =
     [
-        Supermarket(eventStorePostgres, doNothingBroker), "eventStorePostgres", onlyDbSetup , (fun () -> ())  ;
+        Supermarket(eventStorePostgres, doNothingBroker), "eventStorePostgres", onlyDbSetup, (fun () -> ())  ;
 
         // Supermarket(eventStorePostgres, doNothingBroker, goodsViewer, cartViewer), "eventStorePostgres", (fun () -> setUp eventStorePostgres), (fun () -> ())  ;
     ]
@@ -115,8 +115,12 @@ let tests =
             let good = Good(id, "Good", 10.0m, [])
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
+            
+            // when
             let retrievedQuantity = supermarket.GetGoodsQuantity id
             Expect.isOk retrievedQuantity "should be ok"
+            
+            // then
             let result = retrievedQuantity.OkValue
             Expect.equal result 0 "should be the same quantity"
 
@@ -149,7 +153,7 @@ let tests =
             // then
             Expect.isOk addCart "should be ok"
 
-        multipleTestCase "add a good, increase its quantity and then put some of that good in a cart. the total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
+        multipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
             
             // given
@@ -166,6 +170,7 @@ let tests =
 
             // then
             let addQuantity = supermarket.AddQuantity(good.Id, 10)
+            Expect.isOk addQuantity "should be ok" 
 
             let addedToCart = supermarket.AddGoodToCart(cartId, good.Id, 1)
             Expect.isOk addedToCart "should be ok"
@@ -208,7 +213,8 @@ let tests =
             Expect.isOk GoodAdded "should be ok"
             
             // when
-            let addedToCart = supermarket.AddGoodToCart(Guid.NewGuid(), good.Id, 1)
+            let unexistingCartGuid = Guid.NewGuid()
+            let addedToCart = supermarket.AddGoodToCart(unexistingCartGuid, good.Id, 1)
             
             // then
             Expect.isError addedToCart "should be an error"
@@ -228,9 +234,10 @@ let tests =
             // then
             Expect.isError addedToCart "should be an error" 
 
-        multipleTestCase "add multiple goods to a cart - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
+        multipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
 
+            // given
             let cartId = Guid.NewGuid()
             let cart = Cart(cartId, Map.empty)
             let cartAdded = supermarket.AddCart cart
@@ -244,10 +251,12 @@ let tests =
             let GoodAdded2 = supermarket.AddGood good2
             Expect.isOk GoodAdded2 "should be ok"
 
+            // when
             let _ = supermarket.AddQuantity(good1.Id, 8)
             let _ = supermarket.AddQuantity(good2.Id, 10)
 
             let addedToCart1 = supermarket.AddGoodsToCart(cartId, [(good1.Id, 1); (good2.Id, 1)])
+            Expect.isOk addedToCart1 "should be ok"
 
             let cart = supermarket.GetCart cartId
             Expect.isOk cart "should be ok"
@@ -258,6 +267,7 @@ let tests =
             Expect.equal result.[good1.Id] 1 "should be the same quantity"
             Expect.equal result.[good2.Id] 1 "should be the same quantity"
 
+            // then
             let good1Quantity = supermarket.GetGoodsQuantity good1.Id
             Expect.isOk good1Quantity "should be ok"
             Expect.equal good1Quantity.OkValue 7 "should be the same quantity"
@@ -266,11 +276,10 @@ let tests =
             Expect.isOk Good2Quantity "should be ok"
             Expect.equal Good2Quantity.OkValue 9 "should be the same quantity"
 
-        multipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes - Error" marketInstances <| fun (supermarket, _, setup, _) ->
+        multipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
 
-            let cartId = Guid.NewGuid()
-
+            // given
             let cartId = Guid.NewGuid()
             let cart = Cart(cartId, Map.empty)
             let cartAdded = supermarket.AddCart cart
@@ -284,6 +293,7 @@ let tests =
             let GoodAdded2 = supermarket.AddGood good2
             Expect.isOk GoodAdded2 "should be ok"
 
+            // when
             let _ = supermarket.AddQuantity(good1.Id, 10)
             let _ = supermarket.AddQuantity(good2.Id, 10)
 
@@ -297,6 +307,8 @@ let tests =
 
             let retrievedGood1 = supermarket.GetGoodsQuantity good1.Id
             Expect.isOk retrievedGood1 "should be ok"
+            
+            // then
 
             let result1 = retrievedGood1.OkValue
             Expect.equal result1 10 "should be the same quantity"
@@ -372,10 +384,6 @@ let tests =
             let quantityAdded = supermarket.AddQuantity (good1Id, 10)
             let quantityAdded21 = supermarket.AddQuantity (good2Id, 2)
             let quantityAdded22 = supermarket.AddQuantity (good3Id, 99)
-
-            let _ = supermarket.GetGood good1Id
-            let _ = supermarket.GetGood good2Id 
-            let _ = supermarket.GetGood good3Id
 
             let quantityAdded3 = supermarket.AddQuantity (good1Id, 3)
             let quantityAdded4 = supermarket.AddQuantity (good1Id, 2)
