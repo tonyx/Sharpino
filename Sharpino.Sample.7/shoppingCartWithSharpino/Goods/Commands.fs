@@ -12,7 +12,6 @@ open MBrace.FsPickler.Json
 module GoodCommands =
     type GoodCommands =
         | ChangePrice of decimal
-        | ChangeDiscounts of List<Good.Discount>
         | AddQuantity of int
         | RemoveQuantity of int
             interface AggregateCommand<Good, GoodEvents> with
@@ -21,9 +20,6 @@ module GoodCommands =
                     | ChangePrice price -> 
                         good.SetPrice price
                         |> Result.map (fun s -> (s, [PriceChanged price]))
-                    | ChangeDiscounts discounts ->
-                        good.ChangeDiscounts discounts
-                        |> Result.map (fun s -> (s, [DiscountsChanged discounts]))
                     | AddQuantity quantity ->
                         good.AddQuantity quantity
                         |> Result.map (fun s -> (s, [QuantityAdded quantity]))
@@ -52,26 +48,6 @@ module GoodCommands =
                                             }
                                     }
                             )
-                    | ChangeDiscounts _ ->
-                        Some 
-                            (fun (good: Good) (viewer: AggregateViewer<Good>) ->
-                                result {
-                                    let! (i, state) = viewer (good.Id) 
-                                    let oldDiscounts = state.Discounts
-                                    return
-                                        fun () ->
-                                            result {
-                                                let! (j, state) = viewer (good.Id)
-                                                let! isGreater = 
-                                                    (j >= i)
-                                                    |> Result.ofBool (sprintf "execution undo command state '%d' must be after the undo command state '%d'" j i)
-                                                let result =
-                                                    state.ChangeDiscounts oldDiscounts
-                                                    |> Result.map (fun _ -> [DiscountsChanged oldDiscounts])
-                                                return! result
-                                            }
-                                    }
-                            )       
                     | AddQuantity x -> 
                         Some 
                             (fun (good: Good) (viewer: AggregateViewer<Good>) ->

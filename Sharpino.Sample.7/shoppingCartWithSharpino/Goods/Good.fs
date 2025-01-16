@@ -14,51 +14,40 @@ module Good =
 
     type Discounts = List<Discount>
 
-    type Good private (id: Guid, name: string, price: decimal, discounts: Discounts, quantity: int) =
-        member this.Id = id
-        member this.Name = name
-        member this.Price = price
-        member this.Discounts = discounts
-        member this.Quantity = quantity
-
-        new (id: Guid, name: string, price: decimal, discounts: Discounts) =
-            Good (id, name, price, discounts, 0 )
-
-        member this.SetPrice (price: decimal) =
+    type Good =
+        {
+            Id: Guid
+            Name: string
+            Price: decimal
+            Quantity: int
+        }
+        static member MkGood (id: Guid, name: string) =
+            { Id = id; Name = name; Price = 0M; Quantity = 0 }
+        static member MkGood (id: Guid, name: string, price: decimal) =
+            { Id = id; Name = name; Price = price; Quantity = 0 }    
+        member
+            this.SetPrice (price: Decimal) =
+                result
+                    {
+                        do! 
+                            price > 0M
+                            |> Result.ofBool "Price must be greater than 0"
+                        return { this with Price = price }        
+                    }
+        member this.AddQuantity (quantity: int) =
             result {
-                do! 
-                    price > 0M
-                    |> Result.ofBool "Price must be greater than 0"
-                let result = Good (this.Id, this.Name, price, this.Discounts, quantity) 
-                return result
+                do!
+                    quantity > 0
+                    |> Result.ofBool "Quantity must be greater than 0"
+                return { this with Quantity = this.Quantity + quantity }
             }
-
-        member this.ChangeDiscounts(discounts: Discounts) =
-            Good (this.Id, this.Name, this.Price, discounts, quantity ) |> Ok
-
-        member this.AddQuantity(quantity: int) =
-            Good (this.Id, this.Name, this.Price, this.Discounts, this.Quantity + quantity ) |> Ok
-
-        member this.RemoveQuantity(quantity: int) =
+        member this.RemoveQuantity (quantity: int) =
             result {
-                do! 
+                do!
                     this.Quantity - quantity >= 0
                     |> Result.ofBool "Quantity not available"
-                return Good (this.Id, this.Name, this.Price, this.Discounts, this.Quantity - quantity )
-            }
-
-        override this.GetHashCode() =
-            hash (this.Id.GetHashCode(), this.Name.GetHashCode(), this.Price.GetHashCode(), this.Discounts.GetHashCode(), this.Quantity.GetHashCode())
-
-        override this.Equals(obj) = 
-            match obj with
-            | :? Good as g -> 
-                this.Id = g.Id
-                && this.Name = g.Name
-                && this.Price = g.Price
-                && this.Discounts = g.Discounts
-                && this.Quantity = g.Quantity
-            | _ -> false
+                return { this with Quantity = this.Quantity - quantity }
+            }     
 
         static member StorageName = "_good"
         static member Version = "_01"

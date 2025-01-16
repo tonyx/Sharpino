@@ -88,7 +88,7 @@ let tests =
 
             // given
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             
@@ -103,7 +103,7 @@ let tests =
         multipleTestCase "create a good and put it in the supermarket" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
 
@@ -112,7 +112,7 @@ let tests =
             let id = Guid.NewGuid()
 
             // given
-            let good = Good(id, "Good", 10.0m, [])
+            let good = Good.MkGood (id, "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             
@@ -128,7 +128,7 @@ let tests =
             setup ()
             let id = Guid.NewGuid()
             // given
-            let good = Good(id, "Good", 10.0m, [])
+            let good = Good.MkGood (id, "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             
@@ -162,7 +162,7 @@ let tests =
             let cart = Cart(cartId, Map.empty)
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             
             // when
             let GoodAdded = supermarket.AddGood good
@@ -189,7 +189,7 @@ let tests =
 
             Expect.isOk cartAdded "should be ok"
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let GoodAdded = supermarket.AddGood good
             Expect.isOk GoodAdded "should be ok"
 
@@ -208,7 +208,7 @@ let tests =
             setup ()
             
             // given
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let GoodAdded = supermarket.AddGood good
             Expect.isOk GoodAdded "should be ok"
             
@@ -243,11 +243,12 @@ let tests =
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
-            let good1 = Good(Guid.NewGuid(), "Good1", 10.0m, [])
+            let good1 = Good.MkGood (Guid.NewGuid(), "Good1", 10.0m)
+            
             let GoodAdded1 = supermarket.AddGood good1
             Expect.isOk GoodAdded1 "should be ok"
 
-            let good2 = Good(Guid.NewGuid(), "Good2", 10.0m, [])
+            let good2 = Good.MkGood (Guid.NewGuid(), "Good2", 10.0m)
             let GoodAdded2 = supermarket.AddGood good2
             Expect.isOk GoodAdded2 "should be ok"
 
@@ -285,11 +286,11 @@ let tests =
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
-            let good1 = Good(Guid.NewGuid(), "Good1", 10.0m, [])
+            let good1 = Good.MkGood (Guid.NewGuid(), "Good1", 10.0m)
             let GoodAdded1 = supermarket.AddGood good1
             Expect.isOk GoodAdded1 "should be ok"
 
-            let good2 = Good(Guid.NewGuid(), "Good2", 10.0m, [])
+            let good2 = Good.MkGood (Guid.NewGuid(), "Good2", 10.0m)
             let GoodAdded2 = supermarket.AddGood good2
             Expect.isOk GoodAdded2 "should be ok"
 
@@ -325,7 +326,7 @@ let tests =
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let GoodAdded = supermarket.AddGood good
             Expect.isOk GoodAdded "should be ok"
             let quantity = supermarket.GetGoodsQuantity good.Id
@@ -337,18 +338,18 @@ let tests =
         multipleTestCase "can't add twice a good with the same name - Error" marketInstances <| fun (supermarket, _ , setup, _) ->
             setup()
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
 
-            let good2 = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good2 = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let addedTwice = supermarket.AddGood good2
             Expect.isError addedTwice "should be an error"
 
         multipleTestCase "add a good and remove it - Ok" marketInstances <| fun (supermarket,_ , setup, _) ->
             setup ()
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             let removed = supermarket.RemoveGood good.Id
@@ -359,7 +360,7 @@ let tests =
 
         multipleTestCase  "when remove a good then can gets its quantity - Error" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             let removed = supermarket.RemoveGood good.Id
@@ -371,14 +372,14 @@ let tests =
         multipleTestCase "Initial state. Add many goods and add quantity to them many times. Verify multiple events and multiple aggregate updates - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
             let good1Id = Guid.NewGuid()
-            let good1 = Good (good1Id, "Good1", 10.0m, [])
+            let good1 = Good.MkGood (good1Id, "Good1", 10.0m)
             let added = supermarket.AddGood good1
 
             let good2Id = Guid.NewGuid()
-            let good2 = Good (good2Id, "Good2", 20.0m, [])
+            let good2 = Good.MkGood (good2Id, "Good2", 20.0m)
             let added2 = supermarket.AddGood good2
             let good3Id = Guid.NewGuid()
-            let good3 = Good (good3Id, "Good3", 30.0m, [])
+            let good3 = Good.MkGood  (good3Id, "Good3", 30.0m)
             let added3 = supermarket.AddGood good3
 
             let quantityAdded = supermarket.AddQuantity (good1Id, 10)
@@ -405,7 +406,7 @@ let tests =
         multipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, _ ) ->
             setup ()
 
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let goodAdded = supermarket.AddGood good
 
             Expect.isOk goodAdded "should be ok"
@@ -432,7 +433,7 @@ let tests =
 
         multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, eventStore, setup, _) ->
             setup ()
-            let good = Good(Guid.NewGuid(), "Good", 10.0m, [])
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let goodAdded = supermarket.AddGood good
 
             Expect.isOk goodAdded "should be ok"
