@@ -48,7 +48,7 @@ module CartCommands =
                         (fun (cart: Cart) (viewer: AggregateViewer<Cart>) ->
                             result {
                                 let! (i, state) = viewer (cart.Id) 
-                                let! goodQuantity = state.GetGoodAndQuantity goodRef
+                                let! goodQuantity = state.GetGoodsQuantity goodRef
                                 return
                                     fun () ->
                                         result {

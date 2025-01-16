@@ -9,29 +9,55 @@ open MBrace.FsPickler.Json
 open FsToolkit.ErrorHandling
 
 module Cart =
-    type Cart (id: Guid, goods: Map<Guid, int>) =
-        member this.Id = id
-        member this.Goods = goods
-
+    type Cart =
+        {
+            Id: Guid
+            Goods: Map<Guid, int>
+        }
+        static member MkCart (id: Guid) =
+            { Id = id; Goods = Map.empty }
         member this.AddGood (goodRef: Guid, quantity: int) =
-            Cart (this.Id, this.Goods.Add(goodRef, quantity)) |> Ok
-        member this.GetGoodAndQuantity (goodRef: Guid) =
+            { this with Goods = this.Goods.Add(goodRef, quantity) } |> Ok
+        member this.GetGoodsQuantity (goodRef: Guid) =
             result {
-                let! goodExists =
+                do! 
                     this.Goods.ContainsKey goodRef
-                    |> Result.ofBool "Good not in cart"
-                let quantity =
-                    this.Goods.[goodRef]
+                    |> Result.ofBool "good not in cart"
+                let quantity = this.Goods.[goodRef]
                 return quantity
             }
-
         member this.RemoveGood (goodRef: Guid) =
             result {
-                let! goodExists =
+                do! 
                     this.Goods.ContainsKey goodRef
-                    |> Result.ofBool "Good not in cart"
-                return Cart (this.Id, this.Goods.Remove goodRef)
+                    |> Result.ofBool "good not in cart"
+                return     
+                    { this with Goods = this.Goods.Remove goodRef }
             }
+        
+    // type Cart (id: Guid, goods: Map<Guid, int>) =
+    //     member this.Id = id
+    //     member this.Goods = goods
+    //
+    //     member this.AddGood (goodRef: Guid, quantity: int) =
+    //         Cart (this.Id, this.Goods.Add(goodRef, quantity)) |> Ok
+    //     member this.GetGoodAndQuantity (goodRef: Guid) =
+    //         result {
+    //             let! goodExists =
+    //                 this.Goods.ContainsKey goodRef
+    //                 |> Result.ofBool "Good not in cart"
+    //             let quantity =
+    //                 this.Goods.[goodRef]
+    //             return quantity
+    //         }
+    //
+    //     member this.RemoveGood (goodRef: Guid) =
+    //         result {
+    //             let! goodExists =
+    //                 this.Goods.ContainsKey goodRef
+    //                 |> Result.ofBool "Good not in cart"
+    //             return Cart (this.Id, this.Goods.Remove goodRef)
+    //         }
 
         static member StorageName = "_cart" 
         static member Version = "_01"

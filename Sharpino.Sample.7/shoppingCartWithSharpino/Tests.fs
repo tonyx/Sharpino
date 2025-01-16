@@ -146,7 +146,8 @@ let tests =
             setup ()
             // given
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            // let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart (Guid.NewGuid())
             // when
             let addCart = supermarket.AddCart cart
             
@@ -159,7 +160,8 @@ let tests =
             // given
 
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart (cartId)
+            
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -184,7 +186,7 @@ let tests =
 
             // given
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart cartId
             let cartAdded = supermarket.AddCart cart
 
             Expect.isOk cartAdded "should be ok"
@@ -224,7 +226,8 @@ let tests =
 
             // given
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            // let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart (Guid.NewGuid())
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
@@ -239,7 +242,7 @@ let tests =
 
             // given
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart cartId
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
@@ -282,7 +285,7 @@ let tests =
 
             // given
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart cartId
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
@@ -322,7 +325,8 @@ let tests =
             setup ()
 
             let cartId = Guid.NewGuid()
-            let cart = Cart(cartId, Map.empty)
+            // let cart = Cart(cartId, Map.empty)
+            let cart = Cart.MkCart (Guid.NewGuid())
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
