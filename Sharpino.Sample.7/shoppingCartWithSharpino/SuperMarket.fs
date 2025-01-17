@@ -25,14 +25,16 @@ open FsToolkit.ErrorHandling
 
 module Supermarket =
     open Sharpino.CommandHandler
-    let doNothingBroker: IEventBroker<string> =
+    let doNothingBroker: IEventBroker<_> =
         {  notify = None
            notifyAggregate = None }
 
-    type Supermarket (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>) =
-        let goodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStore
-        let goodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStore
-        let cartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStore
+    type Supermarket (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
+        new (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>) =
+            let goodsContainerViewer:StateViewer<GoodsContainer> = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStore
+            let goodsViewer:AggregateViewer<Good> = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStore
+            let cartViewer:AggregateViewer<Cart> = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStore
+            Supermarket (eventStore, eventBroker, goodsContainerViewer, goodsViewer, cartViewer)
 
         member this.GoodRefs = 
             result {
