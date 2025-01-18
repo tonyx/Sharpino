@@ -29,8 +29,8 @@ module Supermarket =
         {  notify = None
            notifyAggregate = None }
 
-    type Supermarket (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
-        new (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>) =
+    type Supermarket (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
+        new (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>) =
             let goodsContainerViewer:StateViewer<GoodsContainer> = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStore
             let goodsViewer:AggregateViewer<Good> = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStore
             let cartViewer:AggregateViewer<Cart> = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStore
@@ -151,13 +151,6 @@ module Supermarket =
                         [removeQuantity] 
                         [addGood] 
             }
-
-        member this.AddGoodToCartAsync (cartId: Guid, goodId: Guid, quantity: int) =
-            async {
-                return 
-                    this.AddGoodToCart (cartId, goodId, quantity)
-            } 
-            |> Async.StartAsTask
 
         member this.AddGoodsToCart (cartId: Guid, goods: (Guid * int) list) =
             result {

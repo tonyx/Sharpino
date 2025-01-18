@@ -8,12 +8,6 @@ open MBrace.FsPickler.Json
 open FsToolkit.ErrorHandling
 
 module Good =
-    type Discount =
-        { ItemNumber: int
-          Price: decimal }
-
-    type Discounts = List<Discount>
-
     type Good =
         {
             Id: Guid

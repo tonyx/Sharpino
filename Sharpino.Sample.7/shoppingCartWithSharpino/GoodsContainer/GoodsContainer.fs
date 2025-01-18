@@ -8,7 +8,6 @@ open FsToolkit.ErrorHandling
 
 module GoodsContainer =
 
-
     type GoodsContainer(goodRefs: List<Guid>, cartRefs: List<Guid>) =
 
         member this.GoodRefs = goodRefs

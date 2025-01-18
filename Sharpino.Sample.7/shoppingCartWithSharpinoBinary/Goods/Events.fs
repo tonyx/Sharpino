@@ -1,0 +1,2 @@
+module shoppingCartWithSharpinoBinary.Goods.Events
+
