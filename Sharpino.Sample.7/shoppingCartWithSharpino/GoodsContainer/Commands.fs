@@ -3,11 +3,6 @@ namespace ShoppingCart
 open System
 open Sharpino
 open Sharpino.Core
-open Sharpino.Utils
-open Sharpino.Result
-open Sharpino.Definitions
-open FSharpPlus
-open MBrace.FsPickler.Json
 open FsToolkit.ErrorHandling
 open ShoppingCart.GoodsContainer
 open ShoppingCart.GoodsContainerEvents

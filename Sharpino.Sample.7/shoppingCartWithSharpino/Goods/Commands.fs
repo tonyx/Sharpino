@@ -1,13 +1,11 @@
 
 namespace ShoppingCart 
 
-open ShoppingCart.Commons
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 open ShoppingCart.Good
 open ShoppingCart.GoodEvents
 open Sharpino
-open MBrace.FsPickler.Json
 
 module GoodCommands =
     type GoodCommands =
@@ -87,8 +85,3 @@ module GoodCommands =
                                             }
                                     }
                             )
-
-            static member Deserialize json =
-                globalSerializer.Deserialize<GoodCommands> json
-            member this.Serialize =
-                globalSerializer.Serialize this

@@ -1,9 +1,8 @@
 namespace ShoppingCart
-open ShoppingCart.Commons
+open Sharpino.Commons
 open System
 open Sharpino.Core
 
-open MBrace.FsPickler.Json
 open ShoppingCart.GoodsContainer
 
 module GoodsContainerEvents =
@@ -19,7 +18,7 @@ module GoodsContainerEvents =
                     | CartAdded cartRef -> goodsContainer.AddCart cartRef
 
         static member Deserialize x =
-            globalSerializer.Deserialize<GoodsContainerEvents> x
+            jsonPSerializer.Deserialize<GoodsContainerEvents> x
         member this.Serialize =
-            globalSerializer.Serialize this
+            jsonPSerializer.Serialize this
 

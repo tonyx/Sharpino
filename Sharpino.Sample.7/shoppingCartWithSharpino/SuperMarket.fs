@@ -1,9 +1,7 @@
 namespace ShoppingCart
 
 open ShoppingCart.Good
-open ShoppingCart.Commons
 open ShoppingCart.GoodEvents
-open ShoppingCart.GoodCommands
 open ShoppingCart.GoodsContainer
 open ShoppingCart.GoodsContainerEvents
 open ShoppingCart.GoodsContainerCommands
@@ -14,12 +12,6 @@ open System
 open Sharpino
 open Sharpino.Storage
 open Sharpino.Core
-open Sharpino.Lib.Core.Commons
-open Sharpino.Utils
-open Sharpino.Core
-open Sharpino.Utils
-open Sharpino.Result
-open Sharpino.PgStorage
 open FSharpPlus
 open FsToolkit.ErrorHandling
 

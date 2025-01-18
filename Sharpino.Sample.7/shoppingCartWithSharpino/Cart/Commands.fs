@@ -6,8 +6,6 @@ open Sharpino
 open FsToolkit.ErrorHandling
 open ShoppingCart.Cart
 open ShoppingCart.CartEvents
-open ShoppingCart.Commons
-open MBrace.FsPickler.Json
 
 module CartCommands =
     type CartCommands =
@@ -64,7 +62,3 @@ module CartCommands =
                                         }
                                 }
                         )
-        static member Deserialize json =
-            globalSerializer.Deserialize<CartCommands> json
-        member this.Serialize =
-            globalSerializer.Serialize this

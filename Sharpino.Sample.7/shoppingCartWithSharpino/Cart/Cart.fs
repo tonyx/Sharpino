@@ -1,11 +1,9 @@
 
 namespace ShoppingCart
-open ShoppingCart.Commons
 open System
 open Sharpino
+open Sharpino.Commons
 open Sharpino.Core
-open Sharpino.Lib.Core.Commons
-open MBrace.FsPickler.Json
 open FsToolkit.ErrorHandling
 
 module Cart =
@@ -39,9 +37,9 @@ module Cart =
         static member Version = "_01"
         static member SnapshotsInterval = 15
         static member Deserialize  x =
-            globalSerializer.Deserialize<Cart> x
+            jsonPSerializer.Deserialize<Cart> x
         member this.Serialize =
-            globalSerializer.Serialize this
+            jsonPSerializer.Serialize this
 
         interface Aggregate<string> with
             member this.Id = this.Id
