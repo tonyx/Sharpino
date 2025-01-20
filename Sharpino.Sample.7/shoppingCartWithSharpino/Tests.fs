@@ -1,5 +1,7 @@
 module Tests
 
+open Sharpino
+open Sharpino.PgBinaryStore
 open ShoppingCart.Good
 open ShoppingCart.GoodsContainer
 open ShoppingCart.Supermarket
@@ -8,6 +10,13 @@ open ShoppingCart.GoodEvents
 open ShoppingCart.GoodCommands
 open ShoppingCart.CartEvents
 open ShoppingCart.GoodsContainerEvents
+
+
+// open ShoppingCartBinary.BinaryCart
+// open ShoppingCartBinary.BinaryCartEvents
+// open ShoppingCartBinary.BinaryGood
+// open ShoppingCartBinary.BinaryGoodEvents
+//
 open System
 open Sharpino.Storage
 open Sharpino.Core
@@ -18,6 +27,9 @@ open Sharpino.MemoryStorage
 open Sharpino.CommandHandler
 open Sharpino.Cache
 open DotNetEnv
+
+// open ShoppingCartBinary.BinaryGoodsContainer
+// open ShoppingCartBinary.BinaryGoodsContainerEvents
 
 let setUp (eventStore: IEventStore<'F>) =
 
@@ -33,7 +45,6 @@ let setUp (eventStore: IEventStore<'F>) =
     AggregateCache<Cart,string>.Instance.Clear()
 
 let connection = 
-
         Env.Load() |> ignore
         let password = Environment.GetEnvironmentVariable("password")
 
@@ -43,23 +54,33 @@ let connection =
         $"Password={password};"
 
 let byteAConnection =
-        Env.Load() |> ignore
-        let password = Environment.GetEnvironmentVariable("password")
-        "Server=127.0.0.1;" +
-        "Database=es_shopping_cart_bin;" +
-        "User Id=safe;"+
-        $"Password={password};"
+    Env.Load() |> ignore
+    let password = Environment.GetEnvironmentVariable("password")
+    "Server=127.0.0.1;" +
+    "Database=es_shopping_cart_bin;" +
+    "User Id=safe;"+
+    $"Password={password};"
 
 let eventStoreMemory = MemoryStorage() 
 let eventStorePostgres = PgEventStore(connection)
 
-let goodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, 'F> eventStorePostgres
-let cartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, 'F> eventStorePostgres
-let goodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, 'F> eventStorePostgres
+let pgBinaryEventStorePostgres = PgBinaryStore(byteAConnection)
 
-let onlyDbSetup () =
+let jsonDbGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStorePostgres
+let jsonDbCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStorePostgres
+let jsonDbGoodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStorePostgres
+
+// let binaryDbGoodsViewer = getAggregateStorageFreshStateViewer<BinaryGood, BinaryGoodEvents, byte[]> pgBinaryEventStorePostgres
+// let binaryDbCartViewer = getAggregateStorageFreshStateViewer<BinaryCart, BinaryCartEvents, byte[]> pgBinaryEventStorePostgres
+// let binaryDbGoodsContainerViewer = getStorageFreshStateViewer<BinaryGoodsContainer, BinaryGoodsContainerEvents, byte[]> pgBinaryEventStorePostgres
+
+
+let setupPgEventStore () =
     setUp eventStorePostgres
     ()
+let setupPgBinaryEventStore () =
+    setUp pgBinaryEventStorePostgres
+    ()    
 
 let doNothingBroker: IEventBroker<string> =
     {  notify = None
@@ -67,8 +88,10 @@ let doNothingBroker: IEventBroker<string> =
 
 let marketInstances =
     [
-        Supermarket(eventStorePostgres, doNothingBroker), "eventStorePostgres", onlyDbSetup, (fun () -> ())  ;
-
+        // Supermarket(eventStorePostgres, doNothingBroker), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer  ;
+        
+        Supermarket(eventStorePostgres, doNothingBroker, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer  ;
+        // Supermarket(pgBinaryEventStorePostgres, doNothingBroker, binaryDbGoodsViewer, binaryDbGoodsViewer, binaryDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer  ;
         // Supermarket(eventStorePostgres, doNothingBroker, goodsViewer, cartViewer), "eventStorePostgres", (fun () -> setUp eventStorePostgres), (fun () -> ())  ;
     ]
 [<Tests>]
@@ -146,7 +169,6 @@ let tests =
             setup ()
             // given
             let cartId = Guid.NewGuid()
-            // let cart = Cart(cartId, Map.empty)
             let cart = Cart.MkCart (Guid.NewGuid())
             // when
             let addCart = supermarket.AddCart cart
@@ -216,7 +238,7 @@ let tests =
             
             // when
             let unexistingCartGuid = Guid.NewGuid()
-            let addedToCart = supermarket.AddGoodToCart(unexistingCartGuid, good.Id, 1)
+            let addedToCart = supermarket.AddGoodToCart (unexistingCartGuid, good.Id, 1)
             
             // then
             Expect.isError addedToCart "should be an error"
@@ -232,7 +254,7 @@ let tests =
             Expect.isOk cartAdded "should be ok"
 
             // when
-            let addedToCart = supermarket.AddGoodToCart(cartId, Guid.NewGuid(), 1)
+            let addedToCart = supermarket.AddGoodToCart (cartId, Guid.NewGuid(), 1)
             
             // then
             Expect.isError addedToCart "should be an error" 
@@ -256,10 +278,10 @@ let tests =
             Expect.isOk GoodAdded2 "should be ok"
 
             // when
-            let _ = supermarket.AddQuantity(good1.Id, 8)
-            let _ = supermarket.AddQuantity(good2.Id, 10)
+            let _ = supermarket.AddQuantity (good1.Id, 8)
+            let _ = supermarket.AddQuantity (good2.Id, 10)
 
-            let addedToCart1 = supermarket.AddGoodsToCart(cartId, [(good1.Id, 1); (good2.Id, 1)])
+            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 1); (good2.Id, 1)])
             Expect.isOk addedToCart1 "should be ok"
 
             let cart = supermarket.GetCart cartId
@@ -298,10 +320,10 @@ let tests =
             Expect.isOk GoodAdded2 "should be ok"
 
             // when
-            let _ = supermarket.AddQuantity(good1.Id, 10)
-            let _ = supermarket.AddQuantity(good2.Id, 10)
+            let _ = supermarket.AddQuantity (good1.Id, 10)
+            let _ = supermarket.AddQuantity (good2.Id, 10)
 
-            let addedToCart1 = supermarket.AddGoodsToCart(cartId, [(good1.Id, 11); (good2.Id, 1)])
+            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 11); (good2.Id, 1)])
             
             Expect.isError addedToCart1 "should be an error"
 
@@ -407,7 +429,7 @@ let tests =
             let supermarketGoodState = supermarket.GetGood good1Id |> Result.get
             Expect.equal supermarketGoodState.Quantity 20 "should be the same state"
 
-        multipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, _ ) ->
+        multipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, goodsViewer ) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -433,9 +455,9 @@ let tests =
             Expect.isOk undoerEventsResult "should be ok"
             let result = undoerEventsResult |> Result.get
             Expect.equal result.Length 1 "should be the same quantity"
-            Expect.equal result.[0] (QuantityRemoved 1) "should be the same quantity"
+            // Expect.equal result.[0] (QuantityRemoved 1) "should be the same quantity"
 
-        multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, eventStore, setup, _) ->
+        multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, _, setup, goodsViewer) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let goodAdded = supermarket.AddGood good

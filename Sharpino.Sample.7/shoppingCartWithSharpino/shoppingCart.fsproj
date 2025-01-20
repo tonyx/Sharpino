@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
-<!--    <Compile Include="Commons.fs" />-->
     <Compile Include="Cart/Cart.fs" />
     <Compile Include="Cart/Events.fs" />
     <Compile Include="Cart/Commands.fs" />
