@@ -17,14 +17,11 @@ Support for Event-sourcing in F#.
 - Contexts: event sourced objects with no id, so only one instance is around
 - Aggregates: event sourced objecst with id (Guid).
 - Non-Saga transactions: execute multiple commands involving different aggregates as single db transactions.
-- Sagas-like transactions: execute sequencial multiple commands with undoers (to rollback the transaction in case of failure of any command).
+- Sagas-like transactions: execute sequencial multiple commands with undoers (to roll back the transaction in case of failure of any command).
 - Cache: Dictionary based cache of the current state of contexts or aggregates.
-- Gdpr: functions to overwrite snapshots and events in case the users ask to delete their data.
-- SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots in Postgres.
-- DbMate command line tool to setup eventstoredb (Postgres) tables (uses the templates to generate the scripts by substitution).
-- Optimistic lock: commands will remember the event ids of the specific states of the aggregates involved and such event state ids will be checked again before adding any event to the event store.
-
-- Note: I am not using examples on the basis of a fully distributed architecture and therefore I haven't implemented Kafka or any other message broker. However the library is ready to be extended to use actual message brokers (any command can virtually publish any event after storing them is a "send and forget" style).
+- Gdpr: functions to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
+- SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.I
+- Optimistic lock based on event_id: check the event_id position on the basis of the event_id passed by the command handler to the event store.
 
 ## Warning: the mini gitbook is outdated.
 Info: - The various SAGA-like functions are "under investigation"(more tests and fixes needed). The "malboxprocessor" could also be removed as it has a little potential advantage but less control (in debug for example).
@@ -32,73 +29,40 @@ Info: - The various SAGA-like functions are "under investigation"(more tests and
 ## Projects
 __Sharpino.Lib.Core__:
 
-- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator  in case of Saga)
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator  in case of Saga), definition of "evolve" function for aggregates and contexts to compute the next state given the current state and a list of event.
 
 __Sharpino.Lib__:
 
-- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): Gets and stores snapshots, executes commands, and produces and stores events using the __event store__.
-- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistence of events in Postgres or in-memory respectively using string encoding (JSON)
+- [CommandHandler.fs](Sharpino.Lib/CommandHandler.fs): Gets and stores snapshots, executes commands, and produces and stores events passing them to the __event store__.
+- [PgEventStore.fs](Sharpino.Lib/PgEventStore.fs) and [MemoryStorage.fs](Sharpino.Lib/MemoryStorage.fs): Manages persistence of events in Postgres or in-memory respectively using string encoding (usually JSON)
 - [PgBinaryEventStore.fs](Sharpino.Lib/PgBinaryEventStore.fs): Manages persistence of events in Postgres using binary encoding (examples are based on Fspickler external lib)
 - [Cache.fs](Sharpino.Lib/Cache.fs). Caches the current state of contexts or aggregates. 
 
 
-__Sharpino.Sample__:
-See the sources for the setup, and particularly for the database setup (username/password)
-
-It could be convenient to write the api layer so that it can refer to any eventstore (Postgres, or  in-memory) and an actual event broker (Kafka) or a neutral ("doNothing") event broker.
-There are some facilities in test to run them in a parametrized way respect to the actual instance of the api layer (with the actual db based eventstore or just the in-memory for example).
-
-Warning: some examples may refer to previous version of the library as in the nuget repository.
-Check the .fsproj to make sure if you want to use them as a blueprint for your experiments/applications aligned with
-the latest version of the library.
- 
-
 ## How to use it
-- You can run the Sharpino.Sample application as a rest service by running the following command from Sharpino.Sample folder:
+- Sharpino samples provide dbmate template files to set up the Postgres database for the event store.
+- A proper .env file must be set up with the DATABASE_URL environment variable to connect to the Postgres database with a connection string.
+- You can run all the samples by:
+```bash
+runTests.sh
+```
+
+Or you can run the test in the single directories.
+Any .Test project can be run by:
 ```bash
 dotnet run
-```
 
-- You can run the client Fable/Elmish sample application by running the following command from the Sharpino.Sample.Client folder:
-```bash
-npm install
-npm start
-```
+to run all the tests
 
-- Just use ordinary dotnet command line tools for building the solution. Particularly you can run tests of the sample application by using the following command:
-```bash
-dotnet test 
-```
-You can also run the tests by the following command from  Sharpino.Sample.Tests folder:
-```bash
-dotnet run
-```
-In the latter case, you get the output from _Expecto_ test runner (in this case the console shows eventual standard output/printf).
-
-This pattern is general for all the samles, even though it can changes (just dig into it to figure it out accurately).
-
-By default, the tests run only the in-memory implementation of the storage. You can set up the Postgres tables and db by using dbmate.
+Some tests run only the in-memory implementation of the storage. You can set up the Postgres tables and db by using dbmate.
 In the Sharpino.Sample folder you can run the following command to set up the Postgres database:
 ```bash
 dbmate -e up
 ```
 (see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
 
-## SAMPLE 4 
-Sample 4 uses SAFE stack (Fable/Elmish). The aggregates are rows of seats that I can book. A skeleton of Elmish client is provided.
 
-## SAMPLE 5
-Sample 5 will just replace SAMPLE 4. uses SAFE stack (Fable/Elmish). Use the common SAFE stack basic operation for running and testing (under the directory Sharpino.Sample.5)
-Please just look at the domain, and don't care that much about the u.i. (Elmish part). 
-
-
-The following line needs to stay commented out.
-
-```Fsharp
-        // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
-```
-
-
+## Few notes about the scope of some of the examples
 # Sample application 2 is a problem of booking seats in two rows of five seats. 
 1. Booking seats among multiple rows (where those rows are aggregates) in an event-sourcing way.
 2. Booking seats in a single row by two concurrent commands that singularly do not violate any invariant rule and yet the final state is potentially invalid.
@@ -110,7 +74,6 @@ I have two rows of seats related to two different streams of events. Each row ha
 ## Problem 2
 There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row.
 This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
-
 
 ## Sample application 4
 The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
@@ -140,15 +103,13 @@ __Faq__:
     <GenerateProgramFile>false</GenerateProgramFile>
     ```
 
-## Useful info:
-Examples 4 and 5 are using the SAFE stack. To run the tests use the common SAFE way (``dotnet run`` and ``dotnet run -- RunTests`` from their root dir )
-
 ## Todo list. Help welcome:
-- The event broker has been disabled. Possibly another way to distribute the events and the state across multiple instances of the application is needed (redis?)
+- Use the publis/subscribe model provided by Postgres
+- Use the .net Cache
 - Implementing event store using Postgres event store but using Azure sql instead.
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
+- Write examples about the 'runUnsafe' series of runCommands to show they are produce always consistent results.
 - Not sure about this: Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
-- Write some way to runMultipleCommands with arbitrary types of aggregates in one shot: at the moment this is limited to three aggregates types
 
 ## Comparison with the style of examples in other event-sourcing libraries
 - [Equinox](https://github.com/jet/equinox)
@@ -163,7 +124,6 @@ See these examples to compare:
 ## Acknowledgements
 
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
-
 
 ## Upcasting techniques.
 
@@ -185,7 +145,9 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 4](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-4-284a9fe6372a)
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 3](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-3-c4a9edc81467)
+- Current version 3.0.9
 - Version 3.0.6: forceRunThreeNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
 - Version 3.0.5: forceRunNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
 - Version 3.0.4: forceRunTwoNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)

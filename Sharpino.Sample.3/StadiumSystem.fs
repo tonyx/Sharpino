@@ -25,12 +25,6 @@ module StorageStadiumBookingSystem =
             notifyAggregate = None
         }
 
-    // let connection =
-    //     "Server=127.0.0.1;"+
-    //     "Database=es_seat_booking;" +
-    //     "User Id=safe;"+
-    //     "Password=XXXXX;"
-
     type StadiumBookingSystem
         (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
