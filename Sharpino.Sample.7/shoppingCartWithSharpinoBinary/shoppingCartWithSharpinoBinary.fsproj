@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Cart/Cart.fs" />
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="Cart/Events.fs" />
+    <Compile Include="Cart/Commands.fs" />
+    <Compile Include="Goods/Good.fs" />
+    <Compile Include="Goods/Events.fs" />
+    <Compile Include="Goods/Commands.fs" />
+    <Compile Include="GoodsContainer/GoodsContainer.fs" />
+    <Compile Include="GoodsContainer/Events.fs" />
+    <Compile Include="GoodsContainer/Commands.fs" />
+    <Compile Include="SuperMarket.fs" />
+    <Compile Include="Tests.fs" />
+    <Compile Include="Main.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Sharpino.Lib/Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+  </ItemGroup>
+
+</Project>
