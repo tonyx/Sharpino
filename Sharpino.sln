@@ -37,6 +37,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.7", "Sharpi
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "shoppingCart", "Sharpino.Sample.7\shoppingCartWithSharpino\shoppingCart.fsproj", "{77490E96-8B06-4BF7-BC60-7BD7B3B9C718}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "shoppingCartWithSharpinoBinary", "Sharpino.Sample.7\shoppingCartWithSharpinoBinary\shoppingCartWithSharpinoBinary.fsproj", "{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.2", "Sharpino.Sample.2\Sharpino.Sample.2.fsproj", "{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -98,6 +102,14 @@ Global
 		{77490E96-8B06-4BF7-BC60-7BD7B3B9C718}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77490E96-8B06-4BF7-BC60-7BD7B3B9C718}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77490E96-8B06-4BF7-BC60-7BD7B3B9C718}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D8B699CD-600D-477E-A4AB-0B2B5F35A226} = {258D46F5-31CB-417D-95D1-7A3D9543E5FA}
@@ -105,5 +117,6 @@ Global
 		{D74786DA-7BB5-4880-8E69-024965488E0D} = {258D46F5-31CB-417D-95D1-7A3D9543E5FA}
 		{BB02EADA-63D4-4BB2-92CC-648B2720B480} = {D74786DA-7BB5-4880-8E69-024965488E0D}
 		{77490E96-8B06-4BF7-BC60-7BD7B3B9C718} = {ADD9CCF5-A132-4E4C-B2DC-F356FAF70879}
+		{8D0DFB3F-27BC-4E1A-BC2F-D2DACF6E37A0} = {ADD9CCF5-A132-4E4C-B2DC-F356FAF70879}
 	EndGlobalSection
 EndGlobal

@@ -1,12 +1,9 @@
 
 namespace seatsLockWithSharpino
 open FsToolkit.ErrorHandling
-open Sharpino.Utils
-open seatsLockWithSharpino.Commons
-open Sharpino
+open Sharpino.Commons
 open Row2
 open Row
-open System
 
 module Row2Context =
     type Row2 (rowContext: RowContext) =
@@ -26,14 +23,13 @@ module Row2Context =
             rowContext.GetAvailableSeats ()
         member this.Serialize =
             this
-            |> serializer.Serialize
+            |> jsonPSerializer.Serialize
         static member Deserialize json =
-            serializer.Deserialize<Row2> json
+            jsonPSerializer.Deserialize<Row2> json
+
         static member StorageName =
             "_row2"
         static member Version =
             "_01"
         static member SnapshotsInterval =
             15
-        static member Lock =
-            new Object()

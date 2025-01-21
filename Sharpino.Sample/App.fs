@@ -35,7 +35,6 @@ open log4net
 module App =
 
     let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
     let doNothingBroker = 
         {
             notify = None
@@ -90,7 +89,6 @@ module App =
             }
 
         member this.AddTodo todo =
-            // lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -106,10 +104,8 @@ module App =
                         |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                     return result
                 }
-            // )
 
         member this.Add2Todos (todo1, todo2) =
-            lock (TodosContext.Lock, TagsContext.Lock) (fun () -> 
                 result {
                     let! (_, tagState) = tagsStateViewer ()
                     let tagIds = tagState.GetTags() |>> (fun x -> x.Id)
@@ -130,7 +126,6 @@ module App =
                         |> runCommand<TodosContext, TodoEvent, string> storage eventBroker
                     return result
                 }
-            )
 
         member this.RemoveTodo id =
             result {
@@ -208,11 +203,9 @@ module App =
             }
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            // let events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo |>> snd
             result {
                 let! events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo
                 let events = events |>> snd
-                // let! events = storage.GetEventsInATimeInterval TodosContext.Version TodosContext.StorageName dateFrom dateTo >>= snd
                 let! events'' = 
                     events |> List.traverseResultM (fun x -> TodoEvents.TodoEvent.Deserialize x)
                 return 
@@ -391,7 +384,6 @@ module App =
             }
 
         member this.TodoReport (dateFrom: DateTime)  (dateTo: DateTime) =
-            // let events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo |>> snd
             result {
                 let! events = storage.GetEventsInATimeInterval TodosContextUpgraded.Version TodosContextUpgraded.StorageName dateFrom dateTo 
                 let events = events |>> snd
@@ -400,5 +392,3 @@ module App =
                 return 
                     { InitTime = dateFrom; EndTime = dateTo; TodoEvents = events'' }
             }
-
-

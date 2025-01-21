@@ -1,9 +1,6 @@
 namespace seatsLockWithSharpino
 open FsToolkit.ErrorHandling
-open Sharpino.Utils
-open seatsLockWithSharpino.Commons
-open Sharpino
-open System
+open Sharpino.Commons
 open Row1
 
 // I call it context but it works as an aggregate. Need to fix it in library, docs ...
@@ -25,11 +22,12 @@ module Row1Context =
 
         member this.GetAvailableSeats () =
             rowContext.GetAvailableSeats ()
+         
         member this.Serialize =
             this
-            |> serializer.Serialize
+            |> jsonPSerializer.Serialize
         static member Deserialize  json =
-            serializer.Deserialize<Row1> json
+            jsonPSerializer.Deserialize<Row1> json
 
         static member StorageName =
             "_row1"
@@ -37,5 +35,3 @@ module Row1Context =
             "_01"
         static member SnapshotsInterval =
             15
-        static member Lock =
-            new Object()

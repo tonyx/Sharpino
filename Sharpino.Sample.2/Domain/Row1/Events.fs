@@ -5,6 +5,7 @@ open Sharpino.Core
 open Sharpino.Definitions
 open seatsLockWithSharpino.Commons
 open Sharpino
+open Sharpino.Commons
 
 module Row1Events =
     type Row1Events =
@@ -16,11 +17,10 @@ module Row1Events =
                         x.BookSeats booking
 
         member this.Serialize =
-            this
-            |> serializer.Serialize
+            jsonPSerializer.Serialize this
 
         static member Deserialize json =
-            serializer.Deserialize<Row1Events> json
+            jsonPSerializer.Deserialize<Row1Events> json
 
 
 

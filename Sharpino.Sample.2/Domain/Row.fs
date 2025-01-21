@@ -1,9 +1,8 @@
 
 namespace seatsLockWithSharpino
 open seatsLockWithSharpino.Seats
-open seatsLockWithSharpino.Commons
-open Sharpino.Utils
 open Sharpino
+open Sharpino.Commons
 open FsToolkit.ErrorHandling
 
 module Row =
@@ -59,5 +58,4 @@ module Row =
             |> List.map (_.id)
 
         member this.Serialize =
-            this
-            |> serializer.Serialize
+            this.RowSeats |> jsonPSerializer.Serialize

@@ -5,7 +5,6 @@ open Sharpino.CommandHandler
 open Sharpino
 
 module App =
-    // let serializer = new Utils.JsonSerializer(Utils.serSettings) :> Utils.ISerializer
     open Sharpino.Storage
     let doNothingBroker: IEventBroker<string> = 
         {
@@ -14,14 +13,11 @@ module App =
         }
 
     type App(storage: IEventStore<string>, eventBroker: IEventBroker<string>) =
-        // let BootstrapServers = "localhost:9092"
-        // let doNothingBroker = Sharpino.KafkaBroker.getKafkaBroker(BootstrapServers, storage)
         let row1StateViewer =
             getStorageFreshStateViewer< Row1Context.Row1, Row1Events.Row1Events, string > storage
             
         let row2StateViewer =
             getStorageFreshStateViewer<Row2Context.Row2, Row2Events.Row2Events, string > storage
-        // new(storage: IEventStore<string>) = App(storage, Sharpino.KafkaBroker.getKafkaBroker("localhost:9092", storage))
         new (storage: IEventStore<string>) = App(storage, doNothingBroker)
 
         member private this.BookSeatsRow1 (bookingRow1: Seats.Booking) =
@@ -60,5 +56,4 @@ module App =
                 let row2FreeSeats = row2State.GetAvailableSeats()
                 return row1FreeSeats @ row2FreeSeats
             }
-
 
