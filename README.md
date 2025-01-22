@@ -146,6 +146,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 ## News/Updates
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 4](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-4-284a9fe6372a)
+- Added Sharpino.Sample.7 which shows two equals solutions based on JSON and BINARY serialization respectively.
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 3](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-3-c4a9edc81467)
 - Current version 3.0.9
 - Version 3.0.6: forceRunThreeNAggregateCommands has been improved (aggregates involved in more than one command uses a state that is the result of the previous command in the same transaction)
@@ -357,10 +358,6 @@ The other option is:
 Basically you may wan to write json fields into text fields  for various reasons
 (on my side I exprienced that an external library may require further tuning to properly work with jsonb fields in Postgres, so in that case a quick fix is just using text fields).
 Remember that we don't necessarily need Json fields as at the moment we just do serialize/deserialize and not querying on the json fields (at the moment).
-
-
-
-
 
 - version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
 New sample: started an example of Restaurant/Pub management. (Sample 6) 
