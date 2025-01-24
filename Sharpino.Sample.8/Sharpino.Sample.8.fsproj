@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sharpino.TransportTycoon</RootNamespace>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="Definitions.fs" />
+    <Compile Include="Domain/Site/Site.fs" />
+    <Compile Include="Domain/Site/Events.fs" />
+    <Compile Include="Domain/Site/Commands.fs" />
+    <Compile Include="Domain/Network/Network.fs" />
+    <Compile Include="Domain/Network/Events.fs" />
+    <Compile Include="Domain/Network/Commands.fs" />
+    <Compile Include="Domain/Truck/Truck.fs" />
+    <Compile Include="Domain/Truck/Events.fs" />
+    <Compile Include="Domain/Truck/Commands.fs" />
+    <Folder Include="Truck\" />
+    
+    <Compile Include="TyconTransport.fs" />
+    <Compile Include="Tests.fs" />
+    <Compile Include="Main.fs" />
+    <Content Include=".gitignore" />
+    <Content Include=".env" />
+    <Content Include="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Sharpino" Version="3.0.9" />
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Update="FSharp.Core" Version="9.*" />
+  </ItemGroup>
+
+</Project>
