@@ -41,6 +41,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "shoppingCartWithSharpinoBin
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.2", "Sharpino.Sample.2\Sharpino.Sample.2.fsproj", "{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.8", "Sharpino.Sample.8\Sharpino.Sample.8.fsproj", "{064B3D0C-D452-4107-96E0-47FBD18C7662}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -110,6 +112,10 @@ Global
 		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EC8FF988-D2C6-41BC-9B3F-8B94EA8F2D96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D8B699CD-600D-477E-A4AB-0B2B5F35A226} = {258D46F5-31CB-417D-95D1-7A3D9543E5FA}

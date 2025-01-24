@@ -11,12 +11,6 @@ open ShoppingCart.GoodCommands
 open ShoppingCart.CartEvents
 open ShoppingCart.GoodsContainerEvents
 
-
-// open ShoppingCartBinary.BinaryCart
-// open ShoppingCartBinary.BinaryCartEvents
-// open ShoppingCartBinary.BinaryGood
-// open ShoppingCartBinary.BinaryGoodEvents
-//
 open System
 open Sharpino.Storage
 open Sharpino.Core
@@ -27,9 +21,6 @@ open Sharpino.MemoryStorage
 open Sharpino.CommandHandler
 open Sharpino.Cache
 open DotNetEnv
-
-// open ShoppingCartBinary.BinaryGoodsContainer
-// open ShoppingCartBinary.BinaryGoodsContainerEvents
 
 let setUp (eventStore: IEventStore<'F>) =
 

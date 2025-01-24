@@ -145,6 +145,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Added Example 8 related to the transport-tycoon domain. It is a simple example of a transport company that manages vehicles and routes.
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 4](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-4-284a9fe6372a)
 - Added Sharpino.Sample.7 which shows two equals solutions based on JSON and BINARY serialization respectively.
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 3](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-3-c4a9edc81467)
