@@ -8,6 +8,7 @@ module Definitions =
         | Destination of string
 
     type ConnectionType = Road | Sea
+    type TransporterType = Truck | Ship
     
     type Connection = {
         EndNode: Guid

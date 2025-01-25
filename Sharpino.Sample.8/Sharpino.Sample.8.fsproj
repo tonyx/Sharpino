@@ -19,7 +19,6 @@
     <Compile Include="Domain/Truck/Truck.fs" />
     <Compile Include="Domain/Truck/Events.fs" />
     <Compile Include="Domain/Truck/Commands.fs" />
-    <Folder Include="Truck\" />
     
     <Compile Include="TyconTransport.fs" />
     <Compile Include="Tests.fs" />

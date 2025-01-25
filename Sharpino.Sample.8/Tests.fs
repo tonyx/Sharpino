@@ -199,8 +199,8 @@ let tests =
         multipleTestCase "add two trucks, one site and then place both the trucks on that place, in two different operations - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
             // given
             setUp ()
-            let truck1 = Truck.Truck.MkTruck (Guid.NewGuid(), "truck1")
-            let truck2 = Truck.Truck.MkTruck (Guid.NewGuid(), "truck2")
+            let truck1 = Truck.Truck.MkTruck (Guid.NewGuid(), "A")
+            let truck2 = Truck.Truck.MkTruck (Guid.NewGuid(), "B")
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             
             let siteAdded = transportTycoon.AddSite site
@@ -265,8 +265,8 @@ let tests =
                     ConnectionType = ConnectionType.Road
                     TimeToTravel = 1
                 }
-            Expect.equal actualConnection expectedConnection "should be equal"    
-            
+            Expect.equal actualConnection expectedConnection "should be equal"
+        // multipleTestCase "setup factory, truck1, truck2, Port, Node A, Node B, Road 1, Road 5, Sea 4, Ship"     
     ]
     |> testSequenced
 
