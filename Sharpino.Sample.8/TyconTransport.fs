@@ -92,7 +92,7 @@ module TransportTycoon =
                     runTwoAggregateCommands truckId siteId eventStore eventBroker setSite placeTruck
                  return result
             }
-        member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
+        member private this.ConnectSites (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) (connectionType: ConnectionType) =
             result {
                 let! (_, network) = networkViewer ()
                 do! 
@@ -104,14 +104,16 @@ module TransportTycoon =
                     |> List.contains siteId2
                     |> Result.ofBool "Site 2 not found"
                 let id1ToId2Connection =
-                    Connection.MkConnection siteId2 ConnectionType.Road timeToTravel
+                    Connection.MkConnection siteId2 connectionType timeToTravel
                 let id2ToId1Connection =
-                    Connection.MkConnection siteId1 ConnectionType.Road timeToTravel
+                    Connection.MkConnection siteId1 connectionType timeToTravel
                
                 let addConnectionToFirstNode = SiteCommands.AddConnection id1ToId2Connection
-                let AddConnectionToSecondNode = SiteCommands.AddConnection id2ToId1Connection
+                let addConnectionToSecondNode = SiteCommands.AddConnection id2ToId1Connection
                
                 return!
-                    runTwoAggregateCommands siteId1 siteId2 eventStore eventBroker addConnectionToFirstNode AddConnectionToSecondNode
+                    runTwoAggregateCommands siteId1 siteId2 eventStore eventBroker addConnectionToFirstNode addConnectionToSecondNode
             }
+        member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
+            this.ConnectSites siteId1 siteId2 timeToTravel ConnectionType.Road
             
