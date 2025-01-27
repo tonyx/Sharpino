@@ -9,28 +9,36 @@ open FSharpPlus
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 
-module Truck =
-    type Truck =
+module Transporter =
+    type Transporter =
         {
-            Id: Guid
+            Id: TransportId
             DestinationCode: string
             CurrentLocation: Option<Guid>
+            TransporterType: TransporterType
         }
-        static member MkTruck (id: Guid, destination: string) =
-            { Id = id; DestinationCode = destination; CurrentLocation = None }
-        member this.SetSite (siteRef: Guid) =
-            { this with CurrentLocation = Some siteRef } |> Ok
+        static member MkTruck (id: TruckId, destination: string) =
+            {
+                Id = id
+                DestinationCode = destination
+                CurrentLocation = None
+                TransporterType = TransporterType.TruckType
+            }
+        member this.SetSite (siteId: SiteId) =
+            { this with CurrentLocation = Some siteId } |> Ok
             
         static member StorageName = "_truck"
         static member Version = "_01"
         static member SnapshotsInterval = 15
         static member Deserialize x = 
-            jsonPSerializer.Deserialize<Truck> x
+            jsonPSerializer.Deserialize<Transporter> x
         member this.Serialize =
             jsonPSerializer.Serialize this
         
         interface Aggregate<string> with
-            member this.Id = this.Id
+            member this.Id =
+                this.Id
+                
             member this.Serialize =
                 this.Serialize
         

@@ -19,7 +19,7 @@ open System
 open FSharpPlus
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
-open Sharpino.TransportTycoon.Truck
+open Sharpino.TransportTycoon.Transporter
 open Sharpino.TransportTycoon.TruckEvents
 
 module TransportTycoon =
@@ -28,7 +28,7 @@ module TransportTycoon =
         {  notify = None
            notifyAggregate = None }
 
-    type TransportTycoon (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>, networkViewer:StateViewer<Network>, siteViewer:AggregateViewer<Site>, truckViewer: AggregateViewer<Truck> ) =
+    type TransportTycoon (eventStore: IEventStore<string>, eventBroker: IEventBroker<_>, networkViewer:StateViewer<Network>, siteViewer:AggregateViewer<Site>, truckViewer: AggregateViewer<Transporter> ) =
         member this.SitesReferences () = 
             result {
                 let! (_, state) = networkViewer ()
@@ -46,12 +46,12 @@ module TransportTycoon =
                     |> NetworkCommands.AddSiteReference
                     |> runInitAndCommand<Network, NetworkEvents, Site, string> eventStore eventBroker site
             }
-        member this.AddTruck (truck: Truck) =
+        member this.AddTruck (truck: Transporter) =
             result {
                 return!
-                    truck.Id
+                    truck.Id 
                     |> NetworkCommands.AddTruckReference
-                    |> runInitAndCommand<Network, NetworkEvents, Truck, string> eventStore eventBroker truck
+                    |> runInitAndCommand<Network, NetworkEvents, Transporter, string> eventStore eventBroker truck
             }     
         member this.GetSite (siteRef: Guid) =
             result {
@@ -116,4 +116,6 @@ module TransportTycoon =
             }
         member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
             this.ConnectSites siteId1 siteId2 timeToTravel ConnectionType.Road
+        member this.ConnectSitesBySea (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
+            this.ConnectSites siteId1 siteId2 timeToTravel ConnectionType.Sea 
             

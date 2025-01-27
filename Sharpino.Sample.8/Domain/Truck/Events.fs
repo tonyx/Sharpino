@@ -10,13 +10,13 @@ open Sharpino.TransportTycoon.Definitions
 open FSharpPlus
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
-open Sharpino.TransportTycoon.Truck
+open Sharpino.TransportTycoon.Transporter
 
 module TruckEvents =
     type TruckEvents =
         SiteSet of Guid
-            interface Event<Truck> with
-                member this.Process (x: Truck) =
+            interface Event<Transporter> with
+                member this.Process (x: Transporter) =
                     match this with
                     | SiteSet siteId ->
                         x.SetSite siteId

@@ -16,12 +16,12 @@
     <Compile Include="Domain/Network/Network.fs" />
     <Compile Include="Domain/Network/Events.fs" />
     <Compile Include="Domain/Network/Commands.fs" />
-    <Compile Include="Domain/Truck/Truck.fs" />
+    <Compile Include="Domain/Truck/Transporter.fs" />
     <Compile Include="Domain/Truck/Events.fs" />
     <Compile Include="Domain/Truck/Commands.fs" />
     
     <Compile Include="TyconTransport.fs" />
-    <Compile Include="Tests.fs" />
+    <Compile Include="Tests/NetworkTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".gitignore" />
     <Content Include=".env" />
