@@ -50,9 +50,6 @@ module AppVersions =
     let currentMemApp = App.CurrentVersionApp(memoryStorage)
     let upgradedMemApp = App.UpgradedApp(memoryStorage)
 
-    let resetAppId() =
-        ApplicationInstance.ApplicationInstance.Instance.ResetGuid()
-
     let resetDb (db: IEventStore<string>) =
         db.Reset TodosContext.Version TodosContext.StorageName
         StateCache2<TodosContext>.Instance.Invalidate()
@@ -95,7 +92,6 @@ module AppVersions =
             // addevents is specifically used test what happens if adding twice the same event (in the sense that the evolve will be able to skip inconsistent events)
             _reset =             fun () -> 
                                      resetDb pgStorage
-                                     resetAppId()
             _addEvents =         fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
                                       let deser = e
                                       (pgStorage :> IEventStore<string>).AddEvents eventId vers name deser |> ignore
@@ -121,7 +117,6 @@ module AppVersions =
             _migrator  =        None
             _reset =            fun () -> 
                                     resetDb pgStorage
-                                    resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
                                     (pgStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
@@ -148,7 +143,6 @@ module AppVersions =
             _migrator  =        currentMemApp.Migrate |> Some
             _reset =            fun () -> 
                                     resetDb memoryStorage
-                                    resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
                                     (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
@@ -174,7 +168,6 @@ module AppVersions =
             _migrator =         None
             _reset =            fun () -> 
                                     resetDb memoryStorage
-                                    resetAppId()
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e 
                                     (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
