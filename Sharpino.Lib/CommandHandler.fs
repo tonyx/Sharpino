@@ -31,7 +31,7 @@ module CommandHandler =
     
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
    
-    let logger: ILogger ref = ref NullLogger.Instance
+    let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger
     

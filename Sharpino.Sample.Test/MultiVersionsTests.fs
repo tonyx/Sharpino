@@ -5,7 +5,6 @@ open System
 open FSharp.Core
 
 open Sharpino
-open Sharpino.ApplicationInstance
 open Sharpino.Cache
 open Sharpino.Sample
 open Sharpino.Sample.TodosContext
@@ -26,7 +25,6 @@ open Tests.Sharpino.Shared
 open Sharpino.TestUtils
 open System.Threading
 open FsToolkit.ErrorHandling
-open Sharpino.KafkaBroker
 open Sharpino.Storage
 open log4net
 

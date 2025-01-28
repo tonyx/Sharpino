@@ -6,8 +6,6 @@ open Sharpino.PgStorage
 open Sharpino.Result
 open Sharpino.Storage
 open Sharpino.Cache
-open Sharpino.KafkaBroker
-open Sharpino.KafkaReceiver
 open Sharpino.Utils
 open Sharpino.TestUtils
 open Expecto

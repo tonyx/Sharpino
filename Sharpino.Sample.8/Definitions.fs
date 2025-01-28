@@ -17,7 +17,7 @@ module Definitions =
     type TransporterType =
         | TruckType 
         | ShipType of MayBeTransportTruck
-    
+
     type Connection = {
         EndNode: SiteId
         ConnectionType: ConnectionType

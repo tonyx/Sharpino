@@ -2,13 +2,10 @@ namespace Sharpino
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
-open log4net
-open FSharp.Data
 open Newtonsoft.Json
 open System
 
 module Conf =
-    // let log = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger

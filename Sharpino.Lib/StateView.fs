@@ -3,11 +3,11 @@ namespace Sharpino
 open FSharp.Core
 open FSharpPlus
 
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Core
 open Sharpino.Storage
 open Sharpino.Cache
-open Microsoft.Extensions.Logging
-open Microsoft.Extensions.Logging.Abstractions
 
 open FsToolkit.ErrorHandling
 open System

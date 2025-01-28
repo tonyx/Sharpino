@@ -14,7 +14,7 @@ module Transporter =
         {
             Id: TransportId
             DestinationCode: string
-            CurrentLocation: Option<Guid>
+            CurrentLocation: Option<SiteId>
             TransporterType: TransporterType
         }
         static member MkTruck (id: TruckId, destination: string) =
