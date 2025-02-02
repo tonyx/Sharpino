@@ -31,11 +31,11 @@ module Site =
                 {
                     let endNodesOfCurrentConnections =
                         this.SiteConnections
-                        |>> _.EndNode
+                        |>> _.EndInterval
                     
                     do! 
                         endNodesOfCurrentConnections
-                        |> List.contains connection.EndNode
+                        |> List.contains connection.EndInterval
                         |> not
                         |> Result.ofBool "Connection already exists"    
                     

@@ -3,22 +3,23 @@ namespace Sharpino.TransportTycoon
 open System
 open Sharpino
 open Sharpino.Commons
+open Sharpino.TransportTycoon.Definitions
 open FsToolkit.ErrorHandling
 
 module Network =
     type Network =
         {
-            SiteRefs: List<Guid>
-            TruckRefs: List<Guid>
+            SiteIds: List<SiteId>
+            TruckRefs: List<TruckId>
         }
         static member MkNetwork () =
-            { SiteRefs = []; TruckRefs = [] }
+            { SiteIds = []; TruckRefs = [] }
         member this.AddSiteReference (siteRef: Guid) =
             result {
                 do!
-                    this.SiteRefs |> List.contains siteRef |> not
-                    |> Result.ofBool "Site already added"
-                return { this with SiteRefs = siteRef :: this.SiteRefs }    
+                    this.SiteIds |> List.contains siteRef |> not
+                    |> Result.ofBool (sprintf "Site  %A already added" siteRef)
+                return { this with SiteIds = siteRef :: this.SiteIds }    
             }
         member this.AddTruckReference (truckRef: Guid) =
             result {
@@ -27,7 +28,7 @@ module Network =
                     |> Result.ofBool "Truck already added"
                 return { this with TruckRefs = truckRef :: this.TruckRefs }    
             }
-        static member Zero = { SiteRefs = []; TruckRefs = [] }
+        static member Zero = { SiteIds = []; TruckRefs = [] }
         static member StorageName = "_network"
         static member Version = "_01"
         static member SnapshotsInterval = 15

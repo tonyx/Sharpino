@@ -16,6 +16,7 @@ module Transporter =
             DestinationCode: string
             CurrentLocation: Option<SiteId>
             TransporterType: TransporterType
+            DistanceTraveled: int
         }
         static member MkTruck (id: TruckId, destination: string) =
             {
@@ -23,6 +24,7 @@ module Transporter =
                 DestinationCode = destination
                 CurrentLocation = None
                 TransporterType = TransporterType.TruckType
+                DistanceTraveled = 0
             }
         member this.SetSite (siteId: SiteId) =
             { this with CurrentLocation = Some siteId } |> Ok

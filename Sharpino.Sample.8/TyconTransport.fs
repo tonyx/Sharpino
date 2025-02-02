@@ -32,7 +32,7 @@ module TransportTycoon =
         member this.SitesReferences () = 
             result {
                 let! (_, state) = networkViewer ()
-                return state.SiteRefs
+                return state.SiteIds
             }
         member this.TrucksReferences () = 
             result {
@@ -57,7 +57,7 @@ module TransportTycoon =
             result {
                 let! (_, state) = networkViewer ()
                 do!
-                    state.SiteRefs
+                    state.SiteIds
                     |> List.contains siteRef
                     |> Result.ofBool "Site not found"
                 let! (_, site) = siteViewer siteRef
@@ -76,46 +76,58 @@ module TransportTycoon =
             }
         member this.PlaceTruckOnSite (truckId: Guid, siteId: Guid) =
             result {
-                 let! (_, network) = networkViewer ()
-                 do! 
-                     network.TruckRefs
-                     |> List.contains truckId
-                     |> Result.ofBool "Truck not found"
-                 do!
-                     network.SiteRefs
-                     |> List.contains siteId
-                     |> Result.ofBool "Site not found"
-                 let setSite = TruckCommands.SetSite siteId
-                 let placeTruck = SiteCommands.PlaceTruck truckId
+                let! (_, network) = networkViewer ()
+                do! 
+                    network.TruckRefs
+                    |> List.contains truckId
+                    |> Result.ofBool (sprintf "Truck %A not found" truckId)
+                do!
+                    network.SiteIds
+                    |> List.contains siteId
+                    |> Result.ofBool (sprintf "Site %A not found" siteId)
+                let setSite = TruckCommands.SetSite siteId
+                let placeTruck = SiteCommands.PlaceTruck truckId
                  
-                 let! result =
+                let! result =
                     runTwoAggregateCommands truckId siteId eventStore eventBroker setSite placeTruck
-                 return result
+                return result
             }
-        member private this.ConnectSites (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) (connectionType: ConnectionType) =
+
+        member private this.ConnectSites (startConnection: Guid) (endConnection: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) (connectionType: ConnectionType) =
             result {
                 let! (_, network) = networkViewer ()
                 do! 
-                    network.SiteRefs
-                    |> List.contains siteId1
-                    |> Result.ofBool "Site 1 not found"
+                    network.SiteIds
+                    |> List.contains startConnection
+                    |> Result.ofBool (sprintf "Start connection %A site not found" startConnection)
                 do! 
-                    network.SiteRefs
-                    |> List.contains siteId2
-                    |> Result.ofBool "Site 2 not found"
-                let id1ToId2Connection =
-                    Connection.MkConnection siteId2 connectionType timeToTravel
-                let id2ToId1Connection =
-                    Connection.MkConnection siteId1 connectionType timeToTravel
+                    network.SiteIds
+                    |> List.contains endConnection
+                    |> Result.ofBool (sprintf "End connection %A not found" endConnection)
+
+                do!
+                    network.SiteIds
+                    |> List.contains startPath
+                    |> Result.ofBool (sprintf "Start of path %A not found" startPath)
+                do!
+                    network.SiteIds
+                    |> List.contains endPath
+                    |> Result.ofBool (sprintf "End of path %A not found" endPath)   
+
+                let startToEndConnection =
+                    Connection.MkConnection endConnection startPath endPath connectionType timeToTravel
+                let endToStartConnection =
+                    Connection.MkConnection startConnection startPath endPath connectionType timeToTravel
                
-                let addConnectionToFirstNode = SiteCommands.AddConnection id1ToId2Connection
-                let addConnectionToSecondNode = SiteCommands.AddConnection id2ToId1Connection
+                let addConnectionToFirstNode = SiteCommands.AddConnection startToEndConnection
+                let addConnectionToSecondNode = SiteCommands.AddConnection endToStartConnection
                
                 return!
-                    runTwoAggregateCommands siteId1 siteId2 eventStore eventBroker addConnectionToFirstNode addConnectionToSecondNode
+                    runTwoAggregateCommands startConnection endConnection eventStore eventBroker addConnectionToFirstNode addConnectionToSecondNode
             }
-        member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
-            this.ConnectSites siteId1 siteId2 timeToTravel ConnectionType.Road
-        member this.ConnectSitesBySea (siteId1: Guid) (siteId2: Guid) (timeToTravel: int) =
-            this.ConnectSites siteId1 siteId2 timeToTravel ConnectionType.Sea 
+            
+        member this.ConnectSitesByRoad  (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
+            this.ConnectSites siteId1 siteId2 startPath endPath timeToTravel ConnectionType.Road
+        member this.ConnectSitesBySea (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
+            this.ConnectSites siteId1 siteId2 startPath endPath timeToTravel ConnectionType.Sea 
             

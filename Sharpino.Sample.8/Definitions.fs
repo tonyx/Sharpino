@@ -19,15 +19,19 @@ module Definitions =
         | ShipType of MayBeTransportTruck
 
     type Connection = {
-        EndNode: SiteId
+        InitialSitePath: SiteId
+        DestinationSitePath: SiteId
+        EndInterval: SiteId
         ConnectionType: ConnectionType
         TimeToTravel: int
     }
     with
         static member MkConnection
-            (endNode: SiteId) (connectionType: ConnectionType) (timeToTravel: int) =
+            (endInterval: SiteId) (initialSitePath: SiteId) (destinationSitePath: SiteId) (connectionType: ConnectionType) (timeToTravel: int) =
                 {
-                    EndNode = endNode
+                    InitialSitePath = initialSitePath
+                    DestinationSitePath = destinationSitePath
+                    EndInterval = endInterval // no need to specify the initial interval as it is the site where we attach this interval
                     ConnectionType = connectionType
                     TimeToTravel = timeToTravel
                 }
