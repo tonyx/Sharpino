@@ -1,1 +1,1 @@
-Start modeling the transport-tycoon domain as in the [transport-tycoon exercise](https://github.com/trustbit/exercises/blob/master/transport-tycoon-1.md)
+Start modeling the transport-tycoon domain as in the [transport-tycoon exercise](https://github.com/trustbit/exercises/blob/master/transport-tycoon-1.md)[Core.fs](../Sharpino.Lib.Core/Core.fs)

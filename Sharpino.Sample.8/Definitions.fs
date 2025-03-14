@@ -2,10 +2,10 @@ namespace  Sharpino.TransportTycoon
 open System
 
 module Definitions =
-    type TransportId = Guid
-    type TruckId = Guid
+    type ConnectionId = Guid
+    type TransporterId = Guid
     type SiteId = Guid
-    type MayBeTransportTruck = Option<TruckId>
+    type MayBeTransportTruck = Option<TransporterId>
     type DestinationCode = string
     
     type SiteType =
@@ -19,6 +19,7 @@ module Definitions =
         | ShipType of MayBeTransportTruck
 
     type Connection = {
+        Id: ConnectionId
         InitialSitePath: SiteId
         DestinationSitePath: SiteId
         EndInterval: SiteId
@@ -29,6 +30,7 @@ module Definitions =
         static member MkConnection
             (endInterval: SiteId) (initialSitePath: SiteId) (destinationSitePath: SiteId) (connectionType: ConnectionType) (timeToTravel: int) =
                 {
+                    Id = Guid.NewGuid()
                     InitialSitePath = initialSitePath
                     DestinationSitePath = destinationSitePath
                     EndInterval = endInterval // no need to specify the initial interval as it is the site where we attach this interval

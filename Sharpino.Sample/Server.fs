@@ -112,7 +112,7 @@ module Server =
             use_gzip
         }
 
-    [<EntryPoint>]
+    // [<EntryPoint>] // not sure why this is not working
     let main _ =
         run appl
         0

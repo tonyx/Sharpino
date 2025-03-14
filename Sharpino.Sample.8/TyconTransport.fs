@@ -37,7 +37,7 @@ module TransportTycoon =
         member this.TrucksReferences () = 
             result {
                 let! (_, state) = networkViewer ()
-                return state.TruckRefs
+                return state.TransporterIds
             }     
         member this.AddSite (site: Site) =
             result {
@@ -68,7 +68,7 @@ module TransportTycoon =
             result {
                 let! (_, state) = networkViewer ()
                 do!
-                    state.TruckRefs
+                    state.TransporterIds
                     |> List.contains truckRef
                     |> Result.ofBool "Truck not found"
                 let! (_, truck) = truckViewer truckRef
@@ -78,7 +78,7 @@ module TransportTycoon =
             result {
                 let! (_, network) = networkViewer ()
                 do! 
-                    network.TruckRefs
+                    network.TransporterIds
                     |> List.contains truckId
                     |> Result.ofBool (sprintf "Truck %A not found" truckId)
                 do!
@@ -126,8 +126,41 @@ module TransportTycoon =
                     runTwoAggregateCommands startConnection endConnection eventStore eventBroker addConnectionToFirstNode addConnectionToSecondNode
             }
             
-        member this.ConnectSitesByRoad  (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
+        member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
             this.ConnectSites siteId1 siteId2 startPath endPath timeToTravel ConnectionType.Road
         member this.ConnectSitesBySea (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
             this.ConnectSites siteId1 siteId2 startPath endPath timeToTravel ConnectionType.Sea 
+
+        member private this.ChooseConnection (truck: Transporter) =
+            result {
+                do!
+                    truck.CurrentLocation.IsSome
+                    |> Result.ofBool (sprintf "Truck %A is not on a site" truck.Id)
+                // let! (_, network) = networkViewer ()
+                // let! (_, site) = siteViewer truck.CurrentLocation.Value
+                let! (_, site) = siteViewer truck.CurrentLocation.Value
+                let connections = site.SiteConnections
+
+                // let! firstConnection = 
+                //     connections 
+                //     |> List.tryFind 
+                //         (fun connection -> connection.ConnectionType = ConnectionType.Road && connection.DestinationSitePath = truck.DestinationCode)
+                //     |> Result.ofOption (sprintf "No road connection found for site %A" truck.CurrentLocation.Value)
+
+                return ()
+            }
+        member this.Tick () =
+            result {
+                let! (_, network) = networkViewer ()
+                let truckIds = network.TransporterIds
+                let! transporters =
+                    truckIds
+                    |> List.traverseResultM (fun truckId -> this.GetTruck truckId)
+                let transportersOnSite =
+                    transporters
+                    |> List.filter (fun truck -> truck.CurrentLocation.IsSome)
+                // return network.Tick ()
+                return ()
+            }
+            
             

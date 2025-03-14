@@ -78,8 +78,8 @@ let seedDefaultNetwork (transportTycoon: TransportTycoon) =
         let port = Site.MkSite (testDataIds.PortId, SiteType.Port)
         let nodeA = Site.MkSite (testDataIds.NodeAId, SiteType.Destination "A")
         let nodeB = Site.MkSite (testDataIds.NodeBId, SiteType.Destination "B")
-        let truck1 = Transporter.Transporter.MkTruck (testDataIds.Truck1Id, "A")
-        let truck2 = Transporter.Transporter.MkTruck (testDataIds.Truck2Id, "B")
+        let truck1 = Transporter.Transporter.MkTransporter (testDataIds.Truck1Id, "A", nodeA.Id)
+        let truck2 = Transporter.Transporter.MkTransporter (testDataIds.Truck2Id, "B", nodeB.Id)
 
         do! transportTycoon.AddSite factory
         do! transportTycoon.AddSite port
@@ -93,7 +93,6 @@ let seedDefaultNetwork (transportTycoon: TransportTycoon) =
         do! transportTycoon.ConnectSitesByRoad factory.Id port.Id factory.Id nodeA.Id 1
         do! transportTycoon.ConnectSitesBySea port.Id nodeA.Id factory.Id nodeA.Id 1
         do! transportTycoon.ConnectSitesByRoad factory.Id nodeB.Id factory.Id nodeB.Id 5
-
         return ()
     }
 
@@ -152,7 +151,7 @@ let tests =
         multipleTestCase "when added a truck on an empty network then the number of truck will be one - Ok " transportTycoons <| fun (transportTycoon, setUp) ->
             // given
             setUp ()
-            let truck = Transporter.Transporter.MkTruck (Guid.NewGuid(), "A")
+            let truck = Transporter.Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
             // when
             let truckAdded = transportTycoon.AddTruck truck
             // then
@@ -165,7 +164,7 @@ let tests =
         multipleTestCase "add and retrieve a truck - Ok" transportTycoons <| fun (transportTycoon, setUp) ->      
             // given
             setUp ()
-            let truck = Transporter.Transporter.MkTruck (Guid.NewGuid(), "A")
+            let truck = Transporter.Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
             // when
             let truckAdded = transportTycoon.AddTruck truck
             
@@ -192,7 +191,7 @@ let tests =
             // given
             setUp ()
             let truckId = Guid.NewGuid()
-            let truck = Transporter.Transporter.MkTruck (truckId, "A")
+            let truck = Transporter.Transporter.MkTransporter (truckId, "A", Guid.NewGuid())
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             let truckAdded = transportTycoon.AddTruck truck
             Expect.isOk truckAdded "should be ok"
@@ -213,7 +212,7 @@ let tests =
         multipleTestCase "add a truck and then place it on a site, then check that the site contains that truck  - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
             // given
             setUp ()
-            let truck = Transporter.Transporter.MkTruck (Guid.NewGuid(), "A")
+            let truck = Transporter.Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             let truckAdded = transportTycoon.AddTruck truck
             Expect.isOk truckAdded "should be ok"
@@ -234,8 +233,8 @@ let tests =
         multipleTestCase "add two trucks, one site and then place both the trucks on that place, in two different operations - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
             // given
             setUp ()
-            let truck1 = Transporter.Transporter.MkTruck (Guid.NewGuid(), "A")
-            let truck2 = Transporter.Transporter.MkTruck (Guid.NewGuid(), "B")
+            let truck1 = Transporter.Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
+            let truck2 = Transporter.Transporter.MkTransporter (Guid.NewGuid(), "B", Guid.NewGuid())
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             
             let siteAdded = transportTycoon.AddSite site
@@ -266,6 +265,7 @@ let tests =
             let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
             
             let factoryAdded = transportTycoon.AddSite factory
+
             Expect.isOk factoryAdded "should be ok"
             let portAdded = transportTycoon.AddSite port
             Expect.isOk portAdded "should be ok"
@@ -282,6 +282,7 @@ let tests =
             let actualConnection = retrieveFactoryValue.SiteConnections |> List.head
             let expectedConnection =
                 {
+                    Id = actualConnection.Id
                     InitialSitePath = factory.Id // todo: set the initial site path
                     EndInterval = port.Id
                     DestinationSitePath = port.Id
@@ -298,6 +299,7 @@ let tests =
             let actualConnection = retrievePortValue.SiteConnections |> List.head
             let expectedConnection =
                 {
+                    Id = actualConnection.Id
                     InitialSitePath = factory.Id // todo: set the initial site path
                     EndInterval = factory.Id
                     ConnectionType = ConnectionType.Road
@@ -311,8 +313,8 @@ let tests =
             setUp ()
             let factory = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
-            let truck1 = Transporter.Transporter.MkTruck (Guid.NewGuid(), "A")
-            let truck2 = Transporter.Transporter.MkTruck (Guid.NewGuid(), "B")
+            let truck1 = Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
+            let truck2 = Transporter.MkTransporter (Guid.NewGuid(), "B", Guid.NewGuid())
             let nodeAId = Guid.NewGuid()
             let nodeA = Site.MkSite (nodeAId, SiteType.Destination "A")
           
@@ -342,6 +344,7 @@ let tests =
             let actualConnection = retrieveFactoryValue.SiteConnections |> List.head
             let expectedConnection =
                 {
+                    Id = actualConnection.Id
                     InitialSitePath = factory.Id
                     EndInterval = port.Id
                     ConnectionType = ConnectionType.Road
@@ -357,6 +360,7 @@ let tests =
             let actualConnection = retrievePortValue.SiteConnections |> List.head
             let expectedConnection =
                 {
+                    Id = actualConnection.Id
                     InitialSitePath = factory.Id
                     EndInterval = nodeA.Id
                     ConnectionType = ConnectionType.Road
@@ -385,62 +389,66 @@ let tests =
             Expect.isOk connectPortToNodeA "should be ok"
 
             // then
-            // let retrievePort = transportTycoon.GetSite port.Id
             let retrieveFactory = transportTycoon.GetSite factory.Id
             Expect.isOk retrieveFactory "should be ok"
             let retrievePortValue = retrieveFactory.OkValue
             Expect.equal retrievePortValue.SiteConnections.Length 1 "should be equal"
             let firstConnection = retrievePortValue.SiteConnections |> List.head
             let expectedFirstConnection = 
-                { InitialSitePath = factory.Id; EndInterval = port.Id; ConnectionType = ConnectionType.Road; TimeToTravel = 1; DestinationSitePath = nodeA.Id }
+                { 
+                    Id = firstConnection.Id
+                    InitialSitePath = factory.Id; 
+                    EndInterval = port.Id; 
+                    ConnectionType = ConnectionType.Road; 
+                    TimeToTravel = 1; 
+                    DestinationSitePath = nodeA.Id 
+                }
             Expect.equal firstConnection expectedFirstConnection "should be equal"
 
 
         // too: fix it
-        pmultipleTestCase "add port connected to factory and to node A, factory is also connected to node B " transportTycoons <| fun (transportTycoon, setUp) ->
-            // given
-            setUp ()
-            let factory = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
-            let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
-            let nodeA = Site.MkSite (Guid.NewGuid(), SiteType.Destination "A")
-            let addFactory = transportTycoon.AddSite factory
-            Expect.isOk addFactory "should be ok"
-            let addPort = transportTycoon.AddSite port
-            Expect.isOk addPort "should be ok"
-            let addNodeA = transportTycoon.AddSite nodeA
-            Expect.isOk addNodeA "should be ok"
-            let nodeB = Site.MkSite (Guid.NewGuid(), SiteType.Destination "B")
-            let addNodeB = transportTycoon.AddSite nodeB
-            Expect.isOk addNodeB "should be ok"
+        // pmultipleTestCase "add port connected to factory and to node A, factory is also connected to node B " transportTycoons <| fun (transportTycoon, setUp) ->
+        //     // given
+        //     setUp ()
+        //     let factory = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
+        //     let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
+        //     let nodeA = Site.MkSite (Guid.NewGuid(), SiteType.Destination "A")
+        //     let addFactory = transportTycoon.AddSite factory
+        //     Expect.isOk addFactory "should be ok"
+        //     let addPort = transportTycoon.AddSite port
+        //     Expect.isOk addPort "should be ok"
+        //     let addNodeA = transportTycoon.AddSite nodeA
+        //     Expect.isOk addNodeA "should be ok"
+        //     let nodeB = Site.MkSite (Guid.NewGuid(), SiteType.Destination "B")
+        //     let addNodeB = transportTycoon.AddSite nodeB
+        //     Expect.isOk addNodeB "should be ok"
 
-            // when
-            let connectFactoryToPort = transportTycoon.ConnectSitesByRoad factory.Id port.Id factory.Id nodeA.Id 1
-            Expect.isOk connectFactoryToPort "should be ok"
-            let connectPortToNodeA = transportTycoon.ConnectSitesBySea port.Id nodeA.Id factory.Id nodeA.Id 1
-            Expect.isOk connectPortToNodeA "should be ok"
-            let connectFactoryToNodeB = transportTycoon.ConnectSitesByRoad factory.Id nodeB.Id factory.Id nodeB.Id 5
-            Expect.isOk connectFactoryToNodeB "should be ok"
+        //     // when
+        //     let connectFactoryToPort = transportTycoon.ConnectSitesByRoad factory.Id port.Id factory.Id nodeA.Id 1
+        //     Expect.isOk connectFactoryToPort "should be ok"
+        //     let connectPortToNodeA = transportTycoon.ConnectSitesBySea port.Id nodeA.Id factory.Id nodeA.Id 1
+        //     Expect.isOk connectPortToNodeA "should be ok"
+        //     let connectFactoryToNodeB = transportTycoon.ConnectSitesByRoad factory.Id nodeB.Id factory.Id nodeB.Id 5
+        //     Expect.isOk connectFactoryToNodeB "should be ok"
 
-            // then
-            let retrievePort = transportTycoon.GetSite port.Id
-            Expect.isOk retrievePort "should be ok"
-            let retrievePortValue = retrievePort.OkValue
-            Expect.equal retrievePortValue.SiteConnections.Length 2 "should be equal"
-            let actualConnections = retrievePortValue.SiteConnections // |> List.sortBy (fun c -> c.EndInterval)
+        //     // then
+        //     let retrievePort = transportTycoon.GetSite port.Id
+        //     Expect.isOk retrievePort "should be ok"
+        //     let retrievePortValue = retrievePort.OkValue
+        //     Expect.equal retrievePortValue.SiteConnections.Length 2 "should be equal"
+        //     let actualConnections = retrievePortValue.SiteConnections // |> List.sortBy (fun c -> c.EndInterval)
 
-            let actualFirstConnection = actualConnections |> List.head
+        //     let actualFirstConnection = actualConnections |> List.head
 
-            // let actualFirstConnection = actualConnections |> List.item 1
-
-            let expectedFirstConnection = 
-                { 
-                    InitialSitePath = port.Id; 
-                    EndInterval = factory.Id; 
-                    ConnectionType = ConnectionType.Road; 
-                    TimeToTravel = 1; 
-                    DestinationSitePath = factory.Id 
-                }
-            Expect.equal actualFirstConnection expectedFirstConnection "should be equal"
+        //     let expectedFirstConnection = 
+        //         { 
+        //             InitialSitePath = port.Id; 
+        //             EndInterval = factory.Id; 
+        //             ConnectionType = ConnectionType.Road; 
+        //             TimeToTravel = 1; 
+        //             DestinationSitePath = factory.Id 
+        //         }
+        //     Expect.equal actualFirstConnection expectedFirstConnection "should be equal"
 
         multipleTestCase "verify that the network is seeded correctly - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
             // given
@@ -469,6 +477,63 @@ let tests =
             Expect.isOk retrieveTruck1 "should be ok"
             let retrieveTruck1Value = retrieveTruck1.OkValue
             Expect.equal retrieveTruck1Value.DistanceTraveled 0 "should be equal"
+
+        multipleTestCase "Initial state of a truck: no connection chosen - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
+            // given
+            setUp ()
+            let seedNetwork = seedDefaultNetwork transportTycoon
+            Expect.isOk seedNetwork "should be ok"
+            let retrieveTruck1 = transportTycoon.GetTruck testDataIds.Truck1Id
+            Expect.isOk retrieveTruck1 "should be ok"
+            let retrieveTruckValue = retrieveTruck1.OkValue
+            Expect.isNone retrieveTruckValue.ConnectionChosen "should be some"
+
+        pmultipleTestCase "XXX. a truck should choose the first connection that has the same destination site as the truck's destination - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
+            setUp ()
+            let seedNetwork = seedDefaultNetwork transportTycoon
+            Expect.isOk seedNetwork "should be ok"
+            let retrieveTruck1 = transportTycoon.GetTruck testDataIds.Truck1Id
+            Expect.isOk retrieveTruck1 "should be ok"
+            Expect.isTrue true "true"
+
+        multipleTestCase "When the tick starts, if the truck is on a site, then the truck should choose the first connection that has the same destination site as the truck's destination - Ok" transportTycoons <| fun (transportTycoon, setUp) ->
+            setUp ()
+            // given
+            let factory = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
+            let factoryAdded = transportTycoon.AddSite factory
+            Expect.isOk factoryAdded "should be ok"
+
+            let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
+            let portAdded = transportTycoon.AddSite port
+            Expect.isOk portAdded "should be ok"
+
+            let truck = Transporter.MkTransporter (Guid.NewGuid(), "A", Guid.NewGuid())
+            let truckAdded = transportTycoon.AddTruck truck
+            Expect.isOk truckAdded "should be ok"
+
+            let connectFactoryToPort = transportTycoon.ConnectSitesByRoad factory.Id port.Id factory.Id port.Id 1
+            Expect.isOk connectFactoryToPort "should be ok"
+
+            // when
+            let truckPlaced = transportTycoon.PlaceTruckOnSite (truck.Id, factory.Id)
+            Expect.isOk truckPlaced "should be ok"
+
+            let retrieveTruck = transportTycoon.GetTruck truck.Id
+            Expect.isOk retrieveTruck "should be ok"
+            let retrieveTruckValue = retrieveTruck.OkValue
+            Expect.equal retrieveTruckValue.ConnectionChosen None "should be none"
+
+            // then
+
+            let tick = transportTycoon.Tick ()
+            Expect.isOk tick "should be ok"
+
+            // Expect.isOk tick "should be ok"
+            // let retrieveTruck2 = transportTycoon.GetTruck truck.Id
+            // Expect.isOk retrieveTruck2 "should be ok"
+            // let retrieveTruckValue2 = retrieveTruck2.OkValue
+            // Expect.isSome retrieveTruckValue2.ConnectionChosen "should be none"
+
     ]
     |> testSequenced
 

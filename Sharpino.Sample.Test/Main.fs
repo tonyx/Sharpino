@@ -1,6 +1,7 @@
 ﻿module sharpino.Sample.Tests
 open Expecto
 
+
 [<EntryPoint>]
 let main argv =
     let startingTime = System.DateTime.Now

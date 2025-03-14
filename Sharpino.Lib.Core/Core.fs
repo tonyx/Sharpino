@@ -36,8 +36,11 @@ module Core =
                     (e.Process s 
                         |> Result.mapError
                             (fun x ->
-                                logger.Value.LogError (sprintf "Error processing event %A: %s" e x)     
-                                (sprintf "Error processing event %A: %s" e x)))
+                                let msg = sprintf "Error processing event %A: %s" e x
+                                logger.Value.LogError msg
+                                msg
+                            )
+                    )
                 )
             ) (h |> Ok)
 

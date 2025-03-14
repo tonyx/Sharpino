@@ -12,19 +12,23 @@ open FsToolkit.ErrorHandling
 module Transporter =
     type Transporter =
         {
-            Id: TransportId
+            Id: TransporterId
             DestinationCode: string
+            DestinationSiteId: SiteId
             CurrentLocation: Option<SiteId>
             TransporterType: TransporterType
             DistanceTraveled: int
+            ConnectionChosen: Option<ConnectionId>
         }
-        static member MkTruck (id: TruckId, destination: string) =
+        static member MkTransporter (id: TransporterId, destination: string, destinationSiteId: SiteId) =
             {
                 Id = id
                 DestinationCode = destination
+                DestinationSiteId = destinationSiteId
                 CurrentLocation = None
                 TransporterType = TransporterType.TruckType
                 DistanceTraveled = 0
+                ConnectionChosen = None
             }
         member this.SetSite (siteId: SiteId) =
             { this with CurrentLocation = Some siteId } |> Ok

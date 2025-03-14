@@ -10,10 +10,10 @@ module Network =
     type Network =
         {
             SiteIds: List<SiteId>
-            TruckRefs: List<TruckId>
+            TransporterIds: List<TransporterId>
         }
         static member MkNetwork () =
-            { SiteIds = []; TruckRefs = [] }
+            { SiteIds = []; TransporterIds = [] }
         member this.AddSiteReference (siteRef: Guid) =
             result {
                 do!
@@ -24,11 +24,11 @@ module Network =
         member this.AddTruckReference (truckRef: Guid) =
             result {
                 do!
-                    this.TruckRefs |> List.contains truckRef |> not
+                    this.TransporterIds |> List.contains truckRef |> not
                     |> Result.ofBool "Truck already added"
-                return { this with TruckRefs = truckRef :: this.TruckRefs }    
+                return { this with TransporterIds = truckRef :: this.TransporterIds }    
             }
-        static member Zero = { SiteIds = []; TruckRefs = [] }
+        static member Zero = { SiteIds = []; TransporterIds = [] }
         static member StorageName = "_network"
         static member Version = "_01"
         static member SnapshotsInterval = 15
