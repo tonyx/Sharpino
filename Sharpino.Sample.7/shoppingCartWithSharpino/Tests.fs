@@ -466,5 +466,25 @@ let tests =
 
             let undoerEventsResult = undoerEvents' () 
             Expect.isError undoerEventsResult "should be an error"
+            
+        multipleTestCase "add and retrieve a good bypassing the container - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
+            setup ()
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
+            let added = supermarket.AddGoodBypassingContainer good
+            Expect.isOk added "should be ok"
+            
+            let goodRetrieved = supermarket.RetrieveGoodBypassingContainer good.Id |> Result.get
+            Expect.equal goodRetrieved good "should be the same good"
+        
+        multipleTestCase "cannot add a good that already exists. Bypass the container" marketInstances <| fun (supermarket, _, setup, _) ->
+            setup ()
+            let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
+            let added = supermarket.AddGood good
+            Expect.isOk added "should be ok"
+            
+            let good2 = Good.MkGood (good.Id, "Good", 10.0m)
+            let added2 = supermarket.AddGoodBypassingContainer good2
+            Expect.isError added2 "should be an error"
+        
     ]
     |> testSequenced

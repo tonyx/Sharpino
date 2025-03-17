@@ -94,12 +94,27 @@ module Supermarket =
                     |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore eventBroker good
                 return ()
             }
-        member this.AddGoodAsync (good: Good) =
-            async {
-                return 
-                    this.AddGood good
+            
+        member this.AddGoodAsync (good: Good)  =
+            task {
+                return this.AddGood good
             }
-            |> Async.StartAsTask
+        
+        member this.AddGoodBypassingContainer (good: Good)     =
+            result
+                {
+                    let! goodAdded =
+                        good
+                        |> runInit<Good, GoodEvents,'F> eventStore eventBroker
+                    return ()     
+                }
+       
+        member this.RetrieveGoodBypassingContainer (id: Guid)    =     
+            result {
+                let! (_, state) = goodsViewer id
+                return state
+            }
+       
 
         member this.RemoveGood (id: Guid) = 
             result {

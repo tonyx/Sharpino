@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>3.10.1</Version>
+    <Version>3.10.2</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -17,6 +17,8 @@
     <ReleaseNotes>This release supports In-memory and Postgres as event store</ReleaseNotes> 
     <Copyright>Copyright ©2023-2024-2025 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#, FSharp, PostgreSQL</PackageTags>
+    
+    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants>
 
     <AsyncTimeOut>1000</AsyncTimeOut>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>

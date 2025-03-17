@@ -145,6 +145,8 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Current version 3.10.2: added runInit that just create initial instance of an aggregate. I will use it to substitute runInitAndCommand to avoid "expansion" of the aggregate state in the cache. The use of MailboxProcesor for commands is based on a compile time constant as will be removed in the future.
+- (instead of stream level lock which ).
 - Added Example 8 related to the [transport-tycoon domain](https://github.com/trustbit/exercises/blob/master/transport-tycoon-1.md). It is a simple example of a transport company that manages vehicles and routes.
 - blogged [Sharpino Internals. Inside a functional event-sourcing-library, part 4](https://medium.com/@tonyx1/sharpino-internals-inside-a-functional-event-sourcing-library-part-4-284a9fe6372a)
 - Added Sharpino.Sample.7 which shows two equals solutions based on JSON and BINARY serialization respectively.

@@ -74,11 +74,10 @@ module Storage =
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
-        abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
-
         abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
         abstract member AddEventsMd: EventId -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
+        abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
         abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
         abstract member SetInitialAggregateStateAndAddEventsMd: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
@@ -87,6 +86,7 @@ module Storage =
         abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd: AggregateId -> Version -> Name -> 'F -> Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
         
         abstract member SetInitialAggregateStateAndAddAggregateEvents: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
+        
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>

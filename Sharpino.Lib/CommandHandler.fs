@@ -266,9 +266,12 @@ module CommandHandler =
                     
                     return ()
                 }
-                
+        #if USING_MAILBOXPROCESSOR        
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command()
+        #endif    
             
     let inline runCommand<'A, 'E, 'F 
         when 'A: (static member Zero: 'A)
@@ -327,8 +330,35 @@ module CommandHandler =
                     AggregateCache<'A1,'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
                     return ()
                 }
+        #if USING_MAILBOXPROCESSOR        
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A.StorageName
             MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif    
+    
+    let inline runInit<'A1, 'E, 'F
+        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (initialInstance: 'A1) =
+            logger.Value.LogDebug (sprintf "runInit %A" 'A1.StorageName)
+            result {
+                let! notAlreadyExists =
+                    (StateView.getAggregateFreshState<'A1, 'E, 'F> initialInstance.Id eventStore
+                    |> Result.isError) // it must be true that this is an error to continue
+                    |> Result.ofBool (sprintf "Aggregate with id %A of type %s already exists" initialInstance.Id 'A1.StorageName)
+                        
+                let! _ = eventStore.SetInitialAggregateState initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize
+                AggregateCache<'A1, 'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
+                return ()
+            }
             
     let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)
@@ -392,8 +422,12 @@ module CommandHandler =
                     
                     return ()
                 }
+        #if USING_MAILBOXPROCESSOR         
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
             MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
             
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
         when 'A1 :> Aggregate<'F>
@@ -480,8 +514,12 @@ module CommandHandler =
                     
                     return ()
                 }
+        #if USING_MAILBOXPROCESSOR        
             let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+        #else    
+            command()
+        #endif
             
     let inline runInitAndTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F, 'A3
         when 'A1 :> Aggregate<'F>
@@ -598,8 +636,12 @@ module CommandHandler =
                     
                     return ()
                 }
+        #if USING_MAILBOXPROCESSOR       
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+        #else    
+            command ()
+        #endif     
             
     let inline runInitAndThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
         when 'A1 :> Aggregate<'F>
@@ -677,8 +719,12 @@ module CommandHandler =
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId newState (ids |> List.last)
                     return ()
                 }
+        #if USING_MAILBOXPROCESSOR        
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
             MailBoxProcessors.postToTheProcessor processor command
+        #else    
+            command ()
+        #endif    
             
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A :> Aggregate<'F>
@@ -792,10 +838,14 @@ module CommandHandler =
                     return ()    
                 }
             
+        #if USING_MAILBOXPROCESSOR    
             let lookupName = 'A1.StorageName
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
             MailBoxProcessors.postToTheProcessor processor commands
-            
+        #else    
+            commands ()
+        #endif
+        
     let inline forceRunNAggregateCommands<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -874,9 +924,13 @@ module CommandHandler =
                         
                     return ()    
                 }
+        #if USING_MAILBOXPROCESSOR    
             let lookupName = 'A1.StorageName
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
             MailBoxProcessors.postToTheProcessor processor commands
+        #else    
+            commands ()
+        #endif    
                 
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
@@ -958,8 +1012,12 @@ module CommandHandler =
                     
                     return ()     
                 }
+        #if USING_MAILBOXPROCESSOR
             let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else
+            commands () 
+        #endif    
             
     let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1055,7 +1113,13 @@ module CommandHandler =
                 
             let lookupName = sprintf "%s" 'A.StorageName
             let tryCompensations =
+                
+            #if USING_MAILBOXPROCESSOR    
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+            #else
+                undoerRun ()
+            #endif    
+                
             let _ =
                 match tryCompensations with
                 | Error x -> logger.Value.LogError x
@@ -1239,9 +1303,12 @@ module CommandHandler =
                         mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore uniqueAggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
                     return ()
                 }
-            
+        #if USING_MAILBOXPROCESSOR
             let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else    
+            commands ()
+        #endif    
             
     let inline forceRunTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1512,10 +1579,13 @@ module CommandHandler =
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
             // let aggregateIds = aggregateIds1 @ aggregateIds2 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-            
+        #if USING_MAILBOXPROCESSOR   
             let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-     
+        #else
+            commands ()
+        #endif
+        
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -1621,8 +1691,6 @@ module CommandHandler =
                             
                     let tryCompensations =
                         undoerRun ()
-                        // will dismiss mailboxes for now and probably forever at lease in this saga stuff (and debugging is easier without mailboxproc)
-                        // MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
                     
                     let _ =
                         match tryCompensations with
@@ -1785,9 +1853,12 @@ module CommandHandler =
                             }
                      let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
                      let tryCompensations =
+                     
+                     #if USING_MAILBOXPROCESSOR    
+                        MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                     #else   
                          undoerRun ()
-                         // will dismiss Mailboxprocessor probably (only for Saga)
-                         // MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                     #endif    
                      let _ =
                          match tryCompensations with
                          | Error x -> logger.Value.LogError x
@@ -2045,9 +2116,12 @@ module CommandHandler =
                         
                     return ()
                 }
-            
+        #if USING_MAILBOXPROCESSOR 
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else
+            commands ()
+        #endif    
                 
     let inline forceRunThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2250,9 +2324,12 @@ module CommandHandler =
                     }
                 // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
                 // let aggregateIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3 |> List.map (fun x -> x.ToString()) |> List.sort |> String.concat "_"
-                
+            #if USING_MAILBOXPROCESSOR     
                 let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
                 MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+            #else    
+                commands ()
+            #endif    
     // this is in progress and is meant to be used for an alternative saga based version of the previud "runNThreeAggregateCommands"
     let inline runThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2375,9 +2452,12 @@ module CommandHandler =
                     return ()
                 }
             // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
-            
+        #if USING_MAILBOXPROCESSOR    
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else
+            commands ()
+        #endif    
             
     let inline runThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2539,7 +2619,12 @@ module CommandHandler =
                         }
                 let lookupName = sprintf "%s_%s" 'A11.StorageName 'A12.StorageName
                 let tryCompensations =
+                #if USING_MAILBOXPROCESSOR     
                      MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                #else     
+                    undoerRun ()
+                #endif    
+                
                 let _ =
                      match tryCompensations with
                      | Error x -> logger.Value.LogError x
@@ -2845,7 +2930,11 @@ module CommandHandler =
                     
                     let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
                     let tryCompensations =
+                    #if USING_MAILBOXPROCESSOR    
                         MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+                    #else
+                        undoerRun ()
+                    #endif    
                     let _ =
                         match tryCompensations with
                         | Error x -> logger.Value.LogError x
@@ -2957,8 +3046,12 @@ module CommandHandler =
                 }
                     
             let lookupNames = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
+        #if USING_MAILBOXPROCESSOR    
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
             MailBoxProcessors.postToTheProcessor processor commands
+        #else
+            commands ()
+        #endif
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
@@ -3074,8 +3167,12 @@ module CommandHandler =
                     return ()
                 } 
             let lookupNames = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+        #if USING_MAILBOXPROCESSOR 
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
             MailBoxProcessors.postToTheProcessor processor commands
+        #else
+            commands ()
+        #endif
             
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F
         when 'A1: (static member Zero: 'A1)
@@ -3142,5 +3239,9 @@ module CommandHandler =
                 return ()
             }
         let lookupName = sprintf "%s" 'A.StorageName
+    #if USING_MAILBOXPROCESSOR
         let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
         MailBoxProcessors.postToTheProcessor processor reset
+    #else    
+        reset ()
+    #endif    

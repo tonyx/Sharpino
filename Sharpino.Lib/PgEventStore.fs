@@ -633,8 +633,7 @@ module PgStorage =
                         finally
                             conn.Close()
                     }, evenStoreTimeout)
-                    
-             
+              
             member this.SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName md events =
                 logger.Value.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
 
@@ -1488,6 +1487,8 @@ module PgStorage =
                         finally
                             conn.Close()
                     }, evenStoreTimeout)
+
+
                 
                 
 
