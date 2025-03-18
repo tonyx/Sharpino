@@ -759,7 +759,11 @@ module CommandHandler =
      
     // the "force" version of running N Commands has been improved and so
     // it is safe to use them in place of the non-force version
-    // using the same aggregateId in more different commands
+    // even though some aggregateId is repeated in parameters
+    // i.e. more commands hit the same aggregate (particularly
+    // tricky as the aggregate state and so the behavior of a command may
+    // depend on the result of some other commands)
+    
     let inline forceRunNAggregateCommandsMd<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -823,12 +827,12 @@ module CommandHandler =
                         aggregateIdsWithCommands
                         |>> fst
                         
-                    let currentEventIdsEventsAnAggregateIds =
+                    let currentEventIdsEventsAndAggregateIds =
                         List.zip3 initialStatesEventIds serializedNewEvents uniqueAggregateIds
                         |>> fun (currentStateEventId, events, id) -> (currentStateEventId, events, 'A1.Version, 'A1.StorageName, id)
                         
                     let! dbEventIds =
-                        currentEventIdsEventsAnAggregateIds
+                        currentEventIdsEventsAndAggregateIds
                         |> eventStore.MultiAddAggregateEventsMd md
                     
                     for i in 0 .. (uniqueAggregateIds.Length - 1) do
