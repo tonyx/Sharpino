@@ -196,6 +196,7 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)
    
+    // todo: should count events for aggregate rather than for stream
     let inline mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
         and 'E :> Event<'A>
