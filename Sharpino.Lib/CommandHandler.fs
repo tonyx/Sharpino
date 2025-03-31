@@ -1298,14 +1298,20 @@ module CommandHandler =
                     let newDbBasedEventIds2 =
                         dbNewStatesEventIds
                         |> List.skip aggregateIds1.Length    
-                    
-                    for i in 0 .. (uniqueAggregateIds1.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) (newDbBasedEventIds1.[i] |> List.last, uniqueAggregateIds1.[i])
-                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds1.[i] newStates1.[i] (newDbBasedEventIds1.[i] |> List.last) |> ignore
+                   
+                    let doCacheResults = 
+                        fun () ->
+                            for i in 0 .. (uniqueAggregateIds1.Length - 1) do
+                                AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) (newDbBasedEventIds1.[i] |> List.last, uniqueAggregateIds1.[i])
+                                mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds1.[i] newStates1.[i] (newDbBasedEventIds1.[i] |> List.last) |> ignore
+                                
+                            for i in 0 .. (uniqueAggregateIds2.Length - 1) do
+                                AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) (newDbBasedEventIds2.[i] |> List.last, uniqueAggregateIds2.[i])
+                                mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore uniqueAggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
+                                
+                    if (List.length (uniqueAggregateIds1 @ uniqueAggregateIds2)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2)) then
+                        doCacheResults ()
                         
-                    for i in 0 .. (uniqueAggregateIds2.Length - 1) do
-                        AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) (newDbBasedEventIds2.[i] |> List.last, uniqueAggregateIds2.[i])
-                        mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore uniqueAggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
                     return ()
                 }
         #if USING_MAILBOXPROCESSOR
@@ -2053,6 +2059,8 @@ module CommandHandler =
                         generatedEvents1
                         |>> fun  x -> x |>> fun (z: 'E1) -> z.Serialize
                     
+                    // printf "serEVents1 %A\n" serEvents1
+                    
                     let serEvents2 =
                         generatedEvents2
                         |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
@@ -2092,6 +2100,8 @@ module CommandHandler =
                         |>> fun (eventId, events, id) -> (eventId, events, 'A3.Version, 'A3.StorageName, id)
                     
                     let allPacked = packParametersForDb1 @ packParametersForDb2 @ packParametersForDb3
+                    // printf "all packed: %O\n" allPacked
+                    
                     let! dbEventIds =
                         allPacked
                         |> eventStore.MultiAddAggregateEventsMd md
@@ -2106,19 +2116,24 @@ module CommandHandler =
                     let newDbBasedEventIds3 =
                         dbEventIds
                         |> List.skip (aggregateIds1.Length + aggregateIds2.Length)
-                  
-                    for i in 0 .. (aggregateIds1.Length - 1) do
-                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((newDbBasedEventIds1.[i] |> List.last, aggregateIds1.[i]))
-                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (newDbBasedEventIds1.[i] |> List.last) |> ignore
-                    
-                    for i in 0 .. (aggregateIds2.Length - 1) do
-                        AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((newDbBasedEventIds2.[i] |> List.last, aggregateIds2.[i]))
-                        mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
-                    
-                    for i in 0 .. (aggregateIds3.Length - 1) do
-                        AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
-                        mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore    
-                        
+                
+                    let doCaches =
+                        fun () ->
+                            for i in 0 .. (aggregateIds1.Length - 1) do
+                                AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((newDbBasedEventIds1.[i] |> List.last, aggregateIds1.[i]))
+                                mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (newDbBasedEventIds1.[i] |> List.last) |> ignore
+                            
+                            for i in 0 .. (aggregateIds2.Length - 1) do
+                                AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((newDbBasedEventIds2.[i] |> List.last, aggregateIds2.[i]))
+                                mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
+                            
+                            for i in 0 .. (aggregateIds3.Length - 1) do
+                                AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
+                                mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore    
+                     
+                    if (List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))
+                        then doCaches()
+                     
                     return ()
                 }
         #if USING_MAILBOXPROCESSOR 
