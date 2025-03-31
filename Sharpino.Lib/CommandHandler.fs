@@ -325,7 +325,7 @@ module CommandHandler =
                         |>> fun x -> x.Serialize
                     let! ids =
                         events' |> storage.SetInitialAggregateStateAndAddEventsMd eventId initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize 'A.Version 'A.StorageName md
-                    
+
                     StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
                     AggregateCache<'A1,'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
@@ -1574,11 +1574,11 @@ module CommandHandler =
                        AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((eventIds2.[i] |> List.last, aggregateIds2.[i]))
                        mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2.[i] |> List.last) |> ignore
                      
-                    let aggregateIdsWithEventIds1 =
-                        List.zip aggregateIds1 eventIds1
-                    let aggregateIdsWithEventIds2 =
-                        List.zip aggregateIds2 eventIds2
-                        
+                    // supposed useful for publishing events:
+                    // let aggregateIdsWithEventIds1 =
+                    //     List.zip aggregateIds1 eventIds1
+                    // let aggregateIdsWithEventIds2 =
+                    //     List.zip aggregateIds2 eventIds2
                         
                     return ()
                 }
