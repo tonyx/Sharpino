@@ -196,7 +196,6 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)
    
-    // todo: should count events for aggregate rather than for stream
     let inline mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F
         when 'A :> Aggregate<'F> 
         and 'E :> Event<'A>
@@ -2079,24 +2078,25 @@ module CommandHandler =
                         uniqueInitialStates3
                         |>> fst
                         
-                    let aggregateIds1 =
-                        aggregateIdsWithCommands1
-                        |>> fst
-                    let aggregateIds2 =
-                        aggregateIdsWithCommands2
-                        |>> fst    
-                    let aggregateIds3 =
-                        aggregateIdsWithCommands3
-                        |>> fst
+                    // todo: same as uniqueAggregateIds1; remove    
+                    // let aggregateIds1 =
+                    //     aggregateIdsWithCommands1
+                    //     |>> fst
+                    // let aggregateIds2 =
+                    //     aggregateIdsWithCommands2
+                    //     |>> fst    
+                    // let aggregateIds3 =
+                    //     aggregateIdsWithCommands3
+                    //     |>> fst
                     
                     let packParametersForDb1 =
-                        List.zip3 initialEventIds1 serEvents1 aggregateIds1
+                        List.zip3 initialEventIds1 serEvents1 uniqueAggregateIds1
                         |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
                     let packParametersForDb2 =
-                        List.zip3 initialEventIds2 serEvents2 aggregateIds2
+                        List.zip3 initialEventIds2 serEvents2 uniqueAggregateIds2
                         |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
                     let packParametersForDb3 =
-                        List.zip3 initialEventIds3 serEvents3 aggregateIds3
+                        List.zip3 initialEventIds3 serEvents3 uniqueAggregateIds3
                         |>> fun (eventId, events, id) -> (eventId, events, 'A3.Version, 'A3.StorageName, id)
                     
                     let allPacked = packParametersForDb1 @ packParametersForDb2 @ packParametersForDb3
@@ -2119,15 +2119,15 @@ module CommandHandler =
                 
                     let doCaches =
                         fun () ->
-                            for i in 0 .. (aggregateIds1.Length - 1) do
+                            for i in 0 .. (uniqueAggregateIds1.Length - 1) do
                                 AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates1.[i] |> Ok) ((newDbBasedEventIds1.[i] |> List.last, aggregateIds1.[i]))
                                 mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (newDbBasedEventIds1.[i] |> List.last) |> ignore
                             
-                            for i in 0 .. (aggregateIds2.Length - 1) do
+                            for i in 0 .. (uniqueAggregateIds2.Length - 1) do
                                 AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates2.[i] |> Ok) ((newDbBasedEventIds2.[i] |> List.last, aggregateIds2.[i]))
                                 mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
                             
-                            for i in 0 .. (aggregateIds3.Length - 1) do
+                            for i in 0 .. (uniqueAggregateIds3.Length - 1) do
                                 AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
                                 mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore    
                      

@@ -120,6 +120,19 @@ let tests =
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
+            
+            
+        fmultipleTestCase "create apple,  put it in the supermarket and add a specific new quantity again - Ok" marketInstances <| fun (supermarket, _, setup, _) ->
+            setup ()
+            let goodId = Guid.NewGuid()
+            let good = Good.MkGood (goodId, "Apple", 10.0m)
+            let added = supermarket.AddGood good
+            Expect.isOk added "should be ok"
+            
+            let addQuantity = supermarket.AddQuantity(goodId, 10)
+            Expect.isOk addQuantity "should be ok"
+            let retrievedQuantity = supermarket.GetGoodsQuantity goodId
+            Expect.isOk retrievedQuantity "should be ok"
 
         multipleTestCase "after added a good, its quantity is zero" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
@@ -352,7 +365,7 @@ let tests =
             let result = quantity.OkValue
             Expect.equal result 0 "should be the same quantity"
 
-        multipleTestCase "can't add twice a good with the same name - Error" marketInstances <| fun (supermarket, _ , setup, _) ->
+        fmultipleTestCase "can't add twice a good with the same name - Error" marketInstances <| fun (supermarket, _ , setup, _) ->
             setup()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)

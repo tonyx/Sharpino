@@ -94,12 +94,8 @@ module Supermarket =
                     |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore eventBroker good
                 return ()
             }
-            
-        member this.AddGoodAsync (good: Good)  =
-            task {
-                return this.AddGood good
-            }
         
+        // to check initialization
         member this.AddGoodBypassingContainer (good: Good)     =
             result
                 {

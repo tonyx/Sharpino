@@ -9,11 +9,9 @@ open Sharpino.CommandHandler
 open Sharpino.Core
 open Sharpino.PgBinaryStore
 open Sharpino.Storage
-// open ShoppingCartBinary.Supermarket
 open Sharpino.TestUtils
 open ShoppingCartBinary.Good
 open ShoppingCartBinary.GoodsContainer
-// open ShoppingCartBinary.Supermarket
 open ShoppingCartBinary.Cart
 open ShoppingCartBinary.GoodEvents
 open ShoppingCartBinary.GoodCommands
@@ -98,6 +96,9 @@ let tests =
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
+            
+            
+            
 
         multipleTestCase "after added a good, its quantity is zero" marketInstances <| fun (supermarket, _, setup, _) ->
             setup ()
