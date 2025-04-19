@@ -11,15 +11,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample", "Sharpino
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.Test", "Sharpino.Sample.Test\Sharpino.Sample.Test.fsproj", "{563DB7F0-879A-4C07-9F41-C3E1660A161A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.5", "Sharpino.Sample.5", "{258D46F5-31CB-417D-95D1-7A3D9543E5FA}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D8B699CD-600D-477E-A4AB-0B2B5F35A226}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server", "Sharpino.Sample.5\src\Server\Server.fsproj", "{71058BE5-175C-4EB6-84EF-4EC9CE62E59B}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D74786DA-7BB5-4880-8E69-024965488E0D}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Server.Tests", "Sharpino.Sample.5\tests\Server\Server.Tests.fsproj", "{BB02EADA-63D4-4BB2-92CC-648B2720B480}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6", "Sharpino.Sample.6\Sharpino.Sample.6.fsproj", "{CC088C14-7F69-40F1-929D-7406366D6DC3}"
 EndProject
@@ -47,9 +41,6 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{EE437871-840B-45EB-BC6F-287A8B240EFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -116,6 +107,9 @@ Global
 		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{064B3D0C-D452-4107-96E0-47FBD18C7662}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D8B699CD-600D-477E-A4AB-0B2B5F35A226} = {258D46F5-31CB-417D-95D1-7A3D9543E5FA}
