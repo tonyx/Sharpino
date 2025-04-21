@@ -145,6 +145,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 3.10.4: added few test that stress the eventstore; ditched the mailboxprocessor in the commandHandler; wrapped the timeout error to the Result.Error (rather than throwing an exception).
 - Version 3.10.3: in some cases forceRunTwo/ThreeNAggregateCommands skip caching.
 - Current version 3.10.2: added runInit that just create initial instance of an aggregate. I will use it to substitute runInitAndCommand to avoid "expansion" of the aggregate state in the cache. The use of MailboxProcesor for commands is based on a compile time constant as will be removed in the future.
 - (instead of stream level lock which ).
