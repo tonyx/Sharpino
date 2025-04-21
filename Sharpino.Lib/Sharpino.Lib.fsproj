@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>3.10.3</Version>
+    <Version>3.10.4</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -15,11 +15,9 @@
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Library</Description>
     <ReleaseNotes>This release supports In-memory and Postgres as event store</ReleaseNotes> 
-    <Copyright>Copyright ©2023-2024-2025 Antonio Lucca</Copyright>
+    <Copyright>Copyright ©2023-2025 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#, FSharp, PostgreSQL</PackageTags>
     
-    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants>
-
     <AsyncTimeOut>1000</AsyncTimeOut>
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     
@@ -46,7 +44,7 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
-    <PackageReference Include="FsCheck" Version="3.1.0" />
+    <PackageReference Include="FsCheck" Version="3.2.0" />
     <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
     <PackageReference Include="FsPickler" Version="5.3.2" />
@@ -54,14 +52,14 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="4.18.0" />
 
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.4" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.1" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.2" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
@@ -75,13 +73,12 @@
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
-<!--    <PackageReference Include="System.Runtime.Caching" Version="9.0.4" />-->
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
-    <PackageReference Include="FsCheck" Version="3.1.0" />
+    <PackageReference Include="FsCheck" Version="3.2.0" />
     <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
     <PackageReference Include="FsPickler" Version="5.3.2" />
@@ -96,7 +93,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" /> 
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.1" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.2" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />

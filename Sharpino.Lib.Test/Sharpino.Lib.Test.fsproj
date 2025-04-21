@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="Models/SampleObject/SampleObject.fs" />
+    <Compile Include="Models/SampleObject/Events.fs" />
+    <Compile Include="Models/SampleObject/Commands.fs" />
+    <Compile Include="EventStoreTests.fs" />
+    <Compile Include="Main.fs" />
+    <Content Include=".env" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Expecto" Version="10.2.3" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+  </ItemGroup>
+
+</Project>

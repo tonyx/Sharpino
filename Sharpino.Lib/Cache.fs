@@ -25,8 +25,9 @@ module Cache =
             Conf.defaultConf
 
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
-        let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         // let cache = System.Runtime.Caching.MemoryCache.Default // will use this instead of dictionary later
+         
+        let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
         static let instance = AggregateCache<'A, 'F>()
         static member Instance = instance

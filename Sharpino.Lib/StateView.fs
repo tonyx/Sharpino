@@ -229,7 +229,7 @@ module StateView =
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
-                    result { 
+                    result {
                         let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
                         let! deserEvents =
                             events 
