@@ -1076,7 +1076,7 @@ module PgStorage =
                                                                     result :?> int
                                                                 )
                                                 
-                                            transaction.Commit()    
+                                            transaction.Commit()
                                             cmdList |> Ok
                                         with
                                             | _ as ex ->

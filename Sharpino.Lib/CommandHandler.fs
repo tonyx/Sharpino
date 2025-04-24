@@ -1293,10 +1293,10 @@ module CommandHandler =
                        
                     let newDbBasedEventIds1 =
                         dbNewStatesEventIds
-                        |> List.take aggregateIds1.Length
+                        |> List.take uniqueAggregateIds1.Length
                     let newDbBasedEventIds2 =
                         dbNewStatesEventIds
-                        |> List.skip aggregateIds1.Length    
+                        |> List.skip uniqueAggregateIds1.Length    
                    
                     let doCacheResults = 
                         fun () ->
@@ -2058,8 +2058,6 @@ module CommandHandler =
                         generatedEvents1
                         |>> fun  x -> x |>> fun (z: 'E1) -> z.Serialize
                     
-                    // printf "serEVents1 %A\n" serEvents1
-                    
                     let serEvents2 =
                         generatedEvents2
                         |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
@@ -2077,17 +2075,6 @@ module CommandHandler =
                     let initialEventIds3 =
                         uniqueInitialStates3
                         |>> fst
-                        
-                    // todo: same as uniqueAggregateIds1; remove    
-                    // let aggregateIds1 =
-                    //     aggregateIdsWithCommands1
-                    //     |>> fst
-                    // let aggregateIds2 =
-                    //     aggregateIdsWithCommands2
-                    //     |>> fst    
-                    // let aggregateIds3 =
-                    //     aggregateIdsWithCommands3
-                    //     |>> fst
                     
                     let packParametersForDb1 =
                         List.zip3 initialEventIds1 serEvents1 uniqueAggregateIds1
@@ -2100,7 +2087,6 @@ module CommandHandler =
                         |>> fun (eventId, events, id) -> (eventId, events, 'A3.Version, 'A3.StorageName, id)
                     
                     let allPacked = packParametersForDb1 @ packParametersForDb2 @ packParametersForDb3
-                    // printf "all packed: %O\n" allPacked
                     
                     let! dbEventIds =
                         allPacked
@@ -2108,14 +2094,14 @@ module CommandHandler =
                     
                     let newDbBasedEventIds1 =
                         dbEventIds
-                        |> List.take aggregateIds1.Length
+                        |> List.take uniqueAggregateIds1.Length
                     let newDbBasedEventIds2 =
                         dbEventIds
-                        |> List.skip aggregateIds1.Length
-                        |> List.take aggregateIds2.Length
+                        |> List.skip uniqueAggregateIds1.Length
+                        |> List.take uniqueAggregateIds2.Length
                     let newDbBasedEventIds3 =
                         dbEventIds
-                        |> List.skip (aggregateIds1.Length + aggregateIds2.Length)
+                        |> List.skip (uniqueAggregateIds1.Length + uniqueAggregateIds2.Length)
                 
                     let doCaches =
                         fun () ->
@@ -2129,13 +2115,14 @@ module CommandHandler =
                             
                             for i in 0 .. (uniqueAggregateIds3.Length - 1) do
                                 AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
-                                mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore    
-                     
+                                mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore
+                                
+                    // if some aggregateIds is present in more than one parameters list then do not cache
                     if (List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))
                         then doCaches()
-                     
                     return ()
                 }
+        
         #if USING_MAILBOXPROCESSOR 
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands

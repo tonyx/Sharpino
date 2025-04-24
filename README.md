@@ -145,6 +145,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 3.10.5: skip the mailboxprocessor in running commands. Removing duplicate code in Pg based eventstore implementations. Fixed a bug of runThreeNAggregregateCommands in handling indexes (will take a closer look for the next release).
 - Version 3.10.3: in some cases forceRunTwo/ThreeNAggregateCommands skip caching.
 - Current version 3.10.2: added runInit that just create initial instance of an aggregate. I will use it to substitute runInitAndCommand to avoid "expansion" of the aggregate state in the cache. The use of MailboxProcesor for commands is based on a compile time constant as will be removed in the future.
 - (instead of stream level lock which ).
