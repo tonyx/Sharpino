@@ -195,6 +195,7 @@ module StateView =
                         let computeNewState =
                             fun () ->
                                 result {
+            
                                     let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
                                     let! deserEvents =
                                         events 

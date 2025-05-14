@@ -428,6 +428,77 @@ module CommandHandler =
         #else
             command ()
         #endif
+    
+    let inline runInitAndNAggregateCommandsMd<'A1, 'E1, 'A2, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2 :> Aggregate<'F>
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        >
+        (aggregateIds: List<Guid>)
+        (storage: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (initialInstance: 'A2)
+        (md: Metadata)
+        (commands: List<AggregateCommand<'A1, 'E1>>)
+        =
+            logger.Value.LogDebug (sprintf "runInitAndNAggregateCommands %A %A" 'A1.StorageName commands)
+            let command = fun () ->
+                result {
+                    let! states =
+                        aggregateIds
+                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id storage)
+                    let states' = 
+                        states 
+                        |>> fun (_, state) -> state
+                    let lastEventIds =
+                        states
+                        |>> fun (eventId, _) -> eventId
+                    let statesAndCommands =
+                        List.zip states' commands
+                    let! stateEvents =
+                        statesAndCommands
+                        |>> fun (state, command) -> (command.Execute state)
+                        |> List.traverseResultM id
+                    let newStates =
+                        stateEvents 
+                        |>> fun (state, _) -> state
+                    let events =
+                        stateEvents
+                        |>> fun (_, events) -> events
+                        
+                    let serializedEvents =
+                        events 
+                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                        
+                    let currentStateEventIdEventsAndAggregateIds =
+                        List.zip3 lastEventIds serializedEvents aggregateIds
+                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                        
+                    let! eventIds =
+                        currentStateEventIdEventsAndAggregateIds
+                        |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize "" 
+                        
+                    for i in 0..(aggregateIds.Length - 1) do
+                        AggregateCache<'A1, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                    AggregateCache<'A2, 'F>.Instance.Memoize2 (initialInstance |> Ok)  (0, initialInstance.Id)
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR         
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
+    
             
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
         when 'A1 :> Aggregate<'F>

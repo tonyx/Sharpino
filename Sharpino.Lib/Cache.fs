@@ -1,5 +1,6 @@
 namespace Sharpino
 
+open System.Collections.Concurrent
 open Microsoft.Extensions.Logging
 open Sharpino
 open Sharpino.Core
@@ -27,6 +28,7 @@ module Cache =
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         // let cache = System.Runtime.Caching.MemoryCache.Default // will use this instead of dictionary later
          
+        let concurrentDic = ConcurrentDictionary<EventId * AggregateId, Result<'A, string>>()
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
         static let instance = AggregateCache<'A, 'F>()

@@ -10,8 +10,8 @@ module Core =
         logger := newLogger
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
-    
-    type Aggregate<'F> =
+   
+    type Aggregate<'F>=
         abstract member Id: AggregateId // use this one to be able to filter related events from same string
         abstract member Serialize: 'F
     
