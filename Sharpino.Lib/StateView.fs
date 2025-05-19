@@ -381,7 +381,42 @@ module StateView =
                         |> List.filter (fun (_, x) -> predicate x)
                     return result     
                 }
-
+    
+    let inline getFilteredAggregateStatesInATimeInterval<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (initialStateFilter: 'A -> bool)
+        (currentStateSelectionCriteria: 'A -> bool)
+        =
+            logger.Value.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! allInitialStates =
+                        getFilteredAggregateSnapshotsInATimeInterval<'A, 'F> eventStore start end_ initialStateFilter
+                        |> Result.map (fun x -> x |>> snd)
+                   
+                    let ids = allInitialStates |>> fun x -> x.Id
+                    let allStates =
+                        ids
+                        |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    
+                    let okStates = allStates |> List.filter (fun x -> x.IsOk) |> List.map (fun x -> x.OkValue)
+                    let errors = allStates |> List.filter (fun x -> x.IsError)
+                    if errors.Length > 0 then
+                        let errors = errors |> List.fold (fun acc x -> acc + x.ToString()+", ") ""
+                        return! (Error errors)
+                    else 
+                        return okStates |> List.filter (fun (_, x)  -> currentStateSelectionCriteria x)
+               } 
+    
     let inline getInitialAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
