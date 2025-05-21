@@ -40,7 +40,6 @@ module StateView =
                                 (evId, deserSnapshot) |> Ok
                             | Error e, _->
                                 logger.Value.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
-                                // log.Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                                 Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                             | _ ->
                                 logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
@@ -394,7 +393,7 @@ module StateView =
         (start: DateTime)
         (end_: DateTime)
         (initialStateFilter: 'A -> bool)
-        (currentStateSelectionCriteria: 'A -> bool)
+        (currentStateFilter: 'A -> bool)
         =
             logger.Value.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
@@ -406,6 +405,7 @@ module StateView =
                     let ids = allInitialStates |>> fun x -> x.Id
                     let allStates =
                         ids
+                        |> List.distinct
                         |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                     
                     let okStates = allStates |> List.filter (fun x -> x.IsOk) |> List.map (fun x -> x.OkValue)
@@ -414,7 +414,7 @@ module StateView =
                         let errors = errors |> List.fold (fun acc x -> acc + x.ToString()+", ") ""
                         return! (Error errors)
                     else 
-                        return okStates |> List.filter (fun (_, x)  -> currentStateSelectionCriteria x)
+                        return okStates |> List.filter (fun (_, x)  -> currentStateFilter x)
                } 
     
     let inline getInitialAggregateSnapshot<'A, 'F

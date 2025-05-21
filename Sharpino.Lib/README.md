@@ -145,6 +145,8 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 4.0.2: introduces Stateview.getFilteredAggregateStatesInATimeInterval 
+- Version 4.0.0: same as 3.10.6, just restarting numeration.
 - Version 3.10.6: added runInitAndNAggregateCommandsMd on command handler (accepts an initial state of a new aggregate of a certain type and N aggregate commands related to a different type type providing _distinct_ aggregateIds) - it is has been tested on a private application. Feel free to add tests on examples (Sample 8 may be a good fit for it).
 - Version 3.10.5: skip the mailboxprocessor in running commands. Removing duplicate code in Pg based eventstore implementations. Fixed a bug of runThreeNAggregregateCommands in handling indexes (will take a closer look for the next release).
 - Version 3.10.3: in some cases forceRunTwo/ThreeNAggregateCommands skip caching.

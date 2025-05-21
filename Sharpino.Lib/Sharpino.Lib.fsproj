@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.0.1</Version>
+    <Version>4.0.2</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -59,13 +59,13 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.5" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.5" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.3" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.4" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.9.13" />
+    <PackageReference Include="Farmer" Version="1.9.14" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.6.0" />
     <PackageReference Include="FSharpPlus" Version="1.7.0" />
@@ -93,13 +93,13 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" /> 
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.3" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.4" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
 
-    <PackageReference Include="Farmer" Version="1.9.13" />
+    <PackageReference Include="Farmer" Version="1.9.14" />
     <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
     <PackageReference Include="FSharp.Data" Version="6.6.0" />
     <PackageReference Include="FSharpPlus" Version="1.7.0" />
