@@ -9,7 +9,6 @@ open System.Runtime.CompilerServices
 open Microsoft.Extensions.Logging.Abstractions
 open System.Collections
 open FSharp.Core
-// open System.Runtime.Caching
 open System
 
 module Cache =
@@ -26,9 +25,10 @@ module Cache =
             Conf.defaultConf
 
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
+        
+        // future use, reminder
         // let cache = System.Runtime.Caching.MemoryCache.Default // will use this instead of dictionary later
-         
-        let concurrentDic = ConcurrentDictionary<EventId * AggregateId, Result<'A, string>>()
+        // let concurrentDic = ConcurrentDictionary<EventId * AggregateId, Result<'A, string>>()
         let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
         let queue = Generic.Queue<EventId * AggregateId>()
         static let instance = AggregateCache<'A, 'F>()

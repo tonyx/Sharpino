@@ -415,7 +415,7 @@ module StateView =
                         return! (Error errors)
                     else 
                         return okStates |> List.filter (fun (_, x)  -> currentStateFilter x)
-               } 
+                } 
     
     let inline getInitialAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F>

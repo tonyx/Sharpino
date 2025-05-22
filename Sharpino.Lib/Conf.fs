@@ -52,10 +52,7 @@ module Conf =
         | _ as ex ->
             printf "there is no sharpinoSettings.json file, using default configuration\n"
             logger.Value.LogError("Error reading configuration", ex)
-            // log.Error("Error reading configuration", ex)
-            // log.Error("consider using or editing this configuration in your appSettings.json:")
             logger.Value.LogError("Consider using or editing this configuration in your appSettings.json:")
-            // log.Error(JsonConvert.SerializeObject(defaultConf))
             logger.Value.LogError("Using default configuration")
             logger.Value.LogError(JsonConvert.SerializeObject(defaultConf))
             
