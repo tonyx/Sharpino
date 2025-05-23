@@ -24,81 +24,81 @@ module Cache =
             printf "appSettings.json file not found using default!!! %A\n" ex
             Conf.defaultConf
 
-    type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
-        
-        // future use, reminder
-        // let cache = System.Runtime.Caching.MemoryCache.Default // will use this instead of dictionary later
-        // let concurrentDic = ConcurrentDictionary<EventId * AggregateId, Result<'A, string>>()
-        let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
-        let queue = Generic.Queue<EventId * AggregateId>()
-        static let instance = AggregateCache<'A, 'F>()
-        static member Instance = instance
-
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member private this.TryAddToDictionary (arg, res) =
-            try
-                dic.Add(arg, res)
-                queue.Enqueue arg
-                if (queue.Count > config.CacheAggregateSize) then
-                    let removed = queue.Dequeue()
-                    dic.Remove removed |> ignore
-                ()
-            with :? _ as e -> 
-                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                dic.Clear()
-                queue.Clear()
-                ()
-              
-        member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
-            let (b, res) = dic.TryGetValue arg
-            if b then
-                res
-            else
-                this.Clean (arg |> snd)
-                let res = f()
-                this.TryAddToDictionary(arg, res)
-                res
-       
-        member this.Memoize2 (x: Result<'A, string>) (arg: EventId * AggregateId)  =
-            this.Clean (arg |> snd)
-            this.TryAddToDictionary(arg, x)
-       
-        member this.Clean (aggregateId: AggregateId) =
-            let keys = dic.Keys
-            let keys' = keys |> List.ofSeq |> List.filter (fun (_, aggregateId') -> aggregateId = aggregateId')
-            keys' |> List.iter (fun key -> dic.Remove key |> ignore)
-            ()
-
-        member this.LastEventId(aggregateId: Guid) =
-            dic.Keys  
-            |> List.ofSeq 
-            |> List.filter (fun (_, aggregateId') -> aggregateId = aggregateId')
-            |> List.map (fun (eventId, _) -> eventId)
-            |> List.sort 
-            |> List.tryLast
-
-        member this.GetState (key: EventId * AggregateId) =
-            let (b, res) = dic.TryGetValue key
-            if b then
-                res
-            else
-                Error "state not found"
-
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member this.Clear() =
-            dic.Clear()
-            queue.Clear()
-
+    // type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
+    //     
+    //     // future use, reminder
+    //     // let cache = System.Runtime.Caching.MemoryCache.Default // will use this instead of dictionary later
+    //     // let concurrentDic = ConcurrentDictionary<EventId * AggregateId, Result<'A, string>>()
+    //     let dic = Generic.Dictionary<EventId * AggregateId, Result<'A, string>>()
+    //     let queue = Generic.Queue<EventId * AggregateId>()
+    //     static let instance = AggregateCache<'A, 'F>()
+    //     static member Instance = instance
+    //
+    //     [<MethodImpl(MethodImplOptions.Synchronized)>]
+    //     member private this.TryAddToDictionary (arg, res) =
+    //         try
+    //             dic.Add(arg, res)
+    //             queue.Enqueue arg
+    //             if (queue.Count > config.CacheAggregateSize) then
+    //                 let removed = queue.Dequeue()
+    //                 dic.Remove removed |> ignore
+    //             ()
+    //         with :? _ as e -> 
+    //             logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+    //             dic.Clear()
+    //             queue.Clear()
+    //             ()
+    //           
+    //     member this.Memoize (f: unit -> Result<'A, string>) (arg: EventId * AggregateId)  =
+    //         let (b, res) = dic.TryGetValue arg
+    //         if b then
+    //             res
+    //         else
+    //             this.Clean (arg |> snd)
+    //             let res = f()
+    //             this.TryAddToDictionary(arg, res)
+    //             res
+    //    
+    //     member this.Memoize2 (x: Result<'A, string>) (arg: EventId * AggregateId)  =
+    //         this.Clean (arg |> snd)
+    //         this.TryAddToDictionary(arg, x)
+    //    
+    //     member this.Clean (aggregateId: AggregateId) =
+    //         let keys = dic.Keys
+    //         let keys' = keys |> List.ofSeq |> List.filter (fun (_, aggregateId') -> aggregateId = aggregateId')
+    //         keys' |> List.iter (fun key -> dic.Remove key |> ignore)
+    //         ()
+    //
+    //     member this.LastEventId(aggregateId: Guid) =
+    //         dic.Keys  
+    //         |> List.ofSeq 
+    //         |> List.filter (fun (_, aggregateId') -> aggregateId = aggregateId')
+    //         |> List.map (fun (eventId, _) -> eventId)
+    //         |> List.sort 
+    //         |> List.tryLast
+    //
+    //     member this.GetState (key: EventId * AggregateId) =
+    //         let (b, res) = dic.TryGetValue key
+    //         if b then
+    //             res
+    //         else
+    //             Error "state not found"
+    //
+    //     [<MethodImpl(MethodImplOptions.Synchronized)>]
+    //     member this.Clear() =
+    //         dic.Clear()
+    //         queue.Clear()
+    //
    
     // a track of refactoring for AggregateCache 
-    type AggregateCache2<'A, 'F when 'A :> Aggregate<'F>> private () =
+    type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         
         let lastEventIdPerAggregate = Generic.Dictionary<AggregateId, EventId>(config.CacheAggregateSize)
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
         let statePerAggregate = Generic.Dictionary<AggregateId, Result<'A, string>>(config.CacheAggregateSize)
         let queue = Generic.Queue<AggregateId>()
         
-        static let instance = AggregateCache2<'A, 'F>()
+        static let instance = AggregateCache<'A, 'F>()
         static member Instance = instance
               
         [<MethodImpl(MethodImplOptions.Synchronized)>]
@@ -122,7 +122,7 @@ module Cache =
                 aggregateQueue.Clear()
                 ()
             
-        member this.Memoize (f: unit -> Result<'A, string>, (eventId: EventId, aggregateId: AggregateId)): Result<'A, string> =
+        member this.Memoize (f: unit -> Result<'A, string>) (eventId: EventId, aggregateId: AggregateId): Result<'A, string> =
             if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
                 (lastEventIdPerAggregate.[aggregateId] = eventId) &&
                 (statePerAggregate.ContainsKey aggregateId)) 
@@ -137,9 +137,9 @@ module Cache =
             lastEventIdPerAggregate.Remove aggregateId  |> ignore
             statePerAggregate.Remove aggregateId  |> ignore
         
-        member this.Memoize2 (x:Result<'A, string>, (eventId: EventId, aggregateId: AggregateId)) =
+        member this.Memoize2 (x:Result<'A, string>) (eventId: EventId, aggregateId: AggregateId) =
+            this.Clean aggregateId
             this.TryAddToDictionary ((eventId, aggregateId), x)
-            x
         
         member this.GetState (eventId: EventId, aggregateId: AggregateId) =
             if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
