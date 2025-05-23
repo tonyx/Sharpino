@@ -165,36 +165,36 @@ module CommandHandler =
                             }
                 }, Commons.generalAsyncTimeOut)    
             
-    let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
-        when 'A :> Aggregate<'F> 
-        and 'E :> Event<'A>
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
-        and 'A : (static member StorageName: string)
-        and 'A : (static member SnapshotsInterval : int)
-        and 'A : (static member Version: string) 
-        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'E : (member Serialize: 'F)
-        >
-        (storage: IEventStore<'F>)
-        (aggregateId: AggregateId) =
-            logger.Value.LogDebug "mkAggregateSnapshotIfIntervalPassed"
-            Async.RunSynchronously
-                (async {
-                    return
-                        ResultCE.result
-                            {
-                                let lastEventId = 
-                                    storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
-                                    |> Option.defaultValue 0
-                                let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
-                                let result =
-                                    if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
-                                        mkAggregateSnapshot<'A, 'E, 'F > storage aggregateId 
-                                    else
-                                        () |> Ok
-                                return! result
-                            }
-                }, Commons.generalAsyncTimeOut)
+    // let inline mkAggregateSnapshotIfIntervalPassed<'A, 'E, 'F
+    //     when 'A :> Aggregate<'F> 
+    //     and 'E :> Event<'A>
+    //     and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+    //     and 'A : (static member StorageName: string)
+    //     and 'A : (static member SnapshotsInterval : int)
+    //     and 'A : (static member Version: string) 
+    //     and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+    //     and 'E : (member Serialize: 'F)
+    //     >
+    //     (storage: IEventStore<'F>)
+    //     (aggregateId: AggregateId) =
+    //         logger.Value.LogDebug "mkAggregateSnapshotIfIntervalPassed"
+    //         Async.RunSynchronously
+    //             (async {
+    //                 return
+    //                     ResultCE.result
+    //                         {
+    //                             let lastEventId = 
+    //                                 storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
+    //                                 |> Option.defaultValue 0
+    //                             let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
+    //                             let result =
+    //                                 if ((lastEventId - snapEventId)) >= 'A.SnapshotsInterval || snapEventId = 0 then
+    //                                     mkAggregateSnapshot<'A, 'E, 'F > storage aggregateId 
+    //                                 else
+    //                                     () |> Ok
+    //                             return! result
+    //                         }
+    //             }, Commons.generalAsyncTimeOut)
    
     let inline mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F
         when 'A :> Aggregate<'F> 

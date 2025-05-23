@@ -91,6 +91,30 @@ module StateView =
                     }, Commons.generalAsyncTimeOut)
                             
 
+    let inline private getLastAggregateSnapshot<'A, 'F 
+        when 'A :> Aggregate<'F> and
+        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        >
+        (aggregateId: Guid)
+        (version: string)
+        (storageName: string)
+        (storage: IEventStore<'F>) 
+        =
+            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            Async.RunSynchronously
+                (async {
+                    return
+                        result {
+                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            let (_, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
+                            if (lastSnapshotId = 0) then
+                                return None
+                            else
+                                let! (eventId, snapshot) = 
+                                    tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
+                                return (eventId , snapshot) |> Some 
+                        }
+                }, Commons.generalAsyncTimeOut)
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
         'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -138,7 +162,7 @@ module StateView =
             (async {
                 return
                     result {
-                        let! (eventId, state: 'A) = getLastSnapshotOrStateCache<'A, 'F> storage
+                        let! (eventId, state: 'A) = getLastSnapshot<'A, 'F> storage
                         let! events = storage.GetEventsAfterId 'A.Version eventId 'A.StorageName
                         let res =
                             (eventId, state, events)
@@ -160,6 +184,7 @@ module StateView =
             return
                 result {
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
+                    // let! eventIdAndState = getLastAggregateSnapshot<'A, 'F> id 'A.Version 'A.StorageName eventStore
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
