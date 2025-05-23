@@ -107,7 +107,8 @@ module SeatBooking =
                         [ for i in 1 .. ns.Length -> rowId ]
                         
                     let! result =
-                        runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                        // runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
                     return result    
                 }
         member this.ForceRemoveSeatsFromRow (rowId: RowId, ns: List<int>) =
@@ -281,7 +282,7 @@ module SeatBooking =
                     forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
             }
             
-        member this.AssignBookingUsingSagaWay (bookingAndRows: List<Guid * Guid>) =
+        member this.AssignBookingUsingSagaWayNotSagaishAnymore (bookingAndRows: List<Guid * Guid>) =
             result {
                 let rowIds = bookingAndRows |> List.map snd
                 let bookingIds = bookingAndRows |> List.map fst
@@ -302,7 +303,7 @@ module SeatBooking =
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)
                     
                 let! result =
-                    runSagaTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
+                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
                 return result
             }   
                 

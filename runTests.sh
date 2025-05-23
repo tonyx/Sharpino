@@ -10,7 +10,7 @@ cd ..
 cd Sharpino.Sample.6.Test
 dotnet run
 cd ..
-cd Sharpino.Sample.Saga.Test
+cd Sharpino.Sample.FormerlySaga.Test
 dotnet run
 cd ..
 cd Sharpino.Sample.7/ShoppingCartWithSharpino

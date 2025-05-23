@@ -268,20 +268,20 @@ let tests =
             let cartAdded = supermarket.AddCart cart
             Expect.isOk cartAdded "should be ok"
 
-            let good1 = Good.MkGood (Guid.NewGuid(), "Good1", 10.0m)
+            let apple = Good.MkGood (Guid.NewGuid(), "apple", 10.0m)
             
-            let GoodAdded1 = supermarket.AddGood good1
+            let GoodAdded1 = supermarket.AddGood apple
             Expect.isOk GoodAdded1 "should be ok"
 
-            let good2 = Good.MkGood (Guid.NewGuid(), "Good2", 10.0m)
-            let GoodAdded2 = supermarket.AddGood good2
+            let lemon = Good.MkGood (Guid.NewGuid(), "lemon", 10.0m)
+            let GoodAdded2 = supermarket.AddGood lemon
             Expect.isOk GoodAdded2 "should be ok"
 
             // when
-            let _ = supermarket.AddQuantity (good1.Id, 8)
-            let _ = supermarket.AddQuantity (good2.Id, 10)
+            let _ = supermarket.AddQuantity (apple.Id, 8)
+            let _ = supermarket.AddQuantity (lemon.Id, 10)
 
-            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 1); (good2.Id, 1)])
+            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(apple.Id, 1); (lemon.Id, 1)])
             Expect.isOk addedToCart1 "should be ok"
 
             let cart = supermarket.GetCart cartId
@@ -290,17 +290,18 @@ let tests =
             let result = cart.OkValue.Goods
             Expect.equal result.Count 2 "should be the same quantity"  
 
-            Expect.equal result.[good1.Id] 1 "should be the same quantity"
-            Expect.equal result.[good2.Id] 1 "should be the same quantity"
+            Expect.equal result.[apple.Id] 1 "should be the same quantity"
+            Expect.equal result.[lemon.Id] 1 "should be the same quantity"
 
             // then
-            let good1Quantity = supermarket.GetGoodsQuantity good1.Id
-            Expect.isOk good1Quantity "should be ok"
-            Expect.equal good1Quantity.OkValue 7 "should be the same quantity"
+            let applesQuantity = supermarket.GetGoodsQuantity apple.Id
+            Expect.isOk applesQuantity "should be ok"
+            Expect.equal applesQuantity.OkValue 7 "should be the same quantity"
 
-            let Good2Quantity = supermarket.GetGoodsQuantity good2.Id
-            Expect.isOk Good2Quantity "should be ok"
-            Expect.equal Good2Quantity.OkValue 9 "should be the same quantity"
+            let lemonsQuantity = supermarket.GetGoodsQuantity lemon.Id
+            Expect.isOk lemonsQuantity "should be ok"
+            Expect.equal lemonsQuantity.OkValue 9 "should be the same quantity"
+
 
         multipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()

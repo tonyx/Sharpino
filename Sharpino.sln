@@ -19,13 +19,13 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6", "Sharpi
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6.Test", "Sharpino.Sample.6.Test\Sharpino.Sample.6.Test.fsproj", "{BA9E7EE2-20F9-4899-9769-C7C1DEFD7116}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.Saga", "Sharpino.Sample.Saga\Sharpino.Sample.Saga.fsproj", "{19B11C9C-B1D0-43C8-9C58-F9631861CA9D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.FormerlySaga", "Sharpino.Sample.FormerlySaga\Sharpino.Sample.FormerlySaga.fsproj", "{19B11C9C-B1D0-43C8-9C58-F9631861CA9D}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3", "Sharpino.Sample.3\Sharpino.Sample.3.fsproj", "{11B2B9E0-D8AC-42B1-B5F7-01EB94116BEA}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3.Test", "Sharpino.Sample.3.Test\Sharpino.Sample.3.Test.fsproj", "{5A6520C7-9498-4423-BBBF-44EBC64AAD3A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.Saga.Test", "Sharpino.Sample.Saga.Test\Sharpino.Sample.Saga.Test.fsproj", "{4AA103AD-279E-450B-82B4-31875E72EAF5}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.FormerlySaga.Test", "Sharpino.Sample.FormerlySaga.Test\Sharpino.Sample.FormerlySaga.Test.fsproj", "{4AA103AD-279E-450B-82B4-31875E72EAF5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.7", "Sharpino.Sample.7", "{ADD9CCF5-A132-4E4C-B2DC-F356FAF70879}"
 EndProject

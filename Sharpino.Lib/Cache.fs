@@ -121,6 +121,12 @@ module Cache =
                 lastEventIdPerAggregate.Clear()
                 aggregateQueue.Clear()
                 ()
+       
+        member this.TryGetLastEventId(aggregateId: AggregateId) =
+            if (lastEventIdPerAggregate.ContainsKey aggregateId) then
+                lastEventIdPerAggregate.[aggregateId] |> Some
+            else
+                None 
             
         member this.Memoize (f: unit -> Result<'A, string>) (eventId: EventId, aggregateId: AggregateId): Result<'A, string> =
             if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
@@ -133,6 +139,8 @@ module Cache =
                 this.TryAddToDictionary ((eventId, aggregateId), res) 
                 res
        
+        // suspicious as it doesn't remove anything from the queue
+        // however: 1. max size is not affected. 1. Just a deprecated saga-ish function in command handler uses it
         member this.Clean (aggregateId: AggregateId) =
             lastEventIdPerAggregate.Remove aggregateId  |> ignore
             statePerAggregate.Remove aggregateId  |> ignore
@@ -149,7 +157,7 @@ module Cache =
                 statePerAggregate.[aggregateId]
             else
                 Error "not found"
-         
+        
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.Clear () =
             lastEventIdPerAggregate.Clear ()

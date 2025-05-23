@@ -97,6 +97,7 @@ let appVersionsEnvs =
         (setupDbEventStore, "postgres db", fun () -> SeatBookingService(dbEventStore, doNothingBroker, teatherContextdbViewer, seatsAggregatedbViewer, bookingsAggregatedbViewer, vouchersAggregatedbViewer))
     ]
 
+// sagaish is going to be deprecated
 [<Tests>]
 let tests =
     testList "samples" [
@@ -385,7 +386,7 @@ let tests =
             
             // action
             // let assignBookings = service.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
-            let assignBookings = service.AssignBookingUsingSagaWay ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
+            let assignBookings = service.AssignBookingUsingSagaWayNotSagaishAnymore ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
         
             // expectation
             Expect.isOk assignBookings "should be ok"
@@ -445,7 +446,7 @@ let tests =
             let addBooking2 = service.AddBooking booking2
         
             // action
-            let assignBookings = service.AssignBookingUsingSagaWay ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
+            let assignBookings = service.AssignBookingUsingSagaWayNotSagaishAnymore ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
         
             // expectation    
             Expect.isError assignBookings "should be error"
@@ -506,7 +507,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                service.AssignBookingUsingSagaWay 
+                service.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -584,7 +585,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                service.AssignBookingUsingSagaWay 
+                service.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -951,7 +952,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                seatBookingService.AssignBookingUsingSagaWay 
+                seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -1035,7 +1036,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                seatBookingService.AssignBookingUsingSagaWay 
+                seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -1119,7 +1120,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                seatBookingService.AssignBookingUsingSagaWay 
+                seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -1204,7 +1205,7 @@ let tests =
         
             // action 
             let assignBookings = 
-                seatBookingService.AssignBookingUsingSagaWay 
+                seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore 
                     [
                         (booking1.Id, row.Id);
                         (booking2.Id, row.Id);
@@ -1297,7 +1298,7 @@ let tests =
                 |> List.map (fun r -> Expect.isOk r "should be ok")
         
             let assignBookings = 
-                seatBookingService.AssignBookingUsingSagaWay 
+                seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore 
                     (bookings |> List.map (fun b -> (b.Id, row.Id)))
                 
             Expect.isError assignBookings "should be ok"

@@ -105,7 +105,6 @@ module StateView =
                 (async {
                     return
                         result {
-                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (_, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0) then
                                 return None
@@ -219,7 +218,6 @@ module StateView =
                         let computeNewState =
                             fun () ->
                                 result {
-            
                                     let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
                                     let! deserEvents =
                                         events 
@@ -264,9 +262,19 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> state
                         return newState
                     }
-            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName  id |> Option.defaultValue 0
+                    
+            // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
+            
+            // let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0 // (used to probe db to get latest event id, now I do directly to the cache itself)
+            // not relying anymore to lasteventid on db an on cache either
+            
+            // FOCUS: don't matter the eventId in cache anymore
+            
+            let lastEventId = AggregateCache<'A, 'F>.Instance.TryGetLastEventId (id) |> Option.defaultValue 0
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
-            let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            let state = AggregateCache<'A, 'F>.Instance.GetState  (lastEventId, id)
+            
             match state with
             | Ok state -> 
                 (lastEventId, state) |> Ok
