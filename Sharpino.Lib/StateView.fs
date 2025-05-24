@@ -161,7 +161,6 @@ module StateView =
             (async {
                 return
                     result {
-                        // let! (eventId, state: 'A) = getLastSnapshot<'A, 'F> storage
                         let! (eventId, state: 'A) = getLastSnapshotOrStateCache<'A, 'F> storage //getLastSnapshotOStateCacher<'A, 'F> storage
                         let! events = storage.GetEventsAfterId 'A.Version eventId 'A.StorageName
                         let res =
@@ -184,7 +183,6 @@ module StateView =
             return
                 result {
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
-                    // let! eventIdAndState = getLastAggregateSnapshot<'A, 'F> id 'A.Version 'A.StorageName eventStore
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -266,19 +264,16 @@ module StateView =
                     
             // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
             
-            // we will get rid of reading lastEventId on db soon
+            // we will get rid of reading lastEventId on db soon and rely only on the cache
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0 // (used to probe db to get latest event id, now I do directly to the cache itself)
             
             // FOCUS: don't matter the eventId in cache anymore
             // track: reading lastEventId from cache or, better, dont' read it at all as long as I'll be
             // more sure that it doesn't conflict with the known no-caching cases of the command handler 
             // todo: let lastEventId = AggregateCache<'A, 'F>.Instance.TryGetLastEventId (id) |> Option.defaultValue 0
-            
             // logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
-            
-            // let state = AggregateCache<'A, 'F>.Instance.GetState  (lastEventId, id)
             
             match state with
             | Ok state -> 

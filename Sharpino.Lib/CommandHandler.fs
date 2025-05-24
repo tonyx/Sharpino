@@ -1121,105 +1121,7 @@ module CommandHandler =
         =
             runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateId1 aggregateId2 eventStore eventBroker String.Empty command1 command2
    
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
-        and 'E : (member Serialize: 'F)
-        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-        and 'A : (static member SnapshotsInterval: int)
-        and 'A : (static member StorageName: string)
-        and 'A : (static member Version: string)
-        >
-        (aggregateIds: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (md: Metadata)
-        (undoers: List<Option<Result<(unit -> Result<List<'E>,string>),string>>>)
-        =
-            let undoerRun =
-                fun () ->
-                    result {
-                        let! compensatingStream =
-                            undoers
-                            |>> fun x -> x
-                            |> List.traverseOptionM (fun x -> x)
-                            |> Option.toResultWith (sprintf "compensatingStream %s" 'A.StorageName)
-                        let! extractedCompensator =
-                            compensatingStream
-                            |> List.traverseResultM (fun x -> x) 
-                        let! extractedCompensatorApplied =
-                            extractedCompensator
-                            |> List.traverseResultM (fun x -> x())
-                        let! currentStatesOfAggregates =
-                            aggregateIds
-                            |> List.traverseResultM (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
-                        let stateAndEvents =
-                            List.zip (currentStatesOfAggregates |>> snd) extractedCompensatorApplied
-                            
-                        // this precomputation of future states will be ok for the future versions of the cache (without eventid)
-                        // and for making sure that those events succeeds
-                        let! futureStates =
-                            stateAndEvents
-                            |> List.traverseResultM (fun (state, compensator) -> evolveUNforgivingErrors state compensator)
-                                
-                        let extractedEvents =
-                            let exCompLen = extractedCompensatorApplied.Length
-                            List.zip3
-                                (aggregateIds |> List.take exCompLen)
-                                ((aggregateIds |> List.take exCompLen)
-                                 |>> (eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName))
-                                extractedCompensatorApplied
-                            |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                        let addEventsStreamA =
-                            extractedEvents
-                            |> List.traverseResultM
-                                (fun (id, eventId, events) ->
-                                    eventStore.AddAggregateEventsMd eventId 'A.Version 'A.StorageName id md events
-                                )
-                        match addEventsStreamA with
-                        | Ok _ ->
-                            for i in 0..(aggregateIds.Length - 1) do
-                                AggregateCache<'A, 'F>.Instance.Clean aggregateIds.[i]
-                            return ()
-                        | Error e -> return! Error e
-                    }
-                
-            let lookupName = sprintf "%s" 'A.StorageName
-            let tryCompensations =
-                
-            #if USING_MAILBOXPROCESSOR    
-                MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
-            #else
-                undoerRun ()
-            #endif    
-                
-            let _ =
-                match tryCompensations with
-                | Error x -> logger.Value.LogError x
-                | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
-            Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
-            
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaNAggregateCommandsUndoers<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
-        and 'E : (member Serialize: 'F)
-        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-        and 'A : (static member SnapshotsInterval: int)
-        and 'A : (static member StorageName: string)
-        and 'A : (static member Version: string)
-        >
-        (aggregateIds: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (undoers: List<Option<Result<(unit -> Result<List<'E>,string>),string>>>)
-        =
-            runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F> aggregateIds eventStore eventBroker Metadata.Empty undoers
+    // // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
 
     // the "force" version of forcing running N Commands has been improved and so
     // it is safe to use them in place of the non-force version
@@ -1439,123 +1341,6 @@ module CommandHandler =
         =
             logger.Value.LogDebug "forceRunTwoNAggregateCommands"
             forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker String.Empty command1 command2
-            
-    // // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    // [<Obsolete>]
-    // let inline runSagaNAggregatesCommandsAndForceTwoMAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
-    //     when 'A :> Aggregate<'F>
-    //     and 'E :> Event<'A>
-    //     and 'E : (member Serialize: 'F)
-    //     and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-    //     and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-    //     and 'A : (static member SnapshotsInterval: int)
-    //     and 'A : (static member StorageName: string)
-    //     and 'A : (static member Version: string)
-    //     and 'A1 :> Aggregate<'F>
-    //     and 'E1 :> Event<'A1>
-    //     and 'E1 : (member Serialize: 'F)
-    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-    //     and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-    //     and 'A1 : (static member SnapshotsInterval: int)
-    //     and 'A1 : (static member StorageName: string)
-    //     and 'A1 : (static member Version: string)
-    //     and 'A2 :> Aggregate<'F>
-    //     and 'E2 :> Event<'A2>
-    //     and 'E2 : (member Serialize: 'F)
-    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-    //     and 'A2 : (static member SnapshotsInterval: int)
-    //     and 'A2 : (static member StorageName: string)
-    //     and 'A2 : (static member Version: string)
-    //     >
-    //     (aggregateIds: List<Guid>)
-    //     (aggregateIds1: List<Guid>)
-    //     (aggregateIds2: List<Guid>)
-    //     (eventStore: IEventStore<'F>)
-    //     (eventBroker: IEventBroker<'F>)
-    //     (md: Metadata)
-    //     (commands: List<AggregateCommand<'A, 'E>>)
-    //     (command1: List<AggregateCommand<'A1, 'E1>>)
-    //     (command2: List<AggregateCommand<'A2, 'E2>>)
-    //     : Result<unit, string>
-    //     =
-    //         logger.Value.LogDebug "runSagaNAggregatesCommandsAndForceTwoMAggregateCommands"
-    //         let commandsHaveUndoers = commands |> List.forall (fun x -> x.Undoer.IsSome)
-    //         if (commandsHaveUndoers) then 
-    //             let idsWithCommands = List.zip aggregateIds commands
-    //             let iteratedExecutionOfCommands =
-    //                 idsWithCommands
-    //                 |> List.fold
-    //                     (fun acc (id, c) ->
-    //                         let guard = acc |> fst
-    //                         let futureUndoers = acc |> snd
-    //                         if (not guard) then (false, futureUndoers) else
-    //                             let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
-    //                             let futureUndo =
-    //                                 let aggregateStateViewer: AggregateViewer<'A> = fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore
-    //                                 match c.Undoer, state with
-    //                                 | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewer)
-    //                                 | _ -> None
-    //                             let undoers = [futureUndo]
-    //                             let myRes = runAggregateCommandMd id eventStore eventBroker md c
-    //                             match myRes with
-    //                             | Ok _ -> (guard, futureUndoers @ undoers)
-    //                             | Error _ -> (false, futureUndoers)
-    //                     )
-    //                     (true, [])
-    //             match iteratedExecutionOfCommands with
-    //             | (false, undoers) ->
-    //                 runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F> aggregateIds eventStore eventBroker md undoers
-    //             | (true, undoers) ->
-    //                 let runMWithNoSaga =
-    //                     forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker md command1 command2
-    //                 match runMWithNoSaga with
-    //                 | Ok _ -> Ok ()
-    //                 | Error e -> 
-    //                     runSagaNAggregateCommandsUndoersMd<'A, 'E, 'F> aggregateIds eventStore eventBroker md undoers
-    //         else Error "no undoers"
-            
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    
-    // [<Obsolete>]
-    // let inline runSagaNAggregatesCommandsAndForceTwoMAggregateCommands<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
-    //     when 'A :> Aggregate<'F>
-    //     and 'E :> Event<'A>
-    //     and 'E : (member Serialize: 'F)
-    //     and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-    //     and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-    //     and 'A : (static member SnapshotsInterval: int)
-    //     and 'A : (static member StorageName: string)
-    //     and 'A : (static member Version: string)
-    //     and 'A1 :> Aggregate<'F>
-    //     and 'E1 :> Event<'A1>
-    //     and 'E1 : (member Serialize: 'F)
-    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-    //     and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-    //     and 'A1 : (static member SnapshotsInterval: int)
-    //     and 'A1 : (static member StorageName: string)
-    //     and 'A1 : (static member Version: string)
-    //     and 'A2 :> Aggregate<'F>
-    //     and 'E2 :> Event<'A2>
-    //     and 'E2 : (member Serialize: 'F)
-    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-    //     and 'A2 : (static member SnapshotsInterval: int)
-    //     and 'A2 : (static member StorageName: string)
-    //     and 'A2 : (static member Version: string)
-    //     >
-    //     (aggregateIds: List<Guid>)
-    //     (aggregateIds1: List<Guid>)
-    //     (aggregateIds2: List<Guid>)
-    //     (eventStore: IEventStore<'F>)
-    //     (eventBroker: IEventBroker<'F>)
-    //     (commands: List<AggregateCommand<'A, 'E>>)
-    //     (command1: List<AggregateCommand<'A1, 'E1>>)
-    //     (command2: List<AggregateCommand<'A2, 'E2>>)
-    //     : Result<unit, string>
-    //     =
-    //         logger.Value.LogDebug "runSagaNAggregatesCommandsAndForceTwoMAggregateCommands"
-    //         runSagaNAggregatesCommandsAndForceTwoMAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F> aggregateIds aggregateIds1 aggregateIds2 eventStore eventBroker String.Empty commands command1 command2
    
     let inline runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1718,292 +1503,6 @@ module CommandHandler =
         =
             logger.Value.LogDebug "runTwoNAggregateCommands"
             runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker Metadata.Empty command1 command2
-    
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaNAggregateCommandsMd<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
-        and 'E : (member Serialize: 'F)
-        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-        and 'A : (static member SnapshotsInterval: int)
-        and 'A : (static member StorageName: string)
-        and 'A : (static member Version: string)
-        >
-        (aggregateIds: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (md: Metadata)
-        (commands: List<AggregateCommand<'A, 'E>>)
-        =
-            let commandHasUndoers = commands |> List.forall (fun x -> x.Undoer.IsSome)
-            if commandHasUndoers then
-                let idsWithCommands = List.zip aggregateIds commands
-                let iteratedExecutionOfCommands =
-                    idsWithCommands
-                    |> List.fold
-                        (fun (guard, futureUndoers) (id, c) ->
-                            if not guard then (false, futureUndoers) else
-                                let state = getAggregateFreshState<'A, 'E, 'F> id eventStore
-                                let futureUndo =
-                                    let aggregateStateViewer: AggregateViewer<'A> = fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore
-                                    match c.Undoer, state with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewer)
-                                    | _ -> None
-                                let undoers = [futureUndo]
-                                let myRes = runAggregateCommand id eventStore eventBroker c
-                                match myRes with
-                                | Ok _ -> (guard, futureUndoers @ undoers)
-                                | Error _ -> (false, futureUndoers)
-                        )
-                        (true, [])
-                match iteratedExecutionOfCommands with
-                | (true, _) -> Ok ()
-                | (false, undoers) ->
-                    let undoerRun =
-                        fun () ->
-                            result {
-                                let! compensatingStream =
-                                    undoers
-                                    |>> fun x -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStream %s" 'A.StorageName)
-                                let! extractedCompensator =
-                                    compensatingStream
-                                    |> List.traverseResultM (fun x -> x) 
-                                let! extractedCompensatorApplied =
-                                    extractedCompensator
-                                    |> List.traverseResultM (fun x -> x())
-                                let extractedEvents =
-                                    let exCompLen = extractedCompensatorApplied.Length
-                                    List.zip3
-                                        (aggregateIds |> List.take exCompLen)
-                                        ((aggregateIds |> List.take exCompLen)
-                                         |>> (eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName))
-                                        extractedCompensatorApplied
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                let addEventsStreamA =
-                                    extractedEvents
-                                    |> List.traverseResultM
-                                        (fun (id, eventId, events) ->
-                                            let evIdQuickFix = (eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0)
-                                            eventStore.AddAggregateEventsMd evIdQuickFix 'A.Version 'A.StorageName id md events
-                                        )
-                                match addEventsStreamA with
-                                | Ok _ -> return ()
-                                | Error e -> return! Error e
-                            }
-                            
-                    let tryCompensations =
-                        undoerRun ()
-                    
-                    let _ =
-                        match tryCompensations with
-                        | Error x -> logger.Value.LogError x
-                        | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
-                    Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
-                else
-                    Error (sprintf "failed the precondition of applicability of the runSagaNAggregateCommands. All of these must be true: commandHasUndoers %A" commandHasUndoers)
-                    
-                    
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaNAggregateCommands<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
-        and 'E : (member Serialize: 'F)
-        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>)
-        and 'A : (static member SnapshotsInterval: int)
-        and 'A : (static member StorageName: string)
-        and 'A : (static member Version: string)
-        >
-        (aggregateIds: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (commands: List<AggregateCommand<'A, 'E>>)
-        = runSagaNAggregateCommandsMd<'A, 'E, 'F> aggregateIds eventStore eventBroker Metadata.Empty commands
-               
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
-        and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: 'F)
-        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        >
-        (aggregateIds1: List<Guid>)
-        (aggregateIds2: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (md: Metadata)
-        (commands1: List<AggregateCommand<'A1, 'E1>>)
-        (commands2: List<AggregateCommand<'A2, 'E2>>)
-        =
-            logger.Value.LogDebug "runSagaTwoNAggregateCommands"
-            let command1HasUndoers = commands1 |> List.forall (fun x -> x.Undoer.IsSome)
-            let command2HasUndoers = commands2 |> List.forall (fun x -> x.Undoer.IsSome)
-            let lengthMustBeTheSame = commands1.Length = commands2.Length
-            if (command1HasUndoers && command2HasUndoers && lengthMustBeTheSame) then
-                let pairOfCommands = List.zip commands1 commands2
-                let pairsOfIds = List.zip aggregateIds1 aggregateIds2
-                let idsWithCommands = List.zip pairsOfIds pairOfCommands
-                
-                let iteratedExecutionOfPairOfCommands =
-                    idsWithCommands
-                    |> List.fold
-                        (fun acc ((id1, id2 ), (c1, c2)) ->
-                            let guard = acc |> fst
-                            let futureUndoers = acc |> snd
-                            if not guard then (false, futureUndoers) else
-                                let stateA1 = getAggregateFreshState<'A1, 'E1, 'F> id1 eventStore
-                                let stateA2 = getAggregateFreshState<'A2, 'E2, 'F> id2 eventStore
-                                let futureUndo1 =
-                                    let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
-                                    match c1.Undoer, stateA1 with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
-                                    | _ -> None
-                                let futureUndo2 =
-                                    let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
-                                    match c2.Undoer, stateA2 with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
-                                    | _ -> None    
-                                let undoers = [futureUndo1, futureUndo2]
-                                let myRes = runTwoAggregateCommandsMd id1 id2 eventStore eventBroker md c1 c2
-                                match myRes with
-                                | Ok _ -> (guard, futureUndoers @ undoers)
-                                | Error _ -> (false, futureUndoers)
-                        )
-                        (true, [])
-                match iteratedExecutionOfPairOfCommands with
-                | (true, _) -> Ok ()
-                | (false, undoers) ->
-                     let undoerRun =
-                        fun () ->
-                            result {
-                                let! compensatingStreamA1 =
-                                    undoers
-                                    |>> fun (x, _) -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStreamA1 %s - %s  " 'A1.StorageName 'A2.StorageName)
-                                let! compensatingStreamA2 =
-                                    undoers
-                                    |>> fun (_, x) -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStreamA2 %s - %s  " 'A1.StorageName 'A2.StorageName)
-                                    
-                                let! extractedCompensatorE1 =
-                                    compensatingStreamA1
-                                    |> List.traverseResultM (fun x -> x) 
-                                
-                                let! extractedCompensatorE1Applied =
-                                    extractedCompensatorE1
-                                    |> List.traverseResultM (fun x -> x())
-                                    
-                                let! extractedCompensatorE2 =
-                                    compensatingStreamA2
-                                    |> List.traverseResultM id    
-                                
-                                let! extractedCompenatorE2Applied =
-                                    extractedCompensatorE2
-                                    |> List.traverseResultM (fun x -> x())
-                                 
-                                let extractedEventsForE1 =
-                                    let exCompLen = extractedCompensatorE1Applied.Length
-                                    List.zip3
-                                        (aggregateIds1 |> List.take exCompLen)
-                                        ((aggregateIds1 |> List.take exCompLen)
-                                         |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
-                                        extractedCompensatorE1Applied  
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                               
-                                let extractedEventsForE2 =
-                                    let exCompLen = extractedCompenatorE2Applied.Length
-                                    List.zip3
-                                        (aggregateIds2 |> List.take exCompLen)
-                                        ((aggregateIds2 |> List.take exCompLen)
-                                         |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
-                                        extractedCompenatorE2Applied
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                    
-                                let addEventsStreamA1 =
-                                    extractedEventsForE1
-                                    |> List.traverseResultM
-                                        (fun (id, _, events) ->
-                                            let lastEventIdQuickFix = eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd lastEventIdQuickFix 'A1.Version 'A1.StorageName id md events)
-                                
-                                let addEventsStreamA2 =
-                                    extractedEventsForE2
-                                    |> List.traverseResultM
-                                        (fun (id, _, events) ->
-                                            let lastEventIdQuickFix = eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd lastEventIdQuickFix 'A2.Version 'A2.StorageName id md events)
-                              
-                                match addEventsStreamA1, addEventsStreamA2 with
-                                | Ok _, Ok _ -> return ()
-                                | Error e, Ok _ -> return! Error e
-                                | Ok _, Error e -> return! Error e
-                                | Error e1, Error e2 -> return! Error (sprintf "%s - %s" e1 e2)
-                            }
-                     let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
-                     let tryCompensations =
-                     
-                     #if USING_MAILBOXPROCESSOR    
-                        MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
-                     #else   
-                         undoerRun ()
-                     #endif    
-                     let _ =
-                         match tryCompensations with
-                         | Error x -> logger.Value.LogError x
-                         | Ok _ -> logger.Value.LogInformation "compensation Saga succeeded"
-                     Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)
-                else      
-                    Error (sprintf "failed the precondition of applicability of the runSagaTwoNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers lengthMustBeTheSame)
-    
-    // all those Saga-like functions are convoluted and not really needed, but they are a good way to test the undoer mechanism
-    [<Obsolete>]
-    let inline runSagaTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
-        and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: 'F)
-        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        >
-        (aggregateIds1: List<Guid>)
-        (aggregateIds2: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (commands1: List<AggregateCommand<'A1, 'E1>>)
-        (commands2: List<AggregateCommand<'A2, 'E2>>)
-        =
-            logger.Value.LogDebug "runSagaTwoNAggregateCommands"
-            runSagaTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker Metadata.Empty commands1 commands2
     
     let inline forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2215,36 +1714,34 @@ module CommandHandler =
                             for i in 0 .. (uniqueAggregateIds3.Length - 1) do
                                 AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
                                 mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore
-                    let _ =
-                        if ((List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))) then
-                            doCaches () // first do caches, then invalidate where needed
-                            
-                    // if some aggregateIds is present in more than one parameters list then do not cache
+                                
+                    // previous approach was:
                     // let _ =
-                    //     if ((List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)))
-                            
-                            // doCaches () // first do caches, then invalidate where needed
+                    //     if ((List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))) then
+                    //         doCaches () // first do caches, then invalidate where needed
                     
-                    // let allIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3
-                    // let duplicateIds =
-                    //     allIds
-                    //     |> List.groupBy id
-                    //     |> List.filter (fun (_, l) -> l.Length > 1)
-                    //     |> List.map (fun (id, _) -> id)
-                    //
-                    // let _ =
-                    //     aggregateIds1 |> List.iter (fun id ->
-                    //         if (duplicateIds |> List.contains id) then
-                    //             AggregateCache<'A1, 'F>.Instance.Clean id
-                    //     )
-                    //     aggregateIds2 |> List.iter (fun id ->
-                    //         if (duplicateIds |> List.contains id) then
-                    //             AggregateCache<'A2, 'F>.Instance.Clean id
-                    //     )
-                    //     aggregateIds3 |> List.iter (fun id ->
-                    //         if (duplicateIds |> List.contains id) then
-                    //             AggregateCache<'A3, 'F>.Instance.Clean id
-                    //     )
+                    doCaches ()        
+                    
+                    let allIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3
+                    let duplicateIds =
+                        allIds
+                        |> List.groupBy id
+                        |> List.filter (fun (_, l) -> l.Length > 1)
+                        |> List.map (fun (id, _) -> id)
+                    
+                    let _ =
+                        aggregateIds1 |> List.iter (fun id ->
+                            if (duplicateIds |> List.contains id) then
+                                AggregateCache<'A1, 'F>.Instance.Clean id
+                        )
+                        aggregateIds2 |> List.iter (fun id ->
+                            if (duplicateIds |> List.contains id) then
+                                AggregateCache<'A2, 'F>.Instance.Clean id
+                        )
+                        aggregateIds3 |> List.iter (fun id ->
+                            if (duplicateIds |> List.contains id) then
+                                AggregateCache<'A3, 'F>.Instance.Clean id
+                        )
                     
                     return ()
                 }
@@ -2862,221 +2359,221 @@ module CommandHandler =
     //         runSagaTwoNAggregateCommandsAndForceTwoMAggregateCommandsMd aggregateIdsA1 aggregateIdsA2 aggregateIdsB1 aggregateIdsB2 eventStore eventBroker Metadata.Empty commandA11 commandA12 commandA21 commandA22
 
     // to be refactored or dismissed as the "forceRun" version will do the same job
-    [<Obsolete>]
-    let inline runSagaThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
-        and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: 'F)
-        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
-        and 'E3 :> Event<'A3>
-        and 'E3 : (member Serialize: 'F)
-        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
-        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
-        and 'A3 : (static member StorageName: string)
-        and 'A3 : (static member Version: string)
-        >
-        (aggregateIds1: List<Guid>)
-        (aggregateIds2: List<Guid>)
-        (aggregateIds3: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (md: Metadata)
-        (command1: List<AggregateCommand<'A1, 'E1>>)
-        (command2: List<AggregateCommand<'A2, 'E2>>)
-        (command3: List<AggregateCommand<'A3, 'E3>>)
-        =
-            logger.Value.LogDebug "runSagaThreeNAggregateCommands"
-            let command1HasUndoers = command1 |> List.forall (fun x -> x.Undoer.IsSome)
-            let command2HasUndoers = command2 |> List.forall (fun x -> x.Undoer.IsSome)
-            let command3HasUndoers = command3 |> List.forall (fun x -> x.Undoer.IsSome)
-            
-            let lengthsMustBeTheSame =
-                    aggregateIds1.Length = aggregateIds2.Length &&
-                    aggregateIds2.Length = aggregateIds3.Length &&
-                    aggregateIds3.Length = command1.Length &&
-                    command2.Length = command3.Length &&
-                    aggregateIds1.Length >0
-           
-            if (command1HasUndoers && command2HasUndoers && command3HasUndoers && lengthsMustBeTheSame) then
-                
-                let tripletsOfCommands = List.zip3 command1 command2 command3
-                let tripletsOfIds = List.zip3 aggregateIds1 aggregateIds2 aggregateIds3
-                let idsWithCommands = List.zip tripletsOfIds tripletsOfCommands
-              
-                let iteratedExecutionOfTripletsOfCommands =
-                    idsWithCommands
-                    |> List.fold
-                        (fun acc ((id1, id2, id3), (c1, c2, c3)) ->
-                            let guard = acc |> fst
-                            let futureUndoers = acc |> snd
-                            if not guard then (false, futureUndoers) else
-                                let stateA1 = getAggregateFreshState<'A1, 'E1, 'F> id1 eventStore
-                                let stateA2 = getAggregateFreshState<'A2, 'E2, 'F> id2 eventStore
-                                let stateA3 = getAggregateFreshState<'A3, 'E3, 'F> id3 eventStore
-                                let futureUndo1 =
-                                    let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
-                                    match c1.Undoer, stateA1 with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
-                                    | _ -> None
-                                let futureUndo2 =
-                                    let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
-                                    match c2.Undoer, stateA2 with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
-                                    | _ -> None
-                                let futureUndo3 =
-                                    let aggregateStateViewerA3: AggregateViewer<'A3> = fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore
-                                    match c3.Undoer, stateA3 with
-                                    | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA3)
-                                    | _ -> None 
-                                let undoers = [futureUndo1, futureUndo2, futureUndo3]
-                                let myRes = runThreeAggregateCommandsMd id1 id2 id3 eventStore eventBroker md c1 c2 c3
-                                match myRes with
-                                | Ok _ -> (guard, futureUndoers @ undoers)
-                                | Error _ -> (false, futureUndoers)
-                        )
-                        (true, [])
-                match iteratedExecutionOfTripletsOfCommands with
-                | (true, _) -> Ok () // here it means we have been able to run all the triplets of command with no error
-                | (false, undoers) -> // here it means that somehow we stopped somewhere, so we need to compensate with the accumulated undoers
-                    let undoerRun =
-                        fun () ->
-                            result {
-                                // removed a potentially dangerous Option.get.
-                                // if there is room to simplify... will do it later
-
-                                let! compensatingStreamA1' =
-                                    undoers
-                                    |>> fun (x, _, _) -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStreamA1 - %s - %s" 'A1.Version 'A1.StorageName)
-                                     
-                                let! compensatingStreamA2' =
-                                    undoers
-                                    |>> fun (_, x, _) -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStreamA2 %s - %s" 'A2.Version 'A2.StorageName)
-                                    
-                                let! compensatingStreamA3' =
-                                    undoers
-                                    |>> fun (_, _, x) -> x
-                                    |> List.traverseOptionM (fun x -> x)
-                                    |> Option.toResultWith (sprintf "compensatingStreamA3 %s - %s" 'A3.Version 'A3.StorageName)
-                                
-                                let! extractedCompensatorE1 =
-                                    compensatingStreamA1'
-                                    |> List.traverseResultM (fun x -> x)
-                                    
-                                let! extractedCompensatorE1Applied =
-                                    extractedCompensatorE1
-                                    |> List.traverseResultM (fun x -> x ())
-                                    
-                                let! extractedCompensatorE2 =
-                                    compensatingStreamA2'
-                                    |> List.traverseResultM (fun x -> x)
-                                    
-                                let! extractedCompensatorE2Applied =
-                                    extractedCompensatorE2
-                                    |> List.traverseResultM (fun x -> x ())
-                                    
-                                let! extractedCompensatorE3 =
-                                    compensatingStreamA3'
-                                    |> List.traverseResultM (fun x -> x)
-                                    
-                                let! extractedCompensatorE3Applied =
-                                    extractedCompensatorE3
-                                    |> List.traverseResultM (fun x -> x ())    
-                                
-                                let extractedEventsForE1 =
-                                    let exCompLen = extractedCompensatorE1.Length
-                                    List.zip3
-                                        (aggregateIds1 |> List.take exCompLen)
-                                        ((aggregateIds1 |> List.take exCompLen)
-                                        |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
-                                        extractedCompensatorE1Applied
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                    
-                                let extractedEventsForE2 =
-                                    let exCompLen = extractedCompensatorE2.Length
-                                    List.zip3
-                                        (aggregateIds2 |> List.take exCompLen)
-                                        ((aggregateIds2 |> List.take exCompLen)
-                                         |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
-                                        extractedCompensatorE2Applied
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                     
-                                let extractedEventsForE3 =
-                                    let exCompLen = extractedCompensatorE3.Length
-                                    List.zip3
-                                        (aggregateIds3 |> List.take exCompLen)
-                                        ((aggregateIds3 |> List.take exCompLen)
-                                         |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
-                                        extractedCompensatorE3Applied
-                                    |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
-                                 
-                                let addEventsStreamA1 =
-                                    extractedEventsForE1
-                                    |> List.traverseResultM (fun (id, _, ev) ->
-                                            let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
-                                
-                                let addEventsStreamA2 =
-                                    extractedEventsForE2
-                                    |> List.traverseResultM (fun (id, _, ev) ->
-                                            let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A2.Version 'A2.StorageName id md ev)
-                               
-                                let addEventsStreamA3 =
-                                    extractedEventsForE3
-                                    |> List.traverseResultM (fun (id, _, ev) ->
-                                            let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName id |> Option.defaultValue 0
-                                            eventStore.AddAggregateEventsMd quickFixLastEventId 'A3.Version 'A3.StorageName id md ev)
-                             
-                                // todo: recap. for uniformity and precautions may want to preprocess the events before adding them to the eventstore
-                                // put result in the cache and should also
-                                // notify the eventbroker (if everything is ok). not urgent because
-                                // eventbroker is usually disabled and it is not likely that the compensation
-                                // will fail. (in writing the undo you take care of the fact that you should
-                                // succeed in reversing the command)
-                                 
-                                match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
-                                | Ok _, Ok _, Ok _ -> return ()
-                                | Error x, Ok   _, Ok _ -> return! Error x
-                                | Ok _, Error x, Ok _ -> return! Error x
-                                | Ok _, Ok _, Error x -> return! Error x
-                                | Error x, Error y, Ok _ -> return! Error (x + " - " + y)
-                                | Error x, Ok _, Error z -> return! Error (x + " - " + z)
-                                | Ok _, Error y, Error z -> return! Error (y + " -" + z)
-                                | Error x, Error y, Error z -> return! Error (x + " - " + y + " -" + z)
-                            }
-                    
-                    let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-                    let tryCompensations =
-                    #if USING_MAILBOXPROCESSOR    
-                        MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
-                    #else
-                        undoerRun ()
-                    #endif    
-                    let _ =
-                        match tryCompensations with
-                        | Error x -> logger.Value.LogError x
-                        | Ok _ -> logger.Value.LogInformation "compensation has been succesful" 
-                    Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
-                else                 
-                    Error (sprintf "falied the precondition of applicability of the runSagaThreeNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)
+    // [<Obsolete>]
+    // let inline runSagaThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+    //     when 'A1 :> Aggregate<'F>
+    //     and 'E1 :> Event<'A1>
+    //     and 'E1 : (member Serialize: 'F)
+    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+    //     and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+    //     and 'A1 : (static member SnapshotsInterval: int)
+    //     and 'A1 : (static member StorageName: string)
+    //     and 'A1 : (static member Version: string)
+    //     and 'A2 :> Aggregate<'F>
+    //     and 'E2 :> Event<'A2>
+    //     and 'E2 : (member Serialize: 'F)
+    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+    //     and 'A2 : (static member SnapshotsInterval: int)
+    //     and 'A2 : (static member StorageName: string)
+    //     and 'A2 : (static member Version: string)
+    //     and 'A3 :> Aggregate<'F>
+    //     and 'E3 :> Event<'A3>
+    //     and 'E3 : (member Serialize: 'F)
+    //     and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+    //     and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+    //     and 'A3 : (static member SnapshotsInterval: int)
+    //     and 'A3 : (static member StorageName: string)
+    //     and 'A3 : (static member Version: string)
+    //     >
+    //     (aggregateIds1: List<Guid>)
+    //     (aggregateIds2: List<Guid>)
+    //     (aggregateIds3: List<Guid>)
+    //     (eventStore: IEventStore<'F>)
+    //     (eventBroker: IEventBroker<'F>)
+    //     (md: Metadata)
+    //     (command1: List<AggregateCommand<'A1, 'E1>>)
+    //     (command2: List<AggregateCommand<'A2, 'E2>>)
+    //     (command3: List<AggregateCommand<'A3, 'E3>>)
+    //     =
+    //         logger.Value.LogDebug "runSagaThreeNAggregateCommands"
+    //         let command1HasUndoers = command1 |> List.forall (fun x -> x.Undoer.IsSome)
+    //         let command2HasUndoers = command2 |> List.forall (fun x -> x.Undoer.IsSome)
+    //         let command3HasUndoers = command3 |> List.forall (fun x -> x.Undoer.IsSome)
+    //         
+    //         let lengthsMustBeTheSame =
+    //                 aggregateIds1.Length = aggregateIds2.Length &&
+    //                 aggregateIds2.Length = aggregateIds3.Length &&
+    //                 aggregateIds3.Length = command1.Length &&
+    //                 command2.Length = command3.Length &&
+    //                 aggregateIds1.Length >0
+    //        
+    //         if (command1HasUndoers && command2HasUndoers && command3HasUndoers && lengthsMustBeTheSame) then
+    //             
+    //             let tripletsOfCommands = List.zip3 command1 command2 command3
+    //             let tripletsOfIds = List.zip3 aggregateIds1 aggregateIds2 aggregateIds3
+    //             let idsWithCommands = List.zip tripletsOfIds tripletsOfCommands
+    //           
+    //             let iteratedExecutionOfTripletsOfCommands =
+    //                 idsWithCommands
+    //                 |> List.fold
+    //                     (fun acc ((id1, id2, id3), (c1, c2, c3)) ->
+    //                         let guard = acc |> fst
+    //                         let futureUndoers = acc |> snd
+    //                         if not guard then (false, futureUndoers) else
+    //                             let stateA1 = getAggregateFreshState<'A1, 'E1, 'F> id1 eventStore
+    //                             let stateA2 = getAggregateFreshState<'A2, 'E2, 'F> id2 eventStore
+    //                             let stateA3 = getAggregateFreshState<'A3, 'E3, 'F> id3 eventStore
+    //                             let futureUndo1 =
+    //                                 let aggregateStateViewerA1: AggregateViewer<'A1> = fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore
+    //                                 match c1.Undoer, stateA1 with
+    //                                 | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA1)
+    //                                 | _ -> None
+    //                             let futureUndo2 =
+    //                                 let aggregateStateViewerA2: AggregateViewer<'A2> = fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore
+    //                                 match c2.Undoer, stateA2 with
+    //                                 | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA2)
+    //                                 | _ -> None
+    //                             let futureUndo3 =
+    //                                 let aggregateStateViewerA3: AggregateViewer<'A3> = fun id -> getAggregateFreshState<'A3, 'E3, 'F> id eventStore
+    //                                 match c3.Undoer, stateA3 with
+    //                                 | Some undoer, Ok (_, st) -> Some (undoer st aggregateStateViewerA3)
+    //                                 | _ -> None 
+    //                             let undoers = [futureUndo1, futureUndo2, futureUndo3]
+    //                             let myRes = runThreeAggregateCommandsMd id1 id2 id3 eventStore eventBroker md c1 c2 c3
+    //                             match myRes with
+    //                             | Ok _ -> (guard, futureUndoers @ undoers)
+    //                             | Error _ -> (false, futureUndoers)
+    //                     )
+    //                     (true, [])
+    //             match iteratedExecutionOfTripletsOfCommands with
+    //             | (true, _) -> Ok () // here it means we have been able to run all the triplets of command with no error
+    //             | (false, undoers) -> // here it means that somehow we stopped somewhere, so we need to compensate with the accumulated undoers
+    //                 let undoerRun =
+    //                     fun () ->
+    //                         result {
+    //                             // removed a potentially dangerous Option.get.
+    //                             // if there is room to simplify... will do it later
+    //
+    //                             let! compensatingStreamA1' =
+    //                                 undoers
+    //                                 |>> fun (x, _, _) -> x
+    //                                 |> List.traverseOptionM (fun x -> x)
+    //                                 |> Option.toResultWith (sprintf "compensatingStreamA1 - %s - %s" 'A1.Version 'A1.StorageName)
+    //                                  
+    //                             let! compensatingStreamA2' =
+    //                                 undoers
+    //                                 |>> fun (_, x, _) -> x
+    //                                 |> List.traverseOptionM (fun x -> x)
+    //                                 |> Option.toResultWith (sprintf "compensatingStreamA2 %s - %s" 'A2.Version 'A2.StorageName)
+    //                                 
+    //                             let! compensatingStreamA3' =
+    //                                 undoers
+    //                                 |>> fun (_, _, x) -> x
+    //                                 |> List.traverseOptionM (fun x -> x)
+    //                                 |> Option.toResultWith (sprintf "compensatingStreamA3 %s - %s" 'A3.Version 'A3.StorageName)
+    //                             
+    //                             let! extractedCompensatorE1 =
+    //                                 compensatingStreamA1'
+    //                                 |> List.traverseResultM (fun x -> x)
+    //                                 
+    //                             let! extractedCompensatorE1Applied =
+    //                                 extractedCompensatorE1
+    //                                 |> List.traverseResultM (fun x -> x ())
+    //                                 
+    //                             let! extractedCompensatorE2 =
+    //                                 compensatingStreamA2'
+    //                                 |> List.traverseResultM (fun x -> x)
+    //                                 
+    //                             let! extractedCompensatorE2Applied =
+    //                                 extractedCompensatorE2
+    //                                 |> List.traverseResultM (fun x -> x ())
+    //                                 
+    //                             let! extractedCompensatorE3 =
+    //                                 compensatingStreamA3'
+    //                                 |> List.traverseResultM (fun x -> x)
+    //                                 
+    //                             let! extractedCompensatorE3Applied =
+    //                                 extractedCompensatorE3
+    //                                 |> List.traverseResultM (fun x -> x ())    
+    //                             
+    //                             let extractedEventsForE1 =
+    //                                 let exCompLen = extractedCompensatorE1.Length
+    //                                 List.zip3
+    //                                     (aggregateIds1 |> List.take exCompLen)
+    //                                     ((aggregateIds1 |> List.take exCompLen)
+    //                                     |>> (eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName))
+    //                                     extractedCompensatorE1Applied
+    //                                 |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+    //                                 
+    //                             let extractedEventsForE2 =
+    //                                 let exCompLen = extractedCompensatorE2.Length
+    //                                 List.zip3
+    //                                     (aggregateIds2 |> List.take exCompLen)
+    //                                     ((aggregateIds2 |> List.take exCompLen)
+    //                                      |>> (eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName))
+    //                                     extractedCompensatorE2Applied
+    //                                 |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+    //                                  
+    //                             let extractedEventsForE3 =
+    //                                 let exCompLen = extractedCompensatorE3.Length
+    //                                 List.zip3
+    //                                     (aggregateIds3 |> List.take exCompLen)
+    //                                     ((aggregateIds3 |> List.take exCompLen)
+    //                                      |>> (eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName))
+    //                                     extractedCompensatorE3Applied
+    //                                 |> List.map (fun (id, a, b) -> id, a |> Option.defaultValue 0, b |>> fun x -> x.Serialize)
+    //                              
+    //                             let addEventsStreamA1 =
+    //                                 extractedEventsForE1
+    //                                 |> List.traverseResultM (fun (id, _, ev) ->
+    //                                         let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A1.Version 'A1.StorageName id |> Option.defaultValue 0
+    //                                         eventStore.AddAggregateEventsMd quickFixLastEventId 'A1.Version 'A1.StorageName id md ev)
+    //                             
+    //                             let addEventsStreamA2 =
+    //                                 extractedEventsForE2
+    //                                 |> List.traverseResultM (fun (id, _, ev) ->
+    //                                         let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A2.Version 'A2.StorageName id |> Option.defaultValue 0
+    //                                         eventStore.AddAggregateEventsMd quickFixLastEventId 'A2.Version 'A2.StorageName id md ev)
+    //                            
+    //                             let addEventsStreamA3 =
+    //                                 extractedEventsForE3
+    //                                 |> List.traverseResultM (fun (id, _, ev) ->
+    //                                         let quickFixLastEventId = eventStore.TryGetLastAggregateEventId 'A3.Version 'A3.StorageName id |> Option.defaultValue 0
+    //                                         eventStore.AddAggregateEventsMd quickFixLastEventId 'A3.Version 'A3.StorageName id md ev)
+    //                          
+    //                             // todo: recap. for uniformity and precautions may want to preprocess the events before adding them to the eventstore
+    //                             // put result in the cache and should also
+    //                             // notify the eventbroker (if everything is ok). not urgent because
+    //                             // eventbroker is usually disabled and it is not likely that the compensation
+    //                             // will fail. (in writing the undo you take care of the fact that you should
+    //                             // succeed in reversing the command)
+    //                              
+    //                             match addEventsStreamA1, addEventsStreamA2, addEventsStreamA3 with
+    //                             | Ok _, Ok _, Ok _ -> return ()
+    //                             | Error x, Ok   _, Ok _ -> return! Error x
+    //                             | Ok _, Error x, Ok _ -> return! Error x
+    //                             | Ok _, Ok _, Error x -> return! Error x
+    //                             | Error x, Error y, Ok _ -> return! Error (x + " - " + y)
+    //                             | Error x, Ok _, Error z -> return! Error (x + " - " + z)
+    //                             | Ok _, Error y, Error z -> return! Error (y + " -" + z)
+    //                             | Error x, Error y, Error z -> return! Error (x + " - " + y + " -" + z)
+    //                         }
+    //                 
+    //                 let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+    //                 let tryCompensations =
+    //                 #if USING_MAILBOXPROCESSOR    
+    //                     MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) undoerRun
+    //                 #else
+    //                     undoerRun ()
+    //                 #endif    
+    //                 let _ =
+    //                     match tryCompensations with
+    //                     | Error x -> logger.Value.LogError x
+    //                     | Ok _ -> logger.Value.LogInformation "compensation has been succesful" 
+    //                 Error (sprintf "action failed needed to compensate. The compensation action had the following result %A" tryCompensations)    
+    //             else                 
+    //                 Error (sprintf "falied the precondition of applicability of the runSagaThreeNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)
 
     // to be dismissed as we can use the "forceRun" version
     // [<Obsolete>]
