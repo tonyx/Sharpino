@@ -2215,32 +2215,36 @@ module CommandHandler =
                             for i in 0 .. (uniqueAggregateIds3.Length - 1) do
                                 AggregateCache<'A3, 'F>.Instance.Memoize2 (newStates3.[i] |> Ok) ((newDbBasedEventIds3.[i] |> List.last, aggregateIds3.[i]))
                                 mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateIds3.[i] newStates3.[i] (newDbBasedEventIds3.[i] |> List.last) |> ignore
-                                
-                    // if some aggregateIds is present in more than one parameters list then do not cache 
-                    // if (List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))
-                      
-                    doCaches() // first do caches, then invalidate where needed
-                    
-                    let allIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3
-                    let duplicateIds =
-                        allIds
-                        |> List.groupBy id
-                        |> List.filter (fun (_, l) -> l.Length > 1)
-                        |> List.map (fun (id, _) -> id)
-                    
                     let _ =
-                        aggregateIds1 |> List.iter (fun id ->
-                            if (duplicateIds |> List.contains id) then
-                                AggregateCache<'A1, 'F>.Instance.Clean id
-                        )
-                        aggregateIds2 |> List.iter (fun id ->
-                            if (duplicateIds |> List.contains id) then
-                                AggregateCache<'A2, 'F>.Instance.Clean id
-                        )
-                        aggregateIds3 |> List.iter (fun id ->
-                            if (duplicateIds |> List.contains id) then
-                                AggregateCache<'A3, 'F>.Instance.Clean id
-                        )
+                        if ((List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3))) then
+                            doCaches () // first do caches, then invalidate where needed
+                            
+                    // if some aggregateIds is present in more than one parameters list then do not cache
+                    // let _ =
+                    //     if ((List.length (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)) = List.length (List.distinct (uniqueAggregateIds1 @ uniqueAggregateIds2 @ uniqueAggregateIds3)))
+                            
+                            // doCaches () // first do caches, then invalidate where needed
+                    
+                    // let allIds = aggregateIds1 @ aggregateIds2 @ aggregateIds3
+                    // let duplicateIds =
+                    //     allIds
+                    //     |> List.groupBy id
+                    //     |> List.filter (fun (_, l) -> l.Length > 1)
+                    //     |> List.map (fun (id, _) -> id)
+                    //
+                    // let _ =
+                    //     aggregateIds1 |> List.iter (fun id ->
+                    //         if (duplicateIds |> List.contains id) then
+                    //             AggregateCache<'A1, 'F>.Instance.Clean id
+                    //     )
+                    //     aggregateIds2 |> List.iter (fun id ->
+                    //         if (duplicateIds |> List.contains id) then
+                    //             AggregateCache<'A2, 'F>.Instance.Clean id
+                    //     )
+                    //     aggregateIds3 |> List.iter (fun id ->
+                    //         if (duplicateIds |> List.contains id) then
+                    //             AggregateCache<'A3, 'F>.Instance.Clean id
+                    //     )
                     
                     return ()
                 }
@@ -3075,44 +3079,44 @@ module CommandHandler =
                     Error (sprintf "falied the precondition of applicability of the runSagaThreeNAggregateCommands. All of these must be true: command1HasUndoers: %A, command2HasUndoers: %A, command3HasUndoers: %A, lengthsMustBeTheSame: %A  " command1HasUndoers command2HasUndoers command3HasUndoers lengthsMustBeTheSame)
 
     // to be dismissed as we can use the "forceRun" version
-    [<Obsolete>]
-    let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
-        and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: 'F)
-        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
-        and 'E3 :> Event<'A3>
-        and 'E3 : (member Serialize: 'F)
-        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
-        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
-        and 'A3 : (static member StorageName: string)
-        and 'A3 : (static member Version: string)
-        >
-        (aggregateIds1: List<Guid>)
-        (aggregateIds2: List<Guid>)
-        (aggregateIds3: List<Guid>)
-        (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
-        (command1: List<AggregateCommand<'A1, 'E1>>)
-        (command2: List<AggregateCommand<'A2, 'E2>>)
-        (command3: List<AggregateCommand<'A3, 'E3>>)
-        =
-            logger.Value.LogDebug "runSagaThreeNAggregateCommands"
-            runSagaThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore eventBroker Metadata.Empty command1 command2 command3
+    // [<Obsolete>]
+    // let inline runSagaThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+    //     when 'A1 :> Aggregate<'F>
+    //     and 'E1 :> Event<'A1>
+    //     and 'E1 : (member Serialize: 'F)
+    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+    //     and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+    //     and 'A1 : (static member SnapshotsInterval: int)
+    //     and 'A1 : (static member StorageName: string)
+    //     and 'A1 : (static member Version: string)
+    //     and 'A2 :> Aggregate<'F>
+    //     and 'E2 :> Event<'A2>
+    //     and 'E2 : (member Serialize: 'F)
+    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+    //     and 'A2 : (static member SnapshotsInterval: int)
+    //     and 'A2 : (static member StorageName: string)
+    //     and 'A2 : (static member Version: string)
+    //     and 'A3 :> Aggregate<'F>
+    //     and 'E3 :> Event<'A3>
+    //     and 'E3 : (member Serialize: 'F)
+    //     and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+    //     and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+    //     and 'A3 : (static member SnapshotsInterval: int)
+    //     and 'A3 : (static member StorageName: string)
+    //     and 'A3 : (static member Version: string)
+    //     >
+    //     (aggregateIds1: List<Guid>)
+    //     (aggregateIds2: List<Guid>)
+    //     (aggregateIds3: List<Guid>)
+    //     (eventStore: IEventStore<'F>)
+    //     (eventBroker: IEventBroker<'F>)
+    //     (command1: List<AggregateCommand<'A1, 'E1>>)
+    //     (command2: List<AggregateCommand<'A2, 'E2>>)
+    //     (command3: List<AggregateCommand<'A3, 'E3>>)
+    //     =
+    //         logger.Value.LogDebug "runSagaThreeNAggregateCommands"
+    //         runSagaThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore eventBroker Metadata.Empty command1 command2 command3
 
     let inline runTwoCommandsMd<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)

@@ -89,8 +89,9 @@ module Cache =
     //         dic.Clear()
     //         queue.Clear()
     //
-   
-    // a track of refactoring for AggregateCache 
+    // a track of refactoring for AggregateCache
+    
+    
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         
         let lastEventIdPerAggregate = Generic.Dictionary<AggregateId, EventId>(config.CacheAggregateSize)
