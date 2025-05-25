@@ -145,7 +145,8 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
-- Version 4.1.2: depcrecated getFilteredAggregateStatesInATimeInterval, added getFilteredAggregateStatesInATimeInterval2, getAggregateStatesInATimeInterval, getAllAggregateStates
+- Version 4.1.3: fixed some SQL issues of new functions introduced in 4.1.1/4.1.2 (involving only new stuff)
+- Version 4.1.2: deprecated getFilteredAggregateStatesInATimeInterval, added getFilteredAggregateStatesInATimeInterval2, getAggregateStatesInATimeInterval, getAllAggregateStates
 - Version 4.1.1: event store:added GetAggregateIds and GetAggregateIdsInATimeInterval to event 
 - Version 4.1.0: removed the saga-ish runCommands (as the "forceRun" equivalent versions of runCommands are enough)
 - Version 4.0.2: introduces Stateview.getFilteredAggregateStatesInATimeInterval 

@@ -1221,7 +1221,7 @@ module PgStorage =
 
             member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo = 
                 logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeInterval %A %A %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
                 try
                     Async.RunSynchronously
                         (async {
@@ -1245,7 +1245,7 @@ module PgStorage =
 
             member this.GetAggregateIds version name = 
                 logger.Value.LogDebug (sprintf "GetAggregateIds %A %A" version name)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s ORDER BY id" version name
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
                 try
                     Async.RunSynchronously
                         (async {

@@ -834,7 +834,7 @@ module PgBinaryStore =
                     
             member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
                 try
                     Async.RunSynchronously
                         (async {
