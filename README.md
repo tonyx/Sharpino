@@ -145,6 +145,9 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- Version 4.1.2: depcrecated getFilteredAggregateStatesInATimeInterval, added getFilteredAggregateStatesInATimeInterval2, getAggregateStatesInATimeInterval, getAllAggregateStates
+- Version 4.1.1: event store:added GetAggregateIds and GetAggregateIdsInATimeInterval to event 
+- Version 4.1.0: removed the saga-ish runCommands (as the "forceRun" equivalent versions of runCommands are enough)
 - Version 4.0.2: introduces Stateview.getFilteredAggregateStatesInATimeInterval 
 - Version 4.0.0: same as 3.10.6, just restarting numeration.
 - Version 3.10.6: added runInitAndNAggregateCommandsMd on command handler (accepts an initial state of a new aggregate of a certain type and N aggregate commands related to a different type type providing _distinct_ aggregateIds) - it is has been tested on a private application. Feel free to add tests on examples (Sample 8 may be a good fit for it).

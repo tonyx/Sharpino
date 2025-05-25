@@ -389,6 +389,7 @@ module StateView =
                     return filteredEvents
                 }
     
+    [<Obsolete "get the state of the aggregate instead ">]
     let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
         when 'A :> Aggregate<'F>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -414,6 +415,7 @@ module StateView =
                     return result     
                 }
     
+    [<Obsolete "use getfilteredAggregateStatesInATimeInterval2">]
     let inline getFilteredAggregateStatesInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -448,7 +450,85 @@ module StateView =
                         return! (Error errors)
                     else 
                         return okStates |> List.filter (fun (_, x)  -> currentStateFilter x)
-                } 
+                }
+                
+    let inline getFilteredAggregateStatesInATimeInterval2<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'A -> bool)
+        =
+            logger.Value.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! ids =
+                        eventStore.GetAggregateIdsInATimeInterval 'A.Version 'A.StorageName start end_
+                    let allStates =
+                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    
+                    let! states =
+                        allStates
+                        |> List.traverseResultM (fun x -> x)
+                   
+                    return
+                        states
+                        |> List.filter (fun (_, x)  -> predicate x)
+                }
+    
+    let inline getAggregateStatesInATimeInterval<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        =
+            logger.Value.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! ids =
+                        eventStore.GetAggregateIdsInATimeInterval 'A.Version 'A.StorageName start end_
+                    let allStates =
+                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    return! 
+                        allStates
+                        |> List.traverseResultM (fun x -> x)
+                }
+                
+    let inline getAllAggregateStates<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>) =
+            logger.Value.LogDebug (sprintf "getAggregateStates %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! ids =
+                        eventStore.GetAggregateIds 'A.Version 'A.StorageName
+                    let allStates =
+                        ids
+                        |> List.distinct
+                        |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    
+                    return! 
+                        allStates
+                        |> List.traverseResultM (fun x -> x)
+                }
     
     let inline getInitialAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F>

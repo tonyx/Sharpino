@@ -530,6 +530,31 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.TimeStamp >= dateFrom && x.TimeStamp <= dateTo)
                     |>> (fun x -> x.Id, x.AggregateId, x.TimeStamp, x.Snapshot)
                     |> Ok
+                    
+            member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_snapshots_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> List.map (fun x -> aggregate_snapshots_dic.[version].[name].[x])
+                    |> List.collect (fun x -> x)
+                    |> List.filter (fun x -> x.TimeStamp >= dateFrom && x.TimeStamp <= dateTo)
+                    |>> (fun x -> x.AggregateId)
+                    |> List.distinct
+                    |> Ok
+            
+            member this.GetAggregateIds version name =
+                logger.Value.LogDebug (sprintf "GetAggregateIds %s %s" version name)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_snapshots_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> Ok        
             
             member this.GetAggregateEventsInATimeInterval (version: Version) (name: Name) (aggregateId: AggregateId) (dateFrom: DateTime) (dateTo: DateTime) =
                 logger.Value.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
@@ -696,3 +721,4 @@ module MemoryStorage =
                 // in memory storage does not need to be compliant to GDPR as it is used only for tests
                 logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
                 () |> Ok
+

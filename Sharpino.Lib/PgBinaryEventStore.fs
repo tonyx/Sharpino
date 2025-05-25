@@ -831,6 +831,53 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
+                    
+            member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                                |> Sql.execute ( fun read ->
+                                    (
+                                        read.uuid "aggregate_id"
+                                    )
+                                )
+                                |> Seq.toList
+                            }, evenStoreTimeout)
+                    |> Ok
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
+            
+            member this.GetAggregateIds version name =
+                logger.Value.LogDebug (sprintf "GetAggregateIds %s %s" version name)
+                let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s" version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.execute ( fun read ->
+                                    (
+                                        read.uuid "aggregate_id"
+                                    )
+                                )
+                                |> Seq.toList
+                            }, evenStoreTimeout)
+                    |> Ok
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message        
              
             member this.TryGetLastSnapshotId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)

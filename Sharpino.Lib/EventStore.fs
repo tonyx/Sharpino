@@ -108,7 +108,10 @@ module Storage =
         abstract member GetMultipleAggregateEventsInATimeInterval: Version -> Name -> List<AggregateId> -> DateTime -> DateTime -> Result<List<EventId * AggregateId * 'F >, string>
         abstract member GetAllAggregateEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
+        [<Obsolete("Use GetAllAggregateIds or GetAllAggregateIdsInATimeInterval")>]
         abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * AggregateId * DateTime * 'F >, string>
+        abstract member GetAggregateIdsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
+        abstract member GetAggregateIds : Version -> Name -> Result<List<AggregateId>, string>
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         
