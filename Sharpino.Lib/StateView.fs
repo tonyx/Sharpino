@@ -524,6 +524,7 @@ module StateView =
                         |> List.traverseResultM (fun x -> x)
                 }
     
+    [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
     let inline getInitialAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
