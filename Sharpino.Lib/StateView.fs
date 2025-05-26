@@ -516,7 +516,7 @@ module StateView =
                         eventStore.GetAggregateIds 'A.Version 'A.StorageName
                     let allStates =
                         ids
-                        |> List.distinct
+                        |> List.distinct // todo: not needed, remove with next release
                         |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                     
                     return! 
