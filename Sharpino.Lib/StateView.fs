@@ -263,15 +263,9 @@ module StateView =
                     }
                     
             // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
-            
             // we will get rid of reading lastEventId on db soon and rely only on the cache
-            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0 // (used to probe db to get latest event id, now I do directly to the cache itself)
             
-            // FOCUS: don't matter the eventId in cache anymore
-            // track: reading lastEventId from cache or, better, dont' read it at all as long as I'll be
-            // more sure that it doesn't conflict with the known no-caching cases of the command handler 
-            // todo: let lastEventId = AggregateCache<'A, 'F>.Instance.TryGetLastEventId (id) |> Option.defaultValue 0
-            // logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0 
             
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             
