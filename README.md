@@ -16,8 +16,8 @@ Support for Event-sourcing in F#.
 ## Overview
 - Contexts: event sourced objects with no id, so only one instance is around
 - Aggregates: event sourced objecst with id (Guid).
-- Non-Saga transactions: execute multiple commands involving different aggregates as single db transactions.
-- Sagas-like transactions: execute sequencial multiple commands with undoers (to roll back the transaction in case of failure of any command).
+- Multiple streams transactions: execute multiple commands involving different aggregates as single db transactions.
+- Command Undoers: (to roll back the transaction in case of failure of any command).
 - Cache: Dictionary based cache of the current state of contexts or aggregates.
 - Gdpr: functions to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
 - SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.I
@@ -29,7 +29,7 @@ Info: - The various SAGA-like functions are "under investigation"(more tests and
 ## Projects
 __Sharpino.Lib.Core__:
 
-- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator  in case of Saga), definition of "evolve" function for aggregates and contexts to compute the next state given the current state and a list of event.
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator), definition of "evolve" function for aggregates and contexts to compute the next state given the current state and a list of event.
 
 __Sharpino.Lib__:
 
@@ -79,11 +79,10 @@ This invariant rule must be preserved even if two concurrent transactions try to
 The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
 Invariants can be represented by quoted expressions so that, ideally, this may allow us to move toward a DSL (Example: "no booking can end up in leaving the only middle seat free in a row").
 
-## Sample application Saga 
-A Saga-like mechanism in single db to test the "undoers": if a chain of commands fails then the undoers will rollback the transaction.
-It is not a prescription about using Saga in single db but rather a way to test the undoers.
-In the Saga example there are tests that shows that the forceFun series of commands are safe as the decision function in any
-aggregate that presents more than once takes into account the effect of the previous commands in the same transaction.
+## Sample application former-Saga 
+This application was using the "rollback" based on undoers (compensating events).
+I moved this by a full cross-streams transaction because the use of the "Saga-like" rollback mechanisms has been ditched
+(and will be reintroduced with an eventual distributed architecture where event sourced objects may live in different databases)
 
 __Faq__: 
 - Why the name "Sharpino"? 
@@ -94,7 +93,7 @@ __Faq__:
     - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (compensators for using Saga in multiple commands).
+        - The use of the lambda expression is a nice trick for the undoers (compensator events, former "Saga-like").
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project. 
