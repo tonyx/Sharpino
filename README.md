@@ -144,7 +144,7 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
-- an example of integration with Blazor: https://github.com/tonyx/sharpinoBlazor
+- an example of integration with Blazor: https://github.com/tonyx/sharpinoBlazor (a summary, in Italian, made by Gemini A. I.: https://g.co/gemini/share/528e98bd6dd8)
 - Version 4.1.3: fixed some SQL issues of new functions introduced in 4.1.1/4.1.2 (involving only new stuff)
 - Version 4.1.2: deprecated getFilteredAggregateStatesInATimeInterval, added getFilteredAggregateStatesInATimeInterval2, getAggregateStatesInATimeInterval, getAllAggregateStates
 - Version 4.1.1: event store:added GetAggregateIds and GetAggregateIdsInATimeInterval to event 
