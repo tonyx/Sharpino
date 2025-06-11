@@ -378,7 +378,7 @@ module CommandHandler =
                     let! (newState, events) =
                         state
                         |> command.Execute
-                    let  events' =
+                    let events' =
                         events 
                         |>> fun x -> x.Serialize
                     let! ids =
