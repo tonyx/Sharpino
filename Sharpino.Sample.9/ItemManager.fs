@@ -51,7 +51,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
                 itemIds |> List.map (fun _ -> ItemCommands.IncrementReferenceCounter 1)
             
             let! result =   
-                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string> itemIds eventStore doNothingBroker reservation "" incrementCountersCommands
+                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string> itemIds eventStore doNothingBroker reservation "adding reservation" incrementCountersCommands
             return result    
         }
     

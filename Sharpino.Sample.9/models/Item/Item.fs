@@ -43,7 +43,7 @@ module Item =
             result
                 {
                     do!
-                        this.ReferencesCounter + i >= 0
+                        this.ReferencesCounter - i >= 0
                         |> Result.ofBool "Reference counter must be non negative"
                     return
                         {

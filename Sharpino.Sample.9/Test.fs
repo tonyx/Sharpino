@@ -116,7 +116,7 @@ let tests =
             Expect.isOk retrieveReservation "should be ok"
            
             let itemsInReservation = retrieveReservation.OkValue.Reservations
-            Expect.isTrue (itemsInReservation |> List.forall (fun x -> match x with | Closed _ -> true | _ -> false)) "should be true" 
+            Expect.isTrue (itemsInReservation |> List.forall _.IsClosed) "should be true"
             
             let tryDeleteItem = itemManager.DeleteItem item.Id
             Expect.isOk tryDeleteItem "should be ok"

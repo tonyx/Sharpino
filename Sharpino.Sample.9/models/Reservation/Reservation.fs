@@ -5,7 +5,6 @@ open Sharpino.Core
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 
-
 type ItemReservation =
     | Open of Guid
     | Closed
