@@ -31,36 +31,10 @@ open log4net
 let allVersions =
     [
 
-        // see dbmate scripts for postgres setup. (create also user with name safe and password safe for dev only)
-        // enable if you had setup postgres (see dbmate scripts):
-        
-        // disable only if you have your postgres configured
 
         (currentPostgresApp,        currentPostgresApp,     ((fun () -> () |> Result.Ok): unit -> Result<unit, string>), (pgStorage :> IEventStore<string>))
-
-        // todo: finish porting to new version
-
-        // (upgradedPostgresApp,       upgradedPostgresApp,    ((fun () -> () |> Result.Ok): unit -> Result<unit, string>), (pgStorage :> IEventStore<string>))
-
-        // (currentPostgresApp,        upgradedPostgresApp,    currentPostgresApp._migrator.Value, pgStorage)
-        
         
         (currentMemoryApp,          currentMemoryApp,       ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
-        // (upgradedMemoryApp,         upgradedMemoryApp,      ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
-        // (currentMemoryApp,          upgradedMemoryApp,      currentMemoryApp._migrator.Value, (memoryStorage :> IEventStore<string>))
-
-        // enable if you have eventstore locally (tested only with docker version of eventstore)
-        // I am sorry but I think I am going to ditch eventstoreDb in the future
-        // (AppVersions.evSApp,                    AppVersions.evSApp,                 fun () -> () |> Result.Ok)
-
-        // enable if you have kafka installed locally with proper topics created (see Sharpino.Kafka project and CreateTopics.sh)
-        // note that the by testing kafka you may experience some laggings.
-
-        // (currentVersionPgWithKafkaApp,        currentVersionPgWithKafkaApp,     fun () -> () |> Result.Ok)
-
-        // for the next eventBrokerStateBasedApp just use the tests in the file KafkaStateKeeperTest.fs
-        // so don't enable the next line
-        // (eventBrokerStateBasedApp,        eventBrokerStateBasedApp,     fun () -> () |> Result.Ok)
 
     ]
 
@@ -104,26 +78,28 @@ let testCoreEvolve =
     // let serializer = JsonSerializer(serSettings) :> ISerializer
 
     testList "evolve test" [
-        multipleTestCase "generate the events directly without using the command handler - Ok " currentTestConfs <| fun (ap, _, _, eventStore) ->
+        
+        // todo: hacking the eventsotre to put there inconsistent events is not allowed anymore as the evolve is not forgiving error
+        pmultipleTestCase "store twice the same event and this is bad as we adopt the evolve unforgiving inconsistencies now in sharpino.core - Error" currentTestConfs <| fun (ap, _, _, eventStore) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let event = Todos.TodoEvents.TodoAdded { Id = id; Description = "test"; CategoryIds = []; TagIds = [] }
 
             let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0
 
-            // I am adding the same event twice and the "evolve" will ignore it
+            // I am adding the same event twice and the "evolve" will not tollerate it it
             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid()  )
             let _ = ap._addEvents (lastEventId, TodosContext.Version, [ event.Serialize ], TodosContext.StorageName, Guid.NewGuid() )
             
             let _ = ap._addEvents (lastEventId, TodosContextUpgraded.Version, [ event.Serialize ], TodosContextUpgraded.StorageName, Guid.NewGuid())
 
-            let todos = ap.getAllTodos()
+            let result = ap.getAllTodos()
 
-            Expect.isOk todos "should be ok"
-            Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
+            Expect.isOk result "should be ok"
+            // Expect.equal (todos.OkValue) [{ Id = id; Description = "test"; CategoryIds = []; TagIds = [] }] "should be equal"
 
-        // this will be deprecated as events can't be inconsistent in the event store: the must succeed if they are there!
-        multipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _, eventStore) ->
+        // todo: hacking the eventsotre to put there inconsistent events is not allowed anymore as the evolve is not forgiving error
+        pmultipleTestCase "in case events are unconsistent in the storage, then the evolve will be able to skip the unconsistent events - Ok" currentTestConfs <| fun (ap, _, _, eventStore) ->
             let _ = ap._reset()
             let id = Guid.NewGuid()
             let lastEventId = eventStore.TryGetLastEventId TodosContext.Version TodosContext.StorageName |> Option.defaultValue 0

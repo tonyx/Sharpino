@@ -34,7 +34,8 @@ let hackingEventInStorageTest =
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 9 "should be equal"
         
-        testCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
+        // todo: this will be deprecated as events can't be inconsistent in the event store anymore
+        ptestCase "try add a single event that violates the middle row seat invariant rule - Ok" <| fun _ ->
             let storage = MemoryStorage()
 
             StateCache2<Row1>.Instance.Invalidate()
@@ -59,7 +60,9 @@ let hackingEventInStorageTest =
 
         // this example simulates when one event that is not supposed to be added is added anyway because is processed
         // in parallel 
-        testCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
+
+        // todo: this will be deprecated as events can't be inconsistent in the event store anymore
+        ptestCase "try add two events where one of those violates the middle chair invariant rule. Only one of those can be processed - Ok" <| fun _ ->
             let storage = MemoryStorage()
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()

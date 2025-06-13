@@ -16,8 +16,8 @@ Support for Event-sourcing in F#.
 ## Overview
 - Contexts: event sourced objects with no id, so only one instance is around
 - Aggregates: event sourced objecst with id (Guid).
-- Non-Saga transactions: execute multiple commands involving different aggregates as single db transactions.
-- Sagas-like transactions: execute sequencial multiple commands with undoers (to roll back the transaction in case of failure of any command).
+- Multiple streams transactions: execute multiple commands involving different aggregates as single db transactions.
+- Command Undoers: (to roll back the transaction in case of failure of any command).
 - Cache: Dictionary based cache of the current state of contexts or aggregates.
 - Gdpr: functions to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
 - SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.I
@@ -29,7 +29,7 @@ Info: - The various SAGA-like functions are "under investigation"(more tests and
 ## Projects
 __Sharpino.Lib.Core__:
 
-- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator  in case of Saga), definition of "evolve" function for aggregates and contexts to compute the next state given the current state and a list of event.
+- [Core.fs](Sharpino.Lib.Core/Core.fs): Abstract definition of _Events_, _Commands_ and _Undoer_ (or compensator), definition of "evolve" function for aggregates and contexts to compute the next state given the current state and a list of event.
 
 __Sharpino.Lib__:
 
@@ -79,11 +79,10 @@ This invariant rule must be preserved even if two concurrent transactions try to
 The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
 Invariants can be represented by quoted expressions so that, ideally, this may allow us to move toward a DSL (Example: "no booking can end up in leaving the only middle seat free in a row").
 
-## Sample application Saga 
-A Saga-like mechanism in single db to test the "undoers": if a chain of commands fails then the undoers will rollback the transaction.
-It is not a prescription about using Saga in single db but rather a way to test the undoers.
-In the Saga example there are tests that shows that the forceFun series of commands are safe as the decision function in any
-aggregate that presents more than once takes into account the effect of the previous commands in the same transaction.
+## Sample application former-Saga 
+This application was using the "rollback" based on undoers (compensating events).
+I moved this by a full cross-streams transaction because the use of the "Saga-like" rollback mechanisms has been ditched
+(and will be reintroduced with an eventual distributed architecture where event sourced objects may live in different databases)
 
 __Faq__: 
 - Why the name "Sharpino"? 
@@ -94,7 +93,7 @@ __Faq__:
     - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (compensators for using Saga in multiple commands).
+        - The use of the lambda expression is a nice trick for the undoers (compensator events, former "Saga-like").
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project. 
@@ -128,7 +127,7 @@ A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have genero
 ## Upcasting techniques.
 
 In this section, I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
-Goal: using upcast techniques to be able to read the old (serialized) version of typeX into a new version of it.
+Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) able to read the old (serialized) version of typeX into a new version of it.
 1. The following premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as the target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/or specific converters).
 2. Now you can make some changes to TypeX that make it different from the old TypeX/TypeX001 (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic immersion" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.
 3. Define the Upcast function/instance member form TypeX001 that actually implements that conversion from an instance of the old typeX to an instance of the new typeX.
@@ -145,6 +144,14 @@ Goal: using upcast techniques to be able to read the old (serialized) version of
 
 
 ## News/Updates
+- an example of integration with Blazor: https://github.com/tonyx/sharpinoBlazor (a summary, in Italian, made by Gemini A. I.: https://g.co/gemini/share/528e98bd6dd8)
+- Version 4.1.3: fixed some SQL issues of new functions introduced in 4.1.1/4.1.2 (involving only new stuff)
+- Version 4.1.2: deprecated getFilteredAggregateStatesInATimeInterval, added getFilteredAggregateStatesInATimeInterval2, getAggregateStatesInATimeInterval, getAllAggregateStates
+- Version 4.1.1: event store:added GetAggregateIds and GetAggregateIdsInATimeInterval to event 
+- Version 4.1.0: removed the saga-ish runCommands (as the "forceRun" equivalent versions of runCommands are enough)
+- Version 4.0.2: introduces Stateview.getFilteredAggregateStatesInATimeInterval 
+- Version 4.0.0: same as 3.10.6, just restarting numeration.
+- Version 3.10.6: added runInitAndNAggregateCommandsMd on command handler (accepts an initial state of a new aggregate of a certain type and N aggregate commands related to a different type type providing _distinct_ aggregateIds) - it is has been tested on a private application. Feel free to add tests on examples (Sample 8 may be a good fit for it).
 - Version 3.10.5: skip the mailboxprocessor in running commands. Removing duplicate code in Pg based eventstore implementations. Fixed a bug of runThreeNAggregregateCommands in handling indexes (will take a closer look for the next release).
 - Version 3.10.3: in some cases forceRunTwo/ThreeNAggregateCommands skip caching.
 - Current version 3.10.2: added runInit that just create initial instance of an aggregate. I will use it to substitute runInitAndCommand to avoid "expansion" of the aggregate state in the cache. The use of MailboxProcesor for commands is based on a compile time constant as will be removed in the future.
