@@ -41,6 +41,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             return!
                 runDelete<Item, ItemEvent, string> eventStore doNothingBroker id (fun item -> item.ReferencesCounter = 0)
         }
+        
     member this.AddReservation (reservation: Reservation.Reservation) =
         result {
             let itemIds =
@@ -62,9 +63,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             let! itemBelongsToReservationAndIsOpen =
                 reservation.Reservations
                 |> List.exists (fun x ->
-                    match x with
-                    | Open id when id = item.Id -> true
-                    | _ -> false
+                    x.IsOpen
                 )
                 |>
                 Result.ofBool "Item does not belong to reservation or is already closed"
