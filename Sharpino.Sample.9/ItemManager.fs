@@ -45,7 +45,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
         result {
             let itemIds =
                 reservation.Reservations
-                |> List.filter (fun x -> match x with | Open id -> true | _ -> false)
+                |> List.filter _.IsOpen
                 |>> (fun (Open x) -> x)
             let incrementCountersCommands: List<AggregateCommand<Item, ItemEvent>> =
                 itemIds |> List.map (fun _ -> ItemCommands.IncrementReferenceCounter 1)
