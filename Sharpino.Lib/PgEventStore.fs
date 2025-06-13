@@ -134,22 +134,30 @@ module PgStorage =
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                Async.RunSynchronously
-                    (async {
-                        return 
-                            connection
-                            |> Sql.connect
-                            |> Sql.query query
-                            |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId]
-                            |> Sql.execute (fun read ->
-                                (
-                                    read.intOrNone "event_id",
-                                    read.int "id"
+                // let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
+                let query = sprintf "SELECT event_id, id, is_deleted FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
+                
+                let result = 
+                    Async.RunSynchronously
+                        (async {
+                            return 
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId ]
+                                |> Sql.execute (fun read ->
+                                    (
+                                        read.intOrNone "event_id",
+                                        read.int "id",
+                                        read.bool "is_deleted"
+                                    )
                                 )
-                            )
-                            |> Seq.tryHead
-                    }, evenStoreTimeout)
+                                |> Seq.tryHead
+                        }, evenStoreTimeout)
+                match result with
+                | None -> None
+                | Some (eventId, id, false) -> Some (eventId, id)
+                | _ -> None
 
             // not good that returns none in case of error 
             member this.TryGetEvent version id name =
@@ -1265,7 +1273,39 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogDebug (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
-                    
+          
+            member this.SnapshotAndMarkDeleted version name eventId aggregateId napshot =
+                logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
+                let lastEventId = (this :> IEventStore<string>).TryGetLastEventId version name
+                if (not ((lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId))) then
+                    Error "cannot snapshot as the event id is not the latest"
+                else    
+                    try
+                        Async.RunSynchronously (
+                            async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransaction
+                                        [
+                                            command,
+                                                [
+                                                    [
+                                                        ("aggregate_id", Sql.uuid aggregateId)
+                                                        ("snapshot",  sqlJson napshot)
+                                                        ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                        ("is_deleted", Sql.bool true)
+                                                    ]
+                                                ]
+                                        ]
+                            }, evenStoreTimeout)
+                            |> ignore
+                            |> Ok
+                    with
+                    | _ as ex ->
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        Error ex.Message
                 
                 
 

@@ -175,6 +175,12 @@ module MemoryStorage =
                 []
             else
                 snapshots_dic.[version].[name]
+        let getExistingAggregateSnapshots version name aggregateId =
+            logger.Value.LogDebug (sprintf "getExistingAggregateSnapshots %s %s %A" version name aggregateId)
+            if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                []
+            else
+                aggregate_snapshots_dic.[version].[name].[aggregateId]
 
         let getExistingEvents version name =
             logger.Value.LogDebug (sprintf "getExistingEvents %s %s" version name)
@@ -273,6 +279,7 @@ module MemoryStorage =
                         Snapshot = json
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -287,6 +294,7 @@ module MemoryStorage =
                         Snapshot = json
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -301,6 +309,7 @@ module MemoryStorage =
                         Snapshot = json
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -314,6 +323,7 @@ module MemoryStorage =
                         Snapshot = json
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -328,6 +338,7 @@ module MemoryStorage =
                         Snapshot = jsonSnapshot
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -342,6 +353,7 @@ module MemoryStorage =
                         Snapshot = jsonSnapshot
                         TimeStamp = DateTime.UtcNow
                         EventId = None
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add (aggregateId, [initialState])
@@ -380,7 +392,7 @@ module MemoryStorage =
                 
             member this.SetSnapshot  version (id, snapshot) name =
                 logger.Value.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
-                let newSnapshot =
+                let newSnapshot: StorageSnapshot =
                     {
                         Id = next_snapshot_id version name
                         Snapshot = snapshot 
@@ -409,6 +421,7 @@ module MemoryStorage =
                         Snapshot = snapshot
                         TimeStamp = DateTime.UtcNow
                         EventId = None 
+                        Deleted = false
                     }
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
                 snapshots.Add(aggregateId, [initialState])
@@ -443,9 +456,14 @@ module MemoryStorage =
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
                         None
                 else
-                    aggregate_snapshots_dic.[version].[name].[aggregateId]
-                    |> List.tryLast
-                    |>> (fun x -> (x.EventId, x.Id))
+                    let result =
+                        aggregate_snapshots_dic.[version].[name].[aggregateId]
+                        |> List.tryLast
+                        |>> (fun x -> (x.EventId, x.Id, x.Deleted))
+                    match result with
+                    | None -> None
+                    | Some (_, _, true) -> None
+                    | Some (eventId, id, false) -> Some (eventId, id)
 
             member this.TryGetLastSnapshotEventId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
@@ -713,12 +731,24 @@ module MemoryStorage =
                         Snapshot = snapshot
                         TimeStamp = DateTime.UtcNow
                         EventId = eventId |> Some
+                        Deleted = false
                     }
                 addAggregateSnapshots version name aggregateId state
                 () |> Ok
                 
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
-                // in memory storage does not need to be compliant to GDPR as it is used only for tests
                 logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
                 () |> Ok
 
+            member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
+                let newSnapshot: StorageAggregateSnapshot =
+                    {
+                        Id = next_snapshot_id version name
+                        AggregateId = aggregateId
+                        Snapshot = snapshot 
+                        TimeStamp = DateTime.UtcNow
+                        EventId = None 
+                        Deleted = true
+                    }
+                addAggregateSnapshots version name aggregateId newSnapshot
+                () |> Ok

@@ -488,7 +488,8 @@ CREATE TABLE public.snapshots_01_booking (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -513,7 +514,8 @@ CREATE TABLE public.snapshots_01_row (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -562,7 +564,8 @@ CREATE TABLE public.snapshots_01_voucher (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -732,4 +735,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20241024083516'),
     ('20241024083748'),
     ('20241201155023'),
-    ('20241224084319');
+    ('20241224084319'),
+    ('20250613072815');

@@ -13,9 +13,16 @@ cd ..
 cd Sharpino.Sample.FormerlySaga.Test
 dotnet run
 cd ..
+cd Sharpino.Sample.8
+dotnet run 
+cd ..
 cd Sharpino.Sample.7/ShoppingCartWithSharpino
 dotnet run
 cd ..
 cd ShoppingCartWithSharpinoBinary
 dotnet run
 cd ../..
+cd Sharpino.Sample.9
+dotnet run
+cd ..
+

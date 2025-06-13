@@ -1262,5 +1262,36 @@ module PgBinaryStore =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                 
+            member this.SnapshotAndMarkDeleted version name eventId aggregateId napshot =
+                logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
+                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
+                let lastEventId = (this :> IEventStore<byte[]>).TryGetLastEventId version name
+                if (not (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId)) then
+                    Error "cannot snapshot as the event id is not the latest"
+                else    
+                    try
+                        Async.RunSynchronously (
+                            async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransaction
+                                        [
+                                            command,
+                                                [
+                                                    [
+                                                        ("aggregate_id", Sql.uuid aggregateId) 
+                                                        ("snapshot",  sqlBinary napshot)
+                                                        ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                                        ("is_deleted", Sql.bool true)
+                                                    ]
+                                                ]
+                                        ]
+                            }, evenStoreTimeout)
+                            |> ignore
+                            |> Ok
+                    with
+                    | _ as ex ->
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        Error ex.Message
                 
-                    

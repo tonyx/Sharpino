@@ -238,7 +238,8 @@ CREATE TABLE public.snapshots_01_seatrow (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -349,4 +350,5 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20241101091436'),
-    ('20241101091716');
+    ('20241101091716'),
+    ('20250612124659');

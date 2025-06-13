@@ -363,7 +363,8 @@ CREATE TABLE public.snapshots_01_cart (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -388,7 +389,8 @@ CREATE TABLE public.snapshots_01_good (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -541,4 +543,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240426152015'),
     ('20240426152449'),
     ('20240426152543'),
-    ('20240426155417');
+    ('20240426155417'),
+    ('20250612130028');

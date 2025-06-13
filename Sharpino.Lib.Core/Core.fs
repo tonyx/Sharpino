@@ -11,7 +11,7 @@ module Core =
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
    
-    type Aggregate<'F>=
+    type Aggregate<'F> =
         abstract member Id: AggregateId 
         abstract member Serialize: 'F
     

@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sharpino.Sample._9</RootNamespace>
+    <GenerateProgramFile>false</GenerateProgramFile>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="models/Item/Item.fs" />
+    <Compile Include="models/Item/Events.fs" />
+    <Compile Include="models/Item/Commands.fs" />
+    <Compile Include="models/Reservation/Reservation.fs" />
+    <Compile Include="models/Reservation/Events.fs" />
+    <Compile Include="models\Reservation\Commands.fs" />
+    <Compile Include="Commons.fs" />
+    <Compile Include="ItemManager.fs" />
+    <Compile Include="Test.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="Expecto" Version="10.2.3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
+    <PackageReference Update="FSharp.Core" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

@@ -526,7 +526,8 @@ CREATE TABLE public.snapshots_01_dish (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -551,7 +552,8 @@ CREATE TABLE public.snapshots_01_ingredient (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -600,7 +602,8 @@ CREATE TABLE public.snapshots_01_supplier (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -772,4 +775,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240309151856'),
     ('20240311195419'),
     ('20240904172910'),
-    ('20240909152430');
+    ('20240909152430'),
+    ('20250612125033');

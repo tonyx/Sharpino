@@ -28,6 +28,7 @@ module Storage =
         Snapshot: Json
         TimeStamp: System.DateTime
         EventId: int
+        // Deleted: bool
     }
     
     type StorageAggregateSnapshot = {
@@ -36,6 +37,7 @@ module Storage =
         Snapshot: Json
         TimeStamp: System.DateTime
         EventId: Option<EventId>
+        Deleted: bool
     }
 
     type StorageEvent<'E> =
@@ -112,6 +114,10 @@ module Storage =
         abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * AggregateId * DateTime * 'F >, string>
         abstract member GetAggregateIdsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
         abstract member GetAggregateIds : Version -> Name -> Result<List<AggregateId>, string>
+        
+        // will work only when the eventstore supports the is_deleted column
+        // abstract member SoftDeleteAggregate: Version -> Name -> AggregateId -> Result<unit, string>
+        abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string> 
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         

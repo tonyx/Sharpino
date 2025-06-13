@@ -362,7 +362,8 @@ CREATE TABLE public.snapshots_01_network (
     id integer DEFAULT nextval('public.snapshots_01_network_id_seq'::regclass) NOT NULL,
     snapshot text NOT NULL,
     event_id integer NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -387,7 +388,8 @@ CREATE TABLE public.snapshots_01_site (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -412,7 +414,8 @@ CREATE TABLE public.snapshots_01_truck (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -541,4 +544,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250122184113'),
     ('20250122190642'),
     ('20250123141815'),
-    ('20250124191005');
+    ('20250124191005'),
+    ('20250612131657');
