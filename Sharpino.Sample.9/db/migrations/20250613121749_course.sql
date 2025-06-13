@@ -1,12 +1,11 @@
 -- migrate:up
-
 CREATE TABLE public.events_01_course (
-                                          id integer NOT NULL,
-                                          aggregate_id uuid NOT NULL,
-                                          event text NOT NULL,
-                                          published boolean NOT NULL DEFAULT false,
-                                          "timestamp" timestamp without time zone NOT NULL,
-                                          md text 
+                                         id integer NOT NULL,
+                                         aggregate_id uuid NOT NULL,
+                                         event text NOT NULL,
+                                         published boolean NOT NULL DEFAULT false,
+                                         "timestamp" timestamp without time zone NOT NULL,
+                                         md text
 );
 
 ALTER TABLE public.events_01_course ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -26,12 +25,12 @@ CREATE SEQUENCE public.snapshots_01_course_id_seq
     CACHE 1;
 
 CREATE TABLE public.snapshots_01_course (
-                                             id integer DEFAULT nextval('public.snapshots_01_course_id_seq'::regclass) NOT NULL,
-                                             snapshot text NOT NULL,
-                                             event_id integer, -- the initial snapshot has no event_id associated so it can be null
-                                             aggregate_id uuid NOT NULL,
-                                             "timestamp" timestamp without time zone NOT NULL,
-                                             is_deleted boolean NOT NULL DEFAULT false
+                                            id integer DEFAULT nextval('public.snapshots_01_course_id_seq'::regclass) NOT NULL,
+                                            snapshot text NOT NULL,
+                                            event_id integer, -- the initial snapshot has no event_id associated so it can be null
+                                            aggregate_id uuid NOT NULL,
+                                            "timestamp" timestamp without time zone NOT NULL,
+                                            is_deleted boolean NOT NULL DEFAULT false
 );
 
 ALTER TABLE ONLY public.events_01_course
@@ -51,9 +50,9 @@ CREATE SEQUENCE public.aggregate_events_01_course_id_seq
     CACHE 1;
 
 CREATE TABLE public.aggregate_events_01_course (
-                                                    id integer DEFAULT nextval('public.aggregate_events_01_course_id_seq') NOT NULL,
-                                                    aggregate_id uuid NOT NULL,
-                                                    event_id integer
+                                                   id integer DEFAULT nextval('public.aggregate_events_01_course_id_seq') NOT NULL,
+                                                   aggregate_id uuid NOT NULL,
+                                                   event_id integer
 );
 
 ALTER TABLE ONLY public.aggregate_events_01_course
@@ -139,4 +138,6 @@ return event_id;
 END;
 $$;
 
+
 -- migrate:down
+

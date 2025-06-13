@@ -14,9 +14,17 @@
     <Compile Include="models/Item/Commands.fs" />
     <Compile Include="models/Reservation/Reservation.fs" />
     <Compile Include="models/Reservation/Events.fs" />
-    <Compile Include="models\Reservation\Commands.fs" />
+    <Compile Include="models/Reservation/Commands.fs" />
+    <Compile Include="models/Student/Student.fs" />
+    <Compile Include="models/Student/Event.fs" />
+    <Compile Include="models/Student/Commands.fs" />
+    <Compile Include="models/Course/Course.fs" />
+    <Compile Include="models/Course/Events.fs" />
+    <Compile Include="models/Course/Commands.fs" />
     <Compile Include="Commons.fs" />
     <Compile Include="ItemManager.fs" />
+    <Compile Include="CourseManager.fs" />
+    <Compile Include="CourseManagerTests.fs" />
     <Compile Include="Test.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
