@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>4.1.4</version>
+    <version>4.1.5</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -31,7 +31,7 @@
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.3" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.9.14" />
+        <dependency id="Farmer" version="1.9.16" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.6.0" />
         <dependency id="FSharpPlus" version="1.7.0" />
@@ -60,7 +60,7 @@
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.3" />
         <dependency id="Microsoft.NET.Test.Sdk" version="17.*" />
 
-        <dependency id="Farmer" version="1.9.14" />
+        <dependency id="Farmer" version="1.9.16" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.6.0" />
         <dependency id="FSharpPlus" version="1.7.0" />
