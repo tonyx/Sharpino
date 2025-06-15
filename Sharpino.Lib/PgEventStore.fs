@@ -1306,7 +1306,39 @@ module PgStorage =
                     | _ as ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
-                
-                
+            
+            // member this.SnapshotMarkDeletedAndAddAggregateEvents version name eventId aggregateId snapshot events =
+            //     logger.Value.LogDebug (sprintf "SnapshotMarkDeletedAndAddAggregateEvents %s %s %A" version name aggregateId)
+            //     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
+            //     let lastEventId = (this :> IEventStore<string>).TryGetLastEventId version name
+            //     if (not ((lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId))) then
+            //         Error "cannot snapshot as the event id is not the latest"
+            //     else    
+            //         try
+            //             Async.RunSynchronously (
+            //                 async {
+            //                     return
+            //                         connection
+            //                         |> Sql.connect
+            //                         |> Sql.executeTransaction
+            //                             [
+            //                                 command,
+            //                                     [
+            //                                         [
+            //                                             ("aggregate_id", Sql.uuid aggregateId)
+            //                                             ("snapshot",  sqlJson snapshot)
+            //                                             ("timestamp", Sql.timestamp System.DateTime.Now)
+            //                                             ("is_deleted", Sql.bool true)
+            //                                         ]
+            //                                     ]
+            //                             ]
+            //                 }, evenStoreTimeout)
+            //                 |> ignore
+            //                 |> Ok
+            //         with
+            //         | _ as ex ->
+            //             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+            //             Error ex.Message
+            //     
 
                 

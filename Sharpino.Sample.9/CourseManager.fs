@@ -56,6 +56,7 @@ type CourseManager(eventStore: IEventStore<string>, courseViewer: AggregateViewe
                 return!
                     runDelete<Course, CourseEvents, string> eventStore doNothingBroker id (fun course -> course.Students.Length = 0)
             }
+            
     member this.DeleteStudent (id: Guid) =
         result
             {

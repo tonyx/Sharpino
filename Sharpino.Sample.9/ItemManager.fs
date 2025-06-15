@@ -62,9 +62,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             let! (_, item) = itemViewer itemId
             let! itemBelongsToReservationAndIsOpen =
                 reservation.Reservations
-                |> List.exists (fun x ->
-                    x.IsOpen
-                )
+                |> List.exists _.IsOpen
                 |>
                 Result.ofBool "Item does not belong to reservation or is already closed"
         

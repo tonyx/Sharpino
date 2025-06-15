@@ -117,8 +117,8 @@ module Storage =
         
         // will work only when the eventstore supports the is_deleted column
         // abstract member SoftDeleteAggregate: Version -> Name -> AggregateId -> Result<unit, string>
-        abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string> 
-        
+        abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
+        // abstract member SnapshotMarkDeletedAndAddAggregateEvents: Version -> Name -> EventId -> AggregateId -> 'F -> List<'F> -> Result<List<int>, string>
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         
 
