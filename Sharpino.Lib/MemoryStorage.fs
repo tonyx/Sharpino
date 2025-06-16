@@ -752,3 +752,17 @@ module MemoryStorage =
                     }
                 addAggregateSnapshots version name aggregateId newSnapshot
                 () |> Ok
+            member this.SnapshotMarkDeletedAndAddAggregateEventsMd
+                s1Version
+                s1name
+                s1EventId
+                s1AggregateId
+                s1Snapshot
+                streamEventId
+                streamAggregateVersion
+                streamAggregateName
+                streamAggregateId
+                metaData
+                events =
+                    
+                    Ok []

@@ -21,6 +21,9 @@
     <Compile Include="models/Course/Course.fs" />
     <Compile Include="models/Course/Events.fs" />
     <Compile Include="models/Course/Commands.fs" />
+    <Compile Include="models/Balance/Balance.fs" />
+    <Compile Include="models\Balance\Events.fs" />
+    <Compile Include="models\Balance\Commands.fs" />
     <Compile Include="Commons.fs" />
     <Compile Include="ItemManager.fs" />
     <Compile Include="CourseManager.fs" />

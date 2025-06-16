@@ -8,6 +8,7 @@ open FSharpPlus
 
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter
 open Sharpino.Cache
 open Sharpino.Core
 open Sharpino.Storage
@@ -356,6 +357,74 @@ module CommandHandler =
                
                 AggregateCache<'A1, 'F>.Instance.Clean id
                 let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
+                return ()
+            }
+   
+    let inline runDeleteAndAggregateCommandMd<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 :> Aggregate<'F>
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'E2 :> Event<'A2>
+        and 'E2 :(static member Deserialize: 'F -> Result<'E2, string>)
+        and 'E2 : (member Serialize: 'F) 
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2 :> Aggregate<'F>
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>) 
+        (id: AggregateId)
+        (streamAggregateId: AggregateId)
+        (command: AggregateCommand<'A2, 'E2>)
+        (predicate: 'A1 -> bool) =
+            logger.Value.LogDebug (sprintf "runDelete %A" 'A1.StorageName)
+            result {
+                let! (eventId, state) =
+                    StateView.getAggregateFreshState<'A1, 'E1, 'F> id eventStore
+                do!
+                    predicate state
+                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not saf accorting to  the predicate" id 'A1.StorageName)
+               
+                let! (streamEventId, streamState) =
+                    StateView.getAggregateFreshState<'A2, 'E2, 'F> streamAggregateId eventStore
+                
+                printf "XXXXXX: streamstate %A\n" streamState
+                    
+                let! (newState, events) =
+                    streamState
+                    |> command.Execute
+                
+                printf "XXXXX newState: %A" newState
+                    
+                let serializedEvents =
+                    events
+                    |>> (fun x -> x.Serialize)
+                    
+                let serializedState =
+                    state.Serialize
+                    
+                AggregateCache<'A1, 'F>.Instance.Clean id
+                let! result =
+                    eventStore.SnapshotMarkDeletedAndAddAggregateEventsMd
+                        'A1.Version
+                        'A1.StorageName
+                        eventId
+                        streamAggregateId
+                        serializedState
+                        streamEventId
+                        'A2.Version
+                        'A2.StorageName
+                        streamAggregateId
+                        "deleting"
+                        serializedEvents
+                // AggregateCache<'A2, 'F>.Instance.Memoize2 (newState |> Ok) ((streamEventId, streamAggregateId)) 
+                AggregateCache<'A2, 'F>.Instance.Clean streamAggregateId
                 return ()
             }
         

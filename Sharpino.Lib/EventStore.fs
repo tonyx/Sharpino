@@ -90,6 +90,10 @@ module Storage =
         abstract member SetInitialAggregateStateAndAddAggregateEvents: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
         
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
+        
+        abstract member SnapshotMarkDeletedAndAddAggregateEventsMd: Version -> Name -> EventId -> AggregateId -> 'F -> EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Result<List<int>, string>
+        
+        abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
         abstract member AddAggregateEventsMd: EventId -> Version -> Name -> AggregateId ->  Metadata -> List<'F> -> Result<List<EventId>, string>
@@ -116,7 +120,6 @@ module Storage =
         abstract member GetAggregateIds : Version -> Name -> Result<List<AggregateId>, string>
         
         // will work only when the eventstore supports the is_deleted column (migration scripts needed)
-        abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
         
         // todo: implement this or similar in the future:
         // abstract member SnapshotMarkDeletedAndAddAggregateEvents: Version -> Name -> EventId -> AggregateId -> 'F -> List<'F> -> Result<List<int>, string>

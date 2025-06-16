@@ -1,12 +1,11 @@
 -- migrate:up
-
 CREATE TABLE public.events_01_balance (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
                                           event text NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           "timestamp" timestamp without time zone NOT NULL,
-                                          md text 
+                                          md text
 );
 
 ALTER TABLE public.events_01_balance ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -139,4 +138,6 @@ return event_id;
 END;
 $$;
 
+
 -- migrate:down
+

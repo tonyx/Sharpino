@@ -7,6 +7,7 @@ open Sharpino.Commons
 open Sharpino.Core
 open Sharpino
 open Sharpino.CommandHandler
+open Sharpino.Sample._9.BalanceEvents
 open Sharpino.TestUtils
 open FsToolkit.ErrorHandling
 
@@ -18,25 +19,36 @@ open Sharpino.Sample._9.Student
 open Sharpino.Sample._9.StudentEvents
 open Sharpino.Sample._9.StudentCommands
 open Sharpino.Sample._9.CourseManager
+open Sharpino.Sample._9.Balance
 
 
 let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
+let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore    
 
 let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
 let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
-
+let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
 let instances =
     [
-        (fun () -> setUp(pgEventStore)), CourseManager(pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer)
-        (fun () -> setUp(memEventStore)),  CourseManager(memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer)
+        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, Balance.MkBalance 1000.0M)
+        // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, Balance.MkBalance 1000.0M)
     ]
 [<Tests>]
 let tests =
     testList "CourseManagerTests" [
+        multipleTestCase "check initial balance - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let courseManager = courseManager ()
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 1000.0M "should be equal"
+            
         multipleTestCase "add and retrieve a student - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
             let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
             let result = courseManager.GetStudent student.Id
@@ -44,10 +56,41 @@ let tests =
             let retrievedStudent = result.OkValue
             Expect.equal retrievedStudent.Id student.Id "should be equal"
             Expect.equal retrievedStudent.Name student.Name "should be equal"
+      
+        multipleTestCase "add a course will costs 100, verify it - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 900.0M "should be equal"
         
+        fmultipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 900.0M "should be equal"
+            
+            let deleeCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleeCourse "should be ok"
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 850.0M "should be equal" 
+            
+         
         multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
             setUp ()
             let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
             let result = courseManager.GetCourse course.Id
@@ -59,6 +102,7 @@ let tests =
         multipleTestCase "add a student add a course and subscribe the student to that course - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
             let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
             let course = Course.MkCourse (Guid.NewGuid(), "Math")
@@ -82,4 +126,5 @@ let tests =
             let tryDeleteCourse = courseManager.DeleteCourse course.Id
             Expect.isError tryDeleteCourse "should be error"
     ]
+    |> testSequenced
     

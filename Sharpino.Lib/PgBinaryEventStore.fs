@@ -54,6 +54,11 @@ module PgBinaryStore =
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
                         |> Sql.executeNonQuery
+                    let res2 =
+                        connection
+                        |> Sql.connect
+                        |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
+                        |> Sql.executeNonQuery
                     ()    
                 with
                     | _ as e -> failwith (e.ToString())
@@ -1295,3 +1300,17 @@ module PgBinaryStore =
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
                 
+            member this.SnapshotMarkDeletedAndAddAggregateEventsMd
+                s1Version
+                s1name
+                s1EventId
+                s1AggregateId
+                s1Snapshot
+                streamEventId
+                streamAggregateVersion
+                streamAggregateName
+                streamAggregateId
+                metaData
+                events =
+                    
+                    Ok []        

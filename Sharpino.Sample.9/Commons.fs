@@ -3,7 +3,10 @@ namespace ItemManager
 open System
 open Sharpino
 open Sharpino.Cache
+open Sharpino.Sample._9.Balance
+open Sharpino.Sample._9.Course
 open Sharpino.Sample._9.Item
+open Sharpino.Sample._9.Student
 open Sharpino.Storage
 open DotNetEnv
 
@@ -24,4 +27,10 @@ module Common =
     let setUp (eventStore: IEventStore<string>) =
         eventStore.Reset Item.Version Item.StorageName
         eventStore.ResetAggregateStream Item.Version Item.StorageName
+        eventStore.Reset Course.Version Course.StorageName
+        eventStore.ResetAggregateStream Course.Version Course.StorageName
+        eventStore.Reset Student.Version Student.StorageName
+        eventStore.ResetAggregateStream Student.Version Student.StorageName
+        eventStore.Reset Balance.Version Balance.StorageName
+        eventStore.ResetAggregateStream Balance.Version Balance.StorageName
         AggregateCache<Item, string>.Instance.Clear()

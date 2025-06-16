@@ -4,6 +4,9 @@ open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.CommandHandler
 open Sharpino.Core
+open Sharpino.Sample._9.Balance
+open Sharpino.Sample._9.BalanceCommands
+open Sharpino.Sample._9.BalanceEvents
 open Sharpino.Sample._9.Course
 open Sharpino.Sample._9.CourseEvents
 open Sharpino.Sample._9.CourseCommands
@@ -20,7 +23,29 @@ let doNothingBroker  =
         notifyAggregate = None
     }
 
-type CourseManager(eventStore: IEventStore<string>, courseViewer: AggregateViewer<Course>, studentViewer: AggregateViewer<Student>) =
+type CourseManager
+    (eventStore: IEventStore<string>,
+     courseViewer: AggregateViewer<Course>,
+     studentViewer: AggregateViewer<Student>,
+     balanceViewer: AggregateViewer<Balance>,
+     initialBalance: Balance
+     ) =
+   
+    do
+        let initialized =
+            runInit<Balance, BalanceEvents, string> eventStore doNothingBroker initialBalance
+        match initialized with
+        | Error e -> raise (Exception (sprintf "Could not initialize balance: %s" e))initialBalance
+        | Ok _ -> ()
+   
+        
+    member this.Balance =
+        result
+            {
+                let! (_, balance) = balanceViewer initialBalance.Id
+                return balance
+            }
+    
     member this.AddStudent (student: Student) =
         result
             {
@@ -38,8 +63,9 @@ type CourseManager(eventStore: IEventStore<string>, courseViewer: AggregateViewe
     member this.AddCourse (course: Course) =
         result
             {
+                let foundCourseCreation = BalanceCommands.FoundCourseCreation course.Id
                 return!
-                    runInit<Course, CourseEvents, string> eventStore doNothingBroker course
+                    runInitAndAggregateCommand<Balance, BalanceEvents, Course, string> initialBalance.Id eventStore doNothingBroker course foundCourseCreation
             }
     
     member this.GetCourse (id: Guid) =
@@ -53,8 +79,10 @@ type CourseManager(eventStore: IEventStore<string>, courseViewer: AggregateViewe
         result
             {
                 let! course = this.GetCourse id
+                let foundCourseDeletion = BalanceCommands.FoundCourseCancellation id
+                printf "balance id %A\n" initialBalance.Id
                 return!
-                    runDelete<Course, CourseEvents, string> eventStore doNothingBroker id (fun course -> course.Students.Length = 0)
+                    runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker id initialBalance.Id foundCourseDeletion (fun course -> course.Students.Length = 0)
             }
             
     member this.DeleteStudent (id: Guid) =
