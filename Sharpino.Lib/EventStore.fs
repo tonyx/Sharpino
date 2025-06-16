@@ -115,9 +115,10 @@ module Storage =
         abstract member GetAggregateIdsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
         abstract member GetAggregateIds : Version -> Name -> Result<List<AggregateId>, string>
         
-        // will work only when the eventstore supports the is_deleted column
-        // abstract member SoftDeleteAggregate: Version -> Name -> AggregateId -> Result<unit, string>
+        // will work only when the eventstore supports the is_deleted column (migration scripts needed)
         abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
+        
+        // todo: implement this or similar in the future:
         // abstract member SnapshotMarkDeletedAndAddAggregateEvents: Version -> Name -> EventId -> AggregateId -> 'F -> List<'F> -> Result<List<int>, string>
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         
