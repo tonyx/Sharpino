@@ -1312,5 +1312,72 @@ module PgBinaryStore =
                 streamAggregateId
                 metaData
                 events =
+                    logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
+                    let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
+                    let lastEventId = (this :> IEventStore<byte[]>).TryGetLastEventId s1Version s1name
                     
-                    Ok []        
+                    let lastStreamEventId =
+                        (this :> IEventStore<byte[]>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
+                    
+                    let stream_name = streamAggregateVersion + streamAggregateName
+                    let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
+                     
+                    if
+                        (
+                            (not
+                                (lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)
+                            )
+                            ||
+                            (not
+                                 ((lastStreamEventId.IsNone && streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId))
+                            )
+                        )
+                    then
+                        Error "cannot snapshot as the event id is not the latest"
+                    else
+                        try
+                            Async.RunSynchronously (
+                                async {
+                                    let conn = new NpgsqlConnection(connection)
+                                    conn.Open()
+                                    let transaction = conn.BeginTransaction()
+                                    try
+                                        let ids =
+                                            events 
+                                            |>> 
+                                                (
+                                                    fun x ->
+                                                        let command' = new NpgsqlCommand(command, conn)
+                                                        command'.Parameters.AddWithValue("event", x ) |> ignore
+                                                        command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId ) |> ignore
+                                                        command'.Parameters.AddWithValue("md", metaData ) |> ignore
+                                                        let result = command'.ExecuteScalar() 
+                                                        result :?> int
+                                                )
+                                        
+                                        let _ =
+                                            connection
+                                            |> Sql.connect
+                                            |> Sql.executeTransaction
+                                                [
+                                                    snapCommand,
+                                                        [
+                                                            [
+                                                                ("aggregate_id", Sql.uuid s1AggregateId)
+                                                                ("snapshot",  sqlBinary s1Snapshot)
+                                                                ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                                ("is_deleted", Sql.bool true)
+                                                            ]
+                                                        ]
+                                                ]
+                                        transaction.Commit()
+                                        return (ids |> Ok)
+                                        finally
+                                            transaction.Dispose()
+                                            conn.Dispose()
+                            }, evenStoreTimeout)
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            Error ex.Message
+                    

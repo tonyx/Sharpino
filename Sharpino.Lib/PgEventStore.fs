@@ -1326,75 +1326,66 @@ module PgStorage =
                     let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
                     let lastEventId = (this :> IEventStore<string>).TryGetLastEventId s1Version s1name
                     
+                    let lastStreamEventId =
+                        (this :> IEventStore<string>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
+                    
                     let stream_name = streamAggregateVersion + streamAggregateName
                     let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
-                   
-                    printf "XXXX: streamaggregateid %A\n" streamAggregateId
                      
-                    if (not ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId))) then
+                    if
+                        (
+                            (not
+                                (lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)
+                            )
+                            ||
+                            (not
+                                 ((lastStreamEventId.IsNone && streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId))
+                            )
+                        )
+                    then
                         Error "cannot snapshot as the event id is not the latest"
-                    else    
+                    else
                         try
                             Async.RunSynchronously (
                                 async {
-                                    return
-                                        connection
-                                        |> Sql.connect
-                                        |> Sql.executeTransaction
-                                            [
-                                                snapCommand,
-                                                    [
-                                                        [
-                                                            ("aggregate_id", Sql.uuid s1AggregateId)
-                                                            ("snapshot",  sqlJson s1Snapshot)
-                                                            ("timestamp", Sql.timestamp System.DateTime.Now)
-                                                            ("is_deleted", Sql.bool true)
-                                                        ]
-                                                    ]
-                                            ]
-                                }, evenStoreTimeout)
-                                |> ignore
-                            
-                            let lastStreamEventId =
-                                (this :> IEventStore<string>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
-                            
-                            Async.RunSynchronously
-                                (async {
                                     let conn = new NpgsqlConnection(connection)
                                     conn.Open()
-                                    let transaction = conn.BeginTransaction() 
-                                    let result =
-                                        if (lastStreamEventId.IsNone &&  streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId) then
-                                            try
-                                                let ids =
-                                                    events 
-                                                    |>> 
-                                                        (
-                                                            fun x ->
-                                                                let command' = new NpgsqlCommand(command, conn)
-                                                                command'.Parameters.AddWithValue("event", x ) |> ignore
-                                                                command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId ) |> ignore
-                                                                command'.Parameters.AddWithValue("md", metaData ) |> ignore
-                                                                let result = command'.ExecuteScalar() 
-                                                                result :?> int
-                                                        )
-                                                transaction.Commit()
-                                                ids |> Ok
-                                            with
-                                                | _ as ex ->
-                                                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                                                    transaction.Rollback()
-                                                    ex.Message |> Error
-                                        else
-                                            transaction.Rollback()
-                                            Error "EventId is not the last one"
+                                    let transaction = conn.BeginTransaction()
                                     try
-                                        return result
-                                    finally
-                                        conn.Close()
-                                }, evenStoreTimeout)
-                                |> ignore
-                            Ok []
+                                        let ids =
+                                            events 
+                                            |>> 
+                                                (
+                                                    fun x ->
+                                                        let command' = new NpgsqlCommand(command, conn)
+                                                        command'.Parameters.AddWithValue("event", x ) |> ignore
+                                                        command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId ) |> ignore
+                                                        command'.Parameters.AddWithValue("md", metaData ) |> ignore
+                                                        let result = command'.ExecuteScalar() 
+                                                        result :?> int
+                                                )
+                                        
+                                        let _ =
+                                            connection
+                                            |> Sql.connect
+                                            |> Sql.executeTransaction
+                                                [
+                                                    snapCommand,
+                                                        [
+                                                            [
+                                                                ("aggregate_id", Sql.uuid s1AggregateId)
+                                                                ("snapshot",  sqlJson s1Snapshot)
+                                                                ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                                ("is_deleted", Sql.bool true)
+                                                            ]
+                                                        ]
+                                                ]
+                                        transaction.Commit()
+                                        return (ids |> Ok)
+                                        finally
+                                            transaction.Dispose()
+                                            conn.Dispose()
+                            }, evenStoreTimeout)
                         with
                         | _ as ex ->
                             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)

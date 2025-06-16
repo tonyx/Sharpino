@@ -394,13 +394,9 @@ module CommandHandler =
                 let! (streamEventId, streamState) =
                     StateView.getAggregateFreshState<'A2, 'E2, 'F> streamAggregateId eventStore
                 
-                printf "XXXXXX: streamstate %A\n" streamState
-                    
                 let! (newState, events) =
                     streamState
                     |> command.Execute
-                
-                printf "XXXXX newState: %A" newState
                     
                 let serializedEvents =
                     events
@@ -410,7 +406,7 @@ module CommandHandler =
                     state.Serialize
                     
                 AggregateCache<'A1, 'F>.Instance.Clean id
-                let! result =
+                let! ids =
                     eventStore.SnapshotMarkDeletedAndAddAggregateEventsMd
                         'A1.Version
                         'A1.StorageName
@@ -423,8 +419,7 @@ module CommandHandler =
                         streamAggregateId
                         "deleting"
                         serializedEvents
-                // AggregateCache<'A2, 'F>.Instance.Memoize2 (newState |> Ok) ((streamEventId, streamAggregateId)) 
-                AggregateCache<'A2, 'F>.Instance.Clean streamAggregateId
+                AggregateCache<'A2, 'F>.Instance.Memoize2 (newState |> Ok) ((ids |> List.last, streamAggregateId)) 
                 return ()
             }
         

@@ -765,4 +765,5 @@ module MemoryStorage =
                 metaData
                 events =
                     
-                    Ok []
+                (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
+                (this:> IEventStore<string>).AddAggregateEventsMd streamEventId streamAggregateVersion streamAggregateName streamAggregateId metaData events    

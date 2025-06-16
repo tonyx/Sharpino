@@ -32,7 +32,7 @@ let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, Ba
 let instances =
     [
         (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, Balance.MkBalance 1000.0M)
-        // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, Balance.MkBalance 1000.0M)
+        (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, Balance.MkBalance 1000.0M)
     ]
 [<Tests>]
 let tests =
@@ -68,7 +68,7 @@ let tests =
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
         
-        fmultipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
             let course = Course.MkCourse (Guid.NewGuid(), "Math")
             let courseManager = courseManager ()

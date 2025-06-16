@@ -37,7 +37,6 @@ type CourseManager
         match initialized with
         | Error e -> raise (Exception (sprintf "Could not initialize balance: %s" e))initialBalance
         | Ok _ -> ()
-   
         
     member this.Balance =
         result
@@ -80,7 +79,6 @@ type CourseManager
             {
                 let! course = this.GetCourse id
                 let foundCourseDeletion = BalanceCommands.FoundCourseCancellation id
-                printf "balance id %A\n" initialBalance.Id
                 return!
                     runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker id initialBalance.Id foundCourseDeletion (fun course -> course.Students.Length = 0)
             }

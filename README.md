@@ -144,6 +144,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 
 
 ## News/Updates
+- Version 4.1.6: added runDelete with aggregateCommand (see sample 9 for a use case)
 - Version 4.1.5: fixed dependencies declared in manifest/nuspec file
 - Version 4.1.4: added soft delete with predicate (usually predicate is: counter references must be zero). Needs at applicative level increment counter each time a reference is created and decrement it when the reference is removed (see sample 9). Warning: deletion is not an event! Is just a state of the latest snapshot of an aggregate. After carefully evaluated the pros and cons I decided in this way (hint: any independent stream evolving does not care if the reference of an external id does actually exist or not. Getting the state of any aggregate depends primarily on the latest snapshot. If that last snapshot is deleted then it is as if it doesn't exist anymore as long as also the caches is aware of this deletion i.e. it is invalidated). 
 - an example of integration with Blazor: https://github.com/tonyx/sharpinoBlazor (a summary, in Italian, made by Gemini A. I.: https://g.co/gemini/share/528e98bd6dd8)
