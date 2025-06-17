@@ -114,6 +114,7 @@ module StateView =
                                 return (eventId , snapshot) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
+                
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
         'A: (static member Deserialize: 'F -> Result<'A, string>)
@@ -130,6 +131,37 @@ module StateView =
                         result {
                             let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
+                            if (lastSnapshotId = 0 && lastCacheEventId = 0) then
+                                return None
+                            else
+                                if 
+                                    snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
+                                    let! state = 
+                                        Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
+                                    return (lastCacheEventId |> Some, state) |> Some 
+                                else
+                                    let! (eventId, snapshot) = 
+                                        tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
+                                    return (eventId , snapshot) |> Some 
+                        }
+                }, Commons.generalAsyncTimeOut)
+                
+    let inline private getLastHistoryAggregateSnapshotOrStateCache<'A, 'F 
+        when 'A :> Aggregate<'F> and
+        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        >
+        (aggregateId: Guid)
+        (version: string)
+        (storageName: string)
+        (storage: IEventStore<'F>) 
+        =
+            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            Async.RunSynchronously
+                (async {
+                    return
+                        result {
+                            let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            let (snapshotEventId, lastSnapshotId) = storage.TryGetLastHistorySnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
                             else
@@ -183,6 +215,37 @@ module StateView =
             return
                 result {
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
+                    match eventIdAndState with
+                    | None -> 
+                        return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
+                    | Some (Some eventId, state) ->
+                        let! events = eventStore.GetAggregateEventsAfterId 'A.Version 'A.StorageName id eventId
+                        let result =
+                            (eventId |> Some, state, events)
+                        return result
+                    | Some (None, state) ->
+                        let! events = eventStore.GetAggregateEvents 'A.Version 'A.StorageName id 
+                        let result =
+                            (None, state, events)
+                        return result
+                }
+        }
+        |> Async.RunSynchronously
+    
+    let inline snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A> and
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)>
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        = 
+        logger.Value.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
+        
+        async {
+            return
+                result {
+                    let! eventIdAndState = getLastHistoryAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -275,7 +338,48 @@ module StateView =
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
-   
+  
+    let inline getHistoryAggregateFreshState<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        =
+            logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            let computeNewState =
+                fun () ->
+                    result {
+                        let! (_, state, events) = snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                        let! deserEvents =
+                            events 
+                            |>> snd 
+                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        let! newState = 
+                            deserEvents |> evolve<'A, 'E> state
+                        return newState
+                    }
+                    
+            // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
+            // we will get rid of reading lastEventId on db soon and rely only on the cache
+            
+            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
+            let state = computeNewState ()
+            
+            // tipically, historical data are not cached and we don't want to cache them either
+            // not dare trying to cache this!!!
+            // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            
+            match state with
+            | Ok state -> 
+                (lastEventId, state) |> Ok
+            | Error e ->
+                logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
+                Error e
+     
     let inline getFilteredEventsInATimeInterval<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
         and 'E :> Event<'A>

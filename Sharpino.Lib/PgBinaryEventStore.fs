@@ -130,24 +130,59 @@ module PgBinaryStore =
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                Async.RunSynchronously
-                    (async {
-                        return
-                            connection
-                            |> Sql.connect
-                            |> Sql.query query
-                            |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId]
-                            |> Sql.execute (fun read ->
-                                (
-                                    read.intOrNone "event_id",
-                                    read.int "id"
+                let query = sprintf "SELECT event_id, is_deleted id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
+                let result =
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId]
+                                |> Sql.execute (fun read ->
+                                    (
+                                        read.intOrNone "event_id",
+                                        read.int "id",
+                                        read.bool "is_deleted"
+                                    )
                                 )
-                            )
-                            |> Seq.tryHead
-                    }, evenStoreTimeout)
+                                |> Seq.tryHead
+                        }, evenStoreTimeout)
+                match result with        
+                | None -> None
+                | Some (eventId, id, false) -> Some (eventId, id)
+                | _ -> None
+            // todo: that's not good approach. revise handling error possibly using result
 
-            // not good that returns none in case of error 
+            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
+                
+                let result =
+                    fun () ->     
+                        Async.RunSynchronously
+                            (async {
+                                return 
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query query
+                                    |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId ]
+                                    |> Sql.execute (fun read ->
+                                        (
+                                            read.intOrNone "event_id",
+                                            read.int "id"
+                                        )
+                                    )
+                                    |> Seq.tryHead
+                            }, evenStoreTimeout)
+                try              
+                    result ()
+                with
+                | _ as ex ->
+                    logger.Value.LogError (ex.Message)
+                    None
+            // todo: that's not good approach. revise possibly using result
+            
             member this.TryGetEvent version id name =
                 logger.Value.LogDebug (sprintf "TryGetEvent %s %s" version name)
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name

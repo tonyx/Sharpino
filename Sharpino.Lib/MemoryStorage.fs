@@ -464,6 +464,19 @@ module MemoryStorage =
                     | None -> None
                     | Some (_, _, true) -> None
                     | Some (eventId, id, false) -> Some (eventId, id)
+                    
+            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId  = 
+                logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || 
+                   (aggregate_snapshots_dic.[version].ContainsKey name |> not) || 
+                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                        None
+                else
+                    let result =
+                        aggregate_snapshots_dic.[version].[name].[aggregateId]
+                        |> List.tryLast
+                        |>> (fun x -> (x.EventId, x.Id))
+                    result    
 
             member this.TryGetLastSnapshotEventId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
