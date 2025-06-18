@@ -15,8 +15,8 @@ module Course =
         }
         
         with
-            static member MkCourse (id: Guid, name: string) =
-                { Id = id; Name = name; Students = List.empty}
+            static member MkCourse (name: string) =
+                { Id = Guid.NewGuid(); Name = name; Students = List.empty}
                     
             member this.AddStudent (studentId: Guid) =
                 {

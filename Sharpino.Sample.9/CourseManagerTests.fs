@@ -47,7 +47,7 @@ let tests =
             
         multipleTestCase "add and retrieve a student - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let student = Student.MkStudent "John"
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
@@ -59,7 +59,7 @@ let tests =
       
         multipleTestCase "add a course will costs 100, verify it - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let course = Course.MkCourse  "Math"
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -70,7 +70,7 @@ let tests =
         
         multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let course = Course.MkCourse  "Math"
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -91,7 +91,7 @@ let tests =
             
         multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let course = Course.MkCourse "Math"
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -106,11 +106,11 @@ let tests =
             verify that both course and student cannot be deleted - Ok" instances <| fun (setUp, courseManager) ->
             // given
             setUp ()
-            let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let student = Student.MkStudent "John"
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
-            let course = Course.MkCourse (Guid.NewGuid(), "Math")
+            let course = Course.MkCourse  "Math"
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
             
@@ -138,7 +138,7 @@ let tests =
         
         multipleTestCase "add and delete a student - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let student = Student.MkStudent "John"
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
