@@ -144,6 +144,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 
 
 ## News/Updates
+- Version 4.1.8: some fixes on new features 
 - Version 4.1.7: added an alternative to getAggregateFreshStater (getHistoryAggregateFreshState) that includes historical (i.e. deleted) aggregate and skip caching. No example or test provided (hack).
 - Version 4.1.6: added runDelete with aggregateCommand (see sample 9 for a use case)
 - Version 4.1.5: fixed dependencies declared in manifest/nuspec file
