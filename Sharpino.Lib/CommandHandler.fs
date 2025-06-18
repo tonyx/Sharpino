@@ -411,7 +411,7 @@ module CommandHandler =
                         'A1.Version
                         'A1.StorageName
                         eventId
-                        streamAggregateId
+                        id
                         serializedState
                         streamEventId
                         'A2.Version

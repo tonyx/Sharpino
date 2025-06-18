@@ -1358,11 +1358,12 @@ module PgStorage =
                     
                     let stream_name = streamAggregateVersion + streamAggregateName
                     let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
-                     
+                    
+                    // reminder: add more tests and eventually simplify those nasty expressions
                     if
                         (
                             (not
-                                (lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)
+                                ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId))
                             )
                             ||
                             (not

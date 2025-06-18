@@ -79,14 +79,16 @@ let tests =
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
             
-            let deleeCourse = courseManager.DeleteCourse course.Id
-            Expect.isOk deleeCourse "should be ok"
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleteCourse "should be ok"
             let balance = courseManager.Balance 
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
-            Expect.equal balance.Amount 850.0M "should be equal" 
+            Expect.equal balance.Amount 850.0M "should be equal"
             
-         
+            let tryGetCourse = courseManager.GetCourse course.Id
+            Expect.isError tryGetCourse "should be error"
+            
         multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
             setUp ()
             let course = Course.MkCourse (Guid.NewGuid(), "Math")
@@ -125,6 +127,24 @@ let tests =
             
             let tryDeleteCourse = courseManager.DeleteCourse course.Id
             Expect.isError tryDeleteCourse "should be error"
+        
+        multipleTestCase "add and delete a student - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let student = Student.MkStudent (Guid.NewGuid(), "John")
+            let courseManager = courseManager ()
+            let addStudent = courseManager.AddStudent student
+            Expect.isOk addStudent "should be ok"
+            let result = courseManager.GetStudent student.Id
+            Expect.isOk result "should be ok"
+            let retrievedStudent = result.OkValue
+            Expect.equal retrievedStudent.Id student.Id "should be equal"
+            Expect.equal retrievedStudent.Name student.Name "should be equal"
+            
+            let deleteStudent = courseManager.DeleteStudent student.Id
+            Expect.isOk deleteStudent "should be ok"
+            
+            let tryGetStudent = courseManager.GetStudent student.Id
+            Expect.isError tryGetStudent "should be error"
     ]
     |> testSequenced
     

@@ -121,6 +121,9 @@ let tests =
             let tryDeleteItem = itemManager.DeleteItem item.Id
             Expect.isOk tryDeleteItem "should be ok"
             
+            let retrieveItem = itemManager.GetItem item.Id
+            Expect.isError retrieveItem "should be error"
+            
     ]
     |> testSequenced
     
