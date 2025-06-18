@@ -350,7 +350,7 @@ module CommandHandler =
                     StateView.getAggregateFreshState<'A1, 'E, 'F> id eventStore
                 do!
                     predicate state
-                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not saf accorting to  the predicate" id 'A1.StorageName)
+                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
                 
                 let serializedState =
                     state.Serialize
@@ -389,7 +389,7 @@ module CommandHandler =
                     StateView.getAggregateFreshState<'A1, 'E1, 'F> id eventStore
                 do!
                     predicate state
-                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not saf accorting to  the predicate" id 'A1.StorageName)
+                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
                
                 let! (streamEventId, streamState) =
                     StateView.getAggregateFreshState<'A2, 'E2, 'F> streamAggregateId eventStore

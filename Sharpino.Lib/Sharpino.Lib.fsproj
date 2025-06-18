@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.1.8</Version>
+    <Version>4.1.9</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -58,7 +58,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.6" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.5" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.6" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
@@ -92,7 +92,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" /> 
     
-    <PackageReference Include="Sharpino.Core" Version="2.2.5" />
+    <PackageReference Include="Sharpino.Core" Version="2.2.6" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.3" />
@@ -108,6 +108,7 @@
     <PackageReference Include="System.collections" Version="4.3.0" />
 <!--    <PackageReference Include="System.Runtime.Caching" Version="8.0.1" /> --> 
   </ItemGroup>
+
   
   <!-- needed if you are developing the core: -->
   

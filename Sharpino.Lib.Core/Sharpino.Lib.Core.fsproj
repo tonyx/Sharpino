@@ -4,7 +4,7 @@
     <TargetFrameworks>net9.0; net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>2.2.5</Version>
+    <Version>2.2.6</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -15,7 +15,7 @@
     <ReleaseNotes>Core of Sharpino library</ReleaseNotes> 
     <Copyright>Copyright ©2023-2025 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#</PackageTags>
-<!--    <DefineConstants>EVOLVE_SKIPS_ERRORS</DefineConstants>-->
+    <DefineConstants>EVOLVE_SKIPS_ERRORS</DefineConstants>
 
   </PropertyGroup>
 
