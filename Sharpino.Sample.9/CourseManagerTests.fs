@@ -101,7 +101,10 @@ let tests =
             Expect.equal retrievedCourse.Id course.Id "should be equal"
             Expect.equal retrievedCourse.Name course.Name "should be equal"
             
-        multipleTestCase "add a student add a course and subscribe the student to that course - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a student add a course and subscribe the student to that course;
+            verify the subscriptions;
+            verify that both course and student cannot be deleted - Ok" instances <| fun (setUp, courseManager) ->
+            // given
             setUp ()
             let student = Student.MkStudent (Guid.NewGuid(), "John")
             let courseManager = courseManager ()
@@ -110,8 +113,12 @@ let tests =
             let course = Course.MkCourse (Guid.NewGuid(), "Math")
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
+            
+            // when
             let subscribe = courseManager.SubscribeStudentToCourse student.Id course.Id
             Expect.isOk subscribe "should be ok"
+            
+            // then
             let result = courseManager.GetStudent student.Id
             Expect.isOk result "should be ok"
             let retrievedStudent = result.OkValue
@@ -121,7 +128,8 @@ let tests =
             Expect.isOk retrievedCourse "should be ok"
             let retrievedCourse = retrievedCourse.OkValue
             Expect.equal retrievedCourse.Students.Length 1 "should be equal"
-            
+           
+            // and also  
             let tryDeleteStudent = courseManager.DeleteStudent student.Id
             Expect.isError tryDeleteStudent "should be error"
             

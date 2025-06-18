@@ -390,7 +390,6 @@ module CommandHandler =
                 do!
                     predicate state
                     |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
-               
                 let! (streamEventId, streamState) =
                     StateView.getAggregateFreshState<'A2, 'E2, 'F> streamAggregateId eventStore
                 
