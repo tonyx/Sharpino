@@ -29,6 +29,7 @@ let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, Balanc
 let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
 let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
 let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
+
 let instances =
     [
         (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, Balance.MkBalance 1000.0M)
@@ -47,7 +48,7 @@ let tests =
             
         multipleTestCase "add and retrieve a student - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let student = Student.MkStudent "John"
+            let student = Student.MkStudent ("John", 50)
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
@@ -59,7 +60,7 @@ let tests =
       
         multipleTestCase "add a course will costs 100, verify it - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse  "Math"
+            let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -70,7 +71,7 @@ let tests =
         
         multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse  "Math"
+            let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -91,7 +92,7 @@ let tests =
             
         multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
             setUp ()
-            let course = Course.MkCourse "Math"
+            let course = Course.MkCourse ("Math", 10)
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
@@ -106,11 +107,11 @@ let tests =
             verify that both course and student cannot be deleted - Ok" instances <| fun (setUp, courseManager) ->
             // given
             setUp ()
-            let student = Student.MkStudent "John"
+            let student = Student.MkStudent ("John", 5)
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"
-            let course = Course.MkCourse  "Math"
+            let course = Course.MkCourse  ("Math", 10)
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
             
@@ -135,10 +136,47 @@ let tests =
             
             let tryDeleteCourse = courseManager.DeleteCourse course.Id
             Expect.isError tryDeleteCourse "should be error"
-        
+       
+        multipleTestCase "if a students exceeds the max number of courses, the subscription fails - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            // given
+            let student = Student.MkStudent ("John", 1)
+            let courseManager = courseManager ()
+            let addStudent = courseManager.AddStudent student
+            Expect.isOk addStudent "should be ok"
+            let course1 = Course.MkCourse  ("Math", 10)
+            let addCourse1 = courseManager.AddCourse course1
+            Expect.isOk addCourse1 "should be ok"
+            let course2 = Course.MkCourse  ("Physics", 10)
+            let addCourse2 = courseManager.AddCourse course2
+            Expect.isOk addCourse2 "should be ok"
+            
+            // when
+            let firstSubscription = courseManager.SubscribeStudentToCourse student.Id course1.Id
+            Expect.isOk firstSubscription "should be ok"
+            
+            // then
+            let secondSubscription = courseManager.SubscribeStudentToCourse student.Id course2.Id
+            Expect.isError secondSubscription "should be error"
+            
+            let retrievedStudent = courseManager.GetStudent student.Id
+            Expect.isOk retrievedStudent "should be ok"
+            let retrievedStudent = retrievedStudent.OkValue
+            Expect.equal retrievedStudent.Courses.Length 1 "should be equal"
+            
+            let retrievedCourse1 = courseManager.GetCourse course1.Id
+            Expect.isOk retrievedCourse1 "should be ok"
+            let retrievedCourse1 = retrievedCourse1.OkValue
+            Expect.equal retrievedCourse1.Students.Length 1 "should be equal"
+            
+            let retrievedCourse2 = courseManager.GetCourse course2.Id
+            Expect.isOk retrievedCourse2 "should be ok"
+            let retrievedCourse2 = retrievedCourse2.OkValue
+            Expect.equal retrievedCourse2.Students.Length 0 "should be equal"
+         
         multipleTestCase "add and delete a student - Ok" instances <| fun (setUp, courseManager) ->
             setUp ()
-            let student = Student.MkStudent "John"
+            let student = Student.MkStudent ("John", 5)
             let courseManager = courseManager ()
             let addStudent = courseManager.AddStudent student
             Expect.isOk addStudent "should be ok"

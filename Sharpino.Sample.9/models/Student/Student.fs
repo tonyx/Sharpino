@@ -6,24 +6,24 @@ open Sharpino
 open Sharpino.Core
 
 module Student =
-    let maximumCourses = 5
     type Student = {
         Id: Guid
         Name: string
         Courses: List<Guid>
+        MaxNumberOfCourses: int
     }
     with
-        static member MkStudent (name: string) =
-            { Id = Guid.NewGuid(); Name = name; Courses = List.empty }
+        static member MkStudent (name: string, maxNumberOfCourses: int) =
+            { Id = Guid.NewGuid(); Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
    
         member this.AddCourse (courseId: Guid) =
             result
                 {
                     do! 
                         this.Courses
-                        |> List.length <= maximumCourses
+                        |> List.length < this.MaxNumberOfCourses
                         |> Result.ofBool "Maximum number of courses reached"
-                    return
+                    return    
                         {
                             this
                                 with
