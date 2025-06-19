@@ -1305,10 +1305,10 @@ module PgBinaryStore =
             member this.SnapshotAndMarkDeleted version name eventId aggregateId napshot =
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
-                let lastEventId = (this :> IEventStore<byte[]>).TryGetLastEventId version name
-                if (not (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId)) then
-                    Error "cannot snapshot as the event id is not the latest"
-                else    
+                let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
+                
+                // still complicated, but better than before
+                if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                     try
                         Async.RunSynchronously (
                             async {
@@ -1334,6 +1334,8 @@ module PgBinaryStore =
                     | _ as ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
+                else
+                    Error $"error checking event alignments. eventId passed: {eventId}. Latest event id: {lastEventId}"
                 
             member this.SnapshotMarkDeletedAndAddAggregateEventsMd
                 s1Version
@@ -1349,27 +1351,16 @@ module PgBinaryStore =
                 events =
                     logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
                     let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
-                    let lastEventId = (this :> IEventStore<byte[]>).TryGetLastEventId s1Version s1name
+                    let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
                     
                     let lastStreamEventId =
                         (this :> IEventStore<byte[]>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
                     
                     let stream_name = streamAggregateVersion + streamAggregateName
                     let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
-                     
                     if
-                        (
-                            (not
-                                (lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)
-                            )
-                            ||
-                            (not
-                                 ((lastStreamEventId.IsNone && streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId))
-                            )
-                        )
-                    then
-                        Error "cannot snapshot as the event id is not the latest"
-                    else
+                        ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) &&
+                        ((lastStreamEventId.IsNone && streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId)) then 
                         try
                             Async.RunSynchronously (
                                 async {
@@ -1415,4 +1406,5 @@ module PgBinaryStore =
                         | _ as ex ->
                             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                             Error ex.Message
-                    
+                    else
+                        Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}"

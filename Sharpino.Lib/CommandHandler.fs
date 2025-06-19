@@ -1115,24 +1115,24 @@ module CommandHandler =
         =
             let commands = fun () ->
                 result {
-                    let! (eventId1, state1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
-                    let! (eventId2, state2) = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    let! eventId2, state2 = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
                     
-                    let! (newState1, events1) =
+                    let! newState1, events1 =
                         state1
                         |> command1.Execute
                     
-                    let! (newState2, events2) =
+                    let! newState2, events2 =
                         state2
                         |> command2.Execute    
                     
                     let serializedEvents1 =
                         events1 
-                        |>> fun x -> x.Serialize    
+                        |>> _.Serialize    
                  
                     let serializedEvents2 =
                         events2
-                        |>> fun x -> x.Serialize
+                        |>> _.Serialize
                     
                     let! newLastStateIdsList =
                         eventStore.MultiAddAggregateEventsMd
