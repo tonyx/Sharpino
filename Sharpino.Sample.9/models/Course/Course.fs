@@ -6,7 +6,8 @@ open Sharpino.Core
 open Sharpino
 open FsToolkit.ErrorHandling
 
-module Course = 
+module Course =
+    let maxNumberOfStudents = 10
     type Course =
         {
             Name: string
@@ -19,12 +20,19 @@ module Course =
                 { Id = Guid.NewGuid(); Name = name; Students = List.empty}
                     
             member this.AddStudent (studentId: Guid) =
-                {
-                    this
-                        with
-                            Students = this.Students @ [studentId]
-                }
-                |> Ok        
+                result
+                    {
+                        do! 
+                            (this.Students.Length <= maxNumberOfStudents)
+                            |> Result.ofBool "course is full"
+                        
+                        return    
+                            {     
+                                this
+                                    with
+                                        Students = this.Students @ [studentId]
+                            }
+                    }
                 
             member this.RemoveStudent (studentId: Guid) =
                 result

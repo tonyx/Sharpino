@@ -35,7 +35,7 @@ type CourseManager
         let initialized =
             runInit<Balance, BalanceEvents, string> eventStore doNothingBroker initialBalance
         match initialized with
-        | Error e -> raise (Exception (sprintf "Could not initialize balance: %s" e))initialBalance
+        | Error e -> raise (Exception $"Could not initialize balance. Error: {e}")
         | Ok _ -> ()
         
     member this.Balance =

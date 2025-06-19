@@ -6,6 +6,7 @@ open Sharpino
 open Sharpino.Core
 
 module Student =
+    let maximumCourses = 5
     type Student = {
         Id: Guid
         Name: string
@@ -16,13 +17,19 @@ module Student =
             { Id = Guid.NewGuid(); Name = name; Courses = List.empty }
    
         member this.AddCourse (courseId: Guid) =
-            {
-                this
-                    with
-                        Courses = this.Courses @ [courseId]
-                    
-            }
-            |> Ok
+            result
+                {
+                    do! 
+                        this.Courses
+                        |> List.length <= maximumCourses
+                        |> Result.ofBool "Maximum number of courses reached"
+                    return
+                        {
+                            this
+                                with
+                                    Courses = this.Courses @ [courseId]
+                        }
+                }
             
         member this.RemoveCourse (courseId: Guid) =
             result
