@@ -28,6 +28,7 @@ let doNothingBroker  =
 type CourseManager
     (eventStore: IEventStore<string>,
      courseViewer: AggregateViewer<Course>,
+     historyCourseViewer: AggregateViewer<Course>,
      studentViewer: AggregateViewer<Student>,
      balanceViewer: AggregateViewer<Balance>,
      teacherViewer: AggregateViewer<Teacher>,
@@ -67,6 +68,19 @@ type CourseManager
                 let! (_, teacher) = teacherViewer id
                 return teacher
             }
+    // member this.GetCourse (id: Guid) =
+    //     result
+    //         {
+    //             let! (_, course) = courseViewer id
+    //             return course
+    //         }
+    
+    member this.GetHistoryCourse (id: Guid) =
+        result
+            {
+                let! (_, course) = historyCourseViewer id
+                return course
+            }        
     
     member this.DeleteTeacher (id: Guid) =
         result
@@ -119,7 +133,7 @@ type CourseManager
                     |> Result.ofBool "can't delete"
                 
                 match course.Teacher with
-                | Some teacherId->
+                | Some teacherId ->
                     let unsubscribeTeacherFromCourse =
                         TeacherCommands.RemoveCourse id
                     return!    

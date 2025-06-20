@@ -3,6 +3,7 @@ module Sharpino.Sample._9.CourseManagerTests
 open System
 open Expecto
 open ItemManager.Common
+open Sharpino.Cache
 open Sharpino.Commons
 open Sharpino.Core
 open Sharpino
@@ -26,18 +27,20 @@ open Sharpino.Sample._9.Balance
 
 let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
+let pgStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore 
 let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore
 let pgTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> pgEventStore
 
 let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
 let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
+let memoryStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore 
 let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
 let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> memEventStore
 
 let instances =
     [
-        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, pgTeacherViewer, Balance.MkBalance 1000.0M)
-        (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
+        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageHistoryCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, pgTeacherViewer, Balance.MkBalance 1000.0M)
+        // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageHistoryCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
     ]
 [<Tests>]
 let tests =
@@ -295,6 +298,65 @@ let tests =
             
             let tryGetCourse = courseManager.GetCourse course.Id
             Expect.isError tryGetCourse "should be error"
+        
+        multipleTestCase "create and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let retrieve = courseManager.GetCourse course.Id
+            Expect.isOk retrieve "should be Ok"
+            let retrievedCourse = retrieve.OkValue
+            Expect.equal retrievedCourse.Id course.Id "should be equal"
+            Expect.equal retrievedCourse.Name course.Name "should be equal"
+            
+        multipleTestCase "create and retrieve a course skipping cache - Ok"  instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let voidCache = AggregateCache.Instance.Clear()
+            let retrieve = courseManager.GetCourse course.Id
+            Expect.isOk retrieve "should be Ok"
+            let retrievedCourse = retrieve.OkValue
+            Expect.equal retrievedCourse.Id course.Id "should be equal"
+            Expect.equal retrievedCourse.Name course.Name "should be equal"
+            
+        multipleTestCase "even though a curse has been deleted, it can still be retrieved by the history state viewer its id - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            
+            let voidCache = AggregateCache.Instance.Clear()
+            let retrieve1 = courseManager.GetCourse course.Id
+            Expect.isOk retrieve1 "should be Ok"
+            
+            let voidCache = AggregateCache.Instance.Clear()
+            let retrieveH = courseManager.GetHistoryCourse course.Id
+            Expect.isOk retrieveH "should be Ok"
+        
+        multipleTestCase "add and retrieve a course without the cache - Ok"   instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let retrieve = courseManager.GetCourse course.Id
+            Expect.isOk retrieve "should be Ok"
+            
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleteCourse "should be ok"
+        
+            let retrievedCourse = courseManager.GetCourse course.Id
+            Expect.isError retrievedCourse "should be error"
+            
+            let retrieveByHistory = courseManager.GetHistoryCourse course.Id
+            Expect.isOk retrieveByHistory "should be ok"
+            
             
     ]
     |> testSequenced

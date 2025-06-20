@@ -328,7 +328,7 @@ module StateView =
             // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
             // we will get rid of reading lastEventId on db soon and rely only on the cache
             
-            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0 
+            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             
             let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             

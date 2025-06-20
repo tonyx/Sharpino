@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="models/Item/Item.fs" />
     <Compile Include="models/Item/Events.fs" />
     <Compile Include="models/Item/Commands.fs" />
@@ -26,7 +27,7 @@
     <Compile Include="models/Balance/Commands.fs" />
     <Compile Include="models/Teacher/Teacher.fs" />
     <Compile Include="models/Teacher/Events.fs" />
-    <Compile Include="models\Teacher\Commands.fs" />
+    <Compile Include="models/Teacher/Commands.fs" />
     <Compile Include="Commons.fs" />
     <Compile Include="ItemManager.fs" />
     <Compile Include="CourseManager.fs" />

@@ -3,6 +3,7 @@ namespace ItemManager
 open System
 open Sharpino
 open Sharpino.Cache
+open Sharpino.Core
 open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.Course
 open Sharpino.Sample._9.Item
@@ -37,3 +38,15 @@ module Common =
         eventStore.Reset Teacher.Version Teacher.StorageName
         eventStore.ResetAggregateStream Teacher.Version Teacher.StorageName
         AggregateCache<Item, string>.Instance.Clear()
+
+    let inline getHistoryAggregateStorageFreshStateViewer<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>) 
+        =
+            fun (id: Guid) -> StateView.getHistoryAggregateFreshState<'A, 'E, 'F> id eventStore
