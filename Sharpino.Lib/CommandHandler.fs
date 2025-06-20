@@ -390,6 +390,7 @@ module CommandHandler =
                 do!
                     predicate state
                     |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
+                    
                 let! (streamEventId, streamState) =
                     StateView.getAggregateFreshState<'A2, 'E2, 'F> streamAggregateId eventStore
                 
@@ -421,6 +422,168 @@ module CommandHandler =
                 AggregateCache<'A2, 'F>.Instance.Memoize2 (newState |> Ok) ((ids |> List.last, streamAggregateId)) 
                 return ()
             }
+    
+    let inline runDeleteAndTwoAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
+        when 'A :> Aggregate<'F>
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)         
+        and 'E :> Event<'A>
+        and 'E : (member Serialize: 'F)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1 :> Aggregate<'F>
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A2 :> Aggregate<'F>
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'E2 :> Event<'A2>
+        and 'E2 :(static member Deserialize: 'F -> Result<'E2, string>)
+        and 'E2 : (member Serialize: 'F)>
+        (eventStore: IEventStore<'F>)
+        (eventBroker: IEventBroker<'F>)
+        (md: Metadata)
+        (aggregateId: AggregateId)
+        (aggregateId1: AggregateId)
+        (aggregateId2: AggregateId)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (predicate: 'A -> bool) =
+            result {
+                let! eventId, state =
+                    getAggregateFreshState<'A, 'E, 'F> aggregateId eventStore
+                do!
+                    predicate state
+                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" aggregateId 'A1.StorageName)
+                
+                let! eventIdA1, stateA1 =
+                    getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    
+                let! eventIdA2, stateA2 =
+                    getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                
+                let! newStateA1, eventsA1 =
+                    stateA1
+                    |> command1.Execute
+                    
+                let! newStateA2, eventsA2 =
+                    stateA2
+                    |> command2.Execute
+               
+                AggregateCache<'A, 'F>.Instance.Clean aggregateId
+                let! newLastStateIdsList =
+                    eventStore.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
+                        md
+                        'A.Version
+                        'A.StorageName
+                        eventId
+                        aggregateId
+                        state.Serialize
+                        [
+                            (eventIdA1, eventsA1 |>> _.Serialize, 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventIdA2, eventsA2 |>> _.Serialize, 'A2.Version, 'A2.StorageName, aggregateId2)
+                        ]    
+                AggregateCache<'A1, 'F>.Instance.Memoize2 (newStateA1 |> Ok) ((newLastStateIdsList.[0] |> List.last, aggregateId1))
+                AggregateCache<'A2, 'F>.Instance.Memoize2 (newStateA2 |> Ok) ((newLastStateIdsList.[1] |> List.last, aggregateId2))
+                
+                return ()    
+            }
+        
+        
+    // for the future when you find a use case and test case for it
+    
+    // let inline runDeleteAndNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
+    //     when 'A1 :> Aggregate<'F>
+    //     and 'A2 :> Aggregate<'F>
+    //     and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+    //     and 'E1 :> Event<'A1>
+    //     and 'E1 : (member Serialize: 'F)
+    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+    //     and 'E2 :> Event<'A2>
+    //     and 'E2 :(static member Deserialize: 'F -> Result<'E2, string>)
+    //     and 'E2 : (member Serialize: 'F) 
+    //     and 'A1: (static member StorageName: string)
+    //     and 'A1: (static member Version: string)
+    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+    //     and 'A2 : (static member SnapshotsInterval: int)
+    //     and 'A2 : (static member StorageName: string)
+    //     and 'A2 : (static member Version: string)> 
+    //     
+    //     (eventStore: IEventStore<'F>)
+    //     (eventBroker: IEventBroker<'F>) 
+    //     (aggregateId: AggregateId)
+    //     (aggregateIds : List<AggregateId>)
+    //     (md: Metadata)
+    //     (commands: List<AggregateCommand<'A2, 'E2>>)
+    //     (predicate: 'A1 -> bool)
+    //     =
+    //     logger.Value.LogDebug "runDeleteAndNAggregateCommandsMd"
+    //     let aggregateIdsAreUnique = aggregateIds |> List.distinct |> List.length = aggregateIds.Length
+    //     if (not aggregateIdsAreUnique) then
+    //         Error "aggregateIds are not unique"
+    //     else
+    //         result
+    //             {
+    //                 let! (eventId, aggregateState) =
+    //                     StateView.getAggregateFreshState<'A1, 'E1, 'F> aggregateId eventStore
+    //                 do!
+    //                     predicate aggregateState
+    //                     |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
+    //                    
+    //                 let! states =
+    //                     aggregateIds
+    //                     |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
+    //                 let states' = 
+    //                     states 
+    //                     |>> fun (_, state) -> state
+    //                 let lastEventIds =
+    //                     states
+    //                     |>> fun (eventId, _) -> eventId
+    //                 let statesAndCommands =
+    //                     List.zip states' commands
+    //                 let! stateEvents =
+    //                     statesAndCommands
+    //                     |>> fun (state, command) -> (command.Execute state)
+    //                     |> List.traverseResultM id
+    //                 let newStates =
+    //                     stateEvents 
+    //                     |>> fun (state, _) -> state
+    //                 let events =
+    //                     stateEvents
+    //                     |>> fun (_, events) -> events
+    //                     
+    //                 let serializedEvents =
+    //                     events 
+    //                     |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
+    //                 let currentStateEventIdEventsAndAggregateIds =
+    //                     List.zip3 lastEventIds serializedEvents aggregateIds
+    //                     |>> fun (sEventId, events, id) -> (sEventId, events, 'A2.Version, 'A2.StorageName, id)
+    //                 
+    //                 AggregateCache<'A1, 'F>.Instance.Clean aggregateId
+    //                 let! eventIds =
+    //                     eventStore.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
+    //                         md
+    //                         'A1.Version
+    //                         'A1.StorageName
+    //                         eventId
+    //                         aggregateId
+    //                         aggregateState.Serialize
+    //                         currentStateEventIdEventsAndAggregateIds
+    //                         
+    //                 for i in 0..(aggregateIds.Length - 1) do
+    //                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newStates.[i] |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
+    //                     mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+    //                 
+    //                 return ()
+    //             }
+        
         
     let inline runInitAndCommand<'A, 'E, 'A1, 'F
         when 'A: (static member Zero: 'A)

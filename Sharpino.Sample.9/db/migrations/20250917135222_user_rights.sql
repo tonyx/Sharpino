@@ -28,5 +28,11 @@ GRANT ALL ON SEQUENCE public.aggregate_events_01_balance_id_seq to safe;
 GRANT ALL ON TABLE public.events_01_balance to safe;
 GRANT ALL ON TABLE public.snapshots_01_balance to safe;
 GRANT ALL ON SEQUENCE public.snapshots_01_balance_id_seq to safe;
+          
+GRANT ALL ON TABLE public.aggregate_events_01_teacher TO safe;
+GRANT ALL ON SEQUENCE public.aggregate_events_01_teacher_id_seq to safe;
+GRANT ALL ON TABLE public.events_01_teacher to safe;
+GRANT ALL ON TABLE public.snapshots_01_teacher to safe;
+GRANT ALL ON SEQUENCE public.snapshots_01_teacher_id_seq to safe;
 -- migrate:down
 

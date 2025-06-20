@@ -7,6 +7,7 @@ open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.Course
 open Sharpino.Sample._9.Item
 open Sharpino.Sample._9.Student
+open Sharpino.Sample._9.Teacher
 open Sharpino.Storage
 open DotNetEnv
 
@@ -33,4 +34,6 @@ module Common =
         eventStore.ResetAggregateStream Student.Version Student.StorageName
         eventStore.Reset Balance.Version Balance.StorageName
         eventStore.ResetAggregateStream Balance.Version Balance.StorageName
+        eventStore.Reset Teacher.Version Teacher.StorageName
+        eventStore.ResetAggregateStream Teacher.Version Teacher.StorageName
         AggregateCache<Item, string>.Instance.Clear()

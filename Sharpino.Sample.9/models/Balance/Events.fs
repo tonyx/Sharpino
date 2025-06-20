@@ -10,14 +10,14 @@ open Sharpino.Sample._9.Balance
 module BalanceEvents =
     type BalanceEvents =
         | AmountAdded of decimal
-        | CourseCreationFounded of Guid
-        | CourseDeletionFounded of Guid
+        | CourseCreationFeePaid of Guid
+        | CourseCancellationFeePaid of Guid
         interface Event<Balance> with
             member this.Process (balance: Balance) =
                 match this with
                 | AmountAdded amount -> balance.AddAmount amount
-                | CourseCreationFounded id -> balance.FoundCourseCreation id
-                | CourseDeletionFounded id -> balance.FoundCourseCancellation id
+                | CourseCreationFeePaid id -> balance.PayCourseCreationFee id
+                | CourseCancellationFeePaid id -> balance.PayCourseCancellationFee id
        
         static member Deserialize x =
             jsonPSerializer.Deserialize<BalanceEvents> x

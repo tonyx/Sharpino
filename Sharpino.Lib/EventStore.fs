@@ -94,7 +94,7 @@ module Storage =
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
         abstract member SnapshotMarkDeletedAndAddAggregateEventsMd: Version -> Name -> EventId -> AggregateId -> 'F -> EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Result<List<int>, string>
-        
+        abstract member SnapshotMarkDeletedAndMultiAddAggregateEventsMd: Metadata -> Version -> Name -> EventId -> AggregateId -> 'F -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
         abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>

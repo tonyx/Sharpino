@@ -1,12 +1,11 @@
 -- migrate:up
-
 CREATE TABLE public.events_01_teacher (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
                                           event text NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           "timestamp" timestamp without time zone NOT NULL,
-                                          md text 
+                                          md text
 );
 
 ALTER TABLE public.events_01_teacher ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -140,3 +139,4 @@ END;
 $$;
 
 -- migrate:down
+

@@ -1066,10 +1066,10 @@ module PgStorage =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
-            member this.MultiAddAggregateEvents (arg: List<EventId * List<Json> * Version * Name * System.Guid>) =
+            member this.MultiAddAggregateEvents (arg: List<EventId * List<Json> * Version * Name * AggregateId>) =
                 (this :> IEventStore<string>).MultiAddAggregateEventsMd "" arg
                     
-            member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<Json> * Version * Name * System.Guid>) =
+            member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<Json> * Version * Name *  AggregateId>) =
                 logger.Value.LogDebug (sprintf "MultiAddAggregateEventsMd %A %s" arg md)
                 
                 let result =
@@ -1412,6 +1412,83 @@ module PgStorage =
                     else
                         Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}"
                     
-             
-
+            member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
+                md
+                s1Version
+                s1name
+                s1EventId
+                s1AggregateId
+                s1Snapshot
+                (arg: List<EventId * List<Json> * Version * Name * AggregateId>) =
+                    let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
+                    let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
+                    
+                    let lastEventIds =
+                        arg 
+                        |>> 
+                        fun (_, _, version, name, aggregateId) -> 
+                            ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
+                            
+                    let eventIds = 
+                        arg
+                        |>> fun (eventId, _, _, _, _) -> eventId
+                        
+                    let eventIdsMatch = 
+                        List.zip lastEventIds eventIds
+                        |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+                        
+                    if ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) && eventIdsMatch then
+                        
+                        let conn = new NpgsqlConnection(connection)
+                        conn.Open()
+                        let transaction = conn.BeginTransaction()
+                        
+                        Async.RunSynchronously
+                            (async {
+                                try
+                                    let cmdList = 
+                                        arg 
+                                        |>>
+                                            fun (_, events, version,  name, aggregateId) ->
+                                                let stream_name = version + name
+                                                events
+                                                |>> 
+                                                    fun event ->
+                                                        let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
+                                                        (
+                                                            command.Parameters.AddWithValue("event", event ) |> ignore
+                                                            command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                                            command.Parameters.AddWithValue("md", md ) |> ignore
+                                                            let result = command.ExecuteScalar() 
+                                                            result :?> int
+                                                        )
+                                    
+                                    let _ =
+                                        connection
+                                        |> Sql.connect
+                                        |> Sql.executeTransaction
+                                            [
+                                                snapCommand,
+                                                    [
+                                                        [
+                                                            ("aggregate_id", Sql.uuid s1AggregateId)
+                                                            ("snapshot",  sqlJson s1Snapshot)
+                                                            ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                            ("is_deleted", Sql.bool true)
+                                                        ]
+                                                    ]
+                                            ]  
+                                    
+                                    transaction.Commit()
+                                    conn.Close()
+                                    return (cmdList |> Ok)
+                                with
+                                    | _ as ex ->
+                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        transaction.Rollback()
+                                        conn.Close()
+                                        return (ex.Message |> Error)
+                        }, evenStoreTimeout) 
+                    else Error "optimistic lock failure"    
+                        
                 

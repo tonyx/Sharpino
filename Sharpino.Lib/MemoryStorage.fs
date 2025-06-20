@@ -779,4 +779,16 @@ module MemoryStorage =
                 events =
                     
                 (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
-                (this:> IEventStore<string>).AddAggregateEventsMd streamEventId streamAggregateVersion streamAggregateName streamAggregateId metaData events    
+                (this:> IEventStore<string>).AddAggregateEventsMd streamEventId streamAggregateVersion streamAggregateName streamAggregateId metaData events
+                
+            member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd 
+                md
+                s1Version
+                s1name
+                s1EventId
+                s1AggregateId
+                s1Snapshot
+                (arg: List<EventId * List<string> * Version * Name * AggregateId>) =
+                    (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
+                    (this:> IEventStore<string>).MultiAddAggregateEventsMd md arg 
+                    

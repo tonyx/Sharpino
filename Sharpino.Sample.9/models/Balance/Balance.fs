@@ -28,7 +28,7 @@ module Balance =
                     return { this with Amount = this.Amount + amount }
                 }
                 
-        member this.FoundCourseCreation (courseId: Guid) =
+        member this.PayCourseCreationFee (courseId: Guid) =
             result {
                 let! sufficientFunds =
                     this.Amount >= courseCreationFee
@@ -42,7 +42,7 @@ module Balance =
                     }
             }
             
-        member this.FoundCourseCancellation (courseId: Guid) =
+        member this.PayCourseCancellationFee (courseId: Guid) =
             result {
                 let! sufficientFunds =
                     this.Amount >= courseDeletionFee

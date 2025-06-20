@@ -10,20 +10,20 @@ open Sharpino.Sample._9.BalanceEvents
 module BalanceCommands =
     type BalanceCommands =
         | AddAmount of decimal
-        | FoundCourseCreation of Guid
-        | FoundCourseCancellation of Guid
+        | PayCourseCreationFee of Guid
+        | PayCourseCancellationFee of Guid
         interface AggregateCommand<Balance, BalanceEvents> with
             member this.Execute (balance: Balance) =
                 match this with
                 | AddAmount amount ->
                     balance.AddAmount amount
                     |> Result.map (fun i -> (i, [AmountAdded amount]))
-                | FoundCourseCreation id ->
-                    balance.FoundCourseCreation id
-                    |> Result.map (fun i -> (i, [CourseCreationFounded id]))
-                | FoundCourseCancellation id ->
-                    balance.FoundCourseCancellation id
-                    |> Result.map (fun i -> (i, [CourseDeletionFounded id]))
+                | PayCourseCreationFee id ->
+                    balance.PayCourseCreationFee id
+                    |> Result.map (fun i -> (i, [CourseCreationFeePaid id]))
+                | PayCourseCancellationFee id ->
+                    balance.PayCourseCancellationFee id
+                    |> Result.map (fun i -> (i, [CourseCancellationFeePaid id]))
             member this.Undoer =
                 None
 

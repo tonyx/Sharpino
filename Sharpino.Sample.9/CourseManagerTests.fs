@@ -8,6 +8,8 @@ open Sharpino.Core
 open Sharpino
 open Sharpino.CommandHandler
 open Sharpino.Sample._9.BalanceEvents
+open Sharpino.Sample._9.Teacher
+open Sharpino.Sample._9.TeacherEvents
 open Sharpino.TestUtils
 open FsToolkit.ErrorHandling
 
@@ -24,16 +26,18 @@ open Sharpino.Sample._9.Balance
 
 let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
-let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore    
+let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore
+let pgTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> pgEventStore
 
 let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
 let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
 let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
+let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> memEventStore
 
 let instances =
     [
-        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, Balance.MkBalance 1000.0M)
-        (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, Balance.MkBalance 1000.0M)
+        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, pgTeacherViewer, Balance.MkBalance 1000.0M)
+        (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
     ]
 [<Tests>]
 let tests =
@@ -79,6 +83,13 @@ let tests =
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
+            
+            let teacher = Teacher.MkTeacher ("John")
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            
+            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            Expect.isOk assignTeacher "should be ok"
             
             let deleteCourse = courseManager.DeleteCourse course.Id
             Expect.isOk deleteCourse "should be ok"
@@ -191,6 +202,100 @@ let tests =
             
             let tryGetStudent = courseManager.GetStudent student.Id
             Expect.isError tryGetStudent "should be error"
+            
+        multipleTestCase "add a course and assign a teacher to that course - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let result = courseManager.GetCourse course.Id
+            Expect.isOk result "should be ok"
+            let retrievedCourse = result.OkValue
+            Expect.equal retrievedCourse.Id course.Id "should be equal"
+            Expect.equal retrievedCourse.Name course.Name "should be equal"
+            
+            let teacher = Teacher.MkTeacher ("John")
+            let addTeacher = courseManager.AddTeacher teacher
+            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            Expect.isOk assignTeacher "should be ok"
+            
+            let retrievedCourse = courseManager.GetCourse course.Id
+            Expect.isOk retrievedCourse "should be ok"
+            let retrievedCourse = retrievedCourse.OkValue
+            Expect.equal retrievedCourse.Teacher.Value teacher.Id "should be equal"
+            
+            let retrievedTeacher = courseManager.GetTeacher teacher.Id
+            Expect.isOk retrievedTeacher "should be ok"
+            let retrievedTeacher = retrievedTeacher.OkValue
+            Expect.equal retrievedTeacher.Courses.Length 1 "should be equal"
+        
+        multipleTestCase "can't delete a teacher when there are courses assigned to them - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()
+            let teacher = Teacher.MkTeacher ("John")
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let course = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            Expect.isOk assignTeacher "should be ok"
+            
+            let deleteTeacher = courseManager.DeleteTeacher teacher.Id
+            Expect.isError deleteTeacher "should be error"
+        
+        multipleTestCase "add and delete a techer - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()            
+            let teacher = Teacher.MkTeacher ("John")
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let result = courseManager.GetTeacher teacher.Id
+            Expect.isOk result "should be ok"
+            let retrievedTeacher = result.OkValue
+            Expect.equal retrievedTeacher.Id teacher.Id "should be equal"
+            Expect.equal retrievedTeacher.Name teacher.Name "should be equal"
+            
+            let deleteTeacher = courseManager.DeleteTeacher teacher.Id
+            Expect.isOk deleteTeacher "should be ok"
+            
+            let tryGetTeacher = courseManager.GetTeacher teacher.Id
+            Expect.isError tryGetTeacher "should be error"
+        
+        multipleTestCase "add a teacher to a course, then delete that course, and the teacher courses list will be decreased by 1 - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()            
+            let teacher = Teacher.MkTeacher ("John")
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let course = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            Expect.isOk assignTeacher "should be ok"
+            
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleteCourse "should be ok"
+            
+            let retrievedTeacher = courseManager.GetTeacher teacher.Id
+            Expect.isOk retrievedTeacher "should be ok"
+            let retrievedTeacher = retrievedTeacher.OkValue
+            Expect.equal retrievedTeacher.Courses.Length 0 "should be equal"
+            
+        multipleTestCase "should be able to delete a course when there is no teacher assigned to it - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()            
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleteCourse "should be ok"
+            
+            let tryGetCourse = courseManager.GetCourse course.Id
+            Expect.isError tryGetCourse "should be error"
+            
     ]
     |> testSequenced
     
