@@ -89,13 +89,13 @@ type CourseManager
                 return!
                     runDelete<Teacher, TeacherEvents, string> eventStore doNothingBroker id (fun teacher -> teacher.Courses.Length = 0)
             }         
-    member this.AssignTeacherToCourse (teacherId: Guid, courseId: Guid) =
+    member this.AddTeacherToCourse (teacherId: Guid, courseId: Guid) =
         result
             {
                 let! _, course = courseViewer courseId
                 let! _, teacher = teacherViewer teacherId
                 let assignTeacherToCourse = TeacherCommands.AddCourse course.Id
-                let assignCourseToTeacher = CourseCommands.SetTeacher teacher.Id
+                let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
                 return!
                     runTwoAggregateCommands<Teacher, TeacherEvents, Course, CourseEvents, string>
                         teacherId courseId eventStore doNothingBroker assignTeacherToCourse assignCourseToTeacher
@@ -127,21 +127,31 @@ type CourseManager
         result
             {
                 let! course = this.GetCourse id
-                let foundCourseDeletion = BalanceCommands.PayCourseCancellationFee id
+                let payCourseCancellationFees = BalanceCommands.PayCourseCancellationFee id
                 do!
                     course.Students.Length = 0
                     |> Result.ofBool "can't delete"
                 
-                match course.Teacher with
-                | Some teacherId ->
-                    let unsubscribeTeacherFromCourse =
-                        TeacherCommands.RemoveCourse id
-                    return!    
-                        runDeleteAndTwoAggregateCommandsMd<Course, CourseEvents, Balance, BalanceEvents, Teacher, TeacherEvents, string> eventStore doNothingBroker "md" id initialBalance.Id teacherId foundCourseDeletion unsubscribeTeacherFromCourse (fun course -> course.Students.Length = 0)
-                | _ ->
+                match course.Teachers with
+                | [] ->
                     return!
-                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker id initialBalance.Id foundCourseDeletion (fun course -> course.Students.Length = 0)
-                    
+                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
+                
+                | teacherIds ->
+                    let unsubscribeTeacherFromCourses: List<AggregateCommand<Teacher, TeacherEvents>> =
+                        teacherIds
+                        |> List.map (fun _ -> TeacherCommands.RemoveCourse id)
+                    return!    
+                        runDeleteAndTwoNAggregateCommandsMd<Course, CourseEvents, Balance, BalanceEvents, Teacher, TeacherEvents, string>
+                            eventStore
+                            doNothingBroker
+                            "metadata"
+                            id
+                            [initialBalance.Id]
+                            teacherIds
+                            [payCourseCancellationFees]
+                            unsubscribeTeacherFromCourses
+                            (fun course -> course.Students.Length = 0)
             }
             
     member this.DeleteStudent (id: Guid) =

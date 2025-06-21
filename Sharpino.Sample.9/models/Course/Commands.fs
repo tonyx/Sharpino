@@ -11,7 +11,7 @@ module CourseCommands =
     type CourseCommands =
         | AddStudent of Guid
         | RemoveStudent of Guid
-        | SetTeacher of Guid 
+        | AddTeacher of Guid 
         interface AggregateCommand<Course, CourseEvents> with
             member this.Execute (course: Course) =
                 match this with
@@ -21,8 +21,8 @@ module CourseCommands =
                 | RemoveStudent id ->
                     course.RemoveStudent id
                     |> Result.map (fun i -> (i, [CourseRemoved id]))
-                | SetTeacher id ->    
-                    course.SetTeacher id
+                | AddTeacher id ->    
+                    course.AddTeacher id
                     |> Result.map (fun i -> (i, [TeacherSet id]))     
             member this.Undoer =
                 None

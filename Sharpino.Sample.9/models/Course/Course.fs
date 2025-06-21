@@ -12,13 +12,13 @@ module rec Course =
             Name: string
             Id: Guid
             Students: List<Guid>
-            Teacher: Option<Guid>
+            Teachers: List<Guid>
             MaxNumberOfStudents: int
         }
         
         with
             static member MkCourse (name: string, maxNumberOfStudents: int) =
-                { Id = Guid.NewGuid(); Name = name; Students = List.empty; Teacher = None; MaxNumberOfStudents = maxNumberOfStudents }
+                { Id = Guid.NewGuid(); Name = name; Students = List.empty; Teachers = []; MaxNumberOfStudents = maxNumberOfStudents }
                     
             member this.AddStudent (studentId: Guid) =
                 result
@@ -34,14 +34,14 @@ module rec Course =
                                         Students = this.Students @ [studentId]
                             }
                     }
-            member this.SetTeacher (teacherId: Guid) =
+            member this.AddTeacher (teacherId: Guid) =
                 result
                     {
                         return
                             {
                                 this
                                     with
-                                        Teacher = Some teacherId
+                                        Teachers = this.Teachers @ [teacherId]
                             }
                     } 
                 
@@ -100,5 +100,5 @@ module rec Course =
                     Id = this.Id
                     Students = this.Students
                     MaxNumberOfStudents = this.MaxNumberOfStudents
-                    Teacher = None
+                    Teachers = []
                 }

@@ -91,7 +91,7 @@ let tests =
             let addTeacher = courseManager.AddTeacher teacher
             Expect.isOk addTeacher "should be ok"
             
-            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
             let deleteCourse = courseManager.DeleteCourse course.Id
@@ -220,13 +220,13 @@ let tests =
             
             let teacher = Teacher.MkTeacher ("John")
             let addTeacher = courseManager.AddTeacher teacher
-            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
             let retrievedCourse = courseManager.GetCourse course.Id
             Expect.isOk retrievedCourse "should be ok"
             let retrievedCourse = retrievedCourse.OkValue
-            Expect.equal retrievedCourse.Teacher.Value teacher.Id "should be equal"
+            Expect.equal retrievedCourse.Teachers.Head teacher.Id "should be equal"
             
             let retrievedTeacher = courseManager.GetTeacher teacher.Id
             Expect.isOk retrievedTeacher "should be ok"
@@ -242,7 +242,7 @@ let tests =
             let course = Course.MkCourse  ("Math", 10)
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
-            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
             let deleteTeacher = courseManager.DeleteTeacher teacher.Id
@@ -275,7 +275,7 @@ let tests =
             let course = Course.MkCourse  ("Math", 10)
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
-            let assignTeacher = courseManager.AssignTeacherToCourse (teacher.Id, course.Id)
+            let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
             let deleteCourse = courseManager.DeleteCourse course.Id
@@ -356,7 +356,88 @@ let tests =
             
             let retrieveByHistory = courseManager.GetHistoryCourse course.Id
             Expect.isOk retrieveByHistory "should be ok"
+         
+        multipleTestCase "add more teacher to a course and then, after deleting the course, verify that the teachers will not be part of the course anymore - Ok" instances <| fun (setUp, courseManager) ->
+            setUp ()            
+            let teacher1 = Teacher.MkTeacher ("John")
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher1
+            let teacher2 = Teacher.MkTeacher ("Jane")
+            let addTeacher = courseManager.AddTeacher teacher2
             
+            Expect.isOk addTeacher "should be ok"
+            let course = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            let assignTeacher1 = courseManager.AddTeacherToCourse (teacher1.Id, course.Id)
+            Expect.isOk assignTeacher1 "should be ok"
+            
+            let assignTeacher2 = courseManager.AddTeacherToCourse (teacher2.Id, course.Id)
+            Expect.isOk assignTeacher2 "should be ok"
+            
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isOk deleteCourse "should be ok"
+            
+            let tryGetCourse = courseManager.GetCourse course.Id
+            Expect.isError tryGetCourse "should be error"
+            
+            let retrievedTeacher1 = courseManager.GetTeacher teacher1.Id
+            Expect.isOk retrievedTeacher1 "should be ok"
+            let retrievedTeacher1 = retrievedTeacher1.OkValue
+            Expect.equal retrievedTeacher1.Courses.Length 0 "should be equal"
+            
+            let retrievedTeacher2 = courseManager.GetTeacher teacher2.Id
+            Expect.isOk retrievedTeacher2 "should be ok"
+            let retrievedTeacher2 = retrievedTeacher2.OkValue
+            Expect.equal retrievedTeacher2.Courses.Length 0 "should be equal"
+            
+        multipleTestCase "add more teacher to a course and also some students. Try to delete the course and will unable at it - Error " instances <| fun (setUp, courseManager) ->
+            setUp ()            
+            let teacher1 = Teacher.MkTeacher "John"
+            let courseManager = courseManager ()
+            let addTeacher1 = courseManager.AddTeacher teacher1
+            Expect.isOk addTeacher1 "should be ok"
+            let teacher2 = Teacher.MkTeacher "Jane"
+            let addTeacher2 = courseManager.AddTeacher teacher2
+            Expect.isOk addTeacher2 "should be ok"
+            
+            let student = Student.MkStudent ("Jack", 5)
+            let addStudent = courseManager.AddStudent student
+            Expect.isOk addStudent "should be ok"
+            
+            let course = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse course
+            Expect.isOk addCourse "should be ok"
+            
+            let subscrbribeToCourse = courseManager.SubscribeStudentToCourse student.Id course.Id
+            Expect.isOk subscrbribeToCourse "should be ok"
+            
+            let assignTeacher1 = courseManager.AddTeacherToCourse (teacher1.Id, course.Id)
+            Expect.isOk assignTeacher1 "should be ok"
+            
+            let assignTeacher2 = courseManager.AddTeacherToCourse (teacher2.Id, course.Id)
+            Expect.isOk assignTeacher2 "should be ok"
+            
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            Expect.isError deleteCourse "should be error"
+            
+            let tryGetCourse = courseManager.GetCourse course.Id
+            Expect.isOk tryGetCourse "should be Ok"
+            
+            let retrievedTeacher1 = courseManager.GetTeacher teacher1.Id
+            Expect.isOk retrievedTeacher1 "should be ok"
+            let retrievedTeacher1 = retrievedTeacher1.OkValue
+            Expect.equal retrievedTeacher1.Courses.Length 1 "should be equal"
+            
+            let retrievedTeacher2 = courseManager.GetTeacher teacher2.Id
+            Expect.isOk retrievedTeacher2 "should be ok"
+            let retrievedTeacher2 = retrievedTeacher2.OkValue
+            Expect.equal retrievedTeacher2.Courses.Length 1 "should be equal"
+            
+            let retrieveStudent = courseManager.GetStudent student.Id
+            Expect.isOk retrieveStudent "should be ok"
+            let retrieveStudent = retrieveStudent.OkValue
+            Expect.equal retrieveStudent.Courses.Length 1 "should be equal"
             
     ]
     |> testSequenced

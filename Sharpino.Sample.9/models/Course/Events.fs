@@ -15,7 +15,7 @@ module CourseEvents =
                 match this with
                 | CourseAdded id -> course.AddStudent id
                 | CourseRemoved id -> course.RemoveStudent id
-                | TeacherSet id -> course.SetTeacher id
+                | TeacherSet id -> course.AddTeacher id
        
         static member Deserialize x =
             jsonPSerializer.Deserialize<CourseEvents> x
