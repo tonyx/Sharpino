@@ -8,7 +8,6 @@ open FSharpPlus
 
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
-open Microsoft.VisualStudio.TestPlatform.ObjectModel.Adapter
 open Sharpino.Cache
 open Sharpino.Core
 open Sharpino.Storage
@@ -1164,17 +1163,6 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             runAggregateCommandMd<'A, 'E, 'F> aggregateId storage eventBroker Metadata.Empty command
     
-    // let inline foldCommands<'A, 'E when 'E:> Event<'A>>
-    //     (initialState: 'A)
-    //     (commands: List<AggregateCommand<'A, 'E>>) =
-    //         let folder (stateResult: Result<'A * List<'E>, string>) (command: AggregateCommand<'A,'E>) =
-    //             match stateResult with
-    //             | Error e -> Error e
-    //             | Ok (state, events) ->
-    //                 match command.Execute state with
-    //                 | Error e -> Error e
-    //                 | Ok (newState, newEvents) -> Ok (newState, events @ newEvents)
-    //         List.fold folder (Ok (initialState, [])) commands
     
      
     // the "force" version of running N Commands has been improved and so
