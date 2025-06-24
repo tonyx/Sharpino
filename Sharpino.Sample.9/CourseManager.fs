@@ -88,7 +88,8 @@ type CourseManager
                 let! teacher = this.GetTeacher id
                 return!
                     runDelete<Teacher, TeacherEvents, string> eventStore doNothingBroker id (fun teacher -> teacher.Courses.Length = 0)
-            }         
+            }
+            
     member this.AddTeacherToCourse (teacherId: Guid, courseId: Guid) =
         result
             {
@@ -100,6 +101,18 @@ type CourseManager
                     runTwoAggregateCommands<Teacher, TeacherEvents, Course, CourseEvents, string>
                         teacherId courseId eventStore doNothingBroker assignTeacherToCourse assignCourseToTeacher
             }        
+   
+    member this.AddTeacherToCourseConsideringIncompatibilities (teacherId: Guid, courseId: Guid, crossAggregatesConstraint) =
+        result
+            {
+                let! _, course = courseViewer courseId
+                let! _, teacher = teacherViewer teacherId
+                let assignTeacherToCourse = TeacherCommands.AddCourse course.Id
+                let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
+                return!
+                    runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<Teacher, TeacherEvents, Course, CourseEvents, string>
+                        teacherId courseId eventStore doNothingBroker "md" assignTeacherToCourse assignCourseToTeacher crossAggregatesConstraint
+            }
             
     member this.GetStudent (id: Guid) =
         result
@@ -172,3 +185,4 @@ type CourseManager
                 return!
                     runTwoAggregateCommands studentId courseId eventStore doNothingBroker addCourseToStudent addStudentToCourse
             }
+            

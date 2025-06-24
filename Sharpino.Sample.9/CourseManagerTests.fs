@@ -11,6 +11,7 @@ open Sharpino.CommandHandler
 open Sharpino.Sample._9.BalanceEvents
 open Sharpino.Sample._9.Teacher
 open Sharpino.Sample._9.TeacherEvents
+open Sharpino.StateView
 open Sharpino.TestUtils
 open FsToolkit.ErrorHandling
 
@@ -39,13 +40,25 @@ let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, Te
 
 let instances =
     [
-        (fun () -> setUp pgEventStore), fun () -> CourseManager (pgEventStore, pgStorageCourseViewer, pgStorageHistoryCourseViewer, pgStorageStudentViewer, pgStorageBalanceViewer, pgTeacherViewer, Balance.MkBalance 1000.0M)
+        (fun () -> setUp pgEventStore),
+        (fun () -> CourseManager
+                      (pgEventStore,
+                       pgStorageCourseViewer,
+                       pgStorageHistoryCourseViewer,
+                       pgStorageStudentViewer,
+                       pgStorageBalanceViewer,
+                       pgTeacherViewer,
+                       Balance.MkBalance 1000.0M)),
+        pgStorageCourseViewer,
+        pgStorageStudentViewer
+        
+                      
         // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageHistoryCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
     ]
 [<Tests>]
 let tests =
     testList "CourseManagerTests" [
-        multipleTestCase "check initial balance - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "check initial balance - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let courseManager = courseManager ()
             let balance = courseManager.Balance 
@@ -53,7 +66,7 @@ let tests =
             let balance = balance.OkValue
             Expect.equal balance.Amount 1000.0M "should be equal"
             
-        multipleTestCase "add and retrieve a student - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add and retrieve a student - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let student = Student.MkStudent ("John", 50)
             let courseManager = courseManager ()
@@ -65,7 +78,7 @@ let tests =
             Expect.equal retrievedStudent.Id student.Id "should be equal"
             Expect.equal retrievedStudent.Name student.Name "should be equal"
       
-        multipleTestCase "add a course will costs 100, verify it - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a course will costs 100, verify it - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -76,7 +89,7 @@ let tests =
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
         
-        multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -104,7 +117,7 @@ let tests =
             let tryGetCourse = courseManager.GetCourse course.Id
             Expect.isError tryGetCourse "should be error"
             
-        multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse ("Math", 10)
             let courseManager = courseManager ()
@@ -118,7 +131,7 @@ let tests =
             
         multipleTestCase "add a student add a course and subscribe the student to that course;
             verify the subscriptions;
-            verify that both course and student cannot be deleted - Ok" instances <| fun (setUp, courseManager) ->
+            verify that both course and student cannot be deleted - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             // given
             setUp ()
             let student = Student.MkStudent ("John", 5)
@@ -151,7 +164,7 @@ let tests =
             let tryDeleteCourse = courseManager.DeleteCourse course.Id
             Expect.isError tryDeleteCourse "should be error"
        
-        multipleTestCase "if a students exceeds the max number of courses, the subscription fails - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "if a students exceeds the max number of courses, the subscription fails - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             // given
             let student = Student.MkStudent ("John", 1)
@@ -188,7 +201,7 @@ let tests =
             let retrievedCourse2 = retrievedCourse2.OkValue
             Expect.equal retrievedCourse2.Students.Length 0 "should be equal"
          
-        multipleTestCase "add and delete a student - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add and delete a student - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let student = Student.MkStudent ("John", 5)
             let courseManager = courseManager ()
@@ -206,7 +219,7 @@ let tests =
             let tryGetStudent = courseManager.GetStudent student.Id
             Expect.isError tryGetStudent "should be error"
             
-        multipleTestCase "add a course and assign a teacher to that course - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a course and assign a teacher to that course - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -233,7 +246,7 @@ let tests =
             let retrievedTeacher = retrievedTeacher.OkValue
             Expect.equal retrievedTeacher.Courses.Length 1 "should be equal"
         
-        multipleTestCase "can't delete a teacher when there are courses assigned to them - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "can't delete a teacher when there are courses assigned to them - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let teacher = Teacher.MkTeacher ("John")
             let courseManager = courseManager ()
@@ -248,7 +261,7 @@ let tests =
             let deleteTeacher = courseManager.DeleteTeacher teacher.Id
             Expect.isError deleteTeacher "should be error"
         
-        multipleTestCase "add and delete a techer - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add and delete a techer - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()            
             let teacher = Teacher.MkTeacher ("John")
             let courseManager = courseManager ()
@@ -266,7 +279,7 @@ let tests =
             let tryGetTeacher = courseManager.GetTeacher teacher.Id
             Expect.isError tryGetTeacher "should be error"
         
-        multipleTestCase "add a teacher to a course, then delete that course, and the teacher courses list will be decreased by 1 - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add a teacher to a course, then delete that course, and the teacher courses list will be decreased by 1 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()            
             let teacher = Teacher.MkTeacher ("John")
             let courseManager = courseManager ()
@@ -286,7 +299,7 @@ let tests =
             let retrievedTeacher = retrievedTeacher.OkValue
             Expect.equal retrievedTeacher.Courses.Length 0 "should be equal"
             
-        multipleTestCase "should be able to delete a course when there is no teacher assigned to it - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "should be able to delete a course when there is no teacher assigned to it - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()            
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -299,7 +312,7 @@ let tests =
             let tryGetCourse = courseManager.GetCourse course.Id
             Expect.isError tryGetCourse "should be error"
         
-        multipleTestCase "create and retrieve a course - Ok"  instances <| fun (setUp, courseManager) ->
+        multipleTestCase "create and retrieve a course - Ok"  instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -311,7 +324,7 @@ let tests =
             Expect.equal retrievedCourse.Id course.Id "should be equal"
             Expect.equal retrievedCourse.Name course.Name "should be equal"
             
-        multipleTestCase "create and retrieve a course skipping cache - Ok"  instances <| fun (setUp, courseManager) ->
+        multipleTestCase "create and retrieve a course skipping cache - Ok"  instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -324,7 +337,7 @@ let tests =
             Expect.equal retrievedCourse.Id course.Id "should be equal"
             Expect.equal retrievedCourse.Name course.Name "should be equal"
             
-        multipleTestCase "even though a curse has been deleted, it can still be retrieved by the history state viewer its id - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "even though a curse has been deleted, it can still be retrieved by the history state viewer its id - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -339,7 +352,7 @@ let tests =
             let retrieveH = courseManager.GetHistoryCourse course.Id
             Expect.isOk retrieveH "should be Ok"
         
-        multipleTestCase "add and retrieve a course without the cache - Ok"   instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add and retrieve a course without the cache - Ok"   instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
@@ -357,7 +370,7 @@ let tests =
             let retrieveByHistory = courseManager.GetHistoryCourse course.Id
             Expect.isOk retrieveByHistory "should be ok"
          
-        multipleTestCase "add more teacher to a course and then, after deleting the course, verify that the teachers will not be part of the course anymore - Ok" instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add more teacher to a course and then, after deleting the course, verify that the teachers will not be part of the course anymore - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()            
             let teacher1 = Teacher.MkTeacher ("John")
             let courseManager = courseManager ()
@@ -391,7 +404,7 @@ let tests =
             let retrievedTeacher2 = retrievedTeacher2.OkValue
             Expect.equal retrievedTeacher2.Courses.Length 0 "should be equal"
             
-        multipleTestCase "add more teacher to a course and also some students. Try to delete the course and will unable at it - Error " instances <| fun (setUp, courseManager) ->
+        multipleTestCase "add more teacher to a course and also some students. Try to delete the course and will unable at it - Error " instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
             setUp ()            
             let teacher1 = Teacher.MkTeacher "John"
             let courseManager = courseManager ()
@@ -438,6 +451,88 @@ let tests =
             Expect.isOk retrieveStudent "should be ok"
             let retrieveStudent = retrieveStudent.OkValue
             Expect.equal retrieveStudent.Courses.Length 1 "should be equal"
+       
+        // starting deailing with cross aggregates invariants explicitly passed to command handler
+        multipleTestCase "Teacher John don't want to teach Math if student Jack is enrolled in that course and in literature as well - Error" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
+            setUp ()
+            let teacher = Teacher.MkTeacher "John"
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let math = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse math
+            Expect.isOk addCourse "should be ok"
+            
+            let literature = Course.MkCourse  ("Literature", 10)
+            let addLiterature = courseManager.AddCourse literature
+            Expect.isOk addLiterature "should be ok"
+            
+            let jack = Student.MkStudent ("Jack", 5)
+            let addStudent = courseManager.AddStudent jack
+            
+            let subscribeJackToMath = courseManager.SubscribeStudentToCourse jack.Id math.Id
+            Expect.isOk subscribeJackToMath "should be ok"
+            
+            let subscribeJackToLiterature = courseManager.SubscribeStudentToCourse jack.Id literature.Id
+            Expect.isOk subscribeJackToLiterature "should be ok"
+            
+            let crossAggregatesConstraint =
+                fun (_: Teacher, _: Course) ->
+                    result
+                        {
+                            let! (_, jack) = studentViewer jack.Id
+                            do!
+                                (not 
+                                     (jack.Courses |> List.exists (fun c -> c = literature.Id)
+                                      && (jack.Courses |> List.exists (fun c -> c = math.Id)))
+                                )
+                                |> Result.ofBool "constraint not met"
+                            return ()    
+                        }
+             
+            let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
+            
+            Expect.isError assignTeacher "should be error"
+            
+        multipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
+            setUp ()
+            let teacher = Teacher.MkTeacher "John"
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let math = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse math
+            Expect.isOk addCourse "should be ok"
+            
+            let literature = Course.MkCourse  ("Literature", 10)
+            let addLiterature = courseManager.AddCourse literature
+            Expect.isOk addLiterature "should be ok"
+            
+            let jack = Student.MkStudent ("Jack", 5)
+            let addStudent = courseManager.AddStudent jack
+            
+            let subscribeJackToMath = courseManager.SubscribeStudentToCourse jack.Id math.Id
+            Expect.isOk subscribeJackToMath "should be ok"
+            
+            //beware there is not literature subscribed
+            
+            let crossAggregatesConstraint =
+                fun (_: Teacher, _: Course) ->
+                    result
+                        {
+                            let! (_, jack) = studentViewer jack.Id
+                            do!
+                                (not 
+                                     (jack.Courses |> List.exists (fun c -> c = literature.Id)
+                                      && (jack.Courses |> List.exists (fun c -> c = math.Id)))
+                                )
+                                |> Result.ofBool "constraint not met"
+                            return ()    
+                        }
+             
+            let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
+            
+            Expect.isOk assignTeacher "should be error"
             
     ]
     |> testSequenced
