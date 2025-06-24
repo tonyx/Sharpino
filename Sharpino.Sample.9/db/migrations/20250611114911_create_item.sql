@@ -128,7 +128,7 @@ RETURNS int
 LANGUAGE plpgsql
 AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
     event_id integer;
 BEGIN
     event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
@@ -136,6 +136,37 @@ BEGIN
 INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION insert_enhanced_01_item_event_and_return_id(
+       event_in text,
+       event_id_check integer,
+       aggregate_id uuid,
+       md text
+   )
+RETURNS int
+LANGUAGE plpgsql      
+AS $$       
+       
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN 
+    event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
+             
+    IF (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check THEN
+        INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
+        VALUES(aggregate_id, event_id)
+            RETURNING id INTO inserted_id;
+    ELSE    
+        ROLLBACK;
+        return -1;
+    END IF;
+    
+return event_id;
+COMMIT;
+
 END;
 $$;
 
