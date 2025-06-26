@@ -72,6 +72,38 @@ $$;
 
 
 --
+-- Name: insert_enhanced_01_seatrow_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_seatrow_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_seatrow_event_and_return_id(event_in, p_aggregate_id, md);
+
+INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_seatrow WHERE aggregate_id = p_aggregate_id) = last_event_id
+    RETURNING id INTO inserted_id;
+
+IF inserted_id = -1 THEN
+        ROLLBACK;
+return -1;
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
+$$;
+
+
+--
 -- Name: insert_md_01_seatrow_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 

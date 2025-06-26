@@ -30,7 +30,8 @@ CREATE TABLE public.snapshots_01_site (
                                           snapshot text NOT NULL,
                                           event_id integer, -- the initial snapshot has no event_id associated so it can be null
                                           aggregate_id uuid NOT NULL,
-                                          "timestamp" timestamp without time zone NOT NULL
+                                          "timestamp" timestamp without time zone NOT NULL,
+                                          is_deleted boolean NOT NULL DEFAULT false
 );
 
 ALTER TABLE ONLY public.events_01_site
@@ -139,6 +140,38 @@ END;
 $$;
 
 
+CREATE OR REPLACE FUNCTION insert_enhanced_01_site_aggregate_event_and_return_id(
+       IN event_in text,
+       IN last_event_id integer,
+       IN p_aggregate_id uuid,
+       IN md text
+   )
+RETURNS int
+LANGUAGE plpgsql      
+AS $$       
+       
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN 
+    event_id := insert_md_01_site_event_and_return_id(event_in, p_aggregate_id, md);
+
+INSERT INTO aggregate_events_01_site(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_site WHERE aggregate_id = p_aggregate_id) = last_event_id
+    RETURNING id INTO inserted_id;
+
+IF inserted_id = -1 THEN
+        ROLLBACK;
+return -1;
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+$$;
+    
 
 -- migrate:down
 

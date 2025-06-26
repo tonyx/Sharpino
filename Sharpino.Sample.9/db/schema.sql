@@ -17,26 +17,6 @@ SET row_security = off;
 
 
 --
--- Name: insert_01_balance_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_balance_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_balance_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_balance(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
---
 -- Name: insert_01_balance_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -49,26 +29,6 @@ BEGIN
 INSERT INTO events_01_balance(event, aggregate_id, timestamp)
 VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_01_course_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_course_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_course_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
 END;
 $$;
 
@@ -128,26 +88,6 @@ $$;
 
 
 --
--- Name: insert_01_reservations_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_reservations_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_reservations_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_reservations(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
---
 -- Name: insert_01_reservations_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -160,26 +100,6 @@ BEGIN
 INSERT INTO events_01_reservations(event, aggregate_id, timestamp)
 VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_01_student_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_student_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_student_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
 END;
 $$;
 
@@ -202,26 +122,6 @@ $$;
 
 
 --
--- Name: insert_01_teacher_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_teacher_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_teacher_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_teacher(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
---
 -- Name: insert_01_teacher_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -239,40 +139,214 @@ $$;
 
 
 --
--- Name: insert_enhanced_01_item_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_enhanced_01_balance_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_enhanced_01_item_event_and_return_id(event_in text, event_id_check integer, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_enhanced_01_balance_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 
 DECLARE
-inserted_id integer;
+    inserted_id integer;
     event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
 BEGIN
-    event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
+    event_id := insert_md_01_balance_event_and_return_id(event_in, p_aggregate_id, md);
 
-    IF (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check THEN
-        INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
-        VALUES(aggregate_id, event_id)
-            RETURNING id INTO inserted_id;
-    ELSE
-        ROLLBACK;
-        return -1;
-    END IF;
+INSERT INTO aggregate_events_01_balance(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_balance WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+    RETURNING id INTO inserted_id;
 
---     inserted_id := event_id_check;
+IF inserted_id = -1 OR NOT FOUND THEN
+--     ROLLBACK;
+    return -1;
+END IF;
 
---     WHERE (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check;
---     RETURNING id INTO inserted_id;
---     IF inserted_id IS NULL THEN
---         ROLLBACK;
---         return -1;
---     END IF;
 return event_id;
-COMMIT;
 
+COMMIT;
 END;
+
+$$;
+
+
+--
+-- Name: insert_enhanced_01_course_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_course_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+BEGIN
+    event_id := insert_md_01_course_event_and_return_id(event_in, p_aggregate_id, md);
+
+INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_course WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+    RETURNING id INTO inserted_id;
+
+IF inserted_id = -1 OR NOT FOUND THEN
+--         ROLLBACK;
+        return -1;
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
+$$;
+
+
+--
+-- Name: insert_enhanced_01_item_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_item_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+--     max_id integer := (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id);
+    max_id integer := (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id);
+BEGIN
+
+-- IF (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id THEN
+-- IF (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id) = null THEN
+
+IF (max_id = adjusted_last_event_id) THEN
+ event_id := insert_md_01_item_event_and_return_id(event_in, p_aggregate_id, md);
+ INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
+ VALUES(p_aggregate_id, event_id) RETURNING id INTO inserted_id;
+END IF;
+
+-- INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
+-- SELECT p_aggregate_id, event_id
+--     WHERE (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+--     RETURNING id INTO inserted_id;
+
+--     IF inserted_id = -1 OR NOT FOUND THEN
+-- --         ROLLBACK;
+--          return -1;
+-- END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
+$$;
+
+
+--
+-- Name: insert_enhanced_01_reservations_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_reservations_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+    max_id integer := (SELECT MAX(id) FROM events_01_reservations WHERE aggregate_id = p_aggregate_id);
+BEGIN
+IF (max_id = adjusted_last_event_id) THEN
+ event_id := insert_md_01_reservations_event_and_return_id(event_in, p_aggregate_id, md);
+ INSERT INTO aggregate_events_01_reservations(aggregate_id, event_id)
+ VALUES(p_aggregate_id, event_id) RETURNING id INTO inserted_id;
+END IF;
+
+
+-- SELECT p_aggregate_id, event_id
+--     WHERE (SELECT MAX(id) FROM aggregate_events_01_reservations WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+--     RETURNING id INTO inserted_id;
+--
+-- IF inserted_id = -1 OR NOT FOUND THEN
+-- --         ROLLBACK;
+--         return -1;
+-- END IF;
+
+return event_id;
+
+COMMIT;
+END;
+$$;
+
+
+--
+-- Name: insert_enhanced_01_student_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_student_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+BEGIN
+    event_id := insert_md_01_student_event_and_return_id(event_in, p_aggregate_id, md);
+
+INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_student WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+    RETURNING id INTO inserted_id;
+
+IF inserted_id = -1 OR NOT FOUND THEN
+--         ROLLBACK;
+        return -1;
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
+$$;
+
+
+--
+-- Name: insert_enhanced_01_teacher_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_teacher_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+BEGIN
+    event_id := insert_md_01_teacher_event_and_return_id(event_in, p_aggregate_id, md);
+
+INSERT INTO aggregate_events_01_teacher(aggregate_id, event_id)
+SELECT p_aggregate_id, event_id
+    WHERE (SELECT MAX(id) FROM aggregate_events_01_teacher WHERE aggregate_id = p_aggregate_id) = last_event_id
+    RETURNING id INTO inserted_id;
+
+IF inserted_id = -1 OR NOT FOUND THEN
+--         ROLLBACK;
+        return -1;
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
 $$;
 
 

@@ -1360,8 +1360,14 @@ module CommandHandler =
         =
             let commands = fun () ->
                 result {
+                    
                     let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
                     let! eventId2, state2 = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    
+                    Threading.Thread.Sleep(3000)
+                    
+                    printf "XXX: eventId1 %A\n" eventId1
+                    printf "XXX: eventId2 %A\n" eventId2
                     
                     let! newState1, events1 =
                         state1
@@ -1370,17 +1376,18 @@ module CommandHandler =
                     let! newState2, events2 =
                         state2
                         |> command2.Execute    
-                    
+                   
                     let! newLastStateIdsList =
                         eventStore.MultiAddAggregateEventsMd
                             md 
                             [
                                 (eventId1, (events1 |>> _.Serialize), 'A1.Version, 'A1.StorageName, aggregateId1)
-                                (eventId2, (events2 |>> _.Serialize), 'A2.Version, 'A2.StorageName, aggregateId2)
+                                (99, (events2 |>> _.Serialize), 'A2.Version, 'A2.StorageName, aggregateId2)
                             ]
+                    printf "supposed to be here???\n"        
                     AggregateCache<'A1, 'F>.Instance.Memoize2 (newState1 |> Ok) ((newLastStateIdsList.[0] |> List.last, aggregateId1))
                     AggregateCache<'A2, 'F>.Instance.Memoize2 (newState2 |> Ok) ((newLastStateIdsList.[1] |> List.last, aggregateId2))
-                   
+                    
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
                     

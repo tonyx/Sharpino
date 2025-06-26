@@ -139,35 +139,44 @@ return event_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION insert_enhanced_01_item_event_and_return_id(
-       event_in text,
-       event_id_check integer,
-       aggregate_id uuid,
-       md text
+CREATE OR REPLACE FUNCTION insert_enhanced_01_item_aggregate_event_and_return_id(
+       IN event_in text,
+       IN last_event_id integer,
+       IN p_aggregate_id uuid,
+       IN md text
    )
 RETURNS int
 LANGUAGE plpgsql      
 AS $$       
        
 DECLARE
-inserted_id integer;
+    inserted_id integer;
     event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+    max_id integer := (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id);
 BEGIN 
-    event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
-             
-    IF (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check THEN
-        INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
-        VALUES(aggregate_id, event_id)
-            RETURNING id INTO inserted_id;
-    ELSE    
-        ROLLBACK;
-        return -1;
-    END IF;
-    
-return event_id;
-COMMIT;
 
+IF (max_id = adjusted_last_event_id) THEN
+ event_id := insert_md_01_item_event_and_return_id(event_in, p_aggregate_id, md);
+ INSERT INTO aggregate_events_01_item(aggregate_id, event_id)       
+ VALUES(p_aggregate_id, event_id) RETURNING id INTO inserted_id;
+END IF;        
+
+-- INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
+-- SELECT p_aggregate_id, event_id
+--     WHERE (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+--     RETURNING id INTO inserted_id;
+
+--     IF inserted_id = -1 OR NOT FOUND THEN
+-- --         ROLLBACK;
+--          return -1;
+-- END IF;
+
+return event_id;
+
+COMMIT;
 END;
+
 $$;
 
 -- migrate:down

@@ -1095,24 +1095,37 @@ module PgStorage =
                         Async.RunSynchronously
                             (async {
                                 let result =
-                                    if checks then
+                                    // if checks then
+                                    if true then
                                         try
                                             let cmdList = 
                                                 arg 
                                                 |>>
-                                                    fun (_, events, version,  name, aggregateId) ->
+                                                    fun (lastEventId, events, version,  name, aggregateId) ->
                                                         let stream_name = version + name
                                                         events
                                                         |>> 
                                                             fun event ->
-                                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
-                                                                (
-                                                                    command.Parameters.AddWithValue("event", event ) |> ignore
-                                                                    command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                                    command.Parameters.AddWithValue("md", md ) |> ignore
-                                                                    let result = command.ExecuteScalar() 
-                                                                    result :?> int
-                                                                )
+                                                                let command = new NpgsqlCommand(sprintf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);" stream_name, conn)
+                                                                printf "LAST EVENT ID:: %A\n" lastEventId
+                                                                printf "stream name %s\n" stream_name
+                                                                
+                                                                command.Parameters.AddWithValue("event", event ) |> ignore
+                                                                command.Parameters.AddWithValue("@last_event_id", lastEventId ) |> ignore
+                                                                command.Parameters.AddWithValue("@p_aggregate_id", aggregateId ) |> ignore
+                                                                command.Parameters.AddWithValue("md", md ) |> ignore
+                                                                let result = command.ExecuteScalar() 
+                                                                result :?> int
+
+                                                                
+                                                                // let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
+                                                                // (
+                                                                //     command.Parameters.AddWithValue("event", event ) |> ignore
+                                                                //     command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
+                                                                //     command.Parameters.AddWithValue("md", md ) |> ignore
+                                                                //     let result = command.ExecuteScalar() 
+                                                                //     result :?> int
+                                                                // )
                                                 
                                             transaction.Commit()
                                             cmdList |> Ok
@@ -1357,9 +1370,11 @@ module PgStorage =
                     
                     let lastStreamEventId =
                         (this :> IEventStore<string>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
+                        
+                    let lastStreamEventId' = if (lastStreamEventId.IsNone) then 0 else lastStreamEventId.Value
                     
                     let stream_name = streamAggregateVersion + streamAggregateName
-                    let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
+                    // let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                     
                     if
                         ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) &&
@@ -1369,6 +1384,7 @@ module PgStorage =
                                 async {
                                     let conn = new NpgsqlConnection(connection)
                                     conn.Open()
+                                    let command = (sprintf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);" stream_name)
                                     let transaction = conn.BeginTransaction()
                                     try
                                         let ids =
@@ -1378,7 +1394,8 @@ module PgStorage =
                                                     fun x ->
                                                         let command' = new NpgsqlCommand(command, conn)
                                                         command'.Parameters.AddWithValue("event", x ) |> ignore
-                                                        command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId ) |> ignore
+                                                        command'.Parameters.AddWithValue("@last_event_id", lastStreamEventId' ) |> ignore
+                                                        command'.Parameters.AddWithValue("@p_aggregate_id", streamAggregateId ) |> ignore
                                                         command'.Parameters.AddWithValue("md", metaData ) |> ignore
                                                         let result = command'.ExecuteScalar() 
                                                         result :?> int

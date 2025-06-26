@@ -3,7 +3,9 @@ module Sharpino.Sample._9.Test
 open Expecto
 open ItemManager
 open ItemManager.Common
+open Sharpino.Cache
 open Sharpino.CommandHandler
+open Sharpino.Commons
 open Sharpino.Sample._9.Events
 open Sharpino.Sample._9.Item
 open Sharpino.TestUtils
@@ -127,6 +129,181 @@ let tests =
     ]
     |> testSequenced
     
-    
+[<Tests>]
+let optimisticLockTests  =
+    testList "optimistic lock tests" [
+        testCase "no events in between so otmistic lock is ok - Ok" <| fun _ ->
+            setUp pgEventStore
+            let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+            let item = Item.MkItem ("name", "description")
+            let addItem = itemManager.AddItem item
+            Expect.isOk addItem "should be ok"
+            
+            let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
+            let addReservation = itemManager.AddReservation reservation
+            let retrievedItem = itemManager.GetItem item.Id |> Result.get
+            Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
+            
+            let closeReservation =
+                async {
+                    let result = itemManager.CloseItemInReservation reservation.Id item.Id
+                    return result
+                }
+                |> Async.StartAsTask
+           
+            // let (eventId, item) = pgStorageItemViewer item.Id |> Result.get
+            // let (eventId2, _) = pgStorageReservationViewer reservation.Id |> Result.get
+            //
+            // let sneakItemEventInBetween =
+            //     ItemEvent.Pinged
+            //     |> jsonPSerializer.Serialize
+            // let sneakItemEventInBetween2 =
+            //     ReservationEvents.Pinged
+            //     |> jsonPSerializer.Serialize
+           
+            // let sneakEvent =
+            //     pgEventStore.AddAggregateEventsMd eventId Item.Version Item.StorageName item.Id "intruder" [sneakItemEventInBetween]
+            // let sneakEvent2 =
+            //     pgEventStore.AddAggregateEventsMd eventId2 Reservation.Reservation.Version Reservation.Reservation.StorageName reservation.Id "intruder" [sneakItemEventInBetween2]
+           
+            System.Threading.Thread.Sleep(7000)
+            let retrieveReservation = itemManager.GetReservation reservation.Id
+            printf "reservation %A\n" retrieveReservation
+            Expect.isOk retrieveReservation "should be ok"
+           
+            let itemsInReservation = retrieveReservation.OkValue.Reservations
+            Expect.isTrue (itemsInReservation |> List.forall _.IsClosed) "should be false"
+            
+        testCase "I instrument the runTwoAggregateCommandsMd with delays so I can
+        add events in between expecting optimistic lock to fail 1 - Ok" <| fun _ ->
+            setUp pgEventStore
+            let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+            let item = Item.MkItem ("name", "description")
+            let addItem = itemManager.AddItem item
+            Expect.isOk addItem "should be ok"
+            
+            let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
+            let addReservation = itemManager.AddReservation reservation
+            let retrievedItem = itemManager.GetItem item.Id |> Result.get
+            Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
+            
+            let closeReservation =
+                async {
+                    let result = itemManager.CloseItemInReservation reservation.Id item.Id
+                    return result
+                }
+                |> Async.StartAsTask
+           
+            let (eventId, item) = pgStorageItemViewer item.Id |> Result.get
+            let (eventId2, _) = pgStorageReservationViewer reservation.Id |> Result.get
+            
+            let sneakItemEventInBetween =
+                ItemEvent.Pinged
+                |> jsonPSerializer.Serialize
+            let sneakItemEventInBetween2 =
+                ReservationEvents.Pinged
+                |> jsonPSerializer.Serialize
+           
+            let sneakEvent =
+               pgEventStore.AddAggregateEventsMd eventId Item.Version Item.StorageName item.Id "intruder" [sneakItemEventInBetween]
+            // let sneakEvent2 =
+            //     pgEventStore.AddAggregateEventsMd eventId2 Reservation.Reservation.Version Reservation.Reservation.StorageName reservation.Id "intruder" [sneakItemEventInBetween2]
+           
+            System.Threading.Thread.Sleep(7000)
+            let retrieveReservation = itemManager.GetReservation reservation.Id
+            printf "reservation %A\n" retrieveReservation
+            Expect.isOk retrieveReservation "should be ok"
+           
+            let itemsInReservation = retrieveReservation.OkValue.Reservations
+            Expect.isFalse (itemsInReservation |> List.forall _.IsClosed) "should be false"
+        
+        ftestCase "I instrument the runTwoAggregateCommandsMd with delays so I can
+        add events in between expecting optimistic lock to fail 2 - Ok" <| fun _ ->
+            setUp pgEventStore
+            let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+            let item = Item.MkItem ("name", "description")
+            let addItem = itemManager.AddItem item
+            Expect.isOk addItem "should be ok"
+            
+            let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
+            let addReservation = itemManager.AddReservation reservation
+            let retrievedItem = itemManager.GetItem item.Id |> Result.get
+            Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
+            
+            let closeReservation =
+                async {
+                    let result = itemManager.CloseItemInReservation reservation.Id item.Id
+                    return result
+                }
+                |> Async.StartAsTask
+           
+            let (eventId, item) = pgStorageItemViewer item.Id |> Result.get
+            let (eventId2, _) = pgStorageReservationViewer reservation.Id |> Result.get
+            
+            let sneakItemEventInBetween =
+                ItemEvent.Pinged
+                |> jsonPSerializer.Serialize
+            let sneakItemEventInBetween2 =
+                ReservationEvents.Pinged
+                |> jsonPSerializer.Serialize
+           
+            // let sneakEvent =
+            //    pgEventStore.AddAggregateEventsMd eventId Item.Version Item.StorageName item.Id "intruder" [sneakItemEventInBetween]
+            let sneakEvent2 =
+                pgEventStore.AddAggregateEventsMd eventId2 Reservation.Reservation.Version Reservation.Reservation.StorageName reservation.Id "intruder" [sneakItemEventInBetween2]
+           
+            System.Threading.Thread.Sleep(7000)
+            let retrieveReservation = itemManager.GetReservation reservation.Id
+            printf "reservation %A\n" retrieveReservation
+            Expect.isOk retrieveReservation "should be ok"
+           
+            let itemsInReservation = retrieveReservation.OkValue.Reservations
+            Expect.isFalse (itemsInReservation |> List.forall _.IsClosed) "should be false"
+            
+        testCase "I make sure that the opt lock check works also if the event stream is empty - Ok" <| fun _ ->
+            setUp pgEventStore
+            let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+            let item = Item.MkItem ("name", "description")
+            let addItem = itemManager.AddItem item
+            Expect.isOk addItem "should be ok"
+            
+            let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
+            let addReservation = itemManager.AddReservation reservation
+            let retrievedItem = itemManager.GetItem item.Id |> Result.get
+            
+            Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
+            let closeReservation =
+                async {
+                    let result = itemManager.CloseItemInReservation reservation.Id item.Id
+                    return result
+                }
+                |> Async.StartAsTask
+            
+            let (eventId, _) = pgStorageReservationViewer reservation.Id |> Result.get
+            printf "EventId %A\n" eventId
+            
+            let sneakItemEventInBetween =
+                ReservationEvents.Pinged
+                |> jsonPSerializer.Serialize
+                
+            let sneakEvent =
+                pgEventStore.AddAggregateEventsMd eventId Reservation.Reservation.Version Reservation.Reservation.StorageName reservation.Id "intruder" [sneakItemEventInBetween]
+                
+                
+            System.Threading.Thread.Sleep(3000)
+            
+            let retrieveReservation = itemManager.GetReservation reservation.Id
+            Expect.isOk retrieveReservation "should be ok"
+           
+            let itemsInReservation = retrieveReservation.OkValue.Reservations
+            Expect.isFalse (itemsInReservation |> List.forall _.IsClosed) "should be false"
+            
+        // ftestCase "just load the item - Ok " <| fun _ ->
+        //     let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+        //     let reservation = itemManager.GetReservation (System.Guid.Parse "fd919a93-179e-4c0d-9fc4-acb1794a1587")
+        //     printf "XXX reservation %A\n" reservation
+                 
+    ]
+    |> testSequenced
     
         

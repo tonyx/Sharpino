@@ -45,6 +45,8 @@ module Reservation =
                     return { this with Reservations = newReservations }
                 }
                 
+        member this.Ping () =
+            this |> Ok
                 
         static member Version = "_01"
         static member StorageName = "_reservations"

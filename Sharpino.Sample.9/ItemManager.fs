@@ -63,8 +63,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             let! itemBelongsToReservationAndIsOpen =
                 reservation.Reservations
                 |> List.exists _.IsOpen
-                |>
-                Result.ofBool "Item does not belong to reservation or is already closed"
+                |> Result.ofBool "Item does not belong to reservation or is already closed"
         
             let decrementCounter = ItemCommands.DecrementReferenceCounter 1
             let closeItem = ReservationCommands.CloseItem item.Id

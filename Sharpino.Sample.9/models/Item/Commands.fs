@@ -10,6 +10,7 @@ module Commands =
             | ChangeDescription of string
             | DecrementReferenceCounter of int
             | IncrementReferenceCounter of int
+            | Ping
             interface AggregateCommand<Item, ItemEvent> with
                 member this.Execute (item: Item) =
                     match this with
@@ -25,5 +26,8 @@ module Commands =
                     | IncrementReferenceCounter i ->
                         item.IncrementReferenceCounter i
                         |> Result.map (fun x -> (x, [ReferenceCounterIncremented i] ))
+                    | Ping ->
+                        item.Ping ()
+                        |> Result.map (fun x -> (x, [Pinged] ))    
                 member this.Undoer =
                     None        

@@ -4,6 +4,8 @@ open System
 open Sharpino
 open Sharpino.Cache
 open Sharpino.Core
+open Sharpino.Sample._9
+open Sharpino.Sample._9.Reservation
 open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.Course
 open Sharpino.Sample._9.Item
@@ -20,6 +22,7 @@ module Common =
     let connection =
         "Server=127.0.0.1;"+
         "Database=sharpino_item;" +
+        "Include Error Detail=True;"+
         "User Id=safe;"+
         $"Password={password}";
 
@@ -37,7 +40,13 @@ module Common =
         eventStore.ResetAggregateStream Balance.Version Balance.StorageName
         eventStore.Reset Teacher.Version Teacher.StorageName
         eventStore.ResetAggregateStream Teacher.Version Teacher.StorageName
+        eventStore.Reset Reservation.Version Reservation.StorageName
         AggregateCache<Item, string>.Instance.Clear()
+        AggregateCache<Reservation, string>.Instance.Clear()
+        AggregateCache<Balance, string>.Instance.Clear()
+        AggregateCache<Course, string>.Instance.Clear()
+        AggregateCache<Student, string>.Instance.Clear()
+        AggregateCache<Teacher, string>.Instance.Clear()
 
     let inline getHistoryAggregateStorageFreshStateViewer<'A, 'E, 'F
         when 'A :> Aggregate<'F> 

@@ -9,13 +9,15 @@ module Events =
         | ChangedDescription of string
         | ReferenceCounterDecremented of int
         | ReferenceCounterIncremented of int
+        | Pinged
         interface Event<Item> with
             member this.Process (item: Item) =
                 match this with
                 | Renamed name -> item.Rename name
                 | ChangedDescription description -> item.ChangeDescription description
                 | ReferenceCounterDecremented i -> item.DecrementReferenceCounter i
-                | ReferenceCounterIncremented i -> item.IncrementReferenceCounter i 
+                | ReferenceCounterIncremented i -> item.IncrementReferenceCounter i
+                | Pinged -> item.Ping ()
             
         static member Deserialize x =
             jsonPSerializer.Deserialize<ItemEvent> x

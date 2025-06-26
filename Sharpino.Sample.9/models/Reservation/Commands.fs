@@ -11,11 +11,15 @@ open Sharpino.Sample._9.ReservationEvents
 module ReservationCommands =
     type ReservationCommands =
         | CloseItem of Guid
+        | Ping
             interface AggregateCommand<Reservation.Reservation, ReservationEvents> with
                 member this.Execute (reservation: Reservation.Reservation) =
                     match this with
                     | CloseItem id ->
                         reservation.CloseItem id
                         |> Result.map (fun x -> (x, [ItemClosed id]))
+                    | Ping ->
+                        reservation.Ping ()
+                        |> Result.map (fun x -> (x, [Pinged]))    
                 member this.Undoer =
                     None

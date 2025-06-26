@@ -51,6 +51,8 @@ module Item =
                                 with ReferencesCounter = this.ReferencesCounter - i
                         }
                 }
+        member this.Ping () =
+            this |> Ok
             
         static member Version = "_01"
         static member StorageName = "_item"

@@ -98,27 +98,6 @@ return inserted_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION insert_01_reservations_aggregate_event_and_return_id(
-    IN event_in text,
-    IN aggregate_id uuid 
-)
-RETURNS int
-    
-LANGUAGE plpgsql
-AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_reservations_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_reservations(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
 CREATE OR REPLACE FUNCTION insert_md_01_reservations_aggregate_event_and_return_id(
     IN event_in text,
     IN aggregate_id uuid,
@@ -139,6 +118,46 @@ VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION insert_enhanced_01_reservations_aggregate_event_and_return_id(
+    IN event_in text,
+    IN last_event_id integer,
+    IN p_aggregate_id uuid,
+    IN md text   
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
+    max_id integer := (SELECT MAX(id) FROM events_01_reservations WHERE aggregate_id = p_aggregate_id);                                                                                           
+BEGIN 
+IF (max_id = adjusted_last_event_id) THEN
+ event_id := insert_md_01_reservations_event_and_return_id(event_in, p_aggregate_id, md);
+ INSERT INTO aggregate_events_01_reservations(aggregate_id, event_id)
+ VALUES(p_aggregate_id, event_id) RETURNING id INTO inserted_id;
+END IF;
+
+
+-- SELECT p_aggregate_id, event_id
+--     WHERE (SELECT MAX(id) FROM aggregate_events_01_reservations WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
+--     RETURNING id INTO inserted_id;
+-- 
+-- IF inserted_id = -1 OR NOT FOUND THEN
+-- --         ROLLBACK;
+--         return -1;
+-- END IF; 
+
+return event_id;
+
+COMMIT;
+END;
+$$;
+
 
 -- migrate:down
 
