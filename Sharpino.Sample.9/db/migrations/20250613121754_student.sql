@@ -131,19 +131,14 @@ AS $$
 DECLARE
     inserted_id integer;
     event_id integer;
-    adjusted_last_event_id integer := case when last_event_id = 0 then null else last_event_id end;
-BEGIN 
+    max_id integer := (SELECT MAX(id) FROM events_01_student WHERE aggregate_id = p_aggregate_id);
+BEGIN
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
     event_id := insert_md_01_student_event_and_return_id(event_in, p_aggregate_id, md);
-
-INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_student WHERE aggregate_id = p_aggregate_id) = adjusted_last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 OR NOT FOUND THEN
---         ROLLBACK;
-        return -1;
-END IF;
+    INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
+    VALUES(p_aggregate_id, event_id);
+END IF;        
 
 return event_id;
 

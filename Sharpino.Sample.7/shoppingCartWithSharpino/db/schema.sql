@@ -47,7 +47,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_cart(event, aggregate_id, timestamp)
-VALUES(event_in::TEXT, aggregate_id,  now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -84,7 +84,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_good(event, aggregate_id, timestamp)
-VALUES(event_in::TEXT, aggregate_id,  now()) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -119,17 +119,15 @@ CREATE FUNCTION public.insert_enhanced_01_cart_aggregate_event_and_return_id(eve
 DECLARE
 inserted_id integer;
     event_id integer;
+--     max_id integer := (SELECT MAX(id) FROM events_01_cart WHERE aggregate_id = p_aggregate_id);
+    max_id integer := (SELECT COALESCE(MAX(id), 0) FROM events_01_cart WHERE aggregate_id = p_aggregate_id);
 BEGIN
+
+-- IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
+IF (max_id = last_event_id) THEN
     event_id := insert_md_01_cart_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events_01_cart(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_cart WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -151,17 +149,16 @@ CREATE FUNCTION public.insert_enhanced_01_good_aggregate_event_and_return_id(eve
 DECLARE
 inserted_id integer;
     event_id integer;
+--     max_id integer := (SELECT MAX(id) FROM events_01_good WHERE aggregate_id = p_aggregate_id);
+    max_id integer :=   (SELECT COALESCE(MAX(id), 0) FROM events_01_cart WHERE aggregate_id = p_aggregate_id);
+--     max_id integer := SELECT COALESCE(MAX(id), 0)::integer FROM events_01_cart WHERE aggregate_id = p_aggregate_id;
 BEGIN
+
+-- IF ((max_id is null and last_event_id = 0) or  (max_id = last_event_id)) THEN
+IF (max_id = last_event_id) THEN
     event_id := insert_md_01_good_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events_01_good(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_good WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -203,7 +200,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_cart(event, aggregate_id, timestamp, md)
-VALUES(event_in::TEXT, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -240,7 +237,7 @@ DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_good(event, aggregate_id, timestamp, md)
-VALUES(event_in::TEXT, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;

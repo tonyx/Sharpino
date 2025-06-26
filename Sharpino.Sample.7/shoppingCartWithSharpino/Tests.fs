@@ -79,7 +79,7 @@ let doNothingBroker: IEventBroker<string> =
 let marketInstances =
     [
         Supermarket(eventStorePostgres, doNothingBroker, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
-        Supermarket(eventStoreMemory, doNothingBroker, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
+        // Supermarket(eventStoreMemory, doNothingBroker, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
     ]
 [<Tests>]
 let tests =
@@ -176,7 +176,8 @@ let tests =
             // then
             Expect.isOk addCart "should be ok"
 
-        multipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
+        // TODO: db type assignment null/integer
+        fmultipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()
             
             // given

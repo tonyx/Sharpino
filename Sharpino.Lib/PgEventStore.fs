@@ -1095,8 +1095,8 @@ module PgStorage =
                         Async.RunSynchronously
                             (async {
                                 let result =
-                                    // if checks then
-                                    if true then
+                                    if checks then
+                                    // if true then
                                         try
                                             let cmdList = 
                                                 arg 
@@ -1107,8 +1107,8 @@ module PgStorage =
                                                         |>> 
                                                             fun event ->
                                                                 let command = new NpgsqlCommand(sprintf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);" stream_name, conn)
-                                                                printf "LAST EVENT ID:: %A\n" lastEventId
-                                                                printf "stream name %s\n" stream_name
+                                                                printf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);\n" stream_name
+                                                                printf "%A %A %A %A\n" lastEventId event aggregateId md
                                                                 
                                                                 command.Parameters.AddWithValue("event", event ) |> ignore
                                                                 command.Parameters.AddWithValue("@last_event_id", lastEventId ) |> ignore

@@ -103,24 +103,6 @@ BEGIN
 INSERT INTO events_01_kitchen(event, timestamp)
 VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
 return inserted_id;
-
-END;
-$$;
-
-
---
--- Name: insert_01_kitchen_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_01_kitchen(event, timestamp, context_state_id)
-    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
-    return inserted_id;
 END;
 $$;
 
@@ -163,6 +145,34 @@ $$;
 
 
 --
+-- Name: insert_enhanced_01_balance_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_enhanced_01_balance_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+inserted_id integer;
+    event_id integer;
+    max_id integer := (SELECT MAX(id) FROM events_01_balance WHERE aggregate_id = p_aggregate_id);
+BEGIN
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
+    event_id := insert_md_01_balance_event_and_return_id(event_in, p_aggregate_id, md);
+INSERT INTO aggregate_events_01_balance(aggregate_id, event_id)
+VALUES(p_aggregate_id, event_id);
+END IF;
+
+return event_id;
+
+COMMIT;
+END;
+
+$$;
+
+
+--
 -- Name: insert_enhanced_01_dish_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -173,17 +183,13 @@ CREATE FUNCTION public.insert_enhanced_01_dish_aggregate_event_and_return_id(eve
 DECLARE
 inserted_id integer;
     event_id integer;
+    max_id integer := (SELECT MAX(id) FROM events_01_dish WHERE aggregate_id = p_aggregate_id);
 BEGIN
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
     event_id := insert_md_01_dish_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events_01_dish(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_dish WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -205,17 +211,13 @@ CREATE FUNCTION public.insert_enhanced_01_ingredient_aggregate_event_and_return_
 DECLARE
 inserted_id integer;
     event_id integer;
+    max_id integer := (SELECT MAX(id) FROM events_01_ingredient WHERE aggregate_id = p_aggregate_id);
 BEGIN
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
     event_id := insert_md_01_ingredient_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events_01_ingredient(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_ingredient WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -237,17 +239,13 @@ CREATE FUNCTION public.insert_enhanced_01_supplier_aggregate_event_and_return_id
 DECLARE
 inserted_id integer;
     event_id integer;
+    max_id integer := (SELECT MAX(id) FROM events_01_supplier WHERE aggregate_id = p_aggregate_id);
 BEGIN
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
     event_id := insert_md_01_supplier_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events_01_supplier(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events_01_supplier WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -328,26 +326,6 @@ BEGIN
 INSERT INTO events_01_ingredient(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_md_01_kitchen_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_md_01_kitchen_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_md_01_kitchen_event_and_return_id(event_in, aggregate_id, md);
-
-INSERT INTO aggregate_events_01_kitchen(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
 END;
 $$;
 
@@ -545,8 +523,7 @@ CREATE TABLE public.events_01_kitchen (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    context_state_id uuid
+    md text
 );
 
 

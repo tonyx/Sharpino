@@ -1,5 +1,4 @@
 -- migrate:up
-
 CREATE TABLE public.events_01_kitchen (
                                           id integer NOT NULL,
                                           event text NOT NULL,
@@ -38,7 +37,7 @@ ALTER TABLE ONLY public.snapshots_01_kitchen
     ADD CONSTRAINT snapshots_kitchen_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.snapshots_01_kitchen
-    ADD CONSTRAINT event_01_kitchen_fk FOREIGN KEY (event_id) REFERENCES public.events_01_kitchen(id) MATCH FULL ON DELETE CASCADE;
+    ADD CONSTRAINT event_01_kitchen_fk FOREIGN KEY (event_id) REFERENCES public.events_01_kitchen (id) MATCH FULL ON DELETE CASCADE;
 
 
 CREATE OR REPLACE FUNCTION insert_01_kitchen_event_and_return_id(
@@ -54,7 +53,6 @@ BEGIN
 INSERT INTO events_01_kitchen(event, timestamp)
 VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
 return inserted_id;
-
 END;
 $$;
 

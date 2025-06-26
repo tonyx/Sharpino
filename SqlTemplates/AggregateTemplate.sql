@@ -153,17 +153,15 @@ AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
+    
+             -- see possibility of use coalesce (in sharpino sample 7 shopping cart, not binary, there is a try)
+    max_id integer := (SELECT MAX(id) FROM events{Version}{AggregateStorageName} WHERE aggregate_id = p_aggregate_id);
 BEGIN 
+
+IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
     event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, p_aggregate_id, md);
-
 INSERT INTO aggregate_events{Version}{AggregateStorageName}(aggregate_id, event_id)
-SELECT p_aggregate_id, event_id
-    WHERE (SELECT MAX(id) FROM aggregate_events{Version}{AggregateStorageName} WHERE aggregate_id = p_aggregate_id) = last_event_id
-    RETURNING id INTO inserted_id;
-
-IF inserted_id = -1 THEN
-        ROLLBACK;
-return -1;
+VALUES(p_aggregate_id, event_id);
 END IF;
 
 return event_id;
@@ -172,7 +170,5 @@ COMMIT;
 END;
 
 $$;
-
-
 
 -- migrate:down

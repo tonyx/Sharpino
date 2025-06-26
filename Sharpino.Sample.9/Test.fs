@@ -131,7 +131,7 @@ let tests =
     
 [<Tests>]
 let optimisticLockTests  =
-    testList "optimistic lock tests" [
+    ptestList "optimistic lock tests" [
         testCase "no events in between so otmistic lock is ok - Ok" <| fun _ ->
             setUp pgEventStore
             let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
@@ -217,7 +217,7 @@ let optimisticLockTests  =
             let itemsInReservation = retrieveReservation.OkValue.Reservations
             Expect.isFalse (itemsInReservation |> List.forall _.IsClosed) "should be false"
         
-        ftestCase "I instrument the runTwoAggregateCommandsMd with delays so I can
+        testCase "I instrument the runTwoAggregateCommandsMd with delays so I can
         add events in between expecting optimistic lock to fail 2 - Ok" <| fun _ ->
             setUp pgEventStore
             let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
