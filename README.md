@@ -142,6 +142,13 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 6. If you decided not to do the previous step 5 or if there is the possibility that you'll need to downgrade the new TypeX again to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error-prone recursive chain of fallback/upcast among older versions. So rather you will prefer to doing the full step 7 to make sure that the upgrade will affect all the snapshots.
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
+## ISSUES:
+storing the events is made by mean of checking the last event id to make sure it is the same used to decide when running the command.
+This control works well statistically speaking, but to be 100% sure against theoretically possible extreme corner cases (race conditions) I need to do in different ways, for instance at a lower level (I think at the pl/pgsql level, as in the 20250625_enhance_lock_pspgsql branch).
+Any "cross-aggregates" constraints should be valuated before running the commands, but the conditions may change right after the command is run, so I may need to check for the constraints in the command handler as well (proof of concept: runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd in command handler. Specific cases are in the example 9).
+Other options that may be needed to have more control and confidence:
+- process-manager/"eventual consistency"/"transient inconsistencies" (classic)
+- Dynamic Consistency Boundaries. (heterodox approach)
 
 ## News/Updates
 Note/reminder/warning: in sharpinoSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
