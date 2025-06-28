@@ -404,7 +404,8 @@ let tests =
             let retrievedTeacher2 = retrievedTeacher2.OkValue
             Expect.equal retrievedTeacher2.Courses.Length 0 "should be equal"
             
-        multipleTestCase "add more teacher to a course and also some students. Try to delete the course and will unable at it - Error " instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
+        multipleTestCase "add more teacher to a course and also some students. Try to delete the course and will be unable at it - Error " instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
+            // given
             setUp ()            
             let teacher1 = Teacher.MkTeacher "John"
             let courseManager = courseManager ()
@@ -431,9 +432,14 @@ let tests =
             let assignTeacher2 = courseManager.AddTeacherToCourse (teacher2.Id, course.Id)
             Expect.isOk assignTeacher2 "should be ok"
             
-            let deleteCourse = courseManager.DeleteCourse course.Id
-            Expect.isError deleteCourse "should be error"
             
+            // when
+            let deleteCourse = courseManager.DeleteCourse course.Id
+            
+            // then
+            Expect.isError deleteCourse "should be error"
+           
+            // and also 
             let tryGetCourse = courseManager.GetCourse course.Id
             Expect.isOk tryGetCourse "should be Ok"
             
@@ -454,6 +460,7 @@ let tests =
        
         // starting deailing with cross aggregates invariants explicitly passed to command handler
         multipleTestCase "Teacher John don't want to teach Math if student Jack is enrolled in that course and in literature as well - Error" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->
+            // given
             setUp ()
             let teacher = Teacher.MkTeacher "John"
             let courseManager = courseManager ()
@@ -490,8 +497,10 @@ let tests =
                             return ()    
                         }
              
+            // when 
             let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
-            
+           
+            // then 
             Expect.isError assignTeacher "should be error"
             
         multipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer) ->

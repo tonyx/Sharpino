@@ -7,6 +7,7 @@ open Sharpino
 open FsToolkit.ErrorHandling
 
 module rec Course =
+    let maximumNumberOfTeachers = 3
     type Course =
         {
             Name: string
@@ -37,6 +38,9 @@ module rec Course =
             member this.AddTeacher (teacherId: Guid) =
                 result
                     {
+                        do! 
+                            (this.Teachers.Length < maximumNumberOfTeachers)
+                            |> Result.ofBool "too many teachers"
                         return
                             {
                                 this
