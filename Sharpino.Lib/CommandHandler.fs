@@ -1813,10 +1813,14 @@ module CommandHandler =
                         List.zip3 eventIds2 serializedEvents2 aggregateIds2
                         |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
                         
+                    printf "Going to add %A events to DB\n" (packParametersForDb1.Length + packParametersForDb2.Length)
+                    
                     let allPacked = packParametersForDb1 @ packParametersForDb2
                     let! eventIds =
                         allPacked
                         |> eventStore.MultiAddAggregateEventsMd md
+                    
+                    printf "XXXXX: events added" 
                         
                     let eventIds1 = eventIds |> List.take aggregateIds1.Length
                     let eventIds2 = eventIds |> List.skip aggregateIds1.Length

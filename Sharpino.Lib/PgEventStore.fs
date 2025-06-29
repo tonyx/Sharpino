@@ -1108,7 +1108,12 @@ module PgStorage =
                                                             fun event ->
                                                                 let command = new NpgsqlCommand(sprintf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);" stream_name, conn)
                                                                 printf "SELECT insert_enhanced%s_aggregate_event_and_return_id(@event, @last_event_id, @p_aggregate_id, @md);\n" stream_name
-                                                                printf "%A %A %A %A\n" lastEventId event aggregateId md
+                                                                printf "last event id %A event %A aggregateId%A %A\n" lastEventId event aggregateId md
+                                                               
+                                                                // // let myLastEventId: EventId = 0
+                                                                // let myLastEventId: int = lastEventId
+                                                                
+                                                                printf "myLastEventId %A\n" lastEventId
                                                                 
                                                                 command.Parameters.AddWithValue("event", event ) |> ignore
                                                                 command.Parameters.AddWithValue("@last_event_id", lastEventId ) |> ignore

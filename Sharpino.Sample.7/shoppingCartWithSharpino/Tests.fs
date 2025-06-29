@@ -177,7 +177,7 @@ let tests =
             Expect.isOk addCart "should be ok"
 
         // TODO: db type assignment null/integer
-        fmultipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
+        multipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()
             
             // given
@@ -260,7 +260,7 @@ let tests =
             // then
             Expect.isError addedToCart "should be an error" 
 
-        multipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
+        fmultipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()
 
             // given
