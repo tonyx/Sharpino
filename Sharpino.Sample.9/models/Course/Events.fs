@@ -7,14 +7,14 @@ open Sharpino
 
 module CourseEvents =
     type CourseEvents =
-        | CourseAdded of Guid
-        | CourseRemoved of Guid
+        | StudentAdded of Guid
+        | StudentRemoved of Guid
         | TeacherSet of Guid
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
-                | CourseAdded id -> course.AddStudent id
-                | CourseRemoved id -> course.RemoveStudent id
+                | StudentAdded id -> course.AddStudent id
+                | StudentRemoved id -> course.RemoveStudent id
                 | TeacherSet id -> course.AddTeacher id
        
         static member Deserialize x =

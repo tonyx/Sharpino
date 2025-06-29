@@ -17,10 +17,10 @@ module CourseCommands =
                 match this with
                 | AddStudent id ->
                     course.AddStudent id
-                    |> Result.map (fun i -> (i, [CourseAdded id]))
+                    |> Result.map (fun i -> (i, [StudentAdded id]))
                 | RemoveStudent id ->
                     course.RemoveStudent id
-                    |> Result.map (fun i -> (i, [CourseRemoved id]))
+                    |> Result.map (fun i -> (i, [StudentRemoved id]))
                 | AddTeacher id ->    
                     course.AddTeacher id
                     |> Result.map (fun i -> (i, [TeacherSet id]))     
