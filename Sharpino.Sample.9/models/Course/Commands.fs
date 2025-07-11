@@ -23,7 +23,7 @@ module CourseCommands =
                     |> Result.map (fun i -> (i, [StudentRemoved id]))
                 | AddTeacher id ->    
                     course.AddTeacher id
-                    |> Result.map (fun i -> (i, [TeacherSet id]))     
+                    |> Result.map (fun i -> (i, [TeacherAdded id]))     
             member this.Undoer =
                 None
                     

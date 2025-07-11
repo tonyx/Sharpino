@@ -1095,8 +1095,8 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let command = fun () ->
                 result {
-                    let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
-                    let! (newState, events) =
+                    let! eventId, state = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
+                    let! newState, events =
                         state
                         |> command.Execute
                     let! ids =

@@ -9,13 +9,13 @@ module CourseEvents =
     type CourseEvents =
         | StudentAdded of Guid
         | StudentRemoved of Guid
-        | TeacherSet of Guid
+        | TeacherAdded of Guid
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
                 | StudentAdded id -> course.AddStudent id
                 | StudentRemoved id -> course.RemoveStudent id
-                | TeacherSet id -> course.AddTeacher id
+                | TeacherAdded id -> course.AddTeacher id
        
         static member Deserialize x =
             jsonPSerializer.Deserialize<CourseEvents> x

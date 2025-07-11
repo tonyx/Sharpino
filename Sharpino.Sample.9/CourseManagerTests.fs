@@ -488,13 +488,13 @@ let tests =
                     result
                         {
                             let! (_, jack) = studentViewer jack.Id
-                            do!
+                            return!
                                 (not 
                                      (jack.Courses |> List.exists (fun c -> c = literature.Id)
                                       && (jack.Courses |> List.exists (fun c -> c = math.Id)))
                                 )
                                 |> Result.ofBool "constraint not met"
-                            return ()    
+                            // return ()    
                         }
              
             // when 

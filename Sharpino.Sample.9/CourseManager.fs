@@ -68,12 +68,6 @@ type CourseManager
                 let! (_, teacher) = teacherViewer id
                 return teacher
             }
-    // member this.GetCourse (id: Guid) =
-    //     result
-    //         {
-    //             let! (_, course) = courseViewer id
-    //             return course
-    //         }
     
     member this.GetHistoryCourse (id: Guid) =
         result
