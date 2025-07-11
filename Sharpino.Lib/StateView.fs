@@ -129,20 +129,26 @@ module StateView =
                 (async {
                     return
                         result {
-                            let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            printf "XXXX getLastAggregateSnapshotOrStateCache 100\n"
+                            let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            printf "XXXX getLastAggregateSnapshotOrStateCache 200\n"
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
+                            printf "XXXX getLastAggregateSnapshotOrStateCache 300\n"
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
                             else
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
+                                        // Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
+                                        Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                    return (eventId , snapshot) |> Some 
+                                    // return (eventId , snapshot ) |> Some 
+                                    return (eventId , snapshot |> unbox) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
                 
@@ -160,7 +166,8 @@ module StateView =
                 (async {
                     return
                         result {
-                            let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastHistorySnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
@@ -168,12 +175,13 @@ module StateView =
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
+                                        // Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
+                                        Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                    return (eventId , snapshot) |> Some 
+                                    return (eventId , snapshot |> unbox) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
 
@@ -214,7 +222,9 @@ module StateView =
         async {
             return
                 result {
+                    printf "XXXX snapAggregateEventIdStateAndEvents 100\n"
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
+                    printf "XXXX snapAggregateEventIdStateAndEvents 200\n"
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -315,14 +325,19 @@ module StateView =
             let computeNewState =
                 fun () ->
                     result {
+                        printf "XXXX getAggregateFreshState 100\n"
                         let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                        printf "XXXX getAggregateFreshState 200\n"
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        printf "XXXX getAggregateFreshState 300\n"
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> state
-                        return newState
+                            deserEvents |> evolve<'A, 'E> (state |> unbox)
+                        printf "XXXX getAggregateFreshState 400\n"
+                        //return newState 
+                        return newState |> box
                     }
                     
             // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
@@ -330,7 +345,8 @@ module StateView =
             
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             
-            let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            let state = AggregateCache2.Instance.Memoize computeNewState (lastEventId, id)
             
             match state with
             | Ok state -> 
@@ -359,7 +375,7 @@ module StateView =
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> state
+                            deserEvents |> evolve<'A, 'E> (state |> unbox)
                         return newState
                     }
                     
@@ -547,7 +563,7 @@ module StateView =
                         let errors = errors |> List.fold (fun acc x -> acc + x.ToString()+", ") ""
                         return! (Error errors)
                     else 
-                        return okStates |> List.filter (fun (_, x)  -> currentStateFilter x)
+                        return okStates |> List.filter (fun (_, x)  -> currentStateFilter (x |> unbox))
                 }
                 
     let inline getFilteredAggregateStatesInATimeInterval2<'A, 'E, 'F
@@ -577,7 +593,7 @@ module StateView =
                    
                     return
                         states
-                        |> List.filter (fun (_, x)  -> predicate x)
+                        |> List.filter (fun (_, x)  -> predicate (x |> unbox))
                 }
     
     let inline getAggregateStatesInATimeInterval<'A, 'E, 'F

@@ -30,6 +30,7 @@ open Sharpino.MemoryStorage
 open Sharpino.Storage
 open Sharpino.Cache
 open Sharpino.TestUtils
+open FsToolkit.ErrorHandling
 open DotNetEnv
 
 Env.Load() |> ignore
@@ -50,14 +51,37 @@ let memoryStorage: IEventStore<_> = new MemoryStorage()
 let dbEventStore:IEventStore<string> = PgEventStore(connection)
 
 let teatherContextViewer = getStorageFreshStateViewer<Theater, TheaterEvents, string> memoryStorage 
-let seatsAggregateViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id memoryStorage 
-let bookingsAggregateViewer = fun id -> getAggregateFreshState<Booking, BookingEvents, string> id memoryStorage
-let vouchersAggregateViewer = fun id -> getAggregateFreshState<Voucher, VoucherEvents, string> id memoryStorage
+// let seatsAggregateViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id memoryStorage 
+let seatsAggregateViewer =
+    fun id ->
+        result
+            {
+                let! (eventId, state) = getAggregateFreshState<Row, RowEvents, string> id memoryStorage
+                return (eventId, state |> unbox)
+            }
+        // getAggregateFreshState<Booking, BookingEvents, string> id memoryStorage
+let bookingsAggregateViewer =
+    fun id ->
+        result
+            {
+                let! (eventId, state) = getAggregateFreshState<Booking, BookingEvents, string> id memoryStorage
+                return (eventId, state |> unbox)
+            }   
+let vouchersAggregateViewer =
+    fun id ->
+        result
+            {
+                let! (eventId, state) = getAggregateFreshState<Voucher, VoucherEvents, string> id memoryStorage
+                return (eventId, state |> unbox)
+            }
+        // getAggregateFreshState<Voucher, VoucherEvents, string> id memoryStorage
 
 let teatherContextdbViewer = getStorageFreshStateViewer<Theater, TheaterEvents, string> dbEventStore 
-let seatsAggregatedbViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id dbEventStore 
-let bookingsAggregatedbViewer = fun id -> getAggregateFreshState<Booking, BookingEvents, string> id dbEventStore
-let vouchersAggregatedbViewer = fun id -> getAggregateFreshState<Voucher, VoucherEvents, string> id dbEventStore
+// let seatsAggregatedbViewer = fun id -> getAggregateFreshState<Row, RowEvents, string> id dbEventStore 
+let seatsAggregatedbViewer = getAggregateStorageFreshStateViewer<Row, RowEvents, string> dbEventStore
+// let bookingsAggregatedbViewer = fun id -> getAggregateFreshState<Booking, BookingEvents, string> id dbEventStore
+let bookingsAggregatedbViewer =  getAggregateStorageFreshStateViewer<Booking, BookingEvents, string> dbEventStore
+let vouchersAggregatedbViewer =  getAggregateStorageFreshStateViewer<Voucher, VoucherEvents, string> dbEventStore
 
 // put the password of db user safe in the .env file
 // in the format
