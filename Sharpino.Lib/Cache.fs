@@ -12,6 +12,9 @@ open FSharp.Core
 open System
 
 module Cache =
+    let numProcs = Environment.ProcessorCount
+    let concurrencyLevel = numProcs * 2
+
     let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         logger := newLogger
@@ -108,15 +111,13 @@ module Cache =
      
     type AggregateCache<'A, 'F when 'A :> Aggregate<'F>> private () =
         
-        let lastEventIdPerAggregate = Generic.Dictionary<AggregateId, EventId>(config.CacheAggregateSize)
+        let lastEventIdPerAggregate = ConcurrentDictionary<AggregateId, EventId>(concurrencyLevel, config.CacheAggregateSize)
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
-        let statePerAggregate = Generic.Dictionary<AggregateId, Result<'A, string>>(config.CacheAggregateSize)
-        let queue = Generic.Queue<AggregateId>()
+        let statePerAggregate = ConcurrentDictionary<AggregateId, Result<'A, string>>(concurrencyLevel, config.CacheAggregateSize)
         
         static let instance = AggregateCache<'A, 'F>()
         static member Instance = instance
               
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
         member private this.TryAddToDictionary ((eventId, aggregateId), resultState: Result<'A, string>) =
             try
                 lastEventIdPerAggregate.[aggregateId] <- eventId
@@ -127,13 +128,14 @@ module Cache =
                     
                 if (aggregateQueue.Count > config.CacheAggregateSize) then
                     let removed = aggregateQueue.Dequeue ()
-                    lastEventIdPerAggregate.Remove removed  |> ignore
-                    statePerAggregate.Remove removed  |> ignore
+                    lastEventIdPerAggregate.TryRemove removed  |> ignore
+                    statePerAggregate.TryRemove removed  |> ignore
                 ()
                 
             with :? _ as e -> 
                 logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 lastEventIdPerAggregate.Clear()
+                statePerAggregate.Clear()
                 aggregateQueue.Clear()
                 ()
        
@@ -141,24 +143,23 @@ module Cache =
             if (lastEventIdPerAggregate.ContainsKey aggregateId) then
                 lastEventIdPerAggregate.[aggregateId] |> Some
             else
-                None 
+                None
             
         member this.Memoize (f: unit -> Result<'A, string>) (eventId: EventId, aggregateId: AggregateId): Result<'A, string> =
-            if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
-                (lastEventIdPerAggregate.[aggregateId] = eventId) &&
-                (statePerAggregate.ContainsKey aggregateId)) 
-            then 
-                statePerAggregate[aggregateId]
+            if (lastEventIdPerAggregate.ContainsKey aggregateId) &&
+               (lastEventIdPerAggregate.[aggregateId] = eventId) &&
+               (statePerAggregate.ContainsKey aggregateId)
+            then
+                statePerAggregate.[aggregateId]
             else
                 let res = f()
                 this.TryAddToDictionary ((eventId, aggregateId), res) 
                 res
        
-        // suspicious as it doesn't remove anything from the queue
-        // however: 1. max size is not affected. 1. Just a deprecated saga-ish function in command handler uses it
         member this.Clean (aggregateId: AggregateId) =
-            lastEventIdPerAggregate.Remove aggregateId  |> ignore
-            statePerAggregate.Remove aggregateId  |> ignore
+            aggregateQueue.TryDequeue() |> ignore
+            lastEventIdPerAggregate.TryRemove aggregateId  |> ignore
+            statePerAggregate.TryRemove aggregateId  |> ignore
         
         member this.Memoize2 (x:Result<'A, string>) (eventId: EventId, aggregateId: AggregateId) =
             this.Clean aggregateId
@@ -173,18 +174,14 @@ module Cache =
             else
                 Error "not found"
         
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.Clear () =
             lastEventIdPerAggregate.Clear ()
             aggregateQueue.Clear ()
             statePerAggregate.Clear ()
         
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.Invalidate (aggregateId: AggregateId) =
-            lastEventIdPerAggregate.Remove aggregateId  |> ignore
-            statePerAggregate.Remove aggregateId  |> ignore
-            // can't pick a specific element the queue and remove it. Not a big deal as the size is limited anyway
-            // will fix when adopting .net caching
+            lastEventIdPerAggregate.TryRemove aggregateId  |> ignore
+            statePerAggregate.TryRemove aggregateId  |> ignore
         
         member this.LastEventId(aggregateId: AggregateId) =
             if (lastEventIdPerAggregate.ContainsKey aggregateId) then
