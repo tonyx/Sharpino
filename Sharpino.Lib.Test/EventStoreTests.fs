@@ -88,7 +88,8 @@ let tests =
             let retrieved = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId eventStore
             Expect.isOk retrieved "should be ok"
             let (eventId, okRetrieved) = retrieved.OkValue
-            Expect.equal okRetrieved.Name "new name" "should be equal"
+            let retrievedWithCast = okRetrieved :?> SampleObject
+            Expect.equal retrievedWithCast.Name "new name" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
         
         multipleTestCase "create two objects, store an event related to the first one, then store an event related to the second one. Retrieve the object with the new state  - Ok" versions <| fun (eventStore, setUp)  ->
@@ -119,13 +120,13 @@ let tests =
             let retrieved1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId1 eventStore
             Expect.isOk retrieved1 "should be ok"
             let (eventId1, okRetrieved1) = retrieved1.OkValue
-            Expect.equal okRetrieved1.Name "new name 1" "should be equal"
+            Expect.equal (okRetrieved1 |> unbox).Name "new name 1" "should be equal"
             Expect.notEqual eventId1 0 "should be non zero"
             
             let retrieved2 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId2 eventStore
             Expect.isOk retrieved2 "should be ok"
             let (eventId2, okRetrieved2) = retrieved2.OkValue
-            Expect.equal okRetrieved2.Name "new name 2" "should be equal"
+            Expect.equal (okRetrieved2 |> unbox).Name "new name 2" "should be equal"
             Expect.notEqual eventId2 0 "should be non zero"
             
         multipleTestCase "object 1 and object 2 are there.
@@ -159,13 +160,13 @@ let tests =
             let retrieved1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId1 eventStore
             Expect.isOk retrieved1 "should be ok"
             let (eventId1, okRetrieved1) = retrieved1.OkValue
-            Expect.equal okRetrieved1.Name "new name 1" "should be equal"
+            Expect.equal (okRetrieved1 |> unbox).Name "new name 1" "should be equal"
             Expect.notEqual eventId1 0 "should be non zero"
             
             let retrieved2 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId2 eventStore
             Expect.isOk retrieved2 "should be ok"
             let (eventId2, okRetrieved2) = retrieved2.OkValue
-            Expect.equal okRetrieved2.Name "new name 2" "should be equal"
+            Expect.equal (okRetrieved2 |> unbox).Name "new name 2" "should be equal"
             
             Expect.notEqual eventId2 0 "should be non zero"
             

@@ -31,7 +31,6 @@ module Cache =
         let lastEventIdPerAggregate = Generic.Dictionary<AggregateId, EventId>(config.CacheAggregateSize)
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
         let statePerAggregate = Generic.Dictionary<AggregateId, Result<obj, string>>(config.CacheAggregateSize)
-        let queue = Generic.Queue<AggregateId>()
         static let instance = AggregateCache2()
         static member Instance = instance
         
@@ -62,7 +61,7 @@ module Cache =
                 None
                 
         member this.Memoize (f: unit -> Result<'A, string>) (eventId: EventId, aggregateId: AggregateId): Result<'A, string> =
-            printf "XXXXX. Entering in memoize\n"
+            // printf "XXXXX. Entering in memoize\n"
             if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
                 (lastEventIdPerAggregate.[aggregateId] = eventId) &&
                 (statePerAggregate.ContainsKey aggregateId)) 

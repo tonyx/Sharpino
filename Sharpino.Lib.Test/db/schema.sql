@@ -175,7 +175,8 @@ CREATE TABLE public.snapshots_01_sampleobject (
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false
 );
 
 

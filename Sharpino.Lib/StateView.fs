@@ -130,11 +130,11 @@ module StateView =
                     return
                         result {
                             // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
-                            printf "XXXX getLastAggregateSnapshotOrStateCache 100\n"
+                            // printf "XXXX getLastAggregateSnapshotOrStateCache 100\n"
                             let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
-                            printf "XXXX getLastAggregateSnapshotOrStateCache 200\n"
+                            // printf "XXXX getLastAggregateSnapshotOrStateCache 200\n"
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
-                            printf "XXXX getLastAggregateSnapshotOrStateCache 300\n"
+                            // printf "XXXX getLastAggregateSnapshotOrStateCache 300\n"
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
                             else
@@ -222,9 +222,9 @@ module StateView =
         async {
             return
                 result {
-                    printf "XXXX snapAggregateEventIdStateAndEvents 100\n"
+                    // printf "XXXX snapAggregateEventIdStateAndEvents 100\n"
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
-                    printf "XXXX snapAggregateEventIdStateAndEvents 200\n"
+                    // printf "XXXX snapAggregateEventIdStateAndEvents 200\n"
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -325,17 +325,17 @@ module StateView =
             let computeNewState =
                 fun () ->
                     result {
-                        printf "XXXX getAggregateFreshState 100\n"
+                        // printf "XXXX getAggregateFreshState 100\n"
                         let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
-                        printf "XXXX getAggregateFreshState 200\n"
+                        // printf "XXXX getAggregateFreshState 200\n"
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
-                        printf "XXXX getAggregateFreshState 300\n"
+                        // printf "XXXX getAggregateFreshState 300\n"
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> (state |> unbox)
-                        printf "XXXX getAggregateFreshState 400\n"
+                        // printf "XXXX getAggregateFreshState 400\n"
                         //return newState 
                         return newState |> box
                     }
