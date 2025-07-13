@@ -97,7 +97,8 @@ module Tests =
                 
                 Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
                 
-            testCase "create couunters and accounts and operate on them in sparse order"   <| fun _ ->
+            testCase "create counters and accounts and execute commands on them in sparse order (type independent way of running any command)"   <| fun _ ->
+                // given
                 let eventStore = PgBinaryStore connection
                 setUp eventStore
                 let api = CounterApi(eventStore, doNothingBroker, getAggregateStorageFreshStateViewer<Counter, CounterEvents, byte[]> eventStore, getAggregateStorageFreshStateViewer<Account, AccountEvents, byte[]> eventStore)
@@ -121,10 +122,13 @@ module Tests =
              
                 let counterIds =  (counters  |> List.map _.Id)
                 let accountIds =  (accounts  |> List.map _.Id)
+                
+                // when
                 let tryIncrementCountersAndAccounts =
                     api.IncrementCountersAndAccounts (counterIds, accountIds)
                 Expect.isOk tryIncrementCountersAndAccounts "should be Ok"
                 
+                // then
                 let retrievedCounters =
                     counters
                     |> List.map (fun c -> api.GetCounter c.Id)
@@ -149,15 +153,11 @@ module Tests =
                 Expect.allEqual okAmountsOfRetrievedAccounts 2 "should be all 2"
                 Expect.isTrue true "true"
                 
-                let retrivedCounters =
-                    counters
-                    |> List.map (fun c -> api.GetCounter c.Id)
-                
                 Expect.isTrue (retrievedCounters |> List.forall (fun x -> x.IsOk)) "should be all Ok"
                 
-                let retrievedCounters' =
+                let retrievedCounters =
                     retrievedCounters
                     |> List.map _.OkValue
                 
-                Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 2"
+                Expect.isTrue (retrievedCounters |> List.forall (fun x -> x.Value = 1)) "should be all 2"
         ]
