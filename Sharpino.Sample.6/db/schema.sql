@@ -704,6 +704,69 @@ ALTER TABLE ONLY public.snapshots_01_supplier
 
 
 --
+-- Name: ix_01_aggregate_event_dish_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_event_dish_id ON public.aggregate_events_01_dish USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_event_ingredient_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_event_ingredient_id ON public.aggregate_events_01_ingredient USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_event_supplier_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_event_supplier_id ON public.aggregate_events_01_supplier USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_event_dish_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_event_dish_id ON public.events_01_dish USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_event_ingredient_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_event_ingredient_id ON public.events_01_ingredient USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_event_supplier_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_event_supplier_id ON public.events_01_supplier USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshots_dish_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_dish_id ON public.snapshots_01_dish USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshots_ingredient_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_ingredient_id ON public.snapshots_01_ingredient USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshots_supplier_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_supplier_id ON public.snapshots_01_supplier USING btree (aggregate_id);
+
+
+--
 -- Name: aggregate_events_01_ingredient aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -776,4 +839,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240311195419'),
     ('20240904172910'),
     ('20240909152430'),
-    ('20250612125033');
+    ('20250612125033'),
+    ('20250713054600');

@@ -492,6 +492,48 @@ ALTER TABLE ONLY public.snapshots_01_truck
 
 
 --
+-- Name: ix_01_aggregate_events_site_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_site_id ON public.aggregate_events_01_site USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_truck_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_truck_id ON public.aggregate_events_01_truck USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_site_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_site_id ON public.events_01_site USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_truck_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_truck_id ON public.events_01_truck USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_site_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_site_id ON public.snapshots_01_site USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_truck_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_truck_id ON public.snapshots_01_truck USING btree (aggregate_id);
+
+
+--
 -- Name: aggregate_events_01_site aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -545,4 +587,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250122190642'),
     ('20250123141815'),
     ('20250124191005'),
-    ('20250612131657');
+    ('20250612131657'),
+    ('20250713061027');

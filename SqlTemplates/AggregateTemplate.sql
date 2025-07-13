@@ -62,6 +62,10 @@ ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
 ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
     ADD CONSTRAINT aggregate_events{Version}_fk  FOREIGN KEY (event_id) REFERENCES public.events{Version}{AggregateStorageName} (id) MATCH FULL ON DELETE CASCADE;
 
+create index ix{Version}_events{AggregateStorageName}_id on public.events{Version}{AggregateStorageName}(aggregate_id);
+create index ix{Version}_aggregate_events{AggregateStorageName}_id on public.aggregate_events{Version}{AggregateStorageName}(aggregate_id);
+create index ix{Version}_snapshot{AggregateStorageName}_id on public.snapshots{Version}{AggregateStorageName}(aggregate_id);
+                                                                                                                                                          
 CREATE OR REPLACE FUNCTION insert{Version}{AggregateStorageName}_event_and_return_id(
     IN event_in {Format},
     IN aggregate_id uuid

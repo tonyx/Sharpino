@@ -261,14 +261,6 @@ BEGIN
         return -1;
     END IF;
 
---     inserted_id := event_id_check;
-
---     WHERE (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check;
---     RETURNING id INTO inserted_id;
---     IF inserted_id IS NULL THEN
---         ROLLBACK;
---         return -1;
---     END IF;
 return event_id;
 COMMIT;
 
@@ -1126,6 +1118,132 @@ ALTER TABLE ONLY public.snapshots_01_teacher
 
 
 --
+-- Name: ix_01_aggregate_events_balance_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_balance_id ON public.aggregate_events_01_balance USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_course_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_course_id ON public.aggregate_events_01_course USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_item_id ON public.aggregate_events_01_item USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_reservations_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_reservations_id ON public.aggregate_events_01_reservations USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_student_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_student_id ON public.aggregate_events_01_student USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_teacher_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_teacher_id ON public.aggregate_events_01_teacher USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_balance_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_balance_id ON public.events_01_balance USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_course_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_course_id ON public.events_01_course USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_item_id ON public.events_01_item USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_reservations_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_reservations_id ON public.events_01_reservations USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_student_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_student_id ON public.events_01_student USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_teacher_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_teacher_id ON public.events_01_teacher USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_balance_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_balance_id ON public.snapshots_01_balance USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_course_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_course_id ON public.snapshots_01_course USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_item_id ON public.snapshots_01_item USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_reservations_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_reservations_id ON public.snapshots_01_reservations USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_student_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_student_id ON public.snapshots_01_student USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_teacher_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_teacher_id ON public.snapshots_01_teacher USING btree (aggregate_id);
+
+
+--
 -- Name: aggregate_events_01_item aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1237,4 +1355,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250613121754'),
     ('20250616094111'),
     ('20250619183125'),
+    ('20250713061243'),
     ('20250917135222');
