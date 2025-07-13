@@ -4,7 +4,7 @@
     <TargetFrameworks>net9.0; net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>2.2.6</Version>
+    <Version>2.2.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -33,8 +33,8 @@
     <PackageReference Include="Fable.Core" Version="4.5.0" />
     <PackageReference Include="Farmer" Version="1.9.16" />
     <PackageReference Include="FSharpPlus" Version="1.7.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.7" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
@@ -44,7 +44,7 @@
     <PackageReference Include="Fable.Core" Version="4.5.0" />
     <PackageReference Include="Farmer" Version="1.9.16" />
     <PackageReference Include="FSharpPlus" Version="1.7.0" />
-    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.0.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
