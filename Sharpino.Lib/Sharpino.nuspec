@@ -25,7 +25,7 @@
         <dependency id="Microsoft.Extensions.Hosting" version="9.0.7" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="9.0.7" />
         <dependency id="Microsoft.Extensions.Logging" version="9.0.7" />
-        <dependency id="Sharpino.Core" version="2.2.6" />
+        <dependency id="Sharpino.Core" version="2.2.8" />
 
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.3" />
@@ -54,7 +54,7 @@
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
-        <dependency id="Sharpino.Core" version="2.2.6" />
+        <dependency id="Sharpino.Core" version="2.2.8" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.3" />

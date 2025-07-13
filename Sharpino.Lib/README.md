@@ -15,16 +15,13 @@ Support for Event-sourcing in F#.
 
 ## Overview
 - Contexts: event sourced objects with no id, so only one instance is around
-- Aggregates: event sourced objecst with id (Guid).
+- Aggregates: event sourced objects with id (Guid).
 - Multiple streams transactions: execute multiple commands involving different aggregates as single db transactions.
 - Command Undoers: (to roll back the transaction in case of failure of any command).
 - Cache: Dictionary based cache of the current state of contexts or aggregates.
 - Gdpr: functions to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
 - SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.I
 - Optimistic lock based on event_id: check the event_id position on the basis of the event_id passed by the command handler to the event store.
-
-## Warning: the mini gitbook is outdated.
-Info: - The various SAGA-like functions are "under investigation"(more tests and fixes needed). The "malboxprocessor" could also be removed as it has a little potential advantage but less control (in debug for example).
 
 ## Projects
 __Sharpino.Lib.Core__:
@@ -103,7 +100,7 @@ __Faq__:
     ```
 
 ## Todo list. Help welcome:
-- Use the publis/subscribe model provided by Postgres
+- Use the publish/subscribe model provided by Postgres
 - Use the .net Cache
 - Implementing event store using Postgres event store but using Azure sql instead.
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
@@ -142,8 +139,20 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 6. If you decided not to do the previous step 5 or if there is the possibility that you'll need to downgrade the new TypeX again to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error-prone recursive chain of fallback/upcast among older versions. So rather you will prefer to doing the full step 7 to make sure that the upgrade will affect all the snapshots.
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
-
 ## News/Updates
+Note/reminder/warning: in sharpinoSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
+Other configuration, using PgJson for instance and JSON or JSONB fields and different serializer than fsPickler, are ok as long as you test carefully by doing low level operations on the eventstore e.g. store and retrieve events and snapshot bypassing the command handler and the cache. 
+The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
+However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
+
+- Version 4.3.0: Aggregate Cache is type independent. Added a way to "preExecute" any type of commands and then send them to the command handler. So now executing an arbitrary number of command of any type is allowed (see example 10). Note: some adjustments in passing metadata to "delete" commands will make them non-backward compatible (just add metadata to the command to fix).
+- Version 4.2.3: concurrent dictionary aggregates cache
+- Version 4.2.1: added a variant of delete with aggregateCommand 
+- Version 4.2.0: fixed again the delete's (tested only on an external application not included in the examples, sorry)
+- Version 4.1.8: some fixes on new features 
+- Version 4.1.7: added an alternative to getAggregateFreshStater (getHistoryAggregateFreshState) that includes historical (i.e. deleted) aggregate and skip caching. No example or test provided (hack).
+- Version 4.1.6: added runDelete with aggregateCommand (see sample 9 for a use case)
+- Version 4.1.5: fixed dependencies declared in manifest/nuspec file
 - Version 4.1.4: added soft delete with predicate (usually predicate is: counter references must be zero). Needs at applicative level increment counter each time a reference is created and decrement it when the reference is removed (see sample 9). Warning: deletion is not an event! Is just a state of the latest snapshot of an aggregate. After carefully evaluated the pros and cons I decided in this way (hint: any independent stream evolving does not care if the reference of an external id does actually exist or not. Getting the state of any aggregate depends primarily on the latest snapshot. If that last snapshot is deleted then it is as if it doesn't exist anymore as long as also the caches is aware of this deletion i.e. it is invalidated). 
 - an example of integration with Blazor: https://github.com/tonyx/sharpinoBlazor (a summary, in Italian, made by Gemini A. I.: https://g.co/gemini/share/528e98bd6dd8)
 - Version 4.1.3: fixed some SQL issues of new functions introduced in 4.1.1/4.1.2 (involving only new stuff)
@@ -369,7 +378,7 @@ The other option is:
     "PgSqlJsonFormat":{"Case":"PgJson"}
 ```    
 Basically you may wan to write json fields into text fields  for various reasons
-(on my side I exprienced that an external library may require further tuning to properly work with jsonb fields in Postgres, so in that case a quick fix is just using text fields).
+(on my side I experienced that an external library may require further tuning to properly work with jsonb fields in Postgres, so in that case a quick fix is just using text fields).
 Remember that we don't necessarily need Json fields as at the moment we just do serialize/deserialize and not querying on the json fields (at the moment).
 
 - version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
@@ -383,8 +392,8 @@ New sample: started an example of Restaurant/Pub management. (Sample 6)
 - _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
 Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
 I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
-- Added SqlTempate dir with template examples for creating table relate to events and snapshots for aggregates and contexts.
-- Addes sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
+- Added SqlTemplate dir with template examples for creating table relate to events and snapshots for aggregates and contexts.
+- Added sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because 
 it is going to be messy)
 - Version 1.5.4 Replaces version 1.5.3 (that was deprecated )
     - Aggregate snapshots added (in addition to contexts snapshots)
@@ -432,16 +441,8 @@ Those data will be used in the future to feed the "kafkaViewer" on initializatio
 - Version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
  __don't use this because the configuration is changed in version 1.5.1__
 
-- this entry is ignored as the lock is always optimistic.
-```json
 
-    "SharpinoConfig": {
-        "PessimisticLock": false // or true
-    }
-
-``` 
-
-More documentation (a little bit  out of date. Will fix it soon) [(Sharpino gitbook)](https://tonyx.github.io)
+More documentation [(Sharpino gitbook)](https://tonyx.github.io)
 
 <a href="https://www.buymeacoffee.com/Now7pmK92m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
