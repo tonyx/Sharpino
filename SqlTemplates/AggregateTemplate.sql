@@ -139,7 +139,6 @@ return event_id;
 END;
 $$;
 
-
 CREATE OR REPLACE FUNCTION insert_enhanced{Version}{AggregateStorageName}_aggregate_event_and_return_id(
        IN event_in {Format},
        IN last_event_id integer,
@@ -149,26 +148,23 @@ CREATE OR REPLACE FUNCTION insert_enhanced{Version}{AggregateStorageName}_aggreg
 RETURNS int
 LANGUAGE plpgsql      
 AS $$       
-       
+      
 DECLARE
-inserted_id integer;
-    event_id integer;
-    
-             -- see possibility of use coalesce (in sharpino sample 7 shopping cart, not binary, there is a try)
-    max_id integer := (SELECT MAX(id) FROM events{Version}{AggregateStorageName} WHERE aggregate_id = p_aggregate_id);
-BEGIN 
+event_id integer;
+    max_id integer;
+BEGIN
+SELECT COALESCE(MAX(id), 0) INTO max_id FROM events{Version}{AggregateStorageName} WHERE aggregate_id = p_aggregate_id;
 
-IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
-    event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, p_aggregate_id, md);
+IF max_id = last_event_id THEN
+        event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, p_aggregate_id, md);
 INSERT INTO aggregate_events{Version}{AggregateStorageName}(aggregate_id, event_id)
 VALUES(p_aggregate_id, event_id);
 END IF;
 
-return event_id;
-
-COMMIT;
+RETURN event_id;
 END;
 
 $$;
+       
 
 -- migrate:down

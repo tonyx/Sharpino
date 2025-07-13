@@ -1,4 +1,5 @@
 -- migrate:up
+
 CREATE TABLE public.events_01_course (
                                          id integer NOT NULL,
                                          aggregate_id uuid NOT NULL,
@@ -96,6 +97,26 @@ return inserted_id;
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION insert_01_course_aggregate_event_and_return_id(
+    IN event_in text,
+    IN aggregate_id uuid 
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_01_course_event_and_return_id(event_in, aggregate_id);
+
+INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
 
 CREATE OR REPLACE FUNCTION insert_md_01_course_aggregate_event_and_return_id(
     IN event_in text,
@@ -127,24 +148,23 @@ CREATE OR REPLACE FUNCTION insert_enhanced_01_course_aggregate_event_and_return_
 RETURNS int
 LANGUAGE plpgsql      
 AS $$       
-       
+      
 DECLARE
-    inserted_id integer;
-    event_id integer;
-    max_id integer := (SELECT MAX(id) FROM events_01_course WHERE aggregate_id = p_aggregate_id);
-           
-BEGIN 
-IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
-    event_id := insert_md_01_course_event_and_return_id(event_in, p_aggregate_id, md);
-    INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
-    VALUES(p_aggregate_id, event_id);
-    END IF;
+event_id integer;
+    max_id integer;
+BEGIN
+SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_course WHERE aggregate_id = p_aggregate_id;
 
-return event_id;
+IF max_id = last_event_id THEN
+        event_id := insert_md_01_course_event_and_return_id(event_in, p_aggregate_id, md);
+INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+VALUES(p_aggregate_id, event_id);
+END IF;
 
-COMMIT;
+RETURN event_id;
 END;
 
 $$;
--- migrate:down
+       
 
+-- migrate:down

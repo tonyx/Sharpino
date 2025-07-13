@@ -140,61 +140,31 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION insert_enhanced_01_cart_aggregate_event_and_return_id(
-    event_in text,
-    last_event_id integer,
-    p_aggregate_id uuid,
-    md text
-)
-RETURNS integer
-LANGUAGE plpgsql
-AS $$
-       
+       IN event_in text,
+       IN last_event_id integer,
+       IN p_aggregate_id uuid,
+       IN md text
+   )
+RETURNS int
+LANGUAGE plpgsql      
+AS $$       
+      
 DECLARE
-    event_id integer := NULL;
+event_id integer;
     max_id integer;
 BEGIN
-    SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_cart WHERE aggregate_id = p_aggregate_id;
+SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_cart WHERE aggregate_id = p_aggregate_id;
 
-    IF max_id = last_event_id  THEN
+IF max_id = last_event_id THEN
         event_id := insert_md_01_cart_event_and_return_id(event_in, p_aggregate_id, md);
-        INSERT INTO aggregate_events_01_cart(aggregate_id, event_id)
-        VALUES(p_aggregate_id, event_id);
-    END IF;
+INSERT INTO aggregate_events_01_cart(aggregate_id, event_id)
+VALUES(p_aggregate_id, event_id);
+END IF;
 
-    RETURN event_id;
+RETURN event_id;
 END;
 
 $$;
-
--- CREATE OR REPLACE FUNCTION insert_enhanced_01_cart_aggregate_event_and_return_id(
---        IN event_in text,
---        IN last_event_id integer,
---        IN p_aggregate_id uuid,
---        IN md text
---    )
--- RETURNS int
--- LANGUAGE plpgsql      
--- AS $$       
---        
--- DECLARE
--- inserted_id integer;
---     event_id integer;
---     max_id integer := (SELECT COALESCE(MAX(id), 0) FROM events_01_cart WHERE aggregate_id = p_aggregate_id);
--- BEGIN
--- 
--- IF (max_id = last_event_id) THEN
---     event_id := insert_md_01_cart_event_and_return_id(event_in, p_aggregate_id, md);
---    
--- INSERT INTO aggregate_events_01_cart(aggregate_id, event_id)
---     
--- VALUES(p_aggregate_id, event_id);
--- END IF;
--- 
--- return event_id;
--- 
--- COMMIT;
--- END;
-
--- $$;
+       
 
 -- migrate:down

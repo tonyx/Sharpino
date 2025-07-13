@@ -1819,8 +1819,6 @@ module CommandHandler =
                     let! eventIds =
                         allPacked
                         |> eventStore.MultiAddAggregateEventsMd md
-                    
-                    printf "XXXXX: events added" 
                         
                     let eventIds1 = eventIds |> List.take aggregateIds1.Length
                     let eventIds2 = eventIds |> List.skip aggregateIds1.Length

@@ -73,9 +73,11 @@ AS $$
 DECLARE
 inserted_id integer;
 BEGIN
+
 INSERT INTO events_01_good(event, aggregate_id, timestamp)
 VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
+
 END;
 $$;
 
@@ -139,7 +141,6 @@ return event_id;
 END;
 $$;
 
-
 CREATE OR REPLACE FUNCTION insert_enhanced_01_good_aggregate_event_and_return_id(
     event_in text,
     last_event_id integer,
@@ -151,7 +152,7 @@ LANGUAGE plpgsql
 AS $$
        
 DECLARE
-    event_id integer := NULL;
+    event_id integer;
     max_id integer;
 BEGIN
     SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_good WHERE aggregate_id = p_aggregate_id;

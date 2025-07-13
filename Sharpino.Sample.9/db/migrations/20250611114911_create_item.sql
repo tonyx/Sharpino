@@ -128,7 +128,7 @@ RETURNS int
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
     event_id integer;
 BEGIN
     event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
@@ -148,25 +148,23 @@ CREATE OR REPLACE FUNCTION insert_enhanced_01_item_aggregate_event_and_return_id
 RETURNS int
 LANGUAGE plpgsql      
 AS $$       
-
+      
 DECLARE
-    inserted_id integer;
-    event_id integer;
-    max_id integer := (SELECT MAX(id) FROM events_01_item WHERE aggregate_id = p_aggregate_id);
-           
-BEGIN 
-IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
- event_id := insert_md_01_item_event_and_return_id(event_in, p_aggregate_id, md);
- INSERT INTO aggregate_events_01_item(aggregate_id, event_id)       
- VALUES(p_aggregate_id, event_id);
-END IF;        
+event_id integer;
+    max_id integer;
+BEGIN
+SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_item WHERE aggregate_id = p_aggregate_id;
 
-return event_id;
+IF max_id = last_event_id THEN
+        event_id := insert_md_01_item_event_and_return_id(event_in, p_aggregate_id, md);
+INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
+VALUES(p_aggregate_id, event_id);
+END IF;
 
-COMMIT;
+RETURN event_id;
 END;
 
 $$;
+       
 
 -- migrate:down
-

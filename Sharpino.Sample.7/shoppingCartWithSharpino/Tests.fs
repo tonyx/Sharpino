@@ -260,7 +260,7 @@ let tests =
             // then
             Expect.isError addedToCart "should be an error" 
 
-        fmultipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
+        multipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()
 
             // given

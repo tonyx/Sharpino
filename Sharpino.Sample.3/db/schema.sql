@@ -72,34 +72,6 @@ $$;
 
 
 --
--- Name: insert_enhanced_01_balance_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_enhanced_01_balance_aggregate_event_and_return_id(event_in text, last_event_id integer, p_aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-inserted_id integer;
-    event_id integer;
-    max_id integer := (SELECT MAX(id) FROM events_01_balance WHERE aggregate_id = p_aggregate_id);
-BEGIN
-
-IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
-    event_id := insert_md_01_balance_event_and_return_id(event_in, p_aggregate_id, md);
-INSERT INTO aggregate_events_01_balance(aggregate_id, event_id)
-VALUES(p_aggregate_id, event_id);
-END IF;
-
-return event_id;
-
-COMMIT;
-END;
-
-$$;
-
-
---
 -- Name: insert_enhanced_01_seatrow_aggregate_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -108,20 +80,18 @@ CREATE FUNCTION public.insert_enhanced_01_seatrow_aggregate_event_and_return_id(
     AS $$
 
 DECLARE
-inserted_id integer;
-    event_id integer;
-    max_id integer := (SELECT MAX(id) FROM events_01_seatrow WHERE aggregate_id = p_aggregate_id);
+event_id integer;
+    max_id integer;
 BEGIN
+SELECT COALESCE(MAX(id), 0) INTO max_id FROM events_01_seatrow WHERE aggregate_id = p_aggregate_id;
 
-IF (max_id = last_event_id or (last_event_id = 0 and max_id is null)) THEN
-    event_id := insert_md_01_seatrow_event_and_return_id(event_in, p_aggregate_id, md);
+IF max_id = last_event_id THEN
+        event_id := insert_md_01_seatrow_event_and_return_id(event_in, p_aggregate_id, md);
 INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id)
 VALUES(p_aggregate_id, event_id);
 END IF;
 
-return event_id;
-
-COMMIT;
+RETURN event_id;
 END;
 
 $$;
