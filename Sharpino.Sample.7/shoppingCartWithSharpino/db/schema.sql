@@ -491,6 +491,48 @@ ALTER TABLE ONLY public.snapshots_01_good
 
 
 --
+-- Name: ix_01_aggregate_events_cart_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_cart_id ON public.aggregate_events_01_cart USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_good_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_good_id ON public.aggregate_events_01_good USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_cart_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_cart_id ON public.events_01_cart USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_good_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_good_id ON public.events_01_good USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_cart_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_cart_id ON public.snapshots_01_cart USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_good_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_good_id ON public.snapshots_01_good USING btree (aggregate_id);
+
+
+--
 -- Name: aggregate_events_01_good aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -544,4 +586,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20240426152449'),
     ('20240426152543'),
     ('20250612130028'),
+    ('20250713060552'),
     ('20250726155417');
