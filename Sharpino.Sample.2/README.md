@@ -32,15 +32,6 @@ Where is there more info about how to test this behavior?
  4) You also need to give timely feedback to the user. How can you achieve that if you satisfy invariants by skipping the events?
  Answer: you can't. The user may need to do some refresh or wait for a confirmation (open a link that is not immediately generated). There is no immediate consistency in this case.
 
-# IMPORTANT NOTE: 
-a classical approach  (see https://www.jamesmichaelhickey.com/optimistic-concurrency/) is based on allowing concurrency and still voiding any change on the aggregate that happened concurrently with other changes.  This approach allows at most one change to win.
-
-In Sharpino it is possible an "all-win" policy. The aggregate is the entire row: 
-booking seat 1 and seat 5 at the same time is accepted even though it is done concurrently.
-Sharpino accepts both events because invariant conditions are always checked (in rebuilding the aggregate state for example).
-
-So this approach is more liberal than the "optimistic lock" that uses the aggregate version (see https://www.jamesmichaelhickey.com/optimistic-concurrency/) because this last one is based on the assumption that only one change can win.
-
 
  ## Installation
 
