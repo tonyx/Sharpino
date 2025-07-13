@@ -29,8 +29,8 @@ let setUp (eventStore: IEventStore<'F>) =
     eventStore.Reset Site.Version Site.StorageName
     eventStore.Reset Transporter.Version Transporter.StorageName
     StateCache2<Network>.Instance.Invalidate ()
-    AggregateCache<Site, string>.Instance.Clear ()
-    AggregateCache<Transporter, string>.Instance.Clear ()
+    AggregateCache2.Instance.Clear ()
+    AggregateCache2.Instance.Clear ()
            
 let connection = 
         Env.Load() |> ignore

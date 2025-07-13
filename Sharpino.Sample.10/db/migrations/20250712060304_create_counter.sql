@@ -6,7 +6,7 @@ CREATE TABLE public.events_01_counter (
                                           event bytea NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           "timestamp" timestamp without time zone NOT NULL,
-                                          md text 
+                                          md text
 );
 
 ALTER TABLE public.events_01_counter ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
@@ -139,4 +139,6 @@ return event_id;
 END;
 $$;
 
+
 -- migrate:down
+

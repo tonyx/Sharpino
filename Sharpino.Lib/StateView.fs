@@ -129,25 +129,19 @@ module StateView =
                 (async {
                     return
                         result {
-                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
-                            // printf "XXXX getLastAggregateSnapshotOrStateCache 100\n"
                             let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
-                            // printf "XXXX getLastAggregateSnapshotOrStateCache 200\n"
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
-                            // printf "XXXX getLastAggregateSnapshotOrStateCache 300\n"
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
                             else
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        // Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
                                         Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                    // return (eventId , snapshot ) |> Some 
                                     return (eventId , snapshot |> unbox) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
@@ -222,9 +216,7 @@ module StateView =
         async {
             return
                 result {
-                    // printf "XXXX snapAggregateEventIdStateAndEvents 100\n"
                     let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
-                    // printf "XXXX snapAggregateEventIdStateAndEvents 200\n"
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -325,18 +317,13 @@ module StateView =
             let computeNewState =
                 fun () ->
                     result {
-                        // printf "XXXX getAggregateFreshState 100\n"
                         let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
-                        // printf "XXXX getAggregateFreshState 200\n"
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
-                        // printf "XXXX getAggregateFreshState 300\n"
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> (state |> unbox)
-                        // printf "XXXX getAggregateFreshState 400\n"
-                        //return newState 
                         return newState |> box
                     }
                     
@@ -346,10 +333,14 @@ module StateView =
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             
             // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
+            // AggregateCache2.Instance.Clear () 
             let state = AggregateCache2.Instance.Memoize computeNewState (lastEventId, id)
             
+            // let state = computeNewState ()
+            
+            
             match state with
-            | Ok state -> 
+            | Ok state ->
                 (lastEventId, state) |> Ok
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
@@ -585,15 +576,21 @@ module StateView =
                     let! ids =
                         eventStore.GetAggregateIdsInATimeInterval 'A.Version 'A.StorageName start end_
                     let allStates =
-                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore) 
                     
                     let! states =
                         allStates
                         |> List.traverseResultM (fun x -> x)
                    
+                    let result =
+                        states
+                        |> List.filter (fun (_, x)  -> predicate (x |> unbox))
+                    
+                     
                     return
                         states
                         |> List.filter (fun (_, x)  -> predicate (x |> unbox))
+                        |> List.map (fun (id, x) -> (id, x :?> 'A ))
                 }
     
     let inline getAggregateStatesInATimeInterval<'A, 'E, 'F
@@ -639,9 +636,17 @@ module StateView =
                         |> List.distinct // todo: not needed, remove with next release
                         |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                     
-                    return! 
+                    let! result =
                         allStates
                         |> List.traverseResultM (fun x -> x)
+                    let result' =
+                        result
+                        |> List.map (fun (id, x) -> (id, x :?> 'A ))
+                    return result'
+                    
+                    // return! 
+                    //     allStates
+                    //     |> List.traverseResultM (fun x -> x)
                 }
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]

@@ -48,9 +48,7 @@ module GoodCommands =
                         Some 
                             (fun (good: Good) (viewer: AggregateViewer<Good>) ->
                                 result {
-                                    printf "XXXXX AddQuantity X 100\n"
                                     let! (i, state) = viewer (good.Id) 
-                                    printf "XXXXX AddQuantity X 200\n"
                                     return
                                         fun () ->
                                             result {

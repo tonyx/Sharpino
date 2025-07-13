@@ -34,10 +34,10 @@ let tests =
     let pgReset () =
         pgEventStore.Reset SampleObject.Version SampleObject.StorageName
         pgEventStore.ResetAggregateStream SampleObject.Version SampleObject.StorageName
-        AggregateCache<SampleObject, string>.Instance.Clear()
+        AggregateCache2.Instance.Clear()
     let memReset () =
         memoryStorage.Reset SampleObject.Version SampleObject.StorageName
-        AggregateCache<SampleObject, string>.Instance.Clear()
+        AggregateCache2.Instance.Clear()
    
     let getRandomString() =
         let random = System.Random()

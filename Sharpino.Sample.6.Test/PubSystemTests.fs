@@ -26,7 +26,7 @@ let tests =
     let memEventStore: IEventStore<string> = MemoryStorage()
     let pgEventStore: IEventStore<string> = PgEventStore(connection)
     let setUp () =
-        AggregateCache<Dish.Dish, string>.Instance.Clear()
+        AggregateCache2.Instance.Clear()
         StateCache2<Kitchen>.Instance.Invalidate()
         memEventStore.Reset Kitchen.Version Kitchen.StorageName
         memEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName

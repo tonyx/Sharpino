@@ -96,8 +96,8 @@ let setupDbEventStore =
         dbEventStore.ResetAggregateStream Booking.Version Booking.StorageName
         dbEventStore.Reset Theater.Version Theater.StorageName
         StateCache2<Theater>.Instance.Invalidate ()
-        AggregateCache<Row, string>.Instance.Clear ()
-        AggregateCache<Booking, string>.Instance.Clear ()
+        AggregateCache2.Instance.Clear ()
+        AggregateCache2.Instance.Clear ()
         
         
 let setupMemoryStorage =
@@ -108,8 +108,8 @@ let setupMemoryStorage =
         memoryStorage.ResetAggregateStream Booking.Version Booking.StorageName
         memoryStorage.Reset Theater.Version Theater.StorageName
         StateCache2<Theater>.Instance.Invalidate ()
-        AggregateCache<Row, string>.Instance.Clear ()
-        AggregateCache<Booking, string>.Instance.Clear ()
+        AggregateCache2.Instance.Clear ()
+        AggregateCache2.Instance.Clear ()
 
 let mkDefaultRow20Seats = fun () -> { TotalSeats = 20; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }
 let mkDefaultRow10Seats = fun () -> { TotalSeats = 10; NumberOfSeatsBooked = 0; AssociatedBookings = []; AssociatedVouchers = []; Id = Guid.NewGuid() }

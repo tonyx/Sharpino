@@ -43,12 +43,12 @@ let tests =
         pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
         pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
         StateCache2<Stadium>.Instance.Invalidate()
-        AggregateCache<SeatsRow, string>.Instance.Clear()
+        AggregateCache2.Instance.Clear()
     let memReset () =
         memoryStorage.Reset Stadium.Version Stadium.StorageName
         memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
         StateCache2<Stadium>.Instance.Invalidate()
-        AggregateCache<SeatsRow, string>.Instance.Clear()
+        AggregateCache2.Instance.Clear()
    
     let stadiumInstances =
         [

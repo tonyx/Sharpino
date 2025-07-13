@@ -32,8 +32,7 @@ let setUp (eventStore: IEventStore<'F>) =
     eventStore.ResetAggregateStream Cart.Version Cart.StorageName
 
     StateCache2<GoodsContainer>.Instance.Invalidate()
-    AggregateCache<Good,string>.Instance.Clear()
-    AggregateCache<Cart,string>.Instance.Clear()
+    AggregateCache2.Instance.Clear()
 
 let connection = 
         Env.Load() |> ignore

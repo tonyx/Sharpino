@@ -129,10 +129,8 @@ module PgBinaryStore =
                     None
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                printf "XXXXXX. TryGetLastSnapshotIdByAggregateId 100- %s %s %A\n" version name aggregateId
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, is_deleted id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                printf "XXXXX. TryGetLastSnapshotIdByAggregateId 200\n"
+                let query = sprintf "SELECT event_id, id, is_deleted FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
                 let result =
                     Async.RunSynchronously
                         (async {
@@ -149,8 +147,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout) 
-                printf "XXXXX. TryGetLastSnapshotIdByAggregateId 300\n"
+                        }, evenStoreTimeout)
                 match result with        
                 | None -> None
                 | Some (eventId, id, false) -> Some (eventId, id)

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    <OutputType>Console</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Sharpino.Sample._10</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
@@ -9,6 +9,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="Models/Counter/Counter.fs" />
+    <Compile Include="Models/Counter/Events.fs" />
+    <Compile Include="Models/Counter/Commands.fs" />
+    <Compile Include="Models/Account/Account.fs" />
+    <Compile Include="Models/Account/Events.fs" />
+    <Compile Include="Models\Account\Commands.fs" />
+    <Compile Include="CounterApi.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
@@ -23,6 +31,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+<!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="sharpinoSettings.json" />
   </ItemGroup>
 
 </Project>

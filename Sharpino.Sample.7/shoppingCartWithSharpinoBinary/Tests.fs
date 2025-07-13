@@ -29,9 +29,7 @@ let setUp (eventStore: IEventStore<'F>) =
     eventStore.ResetAggregateStream Cart.Version Cart.StorageName
 
     StateCache2<GoodsContainer>.Instance.Invalidate()
-    AggregateCache<Good,byte[]>.Instance.Clear()
-    AggregateCache<Cart,byte[]>.Instance.Clear()
-   
+    AggregateCache2.Instance.Clear()
     
 let connection =
     Env.Load() |> ignore
@@ -399,7 +397,7 @@ let tests =
             let supermarketGoodState = supermarket.GetGood good1Id |> Result.get
             Expect.equal supermarketGoodState.Quantity 20 "should be the same state"
 
-        fmultipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, goodsViewer ) ->
+        multipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, goodsViewer ) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -407,30 +405,30 @@ let tests =
 
             Expect.isOk goodAdded "should be ok"
 
-            printf "XXXX 100\n"
             let addQuantityCommand:AggregateCommand<Good,GoodEvents> = GoodCommands.AddQuantity 1
-            printf "XXXX 200\n"
 
             let undoer = addQuantityCommand.Undoer
-            printf "XXXX 300\n"
+            
+            let retrieved = supermarket.GetGood good.Id
+            //
             let firstShotUndoer = undoer |> Option.get
-            printf "XXXX 400\n"
+            
             let undoerEvents = firstShotUndoer good goodsViewer
-            printf "XXXX 500\n"
+            
             Expect.isOk undoerEvents "should be ok"
             
             //
-            // let addQuantity = runAggregateCommand<Good, GoodEvents, byte[]> good.Id eventStore doNothingBroker addQuantityCommand
-            // Expect.isOk addQuantity "should be ok"
-            // let goodRetrieved = supermarket.GetGood good.Id |> Result.get
-            // Expect.equal goodRetrieved.Quantity 1 "should be the same quantity"
-            //
-            // let undoerEvents' = undoerEvents |> Result.get
-            //
-            // let undoerEventsResult = undoerEvents' () 
-            // Expect.isOk undoerEventsResult "should be ok"
-            // let result = undoerEventsResult |> Result.get
-            // Expect.equal result.Length 1 "should be the same quantity"
+            let addQuantity = runAggregateCommand<Good, GoodEvents, byte[]> good.Id eventStore doNothingBroker addQuantityCommand
+            Expect.isOk addQuantity "should be ok"
+            let goodRetrieved = supermarket.GetGood good.Id |> Result.get
+            Expect.equal goodRetrieved.Quantity 1 "should be the same quantity"
+            
+            let undoerEvents' = undoerEvents |> Result.get
+            
+            let undoerEventsResult = undoerEvents' () 
+            Expect.isOk undoerEventsResult "should be ok"
+            let result = undoerEventsResult |> Result.get
+            Expect.equal result.Length 1 "should be the same quantity"
 
         multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, _, setup, goodsViewer) ->
             setup ()

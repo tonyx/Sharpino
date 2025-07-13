@@ -142,13 +142,13 @@ type CourseManager
                 match course.Teachers with
                 | [] ->
                     return!
-                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
+                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
                 
                 | teacherIds ->
                     let unsubscribeTeacherFromCourses: List<AggregateCommand<Teacher, TeacherEvents>> =
                         teacherIds
                         |> List.map (fun _ -> TeacherCommands.RemoveCourse id)
-                    return!    
+                    return!
                         runDeleteAndTwoNAggregateCommandsMd<Course, CourseEvents, Balance, BalanceEvents, Teacher, TeacherEvents, string>
                             eventStore
                             doNothingBroker

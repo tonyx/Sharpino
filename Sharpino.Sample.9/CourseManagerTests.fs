@@ -330,7 +330,7 @@ let tests =
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
-            let voidCache = AggregateCache.Instance.Clear()
+            let voidCache = AggregateCache2.Instance.Clear()
             let retrieve = courseManager.GetCourse course.Id
             Expect.isOk retrieve "should be Ok"
             let retrievedCourse = retrieve.OkValue
@@ -344,11 +344,11 @@ let tests =
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
             
-            let voidCache = AggregateCache.Instance.Clear()
+            let voidCache = AggregateCache2.Instance.Clear()
             let retrieve1 = courseManager.GetCourse course.Id
             Expect.isOk retrieve1 "should be Ok"
             
-            let voidCache = AggregateCache.Instance.Clear()
+            let voidCache = AggregateCache2.Instance.Clear()
             let retrieveH = courseManager.GetHistoryCourse course.Id
             Expect.isOk retrieveH "should be Ok"
         
