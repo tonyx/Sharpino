@@ -1218,7 +1218,6 @@ module CommandHandler =
                 let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage eventBroker md command
                 let! ids = storeEvents storage eventBroker executedCommand
                 
-                // AggregateCache<'A, 'F>.Instance.Memoize2 (executedCommand.NewState |> unbox |> Ok) (ids |> List.last, aggregateId)
                 AggregateCache2.Instance.Memoize2 (executedCommand.NewState |> unbox |> Ok) (ids |> List.last, aggregateId)
                 let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
                 return ()

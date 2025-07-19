@@ -81,7 +81,8 @@ let tests =
             
             // Act
             let lowLevelEvent = SampleObjectRenamed "new name"
-            let storeLowLevelEvent = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId [lowLevelEvent.Serialize]
+            // let storeLowLevelEvent = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId [lowLevelEvent.Serialize]
+            let storeLowLevelEvent = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName sampleObjectId "" [lowLevelEvent.Serialize]
             Expect.isOk storeLowLevelEvent "should be ok"
             
             // Assert
@@ -109,11 +110,11 @@ let tests =
             
             // Act
             let changeName1 = SampleObjectRenamed "new name 1"
-            let storeChangeName1 = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId1 [changeName1.Serialize]
+            let storeChangeName1 = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName sampleObjectId1 "" [changeName1.Serialize]
             Expect.isOk storeChangeName1 "should be ok"
             
             let changeName2 = SampleObjectRenamed "new name 2"
-            let storeChangeName2 = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId2 [changeName2.Serialize]
+            let storeChangeName2 = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName sampleObjectId2 "" [changeName2.Serialize]
             Expect.isOk storeChangeName2 "should be ok"
             
             // Assert
@@ -149,11 +150,11 @@ let tests =
             Expect.isOk initialized2 "should be ok"
             
             let changeName1 = SampleObjectRenamed "new name 1"
-            let storeChangeName1 = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId1 [changeName1.Serialize]
+            let storeChangeName1 = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName sampleObjectId1 Metadata.Empty [changeName1.Serialize]
             Expect.isOk storeChangeName1 "should be ok"
             
             let changeName2 = SampleObjectRenamed "new name 2"
-            let storeChangeName2 = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName sampleObjectId2 [changeName2.Serialize]
+            let storeChangeName2 = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName sampleObjectId2 Metadata.Empty [changeName2.Serialize]
             Expect.isOk storeChangeName2 "should be ok"
             
             // Act
@@ -171,11 +172,11 @@ let tests =
             Expect.notEqual eventId2 0 "should be non zero"
             
             let changeName22 = SampleObjectRenamed "new name 22"
-            let storeChangeName3 = eventStore.AddAggregateEvents eventId2 SampleObject.Version SampleObject.StorageName sampleObjectId2 [changeName22.Serialize]
+            let storeChangeName3 = eventStore.AddAggregateEventsMd eventId2 SampleObject.Version SampleObject.StorageName sampleObjectId2 Metadata.Empty [changeName22.Serialize]
             Expect.isOk storeChangeName3 "should be ok"
            
             let changeName11 = SampleObjectRenamed "new name 11"
-            let storeChangeName4 = eventStore.AddAggregateEvents eventId1 SampleObject.Version SampleObject.StorageName sampleObjectId1 [changeName11.Serialize]
+            let storeChangeName4 = eventStore.AddAggregateEventsMd eventId1 SampleObject.Version SampleObject.StorageName sampleObjectId1 Metadata.Empty [changeName11.Serialize]
             Expect.isOk storeChangeName4 "should be ok"
             // will fail
     
@@ -192,7 +193,7 @@ let tests =
             let eventChanges =
                 [ for i in 1 .. 1000 do
                     let changeName = SampleObjectRenamed (getRandomString())
-                    let storeChange = eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName (objects.[i - 1].Id) [changeName.Serialize]
+                    let storeChange = eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName (objects.[i - 1].Id) Metadata.Empty [changeName.Serialize]
                     Expect.isOk storeChange "should be ok"
                 ]
             Expect.isTrue true "true"
@@ -211,7 +212,7 @@ let tests =
             System.Threading.Tasks.Parallel.For(0, objects.Length, fun i ->
                     let changeName = SampleObjectRenamed (getRandomString())
                     let storeChange =
-                        eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName (objects.[i].Id) [changeName.Serialize]
+                        eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName (objects.[i].Id) Metadata.Empty [changeName.Serialize]
                     Expect.isOk storeChange "should be ok")
             |> ignore
         
@@ -232,7 +233,7 @@ let tests =
                     System.Threading.Thread.Sleep(random.Next(100, 500))
                     let changeName = SampleObjectRenamed (getRandomString())
                     let storeChange =
-                        eventStore.AddAggregateEvents 0 SampleObject.Version SampleObject.StorageName objects.[i].Id [changeName.Serialize]
+                        eventStore.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName objects.[i].Id Metadata.Empty [changeName.Serialize]
                     Expect.isOk storeChange "should be ok")
             |> ignore
            
@@ -246,7 +247,7 @@ let tests =
                     System.Threading.Thread.Sleep(random.Next(100, 500))
                     let (eventId, okRetrieved) = getAggregateFreshState<SampleObject, SampleObjectEvents, string> objects.[i].Id eventStore |> Result.get 
                     let storeChange =
-                        eventStore.AddAggregateEvents eventId SampleObject.Version SampleObject.StorageName objects.[i].Id [changeName.Serialize]
+                        eventStore.AddAggregateEventsMd eventId SampleObject.Version SampleObject.StorageName objects.[i].Id Metadata.Empty [changeName.Serialize]
                         
                     (
                          if storeChange.IsOk then 

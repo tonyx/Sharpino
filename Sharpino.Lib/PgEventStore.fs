@@ -1023,7 +1023,6 @@ module PgStorage =
                         let conn = new NpgsqlConnection(connection)
                         conn.Open()
                         
-                        // tbh I don't see the point of keep using transaction: if it works it works, if it doesn't it doesn't
                         let transaction = conn.BeginTransaction() 
                         let lastEventId = 
                             (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
