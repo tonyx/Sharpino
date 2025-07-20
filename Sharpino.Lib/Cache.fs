@@ -28,9 +28,10 @@ module Cache =
             Conf.defaultConf
     
     type AggregateCache2  private () =
-        let lastEventIdPerAggregate = Generic.Dictionary<AggregateId, EventId>(config.CacheAggregateSize)
+        let lastEventIdPerAggregate = ConcurrentDictionary<AggregateId, EventId>(concurrencyLevel, config.CacheAggregateSize)
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
-        let statePerAggregate = Generic.Dictionary<AggregateId, Result<obj, string>>(config.CacheAggregateSize)
+        let statePerAggregate = ConcurrentDictionary<AggregateId, Result<'A, string>>(concurrencyLevel, config.CacheAggregateSize)
+
         static let instance = AggregateCache2()
         static member Instance = instance
         
@@ -44,15 +45,17 @@ module Cache =
                     
                 if (aggregateQueue.Count > config.CacheAggregateSize) then
                     let removed = aggregateQueue.Dequeue ()
-                    lastEventIdPerAggregate.Remove removed  |> ignore
-                    statePerAggregate.Remove removed  |> ignore
+                    lastEventIdPerAggregate.TryRemove removed  |> ignore
+                    statePerAggregate.TryRemove removed  |> ignore
                 ()
                 
             with :? _ as e -> 
                 logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 lastEventIdPerAggregate.Clear()
+                statePerAggregate.Clear()
                 aggregateQueue.Clear()
-                ()
+                () 
+        
         member this.TryGetLastEventId(aggregateId: AggregateId) =
             if (lastEventIdPerAggregate.ContainsKey aggregateId) then
                 lastEventIdPerAggregate.[aggregateId] |> Some
@@ -69,13 +72,12 @@ module Cache =
                 let res = f()
                 this.TryAddToDictionary ((eventId, aggregateId), res) 
                 res
-                
+               
         member this.Clean (aggregateId: AggregateId) =
-            if (aggregateQueue.Count > 0) then
-                aggregateQueue.Dequeue () |> ignore
-            lastEventIdPerAggregate.Remove aggregateId  |> ignore
-            statePerAggregate.Remove aggregateId  |> ignore
-        
+            aggregateQueue.TryDequeue() |> ignore
+            lastEventIdPerAggregate.TryRemove aggregateId  |> ignore
+            statePerAggregate.TryRemove aggregateId  |> ignore
+       
         member this.Memoize2 (x:Result<'A, string>) (eventId: EventId, aggregateId: AggregateId) =
             this.Clean aggregateId
             this.TryAddToDictionary ((eventId, aggregateId), x)
@@ -99,7 +101,7 @@ module Cache =
                 lastEventIdPerAggregate.[aggregateId] |> Some
             else
                 None
-    
+   
     type StateCache2<'A> private () =
         let mutable cachedValue: 'A option = None
         let mutable eventId: EventId = 0
