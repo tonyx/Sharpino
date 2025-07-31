@@ -40,7 +40,14 @@ A library to support Event-Sourcing in F#
 - The core library supports both a strict "fold" based evolve function for aggregates and contexts and an alternative that may skip events that may produce an invalid state.
 - There are no "creation" or "deletion" events, for aggregates (unless the creation and the deletion goes together with events related to some other aggregates/contexts)
 - Creation of an aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
-- Contexts don't have a creation and a deletion events.
+- Contexts don't need initializaion or deletion. They support an initial state by a static Zero member. They can't be deleted.
+
+## Features and technical improvements planned to be added
+- sending events to a message bus after they have been stored
+- implementing a "state viewer" that listen events on a message bus
+- optimistic lock check on the database level
+- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 show some use cases about)
+
 
 ## Projects
 __Sharpino.Lib.Core__:
@@ -104,7 +111,7 @@ __Faq__:
 - Why the name "Sharpino"?
     - It's a mix of "Sharp" (as the '#' of  C# or F#) and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf".
 - Why another event-sourcing library?
-    - I wanted to study the subject, and I wantet do use it for a project for fun and profit:  (www.restaurantsystem.cloud).
+    - I wanted to study the subject, and I need it for a project for fun and profit:  (www.restaurantsystem.cloud).
 - Why F#?
     - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
@@ -131,6 +138,8 @@ __Faq__:
     - It is possible to use "details" as a way to handle the composition of information coming from aggregates and events. The examples provided prefer to use directly the aggregates state (which is efficient by using the cache) s state (which is efficient by using the cache).
     - Events can be queried directly to retrieve any projections, however the user may need to do some work to be efficient.
     - More complex projections may need some work to be efficient in the same way the aggregates are.
+- Why caring about cross streams transactions and cross aggregates invariants (instead of just ruling them out)?
+    - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
 
 ## Possible improvements
 - Use a generic way to support publish/subscribe on event bus (event broker, message broker distributed cahce...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
