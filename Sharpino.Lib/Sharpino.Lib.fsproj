@@ -34,6 +34,8 @@
     <Compile Include="MailboxProcessors.fs" />
     <Compile Include="Cache.fs" />
     <Compile Include="StateView.fs" />
+    <Compile Include="EventBroker.fs" />
+    <Compile Include="RabbitMq.fs" />
     <Compile Include="CommandHandler.fs" />
     
     <None Include="LICENSE" Pack="true" PackagePath="" />
@@ -107,6 +109,10 @@
     <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
 <!--    <PackageReference Include="System.Runtime.Caching" Version="8.0.1" /> --> 
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->

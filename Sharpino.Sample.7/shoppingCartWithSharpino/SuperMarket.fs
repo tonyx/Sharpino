@@ -1,5 +1,6 @@
 namespace ShoppingCart
 
+open Sharpino.EventBroker
 open ShoppingCart.Good
 open ShoppingCart.GoodEvents
 open ShoppingCart.GoodsContainer
@@ -17,12 +18,15 @@ open FsToolkit.ErrorHandling
 
 module Supermarket =
     open Sharpino.CommandHandler
-    let doNothingBroker: IEventBroker<_> =
+    let legacyBroker: IEventBroker<_> =
         {  notify = None
            notifyAggregate = None }
+    
+    let doNothingBroker =
+        fun version name aggregateId eventId events -> Result.Ok ()
 
-    type Supermarket (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
-        new (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>) =
+    type Supermarket (eventStore: IEventStore<'F>, eventBroker: AggregateMessageSender<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
+        new (eventStore: IEventStore<'F>, eventBroker: AggregateMessageSender<_>) =
             let goodsContainerViewer:StateViewer<GoodsContainer> = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStore
             let goodsViewer:AggregateViewer<Good> = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStore
             let cartViewer:AggregateViewer<Cart> = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStore
@@ -91,7 +95,7 @@ module Supermarket =
                 let! goodAdded =
                     good.Id 
                     |> AddGood 
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore eventBroker good
+                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore legacyBroker good
                 return ()
             }
         
@@ -119,7 +123,7 @@ module Supermarket =
                 let command = GoodsContainerCommands.RemoveGood id
                 return! 
                     command
-                    |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore eventBroker 
+                    |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore legacyBroker 
             }
 
         member this.AddCart (cart: Cart) = 
@@ -127,7 +131,7 @@ module Supermarket =
                 return! 
                     cart.Id
                     |> AddCart
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, string> eventStore eventBroker cart
+                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, string> eventStore legacyBroker cart
             }
 
         member this.GetCart (cartRef: Guid) = 

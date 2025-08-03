@@ -1,6 +1,7 @@
 module Tests
 
 open Sharpino
+open Sharpino.EventBroker
 open Sharpino.PgBinaryStore
 open ShoppingCart.Good
 open ShoppingCart.GoodsContainer
@@ -62,8 +63,6 @@ let jsonMemoryGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents
 let jsonMemoryCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStoreMemory
 let jsonMemoryGoodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStoreMemory
 
-
-
 let setupPgEventStore () =
     setUp eventStorePostgres
     ()
@@ -71,9 +70,9 @@ let setupMemoryEventStore () =
     setUp eventStoreMemory
     ()
 
-let doNothingBroker: IEventBroker<string> =
-    {  notify = None
-       notifyAggregate = None }
+let doNothingBroker:AggregateMessageSender<_> =
+    fun message -> Result.Ok ()
+    // fun version name aggregateId eventId events -> Result.Ok ()
 
 let marketInstances =
     [
