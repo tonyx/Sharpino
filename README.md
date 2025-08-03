@@ -18,22 +18,22 @@ A library to support Event-Sourcing in F#
 
 ## Overview and terms
  
-- Contexts: event sourced objects with no id, so only one instance is around for each type
+- Contexts: event sourced objects with no id, so only one instance is around for each type.
 - Aggregates: event sourced objects with id (Guid).
 - Multiple streams transactions, i.e. executing multiple commands involving different aggregates as single db transactions.
 - Functional based definition of any member aimed to "change the state", based on result type (signature: 'A -> Result<'A, string>').
-- Events are based on D.U. and are wrappers to transformational events
-- Commands generate list of events and, optionally, an "under" that will return a functionn to can produce, in the future, a list of undo (or compensating) events
+- Events are based on D.U. and are wrappers to transformational events.
+- Commands generate list of events and, optionally, an "under" that will return a function that may produce, in the future, a list of undo (or compensating) events.
 - Cache: Dictionary based cache of the current state of any ggregate or context.
 - Soft delete: it is possible to mark an aggregate as deleted.
-- StateViewer: a function to get the current state of any aggregate or context (by probing the cache and, in case of not found, querying the event store using the latest snapshot and the following events).
+- StateViewer: a function to get the current state of any aggregate or context (by probing the cache and, in case of not found, querying the event store for the latest snapshot and the following events).
 - HistoryStateViewer: it is possible to get any aggregate, deleted or not.
 - Gdpr: it is possible to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
 - Eventstore: for each aggregate/context type there are tables for snapshots and events based on PostgreSQL.
-- The SqlTemplates contains sql scripts to create (by simple text substitution) sql scripts for events and snapshots.
-- Optimistic lock based on event_id: check the event_id position on the basis of the event_id passed by the command handler to the event store.
-- In memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots on Postgres. The serialiation meechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are playn text fields, but they can be JSON or JSONB fields (with advantages - and a little overhead - as there is no querying on the JSON fields).
+- The SqlTemplates folder contains sql scripts to create (by simple text substitution) sql scripts for events and snapshots.
+- Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
+- In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
+- JSON or binary serialization for events and snapshots on Postgres. The serialiazion meechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are playn text fields, but they can be JSON or JSONB fields (with advantages - and a little overhead - as there is no querying on the JSON fields).
 - running any command of any type in a transaction.
 - Evolving the aggregate structure by keeping backward compatibility is based on upcasting.
 - Commands and events don't need upcasting. At most the way to make a command or event evolve is by adding new cases.
@@ -43,11 +43,10 @@ A library to support Event-Sourcing in F#
 - Contexts don't need initializaion or deletion. They support an initial state by a static Zero member. They can't be deleted.
 
 ## Features and technical improvements planned to be added
-- sending events to a message bus after they have been stored
-- implementing a "state viewer" that listen events on a message bus
-- optimistic lock check on the database level
+- Sending events to a message bus after they have been stored
+- Implementing a "state viewer" that listen events on a message bus
+- Enhanced Optimistic lock check on the database level (i.e. in the insert event functions)
 - "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 show some use cases about)
-
 
 ## Projects
 __Sharpino.Lib.Core__:
