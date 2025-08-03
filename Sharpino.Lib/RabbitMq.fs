@@ -34,10 +34,23 @@ module RabbitMq =
             }
     
     let mkAggregateMessageSender<'A> (host: string) (streamName: string) =
-        let factory = mkfactory(host)
-        let channel = mkSimpleChannel(factory, streamName).Result
-        let aggregateMessageSender =
-            fun (message: AggregateMessage<'A>) ->
-                let body = Encoding.UTF8.GetBytes (message.Message)
-                let properties = channel.CreateBasicProperties()
-        ()
+        taskResult
+            {
+                let factory = mkfactory(host)
+                let! channel = mkSimpleChannel(factory, streamName)
+                let aggregateMessageSender =
+                    fun (message: string) ->
+                        let body = Encoding.UTF8.GetBytes message
+                        task
+                            {
+                                return
+                                    channel.BasicPublishAsync(
+                                        "",
+                                        streamName,
+                                        body
+                                    )
+                            }
+                return aggregateMessageSender        
+            }
+            
+               

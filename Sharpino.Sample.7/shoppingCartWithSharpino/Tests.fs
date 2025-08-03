@@ -1,8 +1,12 @@
 module Tests
 
+open System.Collections.Generic
+open FSharpPlus.Math
+open FsToolkit.ErrorHandling
 open Sharpino
 open Sharpino.EventBroker
 open Sharpino.PgBinaryStore
+open Sharpino.RabbitMq
 open ShoppingCart.Good
 open ShoppingCart.GoodsContainer
 open ShoppingCart.Supermarket
@@ -70,14 +74,47 @@ let setupMemoryEventStore () =
     setUp eventStoreMemory
     ()
 
-let doNothingBroker:AggregateMessageSender<_> =
-    fun message -> Result.Ok ()
-    // fun version name aggregateId eventId events -> Result.Ok ()
+// let aggregateMessageSender:AggregateMessageSender<_> =
+//     taskResult {
+//     }
+let aggregateMessageSender =
+    fun (queueName: string) ->
+        taskResult {
+            return
+                fun (message: string) ->
+                    task
+                        {
+                            return
+                                new System.Threading.Tasks.ValueTask(
+                                    task {
+                                        ()
+                                    }
+                                )
+                }
+            }
+
+let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, AggregateMessageSender>()
+
+let cartMessageSender =
+    mkAggregateMessageSender<Cart> "127.0.0.1" "_cart_01"
+
+let goodMessageSender =
+    mkAggregateMessageSender<Good> "127.0.0.1" "_good_01"
+
+let messageSender =
+    fun queueName ->
+        let sender = aggregateMessageSenders.TryGetValue(queueName)
+        match sender with
+        | true, sender -> sender
+        | _ -> failwith "not found"
+
 
 let marketInstances =
     [
-        Supermarket(eventStorePostgres, doNothingBroker, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
-        Supermarket(eventStoreMemory, doNothingBroker, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
+        // Supermarket(eventStorePostgres, aggregateMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
+        // Supermarket(eventStoreMemory, aggregateMessageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
+        Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
+        Supermarket(eventStoreMemory, messageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
     ]
 [<Tests>]
 let tests =
@@ -443,7 +480,7 @@ let tests =
             let undoerEvents = firstShotUndoer good goodsViewer
             Expect.isOk undoerEvents "should be ok"
 
-            let addQuantity = runAggregateCommand<Good, GoodEvents, string> good.Id eventStore doNothingBroker addQuantityCommand
+            let addQuantity = runAggregateCommand<Good, GoodEvents, string> good.Id eventStore messageSender addQuantityCommand
             Expect.isOk addQuantity "should be ok"
             let goodRetrieved = supermarket.GetGood good.Id |> Result.get
             Expect.equal goodRetrieved.Quantity 1 "should be the same quantity"

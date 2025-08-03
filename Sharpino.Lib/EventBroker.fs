@@ -1,10 +1,14 @@
 namespace Sharpino
 
 open System
+open System.Threading.Tasks
+open Sharpino.Commons
 open Sharpino.Definitions
+open FsToolkit.ErrorHandling
 
 module EventBroker =
-  
+ 
+    type StreamName = string 
     type Message<'A> =
         | InitialSnapshot of 'A
         | Delete
@@ -15,7 +19,11 @@ module EventBroker =
             AggregateId: AggregateId
             Message: Message<'A>
         }
+        with
+            member this.Serialize =
+                this
+                |> jsonPSerializer.Serialize 
     
-    type AggregateMessageSender<'A> =
-        AggregateMessage<'A> -> Result<unit, string>
+    type AggregateMessageSender =
+        StreamName -> TaskResult<Json -> Task<ValueTask>, string>
         
