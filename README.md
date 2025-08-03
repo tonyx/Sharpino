@@ -18,33 +18,33 @@ A library to support Event-Sourcing in F#
 
 ## Overview and terms
  
-- Contexts: event sourced objects with no id, so only one instance is around for each type.
-- Aggregates: event sourced objects with id (Guid).
-- Multiple streams transactions, i.e. executing multiple commands involving different aggregates as single db transactions.
-- Functional based definition of any member aimed to "change the state", based on result type (signature: 'A -> Result<'A, string>').
+- Contexts: Event sourced objects with no id, so only one instance is around for each type.
+- Aggregates: Event sourced objects with id (Guid).
+- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
+- Any transformation member of any object of type 'A follows this signature: 'A -> Result<'A, string>'.
 - Events are based on D.U. and are wrappers to transformational events.
-- Commands generate list of events and, optionally, an "under" that will return a function that may produce, in the future, a list of undo (or compensating) events.
+- Commands generate list of events and, optionally, an "under" that will return a function to produce eventually a list of compensating events.
 - Cache: Dictionary based cache of the current state of any ggregate or context.
-- Soft delete: it is possible to mark an aggregate as deleted.
-- StateViewer: a function to get the current state of any aggregate or context (by probing the cache and, in case of not found, querying the event store for the latest snapshot and the following events).
-- HistoryStateViewer: it is possible to get any aggregate, deleted or not.
-- Gdpr: it is possible to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
-- Eventstore: for each aggregate/context type there are tables for snapshots and events based on PostgreSQL.
-- The SqlTemplates folder contains sql scripts to create (by simple text substitution) sql scripts for events and snapshots.
+- Soft delete: Mark an aggregate as deleted.
+- StateViewer: A function to get the current state of any aggregate or context (by probing the cache and, if cahe misses, apply the evolve on the latest snapshot and subsequent events.
+- HistoryStateViewer: Retrieve any aggregate, including the ones that has been softly deleted.
+- Gdpr: Overwrite/clear/reset snapshots and events in case the users ask to delete their data.
+- EventStore: PostgresSql based to store events and snapshots.
+- SqlTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/json).
 - Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
 - In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots on Postgres. The serialiazion meechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are playn text fields, but they can be JSON or JSONB fields (with advantages - and a little overhead - as there is no querying on the JSON fields).
-- running any command of any type in a transaction.
-- Evolving the aggregate structure by keeping backward compatibility is based on upcasting.
-- Commands and events don't need upcasting. At most the way to make a command or event evolve is by adding new cases.
-- The core library supports both a strict "fold" based evolve function for aggregates and contexts and an alternative that may skip events that may produce an invalid state.
-- There are no "creation" or "deletion" events, for aggregates (unless the creation and the deletion goes together with events related to some other aggregates/contexts)
-- Creation of an aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
-- Contexts don't need initializaion or deletion. They support an initial state by a static Zero member. They can't be deleted.
+- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are plain text fields, but they can be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
+- Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
+- Commands and events don't use versioning or upcasting. Just add new events.
+- By default the evolve function skip events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
+- With regards of the previous point: Event store should never store events that may produce an invalid state (if it happens it means that the optimistic lock failed).
+- Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
+- There may be also events associated to creation and deletion of aggregates, but they are not needed.
+- Contexts don't need creation not deletion. They declare an initial state by a static Zero member.
 
 ## Features and technical improvements planned to be added
-- Sending events to a message bus after they have been stored
-- Implementing a "state viewer" that listen events on a message bus
+- Sending events to a message bus after they have been stored.
+- Implementing a "state viewer" that listen events on a message bus.
 - Enhanced Optimistic lock check on the database level (i.e. in the insert event functions)
 - "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 show some use cases about)
 
