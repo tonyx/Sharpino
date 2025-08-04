@@ -11,10 +11,18 @@
 ## What is Event Sourcing?
 - Event sourcing is a design pattern for persisting the state of an object by storing the sequence of events that have occurred on the object.
 - Event sourcing fits functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
-- 
+
 ## What is Sharpino?
 
-A library to support Event-Sourcing in F#
+A library to support Event-Sourcing in F# based on the following principles:
+- PostgresSql based event store to register events and snapshots.
+- In memory event store to speed up the tests.
+- Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
+- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
+
+## Goals
+- Using of F# for domain modeling and event sourcing in the .NET world particularly in the backend.
+- Adopting a Mixed environment with C# and F#.
 
 ## Overview and terms
  
@@ -23,21 +31,21 @@ A library to support Event-Sourcing in F#
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 - Any transformation member of any object of type 'A follows this signature: 'A -> Result<'A, string>'.
 - Events are based on D.U. and are wrappers to transformational events.
-- Commands generate list of events and, optionally, an "under" that will return a function to produce eventually a list of compensating events.
-- Cache: Dictionary based cache of the current state of any ggregate or context.
+- A Command generates a list of events and, optionally, an "under" that will return a function to produce eventually a list of compensating events.
+- Cache: Dictionary based cache of the current state of any aggregate or context.
 - Soft delete: Mark an aggregate as deleted.
-- StateViewer: A function to get the current state of any aggregate or context (by probing the cache and, if cahe misses, apply the evolve on the latest snapshot and subsequent events.
-- HistoryStateViewer: Retrieve any aggregate, including the ones that has been softly deleted.
-- Gdpr: Overwrite/clear/reset snapshots and events in case the users ask to delete their data.
-- EventStore: PostgresSql based to store events and snapshots.
-- SqlTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/json).
-- Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
+- StateViewer: A non pure function to get the current state of any aggregate or context (by probing the cache and, in case of cache miss, looking into the event store to apply the "evolve" on the latest snapshot and subsequent events).
+- HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted. 
+- Gdpr: Overwrite/clear/reset snapshots and events in case user asks to delete their data.
+- EventStore is based on PostgresSql to store events and snapshots.
+- SqlTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
+- Optimistic lock based on event_id: Checking the first available event_id position in the event stored compared with the event_id related to the state used by the command to "decide".
 - In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are plain text fields, but they can be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
+- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON field can be plain text fields on the db, or they can also be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
 - Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
 - Commands and events don't use versioning or upcasting. Just add new events.
-- By default the evolve function skip events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
-- With regards of the previous point: Event store should never store events that may produce an invalid state (if it happens it means that the optimistic lock failed).
+- By default the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
+- With regards of the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed).
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
 - There may be also events associated to creation and deletion of aggregates, but they are not needed.
 - Contexts don't need creation not deletion. They declare an initial state by a static Zero member.
