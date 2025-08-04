@@ -32,8 +32,8 @@ module RabbitMq =
                     queueDeclare channel streamName
                 return channel 
             }
-    
-    let mkAggregateMessageSender<'A> (host: string) (streamName: string) =
+            
+    let mkAggregateMessageSenderBack(host: string) (streamName: string)  =
         taskResult
             {
                 let factory = mkfactory(host)
@@ -41,16 +41,29 @@ module RabbitMq =
                 let aggregateMessageSender =
                     fun (message: string) ->
                         let body = Encoding.UTF8.GetBytes message
-                        task
-                            {
-                                return
-                                    channel.BasicPublishAsync(
-                                        "",
-                                        streamName,
-                                        body
-                                    )
-                            }
+                        channel.BasicPublishAsync(
+                            "",
+                            streamName,
+                            body
+                        )
                 return aggregateMessageSender        
             }
-            
                
+    let mkAggregateMessageSender(host: string) (streamName: string) =
+        let factory = mkfactory(host)
+        let channel =
+            mkSimpleChannel(factory, streamName)
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            |> Result.get
+        
+        let aggregateMessageSender =
+            fun (message: string) ->
+                let body = Encoding.UTF8.GetBytes message
+                channel.BasicPublishAsync(
+                    "",
+                    streamName,
+                    body
+                )
+        aggregateMessageSender        
+            

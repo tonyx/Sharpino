@@ -25,5 +25,5 @@ module EventBroker =
                 |> jsonPSerializer.Serialize 
     
     type AggregateMessageSender =
-        StreamName -> TaskResult<Json -> Task<ValueTask>, string>
+        string -> ValueTask
         

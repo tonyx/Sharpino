@@ -367,6 +367,20 @@ module CommandHandler =
                         
                 let! _ = eventStore.SetInitialAggregateState initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize
                 AggregateCache2.Instance.Memoize2 (initialInstance |> box|> Ok) (0, initialInstance.Id)
+               
+                let queueName = 'A1.Version + 'A1.StorageName 
+                let sender = messageSender queueName // todo: check not found also
+                let message =
+                    Message<'A1>.InitialSnapshot initialInstance
+                let aggregateMessage =
+                    {
+                        AggregateId = initialInstance.Id
+                        Message = message
+                    }.Serialize
+                    
+                let sent =
+                    sender aggregateMessage
+                    
                 return ()
             }
             

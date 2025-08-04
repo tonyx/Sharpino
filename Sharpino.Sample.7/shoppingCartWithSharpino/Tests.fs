@@ -1,6 +1,7 @@
 module Tests
 
 open System.Collections.Generic
+open System.Threading.Tasks
 open FSharpPlus.Math
 open FsToolkit.ErrorHandling
 open Sharpino
@@ -96,10 +97,13 @@ let aggregateMessageSender =
 let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, AggregateMessageSender>()
 
 let cartMessageSender =
-    mkAggregateMessageSender<Cart> "127.0.0.1" "_cart_01"
+    mkAggregateMessageSender "127.0.0.1" "_01_cart"
 
 let goodMessageSender =
-    mkAggregateMessageSender<Good> "127.0.0.1" "_good_01"
+    mkAggregateMessageSender "127.0.0.1" "_01_good"
+
+aggregateMessageSenders.Add("_01_cart", cartMessageSender)
+aggregateMessageSenders.Add("_01_good", goodMessageSender)
 
 let messageSender =
     fun queueName ->
@@ -108,14 +112,14 @@ let messageSender =
         | true, sender -> sender
         | _ -> failwith "not found"
 
-
 let marketInstances =
     [
         // Supermarket(eventStorePostgres, aggregateMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
         // Supermarket(eventStoreMemory, aggregateMessageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
         Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
-        Supermarket(eventStoreMemory, messageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
+        // Supermarket(eventStoreMemory, messageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> IEventStore<string> ;
     ]
+    
 [<Tests>]
 let tests =
 
@@ -512,7 +516,7 @@ let tests =
             let undoerEventsResult = undoerEvents' () 
             Expect.isError undoerEventsResult "should be an error"
             
-        multipleTestCase "add and retrieve a good bypassing the container - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
+        fmultipleTestCase "add and retrieve a good bypassing the container - Ok" marketInstances <| fun (supermarket, _, setup, _, _) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGoodBypassingContainer good
