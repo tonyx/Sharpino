@@ -51,7 +51,6 @@ let instances =
                        Balance.MkBalance 1000.0M)),
         pgStorageCourseViewer,
         pgStorageStudentViewer
-        
                       
         // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageHistoryCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
     ]

@@ -22,7 +22,7 @@ module Supermarket =
         {  notify = None
            notifyAggregate = None }
     
-    let doNothingBroker =
+    let emptyMessageSender =
         fun version name aggregateId eventId events -> Result.Ok ()
 
     type Supermarket (eventStore: IEventStore<'F>, eventBroker: string -> AggregateMessageSender, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
