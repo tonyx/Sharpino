@@ -21,8 +21,9 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 
 ## Goals
-- Using of F# for domain modeling and event sourcing in the .NET world particularly in the backend.
-- Adopting a Mixed environment with C# and F#.
+- Using F# for domain modeling and event sourcing in the .NET world particularly in the backend.
+- Multilanguage environment and architecture (example of Blazor on front end and F# on backend is given).
+- Avoid impedance mismatch between the domain and the database
 
 ## Overview and terms
  
@@ -44,7 +45,7 @@ A library to support Event-Sourcing in F# based on the following principles:
 - JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON field can be plain text fields on the db, or they can also be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
 - Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
 - Commands and events don't use versioning or upcasting. Just add new events.
-- By default the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
+- By default, the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
 - With regards of the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed).
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
 - There may be also events associated to creation and deletion of aggregates, but they are not needed.
