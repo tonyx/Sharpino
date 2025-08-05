@@ -45,7 +45,6 @@ module Supermarket =
 
         member this.GetGoodsQuantity (goodId: Guid) = 
             result {
-                let! esists = this.GetGood goodId
                 let! (_, state) = goodsViewer goodId
                 return state.Quantity
             }
@@ -69,6 +68,16 @@ module Supermarket =
                 let! (_, state) = goodsViewer id
                 return state
             }
+        
+        member this.SetPrice (goodId: Guid, price: decimal) = 
+            result {
+                let! (_, state) = goodsViewer goodId
+                let command = GoodCommands.ChangePrice  price
+                return! 
+                    command 
+                    |> runAggregateCommand<Good, GoodEvents, string> goodId eventStore eventBroker
+            }
+            
         member this.Goods =
             result {
                 let! (_, state) = goodsContainerViewer ()
@@ -99,7 +108,6 @@ module Supermarket =
                 return ()
             }
         
-        // to check initialization
         member this.AddGoodBypassingContainer (good: Good)     =
             result
                 {
@@ -129,18 +137,18 @@ module Supermarket =
         member this.AddCart (cart: Cart) = 
             result {
                 return! 
-                    cart.Id
-                    |> AddCart
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, string> eventStore legacyBroker cart
+                    cart
+                    |> runInit<Cart, CartEvents,'F> eventStore eventBroker
+                    // |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, string> eventStore legacyBroker cart
             }
 
         member this.GetCart (cartRef: Guid) = 
             result {
-                let! cartRefs = this.CartRefs
-                let! exists =
-                    cartRefs
-                    |> List.tryFind (fun c -> c = cartRef)
-                    |> Result.ofOption "Cart not found"
+                // let! cartRefs = this.CartRefs
+                // let! exists =
+                //     cartRefs
+                //     |> List.tryFind (fun c -> c = cartRef)
+                //     |> Result.ofOption "Cart not found"
                 let! (_, state) = cartViewer cartRef
                 return state
             }

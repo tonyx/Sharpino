@@ -11,6 +11,7 @@
     <Compile Include="Cart/Cart.fs" />
     <Compile Include="Cart/Events.fs" />
     <Compile Include="Cart/Commands.fs" />
+    <Compile Include="Cart/Consumer.fs" />
     <Compile Include="Goods/Good.fs" />
     <Compile Include="Goods/Events.fs" />
     <Compile Include="Goods/Commands.fs" />

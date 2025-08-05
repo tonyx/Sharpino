@@ -71,9 +71,6 @@ module RabbitMq =
                 )
         aggregateMessageSender        
 
-    
-    
-    
     type RabbitConsumerService (sp: IServiceProvider) =
         inherit BackgroundService ()
         let factory = ConnectionFactory (HostName = "localhost")
