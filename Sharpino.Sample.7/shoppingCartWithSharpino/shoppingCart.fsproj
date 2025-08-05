@@ -14,6 +14,7 @@
     <Compile Include="Goods/Good.fs" />
     <Compile Include="Goods/Events.fs" />
     <Compile Include="Goods/Commands.fs" />
+    <Compile Include="Goods/Consumer.fs" />
     <Compile Include="GoodsContainer/GoodsContainer.fs" />
     <Compile Include="GoodsContainer/Events.fs" />
     <Compile Include="GoodsContainer/Commands.fs" />
@@ -28,6 +29,7 @@
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <ProjectReference Include="../../Sharpino.Lib/Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
   </ItemGroup>
   
   <ItemGroup>

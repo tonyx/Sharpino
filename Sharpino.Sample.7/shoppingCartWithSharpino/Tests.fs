@@ -9,6 +9,7 @@ open Sharpino.EventBroker
 open Sharpino.PgBinaryStore
 open Sharpino.RabbitMq
 open ShoppingCart.Good
+open ShoppingCart.GoodConsumer
 open ShoppingCart.GoodsContainer
 open ShoppingCart.Supermarket
 open ShoppingCart.Cart
@@ -27,6 +28,10 @@ open Sharpino.MemoryStorage
 open Sharpino.CommandHandler
 open Sharpino.Cache
 open DotNetEnv
+
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
+
 
 let setUp (eventStore: IEventStore<'F>) =
 
@@ -56,6 +61,19 @@ let byteAConnection =
     "Database=es_shopping_cart_bin;" +
     "User Id=safe;"+
     $"Password={password};"
+    
+
+let hostBuilder = 
+    Host.CreateDefaultBuilder()
+        .ConfigureServices(fun (services: IServiceCollection) ->
+            services.AddHostedService<GoodConsumer>() |> ignore
+            ()
+        )
+let host = hostBuilder.Build()
+
+// Start the host in the background
+let hostTask = host.StartAsync()
+    
 
 let eventStoreMemory = MemoryStorage() 
 let eventStorePostgres = PgEventStore(connection)
@@ -75,24 +93,6 @@ let setupMemoryEventStore () =
     setUp eventStoreMemory
     ()
 
-// let aggregateMessageSender:AggregateMessageSender<_> =
-//     taskResult {
-//     }
-let aggregateMessageSender =
-    fun (queueName: string) ->
-        taskResult {
-            return
-                fun (message: string) ->
-                    task
-                        {
-                            return
-                                new System.Threading.Tasks.ValueTask(
-                                    task {
-                                        ()
-                                    }
-                                )
-                }
-            }
 
 let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, AggregateMessageSender>()
 
