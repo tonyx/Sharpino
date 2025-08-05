@@ -14,14 +14,14 @@
 Support for Event-sourcing in F#.
 
 ## Overview
-- Contexts: event sourced objects with no id, so only one instance is around
-- Aggregates: event sourced objects with id (Guid).
-- Multiple streams transactions: execute multiple commands involving different aggregates as single db transactions.
-- Command Undoers: (to roll back the transaction in case of failure of any command).
-- Cache: Dictionary based cache of the current state of contexts or aggregates.
+- Contexts: Event sourced objects with no id, so only one instance is around
+- Aggregates: Event sourced objects with id (Guid).
+- Multiple streams transactions: Executing multiple commands involving different aggregates as single db transactions.
+- Command Undoers: Functions to emit compensating events to roll back the transaction in case of failure of any command.
+- Cache: Based on Dictionary to keep the current state of contexts or aggregates.
 - Gdpr: functions to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
-- SqlTemplates contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.I
-- Optimistic lock based on event_id: check the event_id position on the basis of the event_id passed by the command handler to the event store.
+- SqlTemplates: Contains skeleton of sql scripts to create tables for events and snapshots when using Postgres as event store.
+- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id eventnt_id used to execute the command and passed by the command handler to the event store (if matches fails no events are stored).
 
 ## Projects
 __Sharpino.Lib.Core__:
