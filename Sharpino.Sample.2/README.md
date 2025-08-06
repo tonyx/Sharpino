@@ -14,8 +14,6 @@ Example of seat bookings in event sourcing
  Not yet.
  3) Is Apache Kafka integration included in this example?
  No.
- 4) Is EventStoreDb integration included in this example?
- Not yet (it will show the "undo" feature of commands to do rollback commands on multiple streams of events).
 
  ## Problem 2
  There is an invariant rule that says that no booking can end up leaving the only middle seat free in a row. 
