@@ -2,7 +2,7 @@
 
 ## Overview
 
-(A.I. generated: ma need further review)
+(doc A.I. generated and slightly edited: needs further review)
 This example showcases a Pub Management System built with Sharpino, demonstrating event sourcing patterns in F#. The system manages a pub's kitchen operations, including dishes, ingredients, suppliers, and inventory management.
 
 ## Key Features
