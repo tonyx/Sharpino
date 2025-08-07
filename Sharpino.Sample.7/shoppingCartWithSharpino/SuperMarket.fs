@@ -58,17 +58,6 @@ module Supermarket =
                     command 
                     |> runAggregateCommand<Good, GoodEvents, string> goodId eventStore eventBroker
             }
-
-        member this.GetGood (id: Guid) = 
-            result {
-                let! goods = this.GoodRefs
-                let! goodExist = 
-                    goods
-                    |> List.tryFind (fun g -> g = id)
-                    |> Result.ofOption "Good not found"
-                let! (_, state) = goodsViewer id
-                return state
-            }
         
         member this.SetPrice (goodId: Guid, price: decimal) = 
             result {
@@ -79,55 +68,36 @@ module Supermarket =
                     |> runAggregateCommand<Good, GoodEvents, string> goodId eventStore eventBroker
             }
             
-        member this.Goods =
+        member this.Goods=
             result {
-                let! (_, state) = goodsContainerViewer ()
-
-                // warning: if there is a ref to an unexisting good you are in trouble. fix it
                 let! goods =
-                    state.GoodRefs
-                    |> List.map this.GetGood
-                    |> Result.sequence
-                return goods |> Array.toList
-            }
-
-        member this.AddGood (good: Good) =  
-            result {
-                let existingGoods = 
-                    this.Goods
-                    |> Result.defaultValue []
-                do! 
-                    existingGoods
-                    |> List.exists (fun g -> g.Name = good.Name)
-                    |> not
-                    |> Result.ofBool "Good already in items list"
-
-                let! goodAdded =
-                    good.Id 
-                    |> AddGood 
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore legacyBroker good
-                return ()
+                    getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
+                        eventStore
+                        DateTime.MinValue
+                        DateTime.MaxValue
+                        (fun _ -> true)
+                return goods |>> snd  
             }
         
-        member this.AddGoodBypassingContainer (good: Good)     =
+        member this.AddGood (good: Good)     =
             result
                 {
-                    // let! existingGoods =
-                    //     getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
-                    //         eventStore
-                    //         DateTime.MinValue
-                    //         DateTime.MaxValue
-                    //         (fun g -> g.Name = good.Name)
-                    // let! exists =
-                    //     existingGoods
-                    //     |> List.length > 0
-                    //     |> Result.ofBool "Good already in items list"
+                    let! existingGoods =
+                        getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
+                            eventStore
+                            DateTime.MinValue
+                            DateTime.MaxValue
+                            (fun g -> g.Name = good.Name)
+                    let! existsWithTheSameName =
+                        existingGoods
+                        |> List.length = 0
+                        |> Result.ofBool "Good already in items list"
                         
-                    // let! shoultNotExits =
-                    //     StateView.getAggregateFreshState<Good, GoodEvents, 'F> good.Id eventStore
-                    //     |> Result.toOption
-                    //     |> Option.isNone
-                    //     |> Result.ofBool "Good already in items list"
+                    let! shoultNotExits =
+                        StateView.getAggregateFreshState<Good, GoodEvents, 'F> good.Id eventStore
+                        |> Result.toOption
+                        |> Option.isNone
+                        |> Result.ofBool "Good already in items list"
                         
                     let! goodAdded =
                         good
@@ -140,7 +110,6 @@ module Supermarket =
                 let! (_, state) = goodsViewer id
                 return state
             }
-       
 
         member this.RemoveGood (id: Guid) = 
             result {
