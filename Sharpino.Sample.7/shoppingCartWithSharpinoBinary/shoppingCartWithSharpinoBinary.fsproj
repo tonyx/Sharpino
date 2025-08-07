@@ -12,9 +12,11 @@
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Cart/Events.fs" />
     <Compile Include="Cart/Commands.fs" />
+    <Compile Include="Cart/Consumer.fs" />
     <Compile Include="Goods/Good.fs" />
     <Compile Include="Goods/Events.fs" />
     <Compile Include="Goods/Commands.fs" />
+    <Compile Include="Goods/Consumer.fs" />
     <Compile Include="GoodsContainer/GoodsContainer.fs" />
     <Compile Include="GoodsContainer/Events.fs" />
     <Compile Include="GoodsContainer/Commands.fs" />

@@ -55,13 +55,13 @@ let connection =
         "User Id=safe;"+
         $"Password={password};"
 
-let byteAConnection =
-    Env.Load() |> ignore
-    let password = Environment.GetEnvironmentVariable("password")
-    "Server=127.0.0.1;" +
-    "Database=es_shopping_cart_bin;" +
-    "User Id=safe;"+
-    $"Password={password};"
+// let byteAConnection =
+//     Env.Load() |> ignore
+//     let password = Environment.GetEnvironmentVariable("password")
+//     "Server=127.0.0.1;" +
+//     "Database=es_shopping_cart_bin;" +
+//     "User Id=safe;"+
+//     $"Password={password};"
     
 
 let hostBuilder = 
@@ -118,13 +118,13 @@ let setupMemoryEventStore () =
     ()
 
 
-let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, AggregateMessageSender>()
+let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
 
 let cartMessageSender =
-    mkAggregateMessageSender "127.0.0.1" "_01_cart"
+    mkMessageSender "127.0.0.1" "_01_cart"
 
 let goodMessageSender =
-    mkAggregateMessageSender "127.0.0.1" "_01_good"
+    mkMessageSender "127.0.0.1" "_01_good"
 
 aggregateMessageSenders.Add("_01_cart", cartMessageSender)
 aggregateMessageSenders.Add("_01_good", goodMessageSender)

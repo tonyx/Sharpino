@@ -24,6 +24,7 @@ open FsToolkit.ErrorHandling
 // after all what we are going for is leaving only the md version and keep the
 // non-md only for backward compatibility
 module CommandHandler =
+    type StramName = string
 
     // will play around DI to improve logging
     // let host = Host.CreateApplicationBuilder().Build()
@@ -47,6 +48,7 @@ module CommandHandler =
     let setLogger (newLogger: ILogger) =
         logger := newLogger
     
+    // this is not used anymore, but just in case 
     let processor = MailboxProcessor<UnitResult>.Start (fun inbox  ->
         let rec loop() =
             async {
@@ -356,7 +358,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         >
         (eventStore: IEventStore<'F>)
-        (messageSender: string -> AggregateMessageSender)
+        (messageSender: StreamName -> MessageSender)
         (initialInstance: 'A1) =
             logger.Value.LogDebug (sprintf "runInit %A" 'A1.StorageName)
             result {
@@ -397,7 +399,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         >
         (eventStore: IEventStore<'F>)
-        (messageSender: string -> AggregateMessageSender) 
+        (messageSender: StreamName -> MessageSender) 
         (id: AggregateId)
         (predicate: 'A1 -> bool)
         
@@ -1184,7 +1186,7 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (eventBroker: string ->AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (md: Metadata)
         (command: AggregateCommand<'A, 'E>)
         =
@@ -1210,7 +1212,7 @@ module CommandHandler =
                     }
                 return result
             }
-    let storeEvents (eventStore: IEventStore<'F>) (eventBroker: string -> AggregateMessageSender) (block: PreExecutedAggregateCommand<_, _>) =
+    let storeEvents (eventStore: IEventStore<'F>) (messageSender: StramName -> MessageSender) (block: PreExecutedAggregateCommand<_, _>) =
         logger.Value.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
         result {
             let! ids =
@@ -1219,7 +1221,7 @@ module CommandHandler =
             return ids  
         }
     
-    let storeMultipleEvents (eventStore: IEventStore<'F>) (eventBroker: string -> AggregateMessageSender) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
+    let storeMultipleEvents (eventStore: IEventStore<'F>) (eventBroker: string -> MessageSender) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
         logger.Value.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
         result {
             do!
@@ -1247,7 +1249,7 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (messageSender: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (md: Metadata)
         (command: AggregateCommand<'A, 'E>)
         =
@@ -1282,6 +1284,7 @@ module CommandHandler =
                 return ()
             }
     
+    [<Obsolete("use runAggregateCommandMd instead")>]
     let inline runAggregateCommandMdBack<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -1334,11 +1337,11 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender) 
+        (messageSender: StreamName -> MessageSender) 
         (command: AggregateCommand<'A, 'E>)
         =
             logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command aggregateId)
-            runAggregateCommandMd<'A, 'E, 'F> aggregateId storage eventBroker Metadata.Empty command
+            runAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSender Metadata.Empty command
     
      
     // the "force" version of running N Commands has been improved and so
@@ -1360,7 +1363,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender) 
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
@@ -1446,11 +1449,11 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender) 
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
             logger.Value.LogDebug "forceRunNAggregateCommands"
-            forceRunNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore eventBroker Metadata.Empty commands
+            forceRunNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore messageSender Metadata.Empty commands
                 
     let inline runNAggregateCommandsMd<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
@@ -1464,7 +1467,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StramName -> MessageSender)
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
@@ -1532,11 +1535,11 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
             logger.Value.LogDebug "runNAggregateCommands"
-            runNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore eventBroker Metadata.Empty commands
+            runNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore messageSender Metadata.Empty commands
     
     let inline runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1559,17 +1562,17 @@ module CommandHandler =
         (aggregateId1: Guid)
         (aggregateId2: Guid)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)     
+        (messageSender: string -> MessageSender)     
         (md: Metadata)
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         =
             logger.Value.LogDebug "runTwoAggregateCommandsMd"
             result {
-                let! firstExecutedCommand =  preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore eventBroker md command1
-                let! secondExecutedCommand = preExecuteAggregateCommandMd<'A2, 'E2, 'F> aggregateId2 eventStore eventBroker md command2
+                let! firstExecutedCommand =  preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore messageSender md command1
+                let! secondExecutedCommand = preExecuteAggregateCommandMd<'A2, 'E2, 'F> aggregateId2 eventStore messageSender md command2
                 let! ids =
-                    storeMultipleEvents eventStore eventBroker
+                    storeMultipleEvents eventStore messageSender
                         [firstExecutedCommand
                          secondExecutedCommand]
                 AggregateCache2.Instance.Memoize2 (firstExecutedCommand.NewState |> Ok) ((ids.[0] |> List.last, aggregateId1))
@@ -1595,7 +1598,7 @@ module CommandHandler =
                 return ()
             }
   
-    let inline runPreExecutedAggregateCommands<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: string -> AggregateMessageSender) =
+    let inline runPreExecutedAggregateCommands<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: string -> MessageSender) =
         logger.Value.LogDebug "runPreExecutedCommands"
         result {
             let! ids =
@@ -1614,10 +1617,10 @@ module CommandHandler =
                         preExecutedAggregateCommands.[i].SnapshotsInterval
                         (preExecutedAggregateCommands.[i].NewState :?> Aggregate<'F>).Serialize
                     |> ignore    
-             
             return ()    
         }
-      
+     
+    [<Obsolete("Use runTwoAggregateCommandsMd instead")>]
     let inline runTwoAggregateCommandsMdBack<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -1770,11 +1773,11 @@ module CommandHandler =
         (aggregateId1: Guid)
         (aggregateId2: Guid)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         =
-            runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateId1 aggregateId2 eventStore eventBroker String.Empty command1 command2
+            runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateId1 aggregateId2 eventStore messageSender String.Empty command1 command2
    
     // the "force" version of forcing running N Commands has been improved and so
     // it is safe to use them in place of the non-force version
@@ -1802,7 +1805,7 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2019,12 +2022,12 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
             logger.Value.LogDebug "forceRunTwoNAggregateCommands"
-            forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker String.Empty command1 command2
+            forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore messageSender String.Empty command1 command2
    
     let inline runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>
@@ -2047,7 +2050,7 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2139,28 +2142,6 @@ module CommandHandler =
                     let queueNameA2 = 'A2.Version + 'A2.StorageName
                     let senderA1 = messageSender queueNameA1
                     let senderA2 = messageSender queueNameA2
-                        
-                    // let aggregateMessagesA1 =
-                    //     List.zip eventIds1 events1
-                    //     |> List.map
-                    //            (fun (eventId, (state, events)) ->
-                    //                 {
-                    //                     AggregateId = state.Id
-                    //                     // Message = Message<'A1, 'E1>.Events (eventId, events)
-                    //                     Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = eventId; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last 
-                    //                 }.Serialize
-                    //            )
-                    //     
-                    // let aggregateMessagesA2 =
-                    //     List.zip eventIds2 events2
-                    //     |> List.map
-                    //            (fun (eventId, (state, events)) ->
-                    //                 {
-                    //                     AggregateId = state.Id
-                    //                     // Message = Message<'A2, 'E2>.Events (eventId, events)
-                    //                     Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = eventId; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last 
-                    //                 }.Serialize
-                    //            )
                     
                     let aggregateMessagesA1 =
                         List.zip3 eventIds1 events1 eventIds1'
@@ -2227,12 +2208,12 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
             logger.Value.LogDebug "runTwoNAggregateCommands"
-            runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore eventBroker Metadata.Empty command1 command2
+            runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore messageSender Metadata.Empty command1 command2
     
     let inline forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2264,7 +2245,7 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2509,13 +2490,13 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
         =
             logger.Value.LogDebug "runThreeNAggregateCommands"
-            forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore eventBroker Metadata.Empty command1 command2 command3
+            forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore messageSender Metadata.Empty command1 command2 command3
 
     let inline runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2547,7 +2528,7 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: IEventBroker<'F>)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2721,7 +2702,6 @@ module CommandHandler =
         =
             logger.Value.LogDebug "runThreeNAggregateCommands"
             runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore eventBroker Metadata.Empty command1 command2 command3
-            
     
     let inline runThreeAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
@@ -2753,7 +2733,7 @@ module CommandHandler =
         (aggregateId2: Guid)
         (aggregateId3: Guid)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (metadata: Metadata)
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
@@ -2762,11 +2742,11 @@ module CommandHandler =
             logger.Value.LogDebug "runThreeAggregateCommandsMdRefactor"
             result
                 {
-                    let! firstExecutedCommand = preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore eventBroker metadata command1
-                    let! secondExecutedCommand = preExecuteAggregateCommandMd<'A2, 'E2, 'F> aggregateId2 eventStore eventBroker metadata command2
-                    let! thirdExecutedCommand = preExecuteAggregateCommandMd<'A3, 'E3, 'F> aggregateId3 eventStore eventBroker metadata command3
+                    let! firstExecutedCommand = preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore messageSender metadata command1
+                    let! secondExecutedCommand = preExecuteAggregateCommandMd<'A2, 'E2, 'F> aggregateId2 eventStore messageSender metadata command2
+                    let! thirdExecutedCommand = preExecuteAggregateCommandMd<'A3, 'E3, 'F> aggregateId3 eventStore messageSender metadata command3
                     let! ids =
-                        storeMultipleEvents eventStore eventBroker
+                        storeMultipleEvents eventStore messageSender
                             [firstExecutedCommand
                              secondExecutedCommand
                              thirdExecutedCommand]
@@ -2779,6 +2759,8 @@ module CommandHandler =
                     return ()
                 }
             
+            
+    [<Obsolete("Use runThreeAggregateCommandsMd instead")>]
     let inline runThreeAggregateCommandsMdBack<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -2892,13 +2874,13 @@ module CommandHandler =
         (aggregateId2: Guid)
         (aggregateId3: Guid)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> MessageSender)
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
         =
             logger.Value.LogDebug "runThreeAggregateCommands"
-            runThreeAggregateCommandsMd aggregateId1 aggregateId2 aggregateId3 eventStore eventBroker Metadata.Empty command1 command2 command3
+            runThreeAggregateCommandsMd aggregateId1 aggregateId2 aggregateId3 eventStore messageSender Metadata.Empty command1 command2 command3
 
     let inline runTwoCommandsMd<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)

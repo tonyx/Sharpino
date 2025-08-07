@@ -26,8 +26,8 @@ module Supermarket =
     let emptyMessageSender =
         fun version name aggregateId eventId events -> Result.Ok ()
 
-    type Supermarket (eventStore: IEventStore<'F>, eventBroker: string -> AggregateMessageSender, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
-        new (eventStore: IEventStore<'F>, eventBroker: string -> AggregateMessageSender) =
+    type Supermarket (eventStore: IEventStore<'F>, eventBroker: string -> MessageSender, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
+        new (eventStore: IEventStore<'F>, eventBroker: string -> MessageSender) =
             let goodsContainerViewer:StateViewer<GoodsContainer> = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStore
             let goodsViewer:AggregateViewer<Good> = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStore
             let cartViewer:AggregateViewer<Cart> = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStore

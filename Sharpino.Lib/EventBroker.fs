@@ -7,6 +7,7 @@ open Sharpino.Definitions
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
+type RawMessage = string
 module EventBroker =
     type EventsMessage<'E> =
         {
@@ -19,7 +20,6 @@ module EventBroker =
     type Message<'A, 'E> =
         | InitialSnapshot of 'A
         | Delete
-        // | Events of EventId * List<'E>
         | Events of EventsMessage<'E>
      
     type AggregateMessage<'A, 'E> =
@@ -32,6 +32,6 @@ module EventBroker =
                 this
                 |> jsonPSerializer.Serialize 
     
-    type AggregateMessageSender =
-        string -> ValueTask
+    type MessageSender =
+        RawMessage -> ValueTask
         

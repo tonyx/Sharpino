@@ -53,7 +53,7 @@ module RabbitMq =
                 return aggregateMessageSender        
             }
                
-    let mkAggregateMessageSender(host: string) (streamName: string) =
+    let mkMessageSender(host: string) (streamName: string) =
         let factory = mkfactory(host)
         let channel =
             mkSimpleChannel(factory, streamName)
@@ -72,62 +72,4 @@ module RabbitMq =
                 )
         aggregateMessageSender        
 
-    // type RabbitConsumerService (sp: IServiceProvider) =
-    //     inherit BackgroundService ()
-    //     let factory = ConnectionFactory (HostName = "localhost")
-    //     let connection =
-    //         factory.CreateConnectionAsync()
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //     let channel =
-    //         connection.CreateChannelAsync ()
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //     let queueDeclare =
-    //         channel.QueueDeclareAsync ("_01_good", false, false, false, null)
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //    
-    //     override _.ExecuteAsync (stoppingToken) =
-    //         let consumer =  AsyncEventingBasicConsumer(channel)
-    //         consumer.add_ReceivedAsync
-    //             (fun _ ea ->
-    //                 task {
-    //                     let body = ea.Body.ToArray()
-    //                     let message = Encoding.UTF8.GetString(body)
-    //                     printfn " [x] Received %s" message
-    //                     return ()
-    //                })
-    //         channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
-    //             
-    // type RabbitConsumerService2 (sp: IServiceProvider) =
-    //     inherit BackgroundService ()
-    //     let factory = ConnectionFactory(HostName = "localhost")
-    //     let connection =
-    //         factory.CreateConnectionAsync ()
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //     let channel =
-    //         connection.CreateChannelAsync ()
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //     let queueDeclare =
-    //         channel.QueueDeclareAsync ("_01_good", false, false, false, null)
-    //         |> Async.AwaitTask
-    //         |> Async.RunSynchronously
-    //    
-    //     override _.ExecuteAsync(stoppingToken) =
-    //         let consumer =  AsyncEventingBasicConsumer(channel)
-    //         consumer.add_ReceivedAsync
-    //             (fun _ ea ->
-    //                 task {
-    //                     let body = ea.Body.ToArray()
-    //                     let message = Encoding.UTF8.GetString(body)
-    //                     printfn " [y] Received %s" message
-    //                     return ()
-    //                })
-    //         channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
-    //     
-            
-            
                 
