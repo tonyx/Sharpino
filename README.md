@@ -8,22 +8,22 @@
 
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-## What is Event Sourcing?
+What is Event Sourcing?
 - Event sourcing is a design pattern for persisting the state of an object by storing the sequence of events that have occurred on the object.
-- Event sourcing fits functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
+- Event sourcing fits the functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
 
 ## What is Sharpino?
 
 A library to support Event-Sourcing in F# based on the following principles:
-- PostgresSql based event store to register events and snapshots.
-- In memory event store to speed up the tests.
+- PostgresSQL-based event store to register events and snapshots.
+- In-memory event store to speed up the tests.
 - Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 
 ## Goals
-- Using F# for domain modeling and event sourcing in the .NET world particularly in the backend.
+- Using F# for domain modelling and event sourcing in the .NET world, particularly in the backend.
 - Multilanguage environment and architecture (example of Blazor on front end and F# on backend is given).
-- Avoid impedance mismatch between the domain and the database
+- Avoid impedance mismatch between the domain and the database.
 
 ## Overview and terms
 
@@ -40,7 +40,7 @@ A library to support Event-Sourcing in F# based on the following principles:
 - GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
 - EventStore is based on PostgreSQL to store events and snapshots.
 - SQLTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
-- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id eventnt_id used to execute the command and passed by the command handler to the event store (if matches fails no events are stored).
+- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matches fails no events are stored).
 - In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
 - JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
 - Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
@@ -49,14 +49,13 @@ A library to support Event-Sourcing in F# based on the following principles:
 - In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed).
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
   There may also be events associated with the creation and deletion of aggregates, but they are not needed.
-- Contexts don't need creation nor deletion. They declare an initial state by a static Zero member. 
+- Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
 
 ## Features and technical improvements planned to be added
 - Sending events to a message bus after they have been stored.
-- Implementing a "state viewer" that listen events on a message bus.
+- Implementing a "state viewer" that listens to events on a message bus.
 - Enhanced Optimistic lock check on the database level (i.e. in the insert event functions)
-- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 show some use cases about)
-
+- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 shows some use cases about)
 ## Projects
 __Sharpino.Lib.Core__:
 
