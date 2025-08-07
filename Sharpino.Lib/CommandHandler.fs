@@ -379,7 +379,11 @@ module CommandHandler =
                     }.Serialize
                     
                 let sent =
-                    sender aggregateMessage
+                    task {
+                        return! sender aggregateMessage
+                    }
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
                     
                 return ()
             }
@@ -393,7 +397,7 @@ module CommandHandler =
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         >
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>) 
+        (messageSender: string -> AggregateMessageSender) 
         (id: AggregateId)
         (predicate: 'A1 -> bool)
         
@@ -411,6 +415,26 @@ module CommandHandler =
                
                 AggregateCache2.Instance.Clean id
                 let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
+                
+                let queueName = 'A1.Version + 'A1.StorageName
+                
+                let sender = messageSender queueName // todo: check not found also
+                let message =
+                    Message<'A1, 'E>.Delete
+                let aggregateMessage =
+                    {
+                        AggregateId = id
+                        Message = message
+                    }.Serialize
+                    
+                // TODO: fire and forget or what?    
+                let sent =
+                    task {
+                        return! sender aggregateMessage
+                    }
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                
                 return ()
             }
    
@@ -1243,14 +1267,15 @@ module CommandHandler =
                 let sender = messageSender queueName
                 
                 let message =
-                    Message<'A, 'E>.Events (eventId, events)
+                    // Message<'A, 'E>.Events (eventId, events)
+                    Message<'A, 'E>.Events {InitEventId = eventId; EndEventId = ids |> List.last; Events = events}
                 let aggregateMessage =
                     {
                         AggregateId = aggregateId
                         Message = message
                     }.Serialize
                 let sent =
-                    sender aggregateMessage
+                    sender aggregateMessage //todo: try to handle properly the fire-and-forget concept (perhaps with error handling) 
                 
                 AggregateCache2.Instance.Memoize2 (executedCommand.NewState |> unbox |> Ok) (ids |> List.last, aggregateId)
                 let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
@@ -1777,7 +1802,7 @@ module CommandHandler =
         (aggregateIds1: List<Guid>)
         (aggregateIds2: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: string -> AggregateMessageSender)
+        (messageSender: string -> AggregateMessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -1900,7 +1925,41 @@ module CommandHandler =
                     let newDbBasedEventIds2 =
                         dbNewStatesEventIds
                         |> List.skip uniqueAggregateIds1.Length    
-                   
+                  
+                    let queueNameA1 = 'A1.Version + 'A1.StorageName
+                    let queueNameA2 = 'A2.Version + 'A2.StorageName
+                    let senderA1 = messageSender queueNameA1
+                    let senderA2 = messageSender queueNameA2
+                    
+                    let aggregateMessagesA1 =
+                        List.zip3 initialStateEventIds1 newStatesAndEvents1 newDbBasedEventIds1
+                        |> List.map
+                            (fun (eventId, (state, events), storedEventIds) ->
+                                {
+                                    AggregateId = state.Id
+                                    Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last
+                                }.Serialize
+                            
+                            )
+                        
+                    let aggregateMessagesA2 =
+                        List.zip3 initialStateEventIds2 newStatesAndEvents2 newDbBasedEventIds2
+                        |> List.map
+                            (fun (eventId, (state, events), storedEventIds) ->
+                                {
+                                    AggregateId = state.Id
+                                    Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last
+                                }.Serialize
+                            )
+                    
+                    let _ =
+                        aggregateMessagesA1
+                        |> List.iter (fun message -> senderA1 message |> ignore)
+                        
+                    let _ =
+                        aggregateMessagesA2
+                        |> List.iter (fun message -> senderA2 message |> ignore)
+                     
                     let doCacheResults = 
                         fun () ->
                             for i in 0 .. (uniqueAggregateIds1.Length - 1) do
@@ -2081,26 +2140,47 @@ module CommandHandler =
                     let senderA1 = messageSender queueNameA1
                     let senderA2 = messageSender queueNameA2
                         
+                    // let aggregateMessagesA1 =
+                    //     List.zip eventIds1 events1
+                    //     |> List.map
+                    //            (fun (eventId, (state, events)) ->
+                    //                 {
+                    //                     AggregateId = state.Id
+                    //                     // Message = Message<'A1, 'E1>.Events (eventId, events)
+                    //                     Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = eventId; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last 
+                    //                 }.Serialize
+                    //            )
+                    //     
+                    // let aggregateMessagesA2 =
+                    //     List.zip eventIds2 events2
+                    //     |> List.map
+                    //            (fun (eventId, (state, events)) ->
+                    //                 {
+                    //                     AggregateId = state.Id
+                    //                     // Message = Message<'A2, 'E2>.Events (eventId, events)
+                    //                     Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = eventId; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last 
+                    //                 }.Serialize
+                    //            )
+                    
                     let aggregateMessagesA1 =
-                        List.zip eventIds1 events1
+                        List.zip3 eventIds1 events1 eventIds1'
                         |> List.map
-                               (fun (eventId, (state, events)) ->
+                               (fun (eventId, (state, events), storedEventIds) ->
                                     {
                                         AggregateId = state.Id
-                                        Message = Message<'A1, 'E1>.Events (eventId, events)
+                                        Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last 
                                     }.Serialize
                                )
                         
                     let aggregateMessagesA2 =
-                        List.zip eventIds2 events2
+                        List.zip3 eventIds2 events2 eventIds2'
                         |> List.map
-                               (fun (eventId, (state, events)) ->
+                               (fun (eventId, (state, events), storedEventIds) ->
                                     {
                                         AggregateId = state.Id
-                                        Message = Message<'A2, 'E2>.Events (eventId, events)
+                                        Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last 
                                     }.Serialize
                                )
-                    
                     let _ =
                         aggregateMessagesA1
                         |> List.iter (fun message -> senderA1 message |> ignore)

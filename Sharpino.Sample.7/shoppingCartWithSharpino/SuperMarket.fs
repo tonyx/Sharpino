@@ -1,6 +1,7 @@
 namespace ShoppingCart
 
 open Sharpino.EventBroker
+open Sharpino.StateView
 open ShoppingCart.Good
 open ShoppingCart.GoodEvents
 open ShoppingCart.GoodsContainer
@@ -111,6 +112,23 @@ module Supermarket =
         member this.AddGoodBypassingContainer (good: Good)     =
             result
                 {
+                    // let! existingGoods =
+                    //     getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
+                    //         eventStore
+                    //         DateTime.MinValue
+                    //         DateTime.MaxValue
+                    //         (fun g -> g.Name = good.Name)
+                    // let! exists =
+                    //     existingGoods
+                    //     |> List.length > 0
+                    //     |> Result.ofBool "Good already in items list"
+                        
+                    // let! shoultNotExits =
+                    //     StateView.getAggregateFreshState<Good, GoodEvents, 'F> good.Id eventStore
+                    //     |> Result.toOption
+                    //     |> Option.isNone
+                    //     |> Result.ofBool "Good already in items list"
+                        
                     let! goodAdded =
                         good
                         |> runInit<Good, GoodEvents,'F> eventStore eventBroker
@@ -126,12 +144,11 @@ module Supermarket =
 
         member this.RemoveGood (id: Guid) = 
             result {
-                let! good = this.GetGood id
-                let! (_, state) = goodsContainerViewer ()
-                let command = GoodsContainerCommands.RemoveGood id
+                let! (_, good) = goodsViewer id
                 return! 
-                    command
-                    |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore legacyBroker 
+                    runDelete<Good, GoodEvents, string> eventStore eventBroker id (fun _ -> true)
+                    // command
+                    // |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore legacyBroker 
             }
 
         member this.AddCart (cart: Cart) = 

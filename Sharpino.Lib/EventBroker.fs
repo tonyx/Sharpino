@@ -8,13 +8,19 @@ open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 module EventBroker =
+    type EventsMessage<'E> =
+        {
+            InitEventId: EventId
+            EndEventId: EventId
+            Events: List<'E>
+        }
  
     type StreamName = string 
     type Message<'A, 'E> =
         | InitialSnapshot of 'A
         | Delete
-        // | Events of EventId * List<Event<'A>>
-        | Events of EventId * List<'E>
+        // | Events of EventId * List<'E>
+        | Events of EventsMessage<'E>
      
     type AggregateMessage<'A, 'E> =
         {

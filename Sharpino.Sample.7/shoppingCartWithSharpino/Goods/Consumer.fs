@@ -43,32 +43,39 @@ module GoodConsumer =
             let consumer =  AsyncEventingBasicConsumer channel
             consumer.add_ReceivedAsync
                 (fun _ ea ->
+                    printf "XXXXX: receiving message\n %A\n" ea
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
-                        printfn " [Y] Received %s\n" message
+                        printfn " [Q] Received %s\n" message
                         let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Good.Good, GoodEvents>> message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
-                            printfn " [Y] Received %A\n" message
+                            printfn " [Q] Received %A\n" message
                             match message with
                             | { Message = InitialSnapshot good } ->
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 printf "storedXXX %A\n" statePerAggregate.[aggregateId]
-                                printfn " [x] State changed to %A\n" |> ignore
+                                printfn " [Q] State changed to %A\n" |> ignore
                                 ()
-                            | { Message = Message.Events (eventId, events) }  ->
+                            | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 printf "XXXX: eventid here %A\n" (statePerAggregate.[aggregateId] |> fst)
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
                                     if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (eventId, newState.OkValue)
-                                    else () // todo: error
+                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
+                                    else
+                                        printfn " [x] State not changed to %A\n"
+                                        () // todo: error
                                 else
+                                    printfn " [qqqq] an error occurred %A\n"
                                     () // todo: error
-                                () 
+                            | { Message = Message.Delete } ->
+                                if (statePerAggregate.ContainsKey aggregateId) then
+                                    statePerAggregate.TryRemove aggregateId  |> ignore
+                                
                         printfn " [Y Y] Received %A\n" deserializedMessage
                         return ()
                    })

@@ -520,7 +520,7 @@ module StateView =
                     return result     
                 }
     
-    [<Obsolete "use getfilteredAggregateStatesInATimeInterval2">]
+    [<Obsolete "use getFilteredAggregateStatesInATimeInterval2">]
     let inline getFilteredAggregateStatesInATimeInterval<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -586,7 +586,6 @@ module StateView =
                         states
                         |> List.filter (fun (_, x)  -> predicate (x |> unbox))
                     
-                     
                     return
                         states
                         |> List.filter (fun (_, x)  -> predicate (x |> unbox))

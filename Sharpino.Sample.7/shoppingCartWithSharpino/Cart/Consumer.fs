@@ -54,17 +54,21 @@ module CartConsumer =
                             | { Message = InitialSnapshot good } ->
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 ()
-                            | { Message = Message.Events (eventId, events) }  ->
+                            | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 printf " [Q] Received %A\n" message
-                                if (statePerAggregate.ContainsKey aggregateId && statePerAggregate.[aggregateId] |> fst = eventId) then
+                                if (statePerAggregate.ContainsKey aggregateId && statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
                                     if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (eventId, newState.OkValue)
+                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
                                     else () // todo: error
                                 else
                                     () // todo: error
-                                () 
+                                ()
+                            | { Message = Message.Delete } ->
+                                if (statePerAggregate.ContainsKey aggregateId) then
+                                    statePerAggregate.TryRemove aggregateId  |> ignore
+                                ()     
                         printfn " [Y Y] Received %A\n" deserializedMessage
                         return ()
                    })
