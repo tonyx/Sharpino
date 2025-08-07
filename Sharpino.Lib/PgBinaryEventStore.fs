@@ -1322,7 +1322,7 @@ module PgBinaryStore =
                                                     [
                                                         ("aggregate_id", Sql.uuid aggregateId) 
                                                         ("snapshot",  sqlBinary napshot)
-                                                        ("timestamp", Sql.timestamp System.DateTime.UtcNow)
+                                                        ("timestamp", Sql.timestamp System.DateTime.Now)
                                                         ("is_deleted", Sql.bool true)
                                                     ]
                                                 ]

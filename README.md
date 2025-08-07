@@ -149,15 +149,15 @@ __Faq__:
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
 
 ## Possible improvements
-- Use a generic way to support publish/subscribe on event bus (event broker, message broker distributed cahce...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
+- Use a generic way to support publish/subscribe on event bus (event broker/message broker/distributed cache...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
 - Some StateViewer implementations may use an agent that listen to the published events.
-- Specify a more structured way to handle the "details" for instance by implemementing
+- Specify a more efficient way to handle the "details" version of any object for instance caching them or by implementing DB  based pre-computed projections.
 
 - Use the .net Cache
 - Implementing event store using Postgres event store but using Azure sql instead.
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
 - Not sure about this: Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
-
+- subdivide the example dirs so that they can fully test any configuration of sdk and event store (i.e. make copies of them that uses also 8.0 with pgEventStore and also pgBinaryEventStore). The current focus is on 9.0 with pgEventStore using json wrapped in text fields. JSON/JSONB fields are not needed and indeed they may be problematic in conjuction with FsPickler. Some investigation is weclome.
 
 ## Acknowledgements
 
@@ -187,6 +187,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.3.2: updated dependencies, fixed date error in pgBinaryEventStore
 - Version 4.3.1: reintroduced concurrent dictionary aggregate cache
 - Version 4.3.0: Aggregate Cache is type independent. Added a way to "preExecute" any type of commands and then send them to the command handler. So now executing an arbitrary number of command of any type is allowed (see example 10). Note: some adjustments in passing metadata to "delete" commands will make them non-backward compatible (just add metadata to the command to fix).
 - Version 4.2.3: concurrent dictionary aggregates cache
@@ -234,7 +235,7 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
 - Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
 - Version 2.6.3: Stateview added  ```getFilteredAggregateSnapshotsInATimeInterval```which returns a list of snapshots of a specific type/version of aggregate in a time interval filtered by some criteria no matter if any context contains references to those aggregates, so you can retrieve aggregates even if no context has references to them (for instance "inactive users").
-- Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
+- Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: ILogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
 - Version 2.6.0: Added a function for the GDPR in command handler able to virtuallty delete snapshots and events, i.e. replace any event with an events that returns an empty version of the state and also replace any snapshot with the voided/empty version of that state (and also fill the cache with that empty value).
 - Version 2.5.9: Added the possibility via StateView to retrieve the initial state/initial snapshot of any aggregate to allow retrieving the data that the users claims. So when users unsubscribe to any app then they have the rights to get any data. This is possibile by getting the initial states and any following event. I think it will be ok to give the user a json of the  initial snapshots and any events via an anonymous record and then let the use download that JSON.
 - Version 2.5.8: Added query for aggregate events in a time interval. StateView/Readmodel can use it passing a predicate to filter events (example: Query all the payment events). Aggregate should not keep those list ob objects to avoid unlimited grow.
