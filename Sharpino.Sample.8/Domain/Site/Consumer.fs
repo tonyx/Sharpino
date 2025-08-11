@@ -1,5 +1,7 @@
-namespace ShoppingCart
+namespace Sharpino.TransportTycoon
 
+open Sharpino.TransportTycoon.Site
+open Sharpino.TransportTycoon.SiteEvents
 open System
 open System.Collections.Concurrent
 open System.Text
@@ -11,41 +13,37 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
-open ShoppingCart.CartEvents
-open ShoppingCart.Cart
 
-module CartConsumer =
-    type CartConsumer(sp: IServiceProvider, logger: ILogger<CartConsumer>) =
-        inherit BackgroundService()
+module SiteConsumer =
+    type SiteConsumer(sp: IServiceProvider, logger: ILogger<SiteConsumer>) =
+        inherit BackgroundService ()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
             factory.CreateConnectionAsync()
             |> Async.AwaitTask
             |> Async.RunSynchronously
-            
         let channel =
             connection.CreateChannelAsync ()
             |> Async.AwaitTask
             |> Async.RunSynchronously
-            
         let queueDeclare =
-            let streamName = Cart.Cart.Version + Cart.Cart.StorageName
+            let streamName = Site.Version + Site.StorageName
             channel.QueueDeclareAsync (streamName, false, false, false, null)
             |> Async.AwaitTask
             |> Async.RunSynchronously
-
-        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Cart.Cart>>  =
-            None 
         
+        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Site>>  =
+            None
+
         let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Cart.Cart>()
+            ConcurrentDictionary<AggregateId, EventId * Site>()
             
-        member this.SetFallbackAggregateStateRetriever (aggregateStateRetriever: AggregateViewer<Cart.Cart>) =
+        member this.SetFallbackAggregateStateRetriever (aggregateStateRetriever: AggregateViewer<Site>) =
             fallBackAggregateStateRetriever <- Some aggregateStateRetriever
-            
+        
         member this.ResetFallbackAggregateStateRetriever () =
             fallBackAggregateStateRetriever <- None
-     
+        
         member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
             let retriever = fallBackAggregateStateRetriever
             match retriever with
@@ -56,15 +54,15 @@ module CartConsumer =
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
-                logger.LogError "no fallback aggregate state retriever set"
-          
+                logger.LogError "no fallback aggregate state retriever set"    
+        
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
                 statePerAggregate.[id]
                 |> Result.Ok
             else
                 Result.Error "No state"
-                
+         
         override this.ExecuteAsync (stoppingToken) =
             let consumer =  AsyncEventingBasicConsumer channel
             consumer.add_ReceivedAsync
@@ -73,7 +71,7 @@ module CartConsumer =
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
                         logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Cart, CartEvents>.Deserialize message
+                        let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Site, SiteEvents>> message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
@@ -82,7 +80,9 @@ module CartConsumer =
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 ()
                             | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                if (statePerAggregate.ContainsKey aggregateId && statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0) then
+                                if (statePerAggregate.ContainsKey aggregateId
+                                    && (statePerAggregate.[aggregateId] |> fst = eventId
+                                        || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
                                     if newState.IsOk then
@@ -93,12 +93,15 @@ module CartConsumer =
                                         this.ResyncWithFallbackAggregateStateRetriever aggregateId
                                 else
                                     this.ResyncWithFallbackAggregateStateRetriever aggregateId
-                            | { Message = Message.Delete } when statePerAggregate.ContainsKey aggregateId ->
-                                statePerAggregate.TryRemove aggregateId |> ignore
-                            | { Message = Message.Delete }  ->
-                                logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
+                            | { Message = Message.Delete } ->
+                                if (statePerAggregate.ContainsKey aggregateId) then
+                                    statePerAggregate.TryRemove aggregateId  |> ignore
+                                else
+                                    logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         | Error e ->
-                            logger.LogError ("error {e}", e)             
+                            logger.LogError ("error {e}", e)            
                         return ()
-                   })
+                   }
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
+

@@ -30,12 +30,18 @@
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <ProjectReference Include="../../Sharpino.Lib/Sharpino.Lib.fsproj" />
-    <ProjectReference Include="..\..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
   </ItemGroup>
   
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Update="FSharp.Core" Version="9.*" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="appSettings.json" />
+  </ItemGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
 
 </Project>

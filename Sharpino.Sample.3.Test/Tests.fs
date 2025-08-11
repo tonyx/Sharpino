@@ -1,8 +1,12 @@
 module Tests
 
+open System.Threading
+open System.Threading.Tasks
 open Sharpino
 open Sharpino.CommandHandler
+open Sharpino.EventBroker
 open Sharpino.PgStorage
+open Sharpino.RabbitMq
 open Sharpino.Result
 open Sharpino.Storage
 open Sharpino.Cache
@@ -12,52 +16,96 @@ open Expecto
 open DotNetEnv
 open System
 open Tonyx.SeatsBooking
+open Tonyx.SeatsBooking.RowAggregateEvent
+open Tonyx.SeatsBooking.RowConsumer
 open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Entities
 open Tonyx.SeatsBooking.Stadium
+open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StorageStadiumBookingSystem
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
+
+
+Env.Load() |> ignore
+
+let password = Environment.GetEnvironmentVariable("password")
+
+let doNothingBroker: IEventBroker<string> =
+    {
+        notify = None
+        notifyAggregate =  None
+    }
+let emptyMessageSenders =
+    fun queueName ->
+        fun message ->
+            ValueTask.CompletedTask
+            
+let connection =
+    "Server=127.0.0.1;"+
+    "Database=es_seat_booking;" +
+    "User Id=safe;"+
+    $"Password={password};"
+let memoryStorage = MemoryStorage.MemoryStorage()
+let pgEventStore = PgEventStore(connection)
+let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, emptyMessageSenders)
+let stadiumSystem = StadiumBookingSystem(pgEventStore, emptyMessageSenders)
+
+let pgReset () =
+    pgEventStore.Reset Stadium.Version Stadium.StorageName
+    pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
+    pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
+    StateCache2<Stadium>.Instance.Invalidate()
+    AggregateCache2.Instance.Clear()
+let memReset () =
+    memoryStorage.Reset Stadium.Version Stadium.StorageName
+    memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
+    StateCache2<Stadium>.Instance.Invalidate()
+    AggregateCache2.Instance.Clear()
+
+let hostBuilder =
+    Host.CreateDefaultBuilder()
+        .ConfigureServices(fun (services: IServiceCollection) ->
+            services.AddHostedService<RowConsumer>() |> ignore
+        )
+
+let host = hostBuilder.Build()
+let hostTask = host.StartAsync()
+let services = host.Services
+
+let rowConsumer =
+    host.Services.GetServices<IHostedService>()
+    |> Seq.find (fun s -> s.GetType() = typeof<RowConsumer>)
+    :?> RowConsumer
+
+rowConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore)
+let rabbitMqSeatRowStateViewer = rowConsumer.GetAggregateState
+
+let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
+let seatRowMessageSender =
+    mkMessageSender "127.0.0.1" "_01_seatrow" |> Result.get
+
+aggregateMessageSenders.Add("_01_seatrow", seatRowMessageSender)
+
+let rabbitMQmessageSender =
+    fun queueName ->
+        let sender = aggregateMessageSenders.TryGetValue(queueName)
+        match sender with
+        | true, sender -> sender
+        | _ -> failwith (sprintf "not found %s" queueName)
 
 [<Tests>]
 let tests =
-    Env.Load() |> ignore
-
-    let password = Environment.GetEnvironmentVariable("password")
-
-    let doNothingBroker: IEventBroker<string> =
-        {
-            notify = None
-            notifyAggregate =  None
-        }
-    let connection =
-        "Server=127.0.0.1;"+
-        "Database=es_seat_booking;" +
-        "User Id=safe;"+
-        $"Password={password};"
-    let memoryStorage = MemoryStorage.MemoryStorage()
-    let pgEventStore = PgEventStore(connection)
-    let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, doNothingBroker)
-    let stadiumSystem = StadiumBookingSystem(pgEventStore, doNothingBroker)
-    
-    let pgReset () =
-        pgEventStore.Reset Stadium.Version Stadium.StorageName
-        pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
-        pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
-        StateCache2<Stadium>.Instance.Invalidate()
-        AggregateCache2.Instance.Clear()
-    let memReset () =
-        memoryStorage.Reset Stadium.Version Stadium.StorageName
-        memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
-        StateCache2<Stadium>.Instance.Invalidate()
-        AggregateCache2.Instance.Clear()
    
     let stadiumInstances =
         [
-            (StadiumBookingSystem (memoryStorage, doNothingBroker),  memReset )
-            (StadiumBookingSystem (memoryStorage, doNothingBroker), pgReset)
+            // (StadiumBookingSystem (memoryStorage, emptyMessageSenders),  memReset )
+            (StadiumBookingSystem (pgEventStore, emptyMessageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 100)
+            // (StadiumBookingSystem (pgEventStore, rabbitMQmessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100)
         ]
         
     testList "samples" [
-        multipleTestCase "initial state no seats X - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "initial state no seats X - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
@@ -69,7 +117,8 @@ let tests =
             Expect.isOk result "should be ok"
             let rows = result.OkValue
             Expect.equal 0 rows.Length "should be 0"
-        multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+            
+        multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
@@ -80,50 +129,52 @@ let tests =
             // Assert
             Expect.isError result "should be error"
         
-        multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp ) ->
+        multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
             
             // Act
             let rowId = Guid.NewGuid()
-            let addRow = service.AddRowReference rowId
+            let addRow = service.AddRow rowId
             Expect.isOk addRow "should be ok"
             let seat = { Id = 1; State = Free; RowId = None }
             let addSeat = service.AddSeat rowId seat
             Expect.isOk addSeat "should be ok"
             
             // Assert
+            Thread.Sleep delay
             let result = service.GetRow rowId
             Expect.isOk result "should be ok"
             let row = result.OkValue
             Expect.equal row.Seats.Length 1 "should be equal"
        
-        multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp ) ->
+        multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay ) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
             
             // Act
             let rowId = Guid.NewGuid()
-            let addRow = service.AddRowReference rowId
+            let addRow = service.AddRow rowId
             Expect.isOk addRow "should be ok"
             let seat = { Id = 1; State = Free; RowId = None }
             let addSeat = service.AddSeat rowId seat
             Expect.isOk addSeat "should be ok"
             
             // Assert
+            Thread.Sleep delay
             let retrievedRow = stadiumSystem.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
             let result = retrievedRow.OkValue
             Expect.equal result.Seats.Length 1 "should be 1"
         
-        multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
             let rowId = Guid.NewGuid()
-            let addRow = service.AddRowReference rowId
+            let addRow = service.AddRow rowId
             Expect.isOk addRow "should be ok"
             
             // Act
@@ -144,17 +195,18 @@ let tests =
             let _ = service.AddSeat rowId seat5
             let _ = service.AddSeat rowId seat6
             
+            Thread.Sleep delay
             let retrievedRow = service.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
             let result = retrievedRow.OkValue
             Expect.equal result.Seats.Length 6 "should be 6"
             
-        multipleTestCase "add a row reference and then some seats to it. Retrieve the seats - OK" stadiumInstances <| fun (stadiumSystem, setUp)  ->
+        multipleTestCase "add a row reference and then some seats to it. Retrieve the seats - OK" stadiumInstances <| fun (stadiumSystem, setUp, delay)  ->
             // Arrange
             setUp ()
             let service = stadiumSystem
             let rowId = Guid.NewGuid()
-            let addedRow = service.AddRowReference rowId
+            let addedRow = service.AddRow rowId
             Expect.isOk addedRow "should be ok"
             
             // act
@@ -170,22 +222,23 @@ let tests =
             Expect.isOk seatAdded "should be ok"
 
             // assert
+            Thread.Sleep delay
             let retrievedRow = service.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
 
             let okRetrievedRow = retrievedRow.OkValue
             Expect.equal okRetrievedRow.Seats.Length 5 "should be 5"
         
-        multipleTestCase "add two row references add a row reference and then some seats to it. Retrieve the seats then - Ok" stadiumInstances  <| fun (stadiumSystem, setUp)  ->
+        multipleTestCase "add two row references add a row reference and then some seats to it. Retrieve the seats then - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay)  ->
             // Arrange
             setUp ()
             let service = stadiumSystem
             let rowId = Guid.NewGuid()
-            let addedRow = service.AddRowReference rowId
+            let addedRow = service.AddRow rowId
             Expect.isOk addedRow "should be ok"
 
             let rowId2 = Guid.NewGuid()
-            let addedRow2 = service.AddRowReference rowId2
+            let addedRow2 = service.AddRow rowId2
             Expect.isOk addedRow2 "should be ok"
 
             // Act
@@ -210,6 +263,7 @@ let tests =
             Expect.isOk seatsAdded2 "should be ok"
 
             // Assert
+            Thread.Sleep delay
             let retrievedRow = service.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
             let okRetrievedRow = retrievedRow.OkValue
@@ -220,22 +274,23 @@ let tests =
             let okRetrievedRow2 = retrievedRow2.OkValue
             Expect.equal 5 okRetrievedRow2.Seats.Length "should be 1"
             
-        multipleTestCase "can't add a seat with the same id of another seat in the same row - Ok" stadiumInstances <| fun (stadiumSystem, setUp)  ->
+        multipleTestCase "can't add a seat with the same id of another seat in the same row - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay)  ->
             // Arrange
             setUp()
 
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             // when
             let seat =  { Id = 1; State = Free; RowId = None }
             let seatAdded = stadiumSystem.AddSeat rowId seat
             Expect.isOk seatAdded "should be ok"
             let seat2 = { Id = 1; State = Free; RowId = None }
+            Thread.Sleep delay
             let seatAdded2 = stadiumSystem.AddSeat rowId seat2
             Expect.isError seatAdded2 "should be error"
             
-        multipleTestCase "add a booking on an unexisting row - Error" stadiumInstances  <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add a booking on an unexisting row - Error" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
@@ -250,28 +305,29 @@ let tests =
             let (Error e ) = tryBooking
             Expect.equal e (sprintf "There is no aggregate of version \"_01\", name \"_seatrow\" with id %A" rowId) "should be equal"
             
-        multipleTestCase "add a booking on an existing row and unexisting seat - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add a booking on an existing row and unexisting seat - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
             let rowId = Guid.NewGuid()
 
             // Act
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             let booking = { Id = 1; SeatIds = [1]}
 
             // Assert
+            Thread.Sleep delay
             let tryBooking = stadiumSystem.BookSeats rowId booking
             Expect.isError tryBooking "should be error"
             let (Error e ) = tryBooking
             Expect.equal e "Seat not found" "should be equal"
        
-        multipleTestCase "add a booking on a valid row and valid seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add a booking on a valid row and valid seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
 
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
 
             // Act
@@ -284,18 +340,20 @@ let tests =
             let tryBooking = stadiumSystem.BookSeats rowId booking
             Expect.isOk tryBooking "should be ok"
             
-        multipleTestCase "can't book an already booked seat - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "can't book an already booked seat - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
 
             // Act
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             let seat = { Id = 1; State = Free; RowId = None }
             let seatAdded = stadiumSystem.AddSeat rowId seat
             Expect.isOk seatAdded "should be ok"
             let booking = { Id = 1; SeatIds = [1]}
+            
+            Thread.Sleep delay
             let tryBooking = stadiumSystem.BookSeats rowId booking
             Expect.isOk tryBooking "should be ok"
 
@@ -305,27 +363,29 @@ let tests =
             let (Error e) = tryBookingAgain
             Expect.equal e "Seat already booked" "should be equal"
             
-        multipleTestCase "add many seats and book one of them - Ok" stadiumInstances  <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add many seats and book one of them - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
             // Act
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
                 { Id = 2; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded = stadiumSystem.AddSeats rowId seats
             Expect.isOk seatsAdded "should be ok"
 
             // Assert
             let booking = { Id = 1; SeatIds = [1]}
+            Thread.Sleep delay
             let tryBooking = stadiumSystem.BookSeats rowId booking
             Expect.isOk tryBooking "should be ok"
             
-        multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "violate the middle seat non empty constraint in one single booking - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
@@ -350,7 +410,7 @@ let tests =
                         @>
                 }
             let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
 
             let addedRule = stadiumSystem.AddInvariant rowId middleSeatInvariantContainer
@@ -367,6 +427,7 @@ let tests =
             Expect.isOk seatsAdded "should be ok"
 
             // Act
+            Thread.Sleep delay
             let booking = { Id = 1; SeatIds = [1; 2; 4; 5]}
             let tryBooking = stadiumSystem.BookSeats rowId booking
 
@@ -375,7 +436,7 @@ let tests =
             let (Error e) = tryBooking
             Expect.equal e "error: can't leave a single seat free in the middle" "should be equal"
             
-        multipleTestCase "add an invariant then remove it - OK" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add an invariant then remove it - OK" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
@@ -400,12 +461,14 @@ let tests =
                         @>
                 }
             let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
 
+            Thread.Sleep delay
             let addedRule = stadiumSystem.AddInvariant rowId middleSeatInvariantContainer
             Expect.isOk addedRule "should be ok"
 
+            Thread.Sleep delay
             let removedRule = stadiumSystem.RemoveInvariant rowId middleSeatInvariantContainer
             Expect.isOk removedRule "should be ok"
 
@@ -416,6 +479,7 @@ let tests =
                 { Id = 4; State = Free; RowId = None }
                 { Id = 5; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded = stadiumSystem.AddSeats rowId seats
             Expect.isOk seatsAdded "should be ok"
 
@@ -426,12 +490,12 @@ let tests =
             // Assert
             Expect.isOk tryBooking "should be ok"
             
-        multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
@@ -440,17 +504,19 @@ let tests =
                 { Id = 4; State = Free; RowId = None }
                 { Id = 5; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded = stadiumSystem.AddSeats rowId seats
             Expect.isOk seatsAdded "should be ok"
             
             // Act
             let booking = { Id = 1; SeatIds = [1;2;4;5]}
+            Thread.Sleep delay
             let tryBooking = stadiumSystem.BookSeats rowId booking
 
             // Assert
             Expect.isOk tryBooking "should be ok"
             
-        multipleTestCase "book free seats among two rows, one fails, so it makes fail them all - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "book free seats among two rows, one fails, so it makes fail them all - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             
             // Arrange
             setUp()
@@ -478,15 +544,18 @@ let tests =
                 }
             let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
-            let addedRow1 = stadiumSystem.AddRowReference rowId1
+            Thread.Sleep delay
+            let addedRow1 = stadiumSystem.AddRow rowId1
             Expect.isOk addedRow1 "should be ok"
 
             let addInvariantToRow1 = stadiumSystem.AddInvariant rowId1 invariantContainer
             Expect.isOk addInvariantToRow1 "should be ok"
 
-            let addedRow2 = stadiumSystem.AddRowReference rowId2
+            Thread.Sleep delay
+            let addedRow2 = stadiumSystem.AddRow rowId2
             Expect.isOk addedRow2 "should be ok"
 
+            Thread.Sleep delay
             let addInvariantToRow2 = stadiumSystem.AddInvariant rowId2 invariantContainer
             Expect.isOk addInvariantToRow2 "should be ok"
             let seats1 = [
@@ -496,6 +565,7 @@ let tests =
                 { Id = 4; State = Free; RowId = None }
                 { Id = 5; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded1 = stadiumSystem.AddSeats rowId1 seats1
             Expect.isOk seatsAdded1 "should be ok"
             let seats2 = [
@@ -522,12 +592,12 @@ let tests =
             let tryMultiBookingAgain = stadiumSystem.BookSeatsNRows [(rowId1, newBooking1); (rowId2, newBooking2)]
             Expect.isOk tryMultiBookingAgain "should be ok"
             
-        multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "if there is no invariant/contraint then can book seats leaving the only middle seat unbooked - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
             let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRowReference rowId
+            let addedRow = stadiumSystem.AddRow rowId
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
@@ -536,6 +606,7 @@ let tests =
                 { Id = 4; State = Free; RowId = None }
                 { Id = 5; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded = stadiumSystem.AddSeats rowId seats
             Expect.isOk seatsAdded "should be ok"
             let booking = { Id = 1; SeatIds = [1;2;4;5]}
@@ -546,7 +617,7 @@ let tests =
             // Assert
             Expect.isOk tryBooking "should be ok"
           
-        multipleTestCase "book free seats among two rows, one fails, so it makes fail them all - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "book free seats among two rows, one fails, so it makes fail them all - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
@@ -573,13 +644,15 @@ let tests =
                 }
             let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
-            let addedRow1 = stadiumSystem.AddRowReference rowId1
+            Thread.Sleep delay
+            let addedRow1 = stadiumSystem.AddRow rowId1
             Expect.isOk addedRow1 "should be ok"
 
             let addInvariantToRow1 = stadiumSystem.AddInvariant rowId1 invariantContainer
             Expect.isOk addInvariantToRow1 "should be ok"
 
-            let addedRow2 = stadiumSystem.AddRowReference rowId2
+            Thread.Sleep delay
+            let addedRow2 = stadiumSystem.AddRow rowId2
             Expect.isOk addedRow2 "should be ok"
 
             let addInvariantToRow2 = stadiumSystem.AddInvariant rowId2 invariantContainer
@@ -591,6 +664,7 @@ let tests =
                 { Id = 4; State = Free; RowId = None }
                 { Id = 5; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded1 = stadiumSystem.AddSeats rowId1 seats1
             Expect.isOk seatsAdded1 "should be ok"
             let seats2 = [
@@ -600,6 +674,7 @@ let tests =
                 { Id = 9; State = Free; RowId = None }
                 { Id = 10; State = Free; RowId = None }
             ]
+            Thread.Sleep delay
             let seatsAdded2 = stadiumSystem.AddSeats rowId2 seats2
             Expect.isOk seatsAdded2 "should be ok"
 
@@ -617,17 +692,19 @@ let tests =
             let tryMultiBookingAgain = stadiumSystem.BookSeatsNRows [(rowId1, newBooking1); (rowId2, newBooking2)]
             Expect.isOk tryMultiBookingAgain "should be ok"
             
-        multipleTestCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "add a seats in one row and two seat in another row, then a seat again in first row - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
             let rowId1 = Guid.NewGuid()
             let rowId2 = Guid.NewGuid()
 
-            let addedRow1 = stadiumSystem.AddRowReference rowId1
+            Thread.Sleep delay
+            let addedRow1 = stadiumSystem.AddRow rowId1
             Expect.isOk addedRow1 "should be ok"
 
-            let addedRow2 = stadiumSystem.AddRowReference rowId2
+            Thread.Sleep delay
+            let addedRow2 = stadiumSystem.AddRow rowId2
             Expect.isOk addedRow2 "should be ok"
 
             let seat1 = { Id = 1; State = Free; RowId = None }
@@ -650,7 +727,7 @@ let tests =
             Expect.equal retrievedRow1.OkValue.Seats.Length 2 "should be equal"
             Expect.equal retrievedRow2.OkValue.Seats.Length 2 "should be equal"
             
-        multipleTestCase "A single booking cannot book all seats involving three rows or more - Error" stadiumInstances <| fun (stadiumSystem, setUp) ->
+        multipleTestCase "A single booking cannot book all seats involving three rows or more - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
 
@@ -658,11 +735,11 @@ let tests =
             let rowId2 = Guid.NewGuid()
             let rowId3 = Guid.NewGuid()
 
-            let addedRow1 = stadiumSystem.AddRowReference rowId1
+            let addedRow1 = stadiumSystem.AddRow rowId1
             Expect.isOk addedRow1 "should be ok"
-            let addedRow2 = stadiumSystem.AddRowReference rowId2
+            let addedRow2 = stadiumSystem.AddRow rowId2
             Expect.isOk addedRow2 "should be ok"
-            let addRow3 = stadiumSystem.AddRowReference rowId3
+            let addRow3 = stadiumSystem.AddRow rowId3
             Expect.isOk addRow3 "should be ok"
             let seats1 = [
                 { Id = 1; State = Free; RowId = None }

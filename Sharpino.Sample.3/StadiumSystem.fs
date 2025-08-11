@@ -1,4 +1,6 @@
 namespace Tonyx.SeatsBooking
+open System.Threading.Tasks
+open Sharpino.EventBroker
 open Sharpino.PgStorage
 open Tonyx.SeatsBooking.SeatRow
 open Tonyx.SeatsBooking.Stadium
@@ -24,30 +26,38 @@ module StorageStadiumBookingSystem =
             notify = None
             notifyAggregate = None
         }
+    
+    let emptyMessageSender =
+        fun queueName ->
+            fun message ->
+                ValueTask.CompletedTask
 
     type StadiumBookingSystem
-        (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        // (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (eventStore: IEventStore<string>, messageSenders: string -> MessageSender, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
         new (eventStore: IEventStore<string>) =
-            StadiumBookingSystem(eventStore, doNothingBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
-        new (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>) =
-            StadiumBookingSystem(eventStore, eventBroker, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
-        member this.AddRowReference (rowId: Guid)  =
+            StadiumBookingSystem(eventStore, emptyMessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+        new (eventStore: IEventStore<string>, messageSenders: string -> MessageSender) =
+            StadiumBookingSystem(eventStore, messageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+            
+        member this.AddRow (rowId: Guid)  =
             ResultCE.result {
                 let seatsRow = SeatsRow rowId
                 let addRowReference = StadiumCommand.AddRowReference rowId
-                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore eventBroker seatsRow addRowReference
+                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore messageSenders seatsRow addRowReference
                 return result
             }
-        member this.AddRowReference () =
-            this.AddRowReference (Guid.NewGuid())
+            
+        member this.AddRow () =
+            this.AddRow (Guid.NewGuid())
 
         member this.BookSeats (rowId: Guid) (booking: Booking) =
             result {
                 let bookSeat = RowAggregateCommand.BookSeats booking
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker bookSeat
+                        rowId eventStore messageSenders bookSeat
                 return result
             }
 
@@ -65,7 +75,7 @@ module StorageStadiumBookingSystem =
                     runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         eventStore
-                        eventBroker
+                        messageSenders
                         bookSeatsCommands
                 return result
             }
@@ -89,7 +99,7 @@ module StorageStadiumBookingSystem =
                     RowAggregateCommand.AddSeat {seat with RowId = rowId |> Some}
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker addSeat
+                        rowId eventStore messageSenders addSeat
                 return result
             }
 
@@ -101,7 +111,7 @@ module StorageStadiumBookingSystem =
                     RowAggregateCommand.RemoveSeat seat
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker removeSeat
+                        rowId eventStore messageSenders removeSeat
                 return result
             }
 
@@ -110,7 +120,7 @@ module StorageStadiumBookingSystem =
                 let addSeats = RowAggregateCommand.AddSeats seats
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker addSeats
+                        rowId eventStore messageSenders addSeats
                 return result
             }
 
@@ -124,7 +134,7 @@ module StorageStadiumBookingSystem =
                     runNAggregateCommands<SeatsRow, RowAggregateEvent, string>
                         rowIDs
                         eventStore
-                        eventBroker
+                        messageSenders
                         addSeatsCommands
                 return result
             }
@@ -150,7 +160,7 @@ module StorageStadiumBookingSystem =
             result {
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker addInvariant
+                        rowId eventStore messageSenders addInvariant
                 return result
             }
 
@@ -159,6 +169,6 @@ module StorageStadiumBookingSystem =
             result {
                 let! result =
                     runAggregateCommand<SeatsRow, RowAggregateEvent, string>
-                        rowId eventStore eventBroker removeInvariant
+                        rowId eventStore messageSenders removeInvariant
                 return result
             }

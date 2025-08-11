@@ -1,6 +1,7 @@
 namespace ShoppingCartBinary
 
 open Sharpino.EventBroker
+open Sharpino.StateView
 open ShoppingCartBinary.Good
 open ShoppingCartBinary.GoodEvents
 open ShoppingCartBinary.GoodsContainer
@@ -18,9 +19,6 @@ open FsToolkit.ErrorHandling
 
 module Supermarket =
     open Sharpino.CommandHandler
-    let legacyBroker: IEventBroker<_> =
-        {  notify = None
-           notifyAggregate = None }
         
     // type Supermarket (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
     type Supermarket (eventStore: IEventStore<'F>, messageSender: string -> MessageSender, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
@@ -71,43 +69,41 @@ module Supermarket =
                 return state
             }
 
-        member this.GetGood (id: Guid) = 
+        member this.GetGood (id: Guid) =
             result {
-                let! goods = this.GoodRefs
-                let! goodExist = 
-                    goods
-                    |> List.tryFind (fun g -> g = id)
-                    |> Result.ofOption "Good not found"
                 let! (_, state) = goodsViewer id
                 return state
             }
-        member this.Goods =
+        
+        member this.Goods=
             result {
-                let! (_, state) = goodsContainerViewer ()
-
-                // warning: if there is a ref to an unexisting good you are in trouble. fix it
                 let! goods =
-                    state.GoodRefs
-                    |> List.map this.GetGood
-                    |> Result.sequence
-                return goods |> Array.toList
+                    getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
+                        eventStore
+                        DateTime.MinValue
+                        DateTime.MaxValue
+                        (fun _ -> true)
+                return goods |>> snd  
             }
 
         member this.AddGood (good: Good) =  
             result {
-                let existingGoods = 
-                    this.Goods
-                    |> Result.defaultValue []
-                do! 
+                
+                let! existingGoods =
+                    getFilteredAggregateStatesInATimeInterval2<Good, GoodEvents, 'F>
+                        eventStore
+                        DateTime.MinValue
+                        DateTime.MaxValue
+                        (fun g -> g.Name = good.Name)
+                
+                let! existsWithTheSameName =
                     existingGoods
-                    |> List.exists (fun g -> g.Name = good.Name)
-                    |> not
+                    |> List.length = 0
                     |> Result.ofBool "Good already in items list"
 
                 let! goodAdded =
-                    good.Id 
-                    |> AddGood 
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Good, 'F> eventStore legacyBroker good
+                    good
+                    |> runInit<Good, GoodEvents,'F> eventStore messageSender
                 return ()
             }
         member this.AddGoodAsync (good: Good) =
@@ -122,34 +118,17 @@ module Supermarket =
                 let! (_, good) = goodsViewer id
                 return! 
                     runDelete<Good, GoodEvents, byte[]> eventStore messageSender id (fun _ -> true)
-                    // command
-                    // |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore legacyBroker 
             }
-            
-            // result {
-            //     let! good = this.GetGood id
-            //     let! (_, state) = goodsContainerViewer ()
-            //     let command = GoodsContainerCommands.RemoveGood id
-            //     return! 
-            //         command
-            //         |> runCommand<GoodsContainer, GoodsContainerEvents, byte[]> eventStore legacyBroker 
-            // }
 
         member this.AddCart (cart: Cart) = 
             result {
                 return! 
-                    cart.Id
-                    |> AddCart
-                    |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, byte[]> eventStore legacyBroker cart
+                    cart
+                    |> runInit<Cart, CartEvents,'F> eventStore messageSender
             }
 
         member this.GetCart (cartRef: Guid) = 
             result {
-                let! cartRefs = this.CartRefs
-                let! exists =
-                    cartRefs
-                    |> List.tryFind (fun c -> c = cartRef)
-                    |> Result.ofOption "Cart not found"
                 let! (_, state) = cartViewer cartRef
                 return state
             }

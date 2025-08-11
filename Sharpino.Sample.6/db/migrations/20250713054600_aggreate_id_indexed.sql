@@ -12,7 +12,5 @@ create index ix_01_event_supplier_id on public.events_01_supplier(aggregate_id);
 create index ix_01_aggregate_event_supplier_id on public.aggregate_events_01_supplier(aggregate_id);
 create index ix_01_snapshots_supplier_id on public.snapshots_01_supplier(aggregate_id);
 
-
-
 -- migrate:down
 

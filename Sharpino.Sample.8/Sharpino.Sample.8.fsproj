@@ -13,12 +13,11 @@
     <Compile Include="Domain/Site/Site.fs" />
     <Compile Include="Domain/Site/Events.fs" />
     <Compile Include="Domain/Site/Commands.fs" />
-    <Compile Include="Domain/Network/Network.fs" />
-    <Compile Include="Domain/Network/Events.fs" />
-    <Compile Include="Domain/Network/Commands.fs" />
+    <Compile Include="Domain/Site/Consumer.fs" />
     <Compile Include="Domain/Truck/Transporter.fs" />
     <Compile Include="Domain/Truck/Events.fs" />
     <Compile Include="Domain/Truck/Commands.fs" />
+    <Compile Include="Domain/Truck/Consumer.fs" />
     
     <Compile Include="TyconTransport.fs" />
     <Compile Include="Tests/NetworkTests.fs" />
@@ -38,7 +37,11 @@
     <PackageReference Update="FSharp.Core" Version="9.*" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Sample.6\Sharpino.Sample.6.fsproj" />
+    <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
   </ItemGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
 
 </Project>

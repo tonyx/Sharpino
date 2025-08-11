@@ -319,7 +319,7 @@ module CommandHandler =
         and 'A1 : (static member Version: string)
         >
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender)
         (initialInstance: 'A1)
         (md: Metadata)
         (command: Command<'A, 'E>)
@@ -328,8 +328,8 @@ module CommandHandler =
             
             let command = fun () ->
                 result {
-                    let! (eventId, state) = getFreshState<'A, 'E, 'F> storage
-                    let! (newState, events)= 
+                    let! eventId, state = getFreshState<'A, 'E, 'F> storage
+                    let! newState, events = 
                         state
                         |> command.Execute
                         
@@ -338,7 +338,6 @@ module CommandHandler =
 
                     StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
-                    // AggregateCache<'A1,'F>.Instance.Memoize2 (initialInstance |> Ok) (0, initialInstance.Id)
                     AggregateCache2.Instance.Memoize2 (initialInstance |> box |> Ok) (ids |> List.last, initialInstance.Id)
                     return ()
                 }
@@ -379,14 +378,12 @@ module CommandHandler =
                         AggregateId = initialInstance.Id
                         Message = message
                     }.Serialize
-                    
+                
+                // fire and forget 
                 let sent =
                     task {
                         return! sender aggregateMessage
                     }
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                    
                 return ()
             }
             
@@ -801,12 +798,12 @@ module CommandHandler =
         and 'A1 : (static member Version: string)
         >
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSender: StreamName -> MessageSender)
         (initialInstance: 'A1)
         (command: Command<'A, 'E>)
         =
             logger.Value.LogDebug (sprintf "runInitAndCommand %A %A" 'A.StorageName command)
-            runInitAndCommandMd<'A, 'E, 'A1, 'F> storage eventBroker initialInstance Metadata.Empty command
+            runInitAndCommandMd<'A, 'E, 'A1, 'F> storage messageSender initialInstance Metadata.Empty command
             
     let rec inline runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F
         when 'A1 :> Aggregate<'F>
@@ -1571,12 +1568,58 @@ module CommandHandler =
             result {
                 let! firstExecutedCommand =  preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore messageSender md command1
                 let! secondExecutedCommand = preExecuteAggregateCommandMd<'A2, 'E2, 'F> aggregateId2 eventStore messageSender md command2
+                
+                let! (_, stateA1) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore //  |> unbox
+                let! (_, stateA2) = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore // |> unbox
+                
+                let stateA1 = stateA1 |> unbox
+                let stateA2 = stateA2 |> unbox
+                
+                let! eventsA1 = command1.Execute stateA1
+                let! eventsA2 = command2.Execute stateA2
+                
+                let! (_, eventsA1) = command1.Execute stateA1
+                let! (_, eventsA2) = command2.Execute stateA2
                 let! ids =
                     storeMultipleEvents eventStore messageSender
                         [firstExecutedCommand
                          secondExecutedCommand]
                 AggregateCache2.Instance.Memoize2 (firstExecutedCommand.NewState |> Ok) ((ids.[0] |> List.last, aggregateId1))
                 AggregateCache2.Instance.Memoize2 (secondExecutedCommand.NewState |> Ok) ((ids.[1] |> List.last, aggregateId2))
+                let queueNameA1 = 'A1.Version + 'A1.StorageName
+                let queueNameA2 = 'A2.Version + 'A2.StorageName
+                let senderA1 = messageSender queueNameA1
+                let senderA2 = messageSender queueNameA2
+                
+                let messageA1 =
+                    Message<'A1, 'E1>.Events
+                        {
+                            InitEventId = firstExecutedCommand.EventId
+                            EndEventId = ids.[0] |> List.last
+                            Events = eventsA1
+                        }
+                let messageA2 =
+                    Message<'A2, 'E2>.Events
+                        {
+                            InitEventId = secondExecutedCommand.EventId
+                            EndEventId = ids.[1] |> List.last
+                            Events = eventsA2
+                        }
+                
+                let aggregateMessage =
+                    {
+                        AggregateId = aggregateId1
+                        Message = messageA1
+                    }.Serialize
+                    
+                let aggregateMessage2 =
+                    {
+                        AggregateId = aggregateId2
+                        Message = messageA2
+                    }.Serialize
+               
+                let sent1 = senderA1 aggregateMessage
+                let sent2 = senderA2 aggregateMessage2    
                 
                 let _ = mkAggregateSnapshotIfIntervalPassed3<'F>
                                 eventStore
@@ -1670,7 +1713,7 @@ module CommandHandler =
                                 (eventId2, (events2 |>> _.Serialize), 'A2.Version, 'A2.StorageName, aggregateId2)
                             ]
                     AggregateCache2.Instance.Memoize2 (newState1 |> box |> Ok) ((newLastStateIdsList.[0] |> List.last, aggregateId1))
-                    AggregateCache2.Instance.Memoize2 (newState2 |> box |>  Ok) ((newLastStateIdsList.[1] |> List.last, aggregateId2))
+                    AggregateCache2.Instance.Memoize2 (newState2 |> box |> Ok) ((newLastStateIdsList.[1] |> List.last, aggregateId2))
                    
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
@@ -2138,7 +2181,7 @@ module CommandHandler =
                     let eventIds1' = eventIds |> List.take aggregateIds1.Length
                     let eventIds2' = eventIds |> List.skip aggregateIds1.Length
                     
-                    let queueNameA1 = 'A1.Version + 'A2.StorageName
+                    let queueNameA1 = 'A1.Version + 'A1.StorageName
                     let queueNameA2 = 'A2.Version + 'A2.StorageName
                     let senderA1 = messageSender queueNameA1
                     let senderA2 = messageSender queueNameA2

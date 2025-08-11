@@ -91,41 +91,6 @@ $$;
 
 
 --
--- Name: insert_01_kitchen_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-BEGIN
-INSERT INTO events_01_kitchen(event, timestamp)
-VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
-return inserted_id;
-
-END;
-$$;
-
-
---
--- Name: insert_01_kitchen_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_kitchen_event_and_return_id(event_in text, context_state_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    inserted_id integer;
-BEGIN
-    INSERT INTO events_01_kitchen(event, timestamp, context_state_id)
-    VALUES(event_in::text, now(), context_state_id) RETURNING id INTO inserted_id;
-    return inserted_id;
-END;
-$$;
-
-
---
 -- Name: insert_01_supplier_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -232,44 +197,6 @@ BEGIN
 INSERT INTO events_01_ingredient(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-
---
--- Name: insert_md_01_kitchen_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_md_01_kitchen_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_md_01_kitchen_event_and_return_id(event_in, aggregate_id, md);
-
-INSERT INTO aggregate_events_01_kitchen(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
---
--- Name: insert_md_01_kitchen_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_md_01_kitchen_event_and_return_id(event_in text, md_in text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-BEGIN
-INSERT INTO events_01_kitchen(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
-return inserted_id;
-
 END;
 $$;
 
@@ -441,34 +368,6 @@ ALTER TABLE public.events_01_ingredient ALTER COLUMN id ADD GENERATED ALWAYS AS 
 
 
 --
--- Name: events_01_kitchen; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.events_01_kitchen (
-    id integer NOT NULL,
-    event text NOT NULL,
-    published boolean DEFAULT false NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    context_state_id uuid
-);
-
-
---
--- Name: events_01_kitchen_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.events_01_kitchen ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.events_01_kitchen_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
 -- Name: events_01_supplier; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -558,30 +457,6 @@ CREATE TABLE public.snapshots_01_ingredient (
 
 
 --
--- Name: snapshots_01_kitchen_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.snapshots_01_kitchen_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: snapshots_01_kitchen; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.snapshots_01_kitchen (
-    id integer DEFAULT nextval('public.snapshots_01_kitchen_id_seq'::regclass) NOT NULL,
-    snapshot text NOT NULL,
-    event_id integer NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
-);
-
-
---
 -- Name: snapshots_01_supplier_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -648,14 +523,6 @@ ALTER TABLE ONLY public.events_01_ingredient
 
 
 --
--- Name: events_01_kitchen events_kitchen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events_01_kitchen
-    ADD CONSTRAINT events_kitchen_pkey PRIMARY KEY (id);
-
-
---
 -- Name: events_01_supplier events_supplier_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -685,14 +552,6 @@ ALTER TABLE ONLY public.snapshots_01_dish
 
 ALTER TABLE ONLY public.snapshots_01_ingredient
     ADD CONSTRAINT snapshots_ingredient_pkey PRIMARY KEY (id);
-
-
---
--- Name: snapshots_01_kitchen snapshots_kitchen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.snapshots_01_kitchen
-    ADD CONSTRAINT snapshots_kitchen_pkey PRIMARY KEY (id);
 
 
 --
@@ -804,14 +663,6 @@ ALTER TABLE ONLY public.snapshots_01_dish
 
 ALTER TABLE ONLY public.snapshots_01_ingredient
     ADD CONSTRAINT event_01_ingredient_fk FOREIGN KEY (event_id) REFERENCES public.events_01_ingredient(id) MATCH FULL ON DELETE CASCADE;
-
-
---
--- Name: snapshots_01_kitchen event_01_kitchen_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.snapshots_01_kitchen
-    ADD CONSTRAINT event_01_kitchen_fk FOREIGN KEY (event_id) REFERENCES public.events_01_kitchen(id) MATCH FULL ON DELETE CASCADE;
 
 
 --

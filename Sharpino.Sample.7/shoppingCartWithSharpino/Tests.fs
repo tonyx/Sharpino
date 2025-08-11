@@ -6,6 +6,7 @@ open System.Threading.Tasks
 open FSharpPlus.Math
 open FsToolkit.ErrorHandling
 open Sharpino
+open Sharpino.Commons
 open Sharpino.EventBroker
 open Sharpino.PgBinaryStore
 open Sharpino.RabbitMq
@@ -55,43 +56,62 @@ let connection =
         "User Id=safe;"+
         $"Password={password};"
 
+let eventStoreMemory = MemoryStorage() 
+let eventStorePostgres = PgEventStore(connection)
+
+#if RABBITMQ
 let hostBuilder = 
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
             services.AddHostedService<GoodConsumer>() |> ignore
             services.AddHostedService<CartConsumer>() |> ignore
-            
             ()
         )
         
-// let goodConsumer = sp.GetService<GoodConsumer>()
-// let rabbitMqGoodsStateViewer = goodConsumer.GetAggregateState
-        
 let host = hostBuilder.Build()
 
-// Start the host in the background
 let hostTask = host.StartAsync()
 
 let services = host.Services
-
-// let goodConsumer = host.Services.GetService<IHostedService>() :?> GoodConsumer
 
 let goodConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<GoodConsumer>)
     :?> GoodConsumer
 
+goodConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStorePostgres)
+
 let cartConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<CartConsumer>)
     :?> CartConsumer
 
-// let cartConsumer = host.Services.GetService<IHostedService>() :?> CartConsumer
+cartConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStorePostgres)    
+
 let rabbitMqGoodsStateViewer = goodConsumer.GetAggregateState
 let rabbitMqCartStateViewer = cartConsumer.GetAggregateState
 
-let eventStoreMemory = MemoryStorage() 
-let eventStorePostgres = PgEventStore(connection)
+let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
+
+let cartMessageSender =
+    mkMessageSender "127.0.0.1" "_01_cart"
+    |> Result.get
+
+let goodMessageSender =
+    mkMessageSender "127.0.0.1" "_01_good"
+    |> Result.get
+
+aggregateMessageSenders.Add("_01_cart", cartMessageSender)
+aggregateMessageSenders.Add("_01_good", goodMessageSender)
+
+let messageSender =
+    fun queueName ->
+        let sender = aggregateMessageSenders.TryGetValue(queueName)
+        match sender with
+        | true, sender -> sender
+        | _ -> failwith "not found azz"
+#endif
+
 
 let jsonDbGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStorePostgres
 let jsonDbCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStorePostgres
@@ -108,25 +128,6 @@ let setupMemoryEventStore () =
     setUp eventStoreMemory
     ()
 
-
-let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
-
-let cartMessageSender =
-    mkMessageSender "127.0.0.1" "_01_cart"
-
-let goodMessageSender =
-    mkMessageSender "127.0.0.1" "_01_good"
-
-aggregateMessageSenders.Add("_01_cart", cartMessageSender)
-aggregateMessageSenders.Add("_01_good", goodMessageSender)
-
-// let messageSender =
-//     fun queueName ->
-//         let sender = aggregateMessageSenders.TryGetValue(queueName)
-//         match sender with
-//         | true, sender -> sender
-//         | _ -> failwith "not found azz"
-
 let emptyMessageSender =
     fun queueName ->
         fun message ->
@@ -134,18 +135,18 @@ let emptyMessageSender =
                 
 let marketInstances =
     [
-        // Supermarket(eventStorePostgres, aggregateMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
-        // Supermarket(eventStoreMemory, emptyMessageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory :> emptyMessageSender, 0 ;
-        Supermarket(eventStorePostgres, emptyMessageSender, jsonMemoryGoodsContainerViewer, jsonMemoryGoodsViewer, jsonMemoryCartViewer ), "eventStorePostgres", setupMemoryEventStore, jsonMemoryGoodsViewer, eventStoreMemory:> IEventStore<string>, emptyMessageSender, 0 ;
-        // Supermarket(eventStorePostgres, emptyMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, emptyMessageSender, 0 ;
-        // Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>  ;
+#if RABBITMQ
+        Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, messageSender, 500
+#else
+        Supermarket(eventStorePostgres, emptyMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, emptyMessageSender, 0 ;
+#endif
     ]
     
 [<Tests>]
 let tests =
 
     testList "samples" [
-        fmultipleTestCase "Initial state: there are no good in a Supermarket - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, _) ->
+        multipleTestCase "Initial state: there are no good in a Supermarket - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, _) ->
             setup()
 
             let goods = supermarket.Goods
@@ -153,13 +154,12 @@ let tests =
             Expect.isOk goods "should be ok"
             Expect.equal goods.OkValue [] "There are no goods in the supermarket."
         
-        // FOCUS ok
-        fmultipleTestCase "after added a good to the supermarket then can retrieve it - Ok" marketInstances <| fun (supermarket, _, setup, _, _,_, timeToWait) ->
-            Thread.Sleep(timeToWait)
+        multipleTestCase "after added a good to the supermarket then can retrieve it - Ok" marketInstances <| fun (supermarket, _, setup, _, _,_, timeToWait) ->
             setup ()
 
             // given
 
+            Thread.Sleep(timeToWait)
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
@@ -174,16 +174,14 @@ let tests =
             // then
             Expect.equal  retrieved'.Id good.Id "should be the same good"
 
-        // FOCUS ok
-        fmultipleTestCase "create a good and put it in the supermarket" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "create a good and put it in the supermarket" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
             Expect.isOk added "should be ok"
             
-        // FOCUS ok
-        fmultipleTestCase "create apple,  put it in the supermarket and add a specific new quantity again - Ok" marketInstances <| fun (supermarket, _, setup, _, _,_, timeToWait) ->
+        multipleTestCase "create apple,  put it in the supermarket and add a specific new quantity again - Ok" marketInstances <| fun (supermarket, _, setup, _, _,_, timeToWait) ->
             setup ()
             let goodId = Guid.NewGuid()
             let good = Good.MkGood (goodId, "Apple", 10.0m)
@@ -196,8 +194,7 @@ let tests =
             let retrievedQuantity = supermarket.GetGoodsQuantity goodId
             Expect.isOk retrievedQuantity "should be ok"
 
-        // FOCUS ok
-        fmultipleTestCase "after added a good, its quantity is zero" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "after added a good, its quantity is zero" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let id = Guid.NewGuid()
 
@@ -215,8 +212,7 @@ let tests =
             let result = retrievedQuantity.OkValue
             Expect.equal result 0 "should be the same quantity"
 
-        // FOCUS XXXXXXXX 
-        fmultipleTestCase "Add a good. Increase its quantity, retrieve checking the quantity - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "Add a good. Increase its quantity, retrieve checking the quantity - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let id = Guid.NewGuid()
             // given
@@ -235,8 +231,7 @@ let tests =
             let result = retrievedQuantity.OkValue
             Expect.equal result 10 "should be the same quantity"
 
-        // FOCUS ok
-        fmultipleTestCase "create a cart" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "create a cart" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             // given
             let cartId = Guid.NewGuid()
@@ -248,7 +243,6 @@ let tests =
             // then
             Expect.isOk addCart "should be ok"
 
-        // KEEP IT
         fmultipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             
@@ -284,8 +278,7 @@ let tests =
             let result = retrieved.OkValue.Goods
             Expect.equal result.Count 1 "should be the same quantity"
 
-        // ISSUE
-        fmultipleTestCase "try adding more items than available. - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "try adding more items than available. - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             // given
@@ -311,7 +304,7 @@ let tests =
             let (Error e) = addedToCart
             Expect.equal e "Quantity not available" "should be the same error"
 
-        fmultipleTestCase "when adding a good into an unexisting cart will get an Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "when adding a good into an unexisting cart will get an Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             
             // given
@@ -326,7 +319,7 @@ let tests =
             // then
             Expect.isError addedToCart "should be an error"
 
-        fmultipleTestCase "try adding an unexisting good to a cart - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "try adding an unexisting good to a cart - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             // given
@@ -342,9 +335,7 @@ let tests =
             // then
             Expect.isError addedToCart "should be an error" 
 
-        
-        // ISSUE
-        fmultipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             // given
@@ -391,7 +382,7 @@ let tests =
             Expect.equal lemonsQuantity.OkValue 9 "should be the same quantity"
 
 
-        fmultipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             // given
@@ -438,7 +429,7 @@ let tests =
             Expect.isOk result2 "should be ok"
             Expect.equal result2.OkValue 10 "should be the same quantity"
 
-        fmultipleTestCase "add and a good and it's quantity will be zero - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add and a good and it's quantity will be zero - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             let cartId = Guid.NewGuid()
@@ -458,8 +449,7 @@ let tests =
             let result = quantity.OkValue
             Expect.equal result 0 "should be the same quantity"
 
-        // work on this one carefully
-        fmultipleTestCase "can't add twice a good with the same name - Error" marketInstances <| fun (supermarket, _ , setup, _, _, _, timeToWait) ->
+        multipleTestCase "can't add twice a good with the same name - Error" marketInstances <| fun (supermarket, _ , setup, _, _, _, timeToWait) ->
             setup()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -471,8 +461,7 @@ let tests =
             let addedTwice = supermarket.AddGood good2
             Expect.isError addedTwice "should be an error"
 
-        // will need using delete
-        fmultipleTestCase "add a good and remove it - Ok" marketInstances <| fun (supermarket,_ , setup, _, _, _, timeToWait) ->
+        multipleTestCase "add a good and remove it - Ok" marketInstances <| fun (supermarket,_ , setup, _, _, _, timeToWait) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -486,8 +475,7 @@ let tests =
             let retrieved = supermarket.RetrieveGoodBypassingContainer good.Id
             Expect.isError retrieved "should be an error"
 
-        // will need using delete
-        fmultipleTestCase  "when remove a good then can't gets its quantity - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase  "when remove a good then can't gets its quantity - Error" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
@@ -500,21 +488,11 @@ let tests =
             let quantity = supermarket.GetGoodsQuantity good.Id
             Expect.isError quantity "should be an error"
 
-        // FOCUS OK OK OK
-        fmultipleTestCase "Initial state. Add many goods and add quantity to them many times. Verify multiple events and multiple aggregate updates - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "Initial state. Add many goods and add quantity to them many times. Verify multiple events and multiple aggregate updates - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let good1Id = Guid.NewGuid()
             let good1 = Good.MkGood (good1Id, "Good1", 10.0m)
             let added = supermarket.AddGood good1
-
-            // let good2Id = Guid.NewGuid()
-            // let good2 = Good.MkGood (good2Id, "Good2", 20.0m)
-            // System.Threading.Thread.Sleep(50)
-            // let added2 = supermarket.AddGoodBypassingContainer good2
-            // let good3Id = Guid.NewGuid()
-            // System.Threading.Thread.Sleep(50)
-            // let good3 = Good.MkGood  (good3Id, "Good3", 30.0m)
-            // let added3 = supermarket.AddGoodBypassingContainer good3
 
             System.Threading.Thread.Sleep(timeToWait)
             let quantityAdded = supermarket.AddQuantity (good1Id, 10)
@@ -524,41 +502,12 @@ let tests =
             
             System.Threading.Thread.Sleep(timeToWait)
             let quantityAdded21 = supermarket.AddQuantity (good1Id, 2)
-            
-            // let quantityAdded22 = supermarket.AddQuantity (good3Id, 99)
-
-            // System.Threading.Thread.Sleep(500)
-            // let quantityAdded3 = supermarket.AddQuantity (good1Id, 3)
-            
-            // System.Threading.Thread.Sleep(500)
-            // let quantityAdded4 = supermarket.AddQuantity (good1Id, 2)
-            // System.Threading.Thread.Sleep(500)
-            // let quantityAdded2 = supermarket.AddQuantity (good1Id, 5)
-
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded21 = supermarket.AddQuantity (good2Id, 2)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded31 = supermarket.AddQuantity (good2Id, 5)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded41 = supermarket.AddQuantity (good2Id, 6)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded51 = supermarket.AddQuantity (good2Id, 7)
-            //
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded32 = supermarket.AddQuantity (good3Id, 51)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded42 = supermarket.AddQuantity (good3Id, 69)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded52 = supermarket.AddQuantity (good3Id, 73)
-            // System.Threading.Thread.Sleep(50)
-            // let quantityAdded62 = supermarket.AddQuantity (good3Id, 99)
 
             System.Threading.Thread.Sleep(timeToWait)
             let supermarketGoodState = supermarket.RetrieveGoodBypassingContainer good1Id |> Result.get
             Expect.equal supermarketGoodState.Quantity 15 "should be the same state"
 
-        // FOCUS OK
-        fmultipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, goodsViewer, eventStore, messageSender, timeToWait ) ->
+        multipleTestCase "retrieve the undoer of a command, apply the command, then retrieve the events from the undoer and check that they will be the events that works as the anticommand - Ok" marketInstances <| fun (supermarket, _, setup, goodsViewer, eventStore, messageSender, timeToWait ) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
@@ -587,8 +536,7 @@ let tests =
             let result = undoerEventsResult |> Result.get
             Expect.equal result.Length 1 "should be the same quantity"
 
-        // FOCUS OK
-        fmultipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, _, setup, goodsViewer, _, _, timeToWait) ->
+        multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, _, setup, goodsViewer, _, _, timeToWait) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let goodAdded = supermarket.AddGood good
@@ -607,8 +555,7 @@ let tests =
             let undoerEventsResult = undoerEvents' () 
             Expect.isError undoerEventsResult "should be an error"
             
-        // FOCUS ok
-        fmultipleTestCase "add and retrieve a good bypassing the container - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add and retrieve a good bypassing the container - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
@@ -620,8 +567,7 @@ let tests =
                                 
             Expect.equal goodRetrieved.OkValue good "should be the same good"
         
-        // FOCUS ok
-        fmultipleTestCase "cannot add a good that already exists. Bypass the container" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "cannot add a good that already exists. Bypass the container" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)
             let added = supermarket.AddGood good
@@ -635,6 +581,15 @@ let tests =
             Expect.isOk retrieved "should be ok"
             let retrieved' = retrieved.OkValue
             Expect.equal retrieved'.Price newPrice "should be the same price"
+       
+        testCase "deserializarion test"  <| fun _ ->
+            let sut =
+                """
+                    {"AggregateId":"9cb9ce29-fcb0-4a41-82fb-9d6132d0492d","Message":{"Case":"Events","Item":{"InitEventId":740,"EndEventId":741,"Events":[{"Case":"QuantityRemoved","Item":1}]}}}
+
+                """
+            let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Good, GoodEvents>> sut
+            Expect.isOk deserializedMessage "should be ok"
         
     ]
     |> testSequenced

@@ -1,8 +1,8 @@
 {
   "LockType":{"Case":"Optimistic"},
   "RefreshTimeout": 100,
-  "CacheAggregateSize": 1000,
-  "PgSqlJsonFormat":{"Case":"PgJson"},
+  "CacheAggregateSize": 100,
+  "PgSqlJsonFormat":{"Case":"PlainText"},
   "MailBoxCommandProcessorsSize": 100,
   "EventStoreTimeout": 100
 }

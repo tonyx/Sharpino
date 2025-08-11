@@ -12,28 +12,30 @@
     <Compile Include="Ingredients/Ingredient.fs" />
     <Compile Include="Ingredients/Events.fs" />
     <Compile Include="Ingredients/Commands.fs" />
+    <Compile Include="Ingredients\Consumer.fs" />
     <Compile Include="Dishes/Dish.fs" />
     <Compile Include="Dishes/Events.fs" />
     <Compile Include="Dishes/Commands.fs" />
-    <Compile Include="Kitchen/Kitchen.fs" />
-    <Compile Include="Kitchen/Events.fs" />
-    <Compile Include="Kitchen/Commands.fs" />
+    <Compile Include="Dishes\Consumer.fs" />
     <Compile Include="Suppliers/Supplier.fs" />
     <Compile Include="Suppliers/Events.fs" />
     <Compile Include="Suppliers/Command.fs" />
+    <Compile Include="Suppliers\Consumer.fs" />
     <Compile Include="PubSystem.fs" />
   </ItemGroup> 
-<ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
-<!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
   </ItemGroup> 
-<ItemGroup>
-  <PackageReference Include="DotNetEnv" Version="3.1.1" />
-</ItemGroup> 
+  <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+  </ItemGroup>
+  
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
 
 <!--  <ItemGroup>-->
 <!--    <PackageReference Include="Sharpino" Version="2.5.3" />-->
 <!--  </ItemGroup>-->
-
 
 </Project>

@@ -30,7 +30,9 @@ module EventBroker =
         with
             member this.Serialize =
                 this
-                |> jsonPSerializer.Serialize 
+                |> jsonPSerializer.Serialize
+            static member Deserialize x =
+                jsonPSerializer.Deserialize<AggregateMessage<'A, 'E>> x         
     
     type MessageSender =
         RawMessage -> ValueTask

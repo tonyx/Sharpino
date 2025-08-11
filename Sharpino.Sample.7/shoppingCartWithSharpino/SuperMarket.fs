@@ -125,16 +125,10 @@ module Supermarket =
                 return! 
                     cart
                     |> runInit<Cart, CartEvents,'F> eventStore eventBroker
-                    // |> runInitAndCommand<GoodsContainer, GoodsContainerEvents, Cart, string> eventStore legacyBroker cart
             }
 
         member this.GetCart (cartRef: Guid) = 
             result {
-                // let! cartRefs = this.CartRefs
-                // let! exists =
-                //     cartRefs
-                //     |> List.tryFind (fun c -> c = cartRef)
-                //     |> Result.ofOption "Cart not found"
                 let! (_, state) = cartViewer cartRef
                 return state
             }

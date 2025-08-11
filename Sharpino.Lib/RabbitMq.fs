@@ -27,49 +27,49 @@ module RabbitMq =
             ex |> Error
             
         
-    let mkSimpleChannel(factory: ConnectionFactory, streamName: string) =
+    let mkSimpleChannel(factory: ConnectionFactory, streamName: string): TaskResult<IChannel, exn> =
         taskResult
             {
                 let! connection = factory.CreateConnectionAsync()
                 let! channel = connection.CreateChannelAsync()
                 let! qDec =
                     queueDeclare channel streamName
-                return channel 
+                return channel
             }
             
-    let mkAggregateMessageSenderBack(host: string) (streamName: string)  =
-        taskResult
-            {
-                let factory = mkfactory(host)
-                let! channel = mkSimpleChannel(factory, streamName)
-                let aggregateMessageSender =
-                    fun (message: string) ->
-                        let body = Encoding.UTF8.GetBytes message
-                        channel.BasicPublishAsync(
-                            "",
-                            streamName,
-                            body
-                        )
-                return aggregateMessageSender        
-            }
-               
-    let mkMessageSender(host: string) (streamName: string) =
-        let factory = mkfactory(host)
-        let channel =
-            mkSimpleChannel(factory, streamName)
-            |> Async.AwaitTask
-            |> Async.RunSynchronously
-            |> Result.get
-        
-        let aggregateMessageSender =
-            fun (message: string) ->
-                printf "XXXX: Sending message to stream %s: %s" streamName message
-                let body = Encoding.UTF8.GetBytes message
-                channel.BasicPublishAsync(
-                    "",
-                    streamName,
-                    body
-                )
-        aggregateMessageSender        
+    // let mkAggregateMessageSenderBack(host: string) (streamName: string)  =
+    //     taskResult
+    //         {
+    //             let factory = mkfactory(host)
+    //             let! channel = mkSimpleChannel(factory, streamName)
+    //             let aggregateMessageSender =
+    //                 fun (message: string) ->
+    //                     let body = Encoding.UTF8.GetBytes message
+    //                     channel.BasicPublishAsync(
+    //                         "",
+    //                         streamName,
+    //                         body
+    //                     )
+    //             return aggregateMessageSender        
+    //         }
 
+    let mkMessageSender(host: string) (streamName: string) =
+        result {
+            let factory = mkfactory(host)
+            let channel =
+                mkSimpleChannel(factory, streamName)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Result.get
+            
+            let aggregateMessageSender =
+                fun (message: string) ->
+                    let body = Encoding.UTF8.GetBytes message
+                    channel.BasicPublishAsync(
+                        "",
+                        streamName,
+                        body
+                    )
+            return aggregateMessageSender
+       }
                 

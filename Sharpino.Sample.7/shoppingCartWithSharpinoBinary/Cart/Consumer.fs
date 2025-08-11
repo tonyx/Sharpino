@@ -4,6 +4,7 @@ open System
 open System.Collections.Concurrent
 open System.Text
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open Sharpino.Commons
@@ -15,7 +16,7 @@ open ShoppingCartBinary.CartEvents
 
 
 module CartConsumer =
-    type CartConsumer(sp: IServiceProvider) =
+    type CartConsumer(sp: IServiceProvider, logger: ILogger<CartConsumer>) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -27,7 +28,8 @@ module CartConsumer =
             |> Async.AwaitTask
             |> Async.RunSynchronously
         let queueDeclare =
-            channel.QueueDeclareAsync ("_01_cart", false, false, false, null)
+            let streamName = Cart.Cart.Version + Cart.Cart.StorageName
+            channel.QueueDeclareAsync (streamName, false, false, false, null)
             |> Async.AwaitTask
             |> Async.RunSynchronously
 
@@ -48,6 +50,7 @@ module CartConsumer =
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
+                        logger.LogDebug ("Received {message}", message)
                         let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Cart.Cart, CartEvents>> message
                         match deserializedMessage with
                         | Ok message ->
@@ -57,21 +60,25 @@ module CartConsumer =
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 ()
                             | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                printf " [Q] Received %A\n" message
                                 if (statePerAggregate.ContainsKey aggregateId && statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
                                     if newState.IsOk then
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                    else () // todo: error
+                                    else
+                                        let (Error e) = newState
+                                        logger.LogError ("error {e}", e)
+                                        ()
                                 else
-                                    () // todo: error
+                                    logger.LogError ("no previous state exists for aggregate id {aggregateId}", aggregateId)
+                                    () 
                                 ()
                             | { Message = Message.Delete } ->
                                 if (statePerAggregate.ContainsKey aggregateId) then
                                     statePerAggregate.TryRemove aggregateId  |> ignore
+                                else 
+                                    logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)    
                                 ()     
-                        printfn " [Y Y] Received %A\n" deserializedMessage
                         return ()
                    })
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    

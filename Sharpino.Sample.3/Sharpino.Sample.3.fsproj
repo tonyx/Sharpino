@@ -14,6 +14,7 @@
     <Compile Include="Rows/Row.fs" />
     <Compile Include="Rows/Events.fs" />
     <Compile Include="Rows/Commands.fs" />
+    <Compile Include="Rows\Consumer.fs" />
     <Compile Include="StadiumSystem.fs" />
   </ItemGroup>
 
