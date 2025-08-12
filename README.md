@@ -77,6 +77,10 @@ __Sharpino.Lib__:
 ```bash
 runTests.sh
 ```
+- Note: in this way you need to make sure the postgres based event store is up and running.
+- Otherwise, you may have to dig into the examples and exclude any postgres based examples (by commenting out at most one line in the test files).
+- If you use windows and don't have a unix shell, you may need to create an equivalent .bat file.
+
 ## How to contribute
 Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for all the information about how to contribute to the project.
 
