@@ -643,9 +643,6 @@ module StateView =
                         |> List.map (fun (id, x) -> (id, x :?> 'A ))
                     return result'
                     
-                    // return! 
-                    //     allStates
-                    //     |> List.traverseResultM (fun x -> x)
                 }
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
