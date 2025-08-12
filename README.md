@@ -77,6 +77,8 @@ __Sharpino.Lib__:
 ```bash
 runTests.sh
 ```
+## How to contribute
+Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for all the information about how to contribute to the project.
 
 Or you can run the test in the single directories.
 Any .Test project can be run by:
