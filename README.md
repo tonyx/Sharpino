@@ -9,7 +9,7 @@
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-What is Event Sourcing?
+## What is Event Sourcing?
 - Event sourcing is a design pattern for persisting the state of an object by storing the sequence of events that have occurred on the object.
 - Event sourcing fits the functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
 
@@ -22,9 +22,9 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 
 ## Goals
-- Using F# for domain modelling and event sourcing in the .NET world, particularly in the backend.
-- Multilanguage environment and architecture (example of Blazor on front end and F# on backend is given).
-- Avoid impedance mismatch between the domain and the database.
+- Using F# in idiomatic way for domain modelling and event sourcing in a .NET solution, particularly in the backend.
+- Multilanguage environment and architecture (a template using Blazor with C# on front end and F# on backend is given).
+- Avoid impedance mismatch between the domain and the database, so objects don't need to know about the database column mapping.
 
 ## Overview and terms
 
@@ -32,22 +32,22 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Aggregates: Event-sourced objects with Id (Guid).
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 - Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
-- Events are based on D.U. and are wrappers to transformation events.
-- Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events.
+- Events are based on D.U. and are wrappers to transformation events, i.e. processing events means calling the transformation members.
+- Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events (in the future).
 - Cache: Dictionary-based cache of the current state of any aggregate or context.
 - Soft delete: Mark an aggregate as deleted.
-- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers based on DB probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
+- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
 - HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
 - GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
 - EventStore is based on PostgreSQL to store events and snapshots.
 - SQLTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
-- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matches fails no events are stored).
+- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matching fails then no events are stored).
 - In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
+- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there are no query of the content of JSON fields).
 - Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
-- Commands and events don't use versioning or upcasting. Just adding new events is the practice to evolve the functionality of any event-sourced object.
+- Commands and events avoid versioning or upcasting. Just adding new events is the practice to extend the functionality related to events.
 - By default, the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
-- In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed).
+- In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed, which is practically unlikely).
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
   There may also be events associated with the creation and deletion of aggregates, but they are not needed.
 - Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
