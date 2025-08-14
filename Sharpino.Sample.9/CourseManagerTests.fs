@@ -8,6 +8,7 @@ open Sharpino.Commons
 open Sharpino.Core
 open Sharpino
 open Sharpino.CommandHandler
+open Sharpino.Sample._9.BalanceConsumer
 open Sharpino.Sample._9.BalanceEvents
 open Sharpino.Sample._9.Teacher
 open Sharpino.Sample._9.TeacherEvents
@@ -25,6 +26,8 @@ open Sharpino.Sample._9.StudentCommands
 open Sharpino.Sample._9.CourseManager
 open Sharpino.Sample._9.Balance
 
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
 
 let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
@@ -37,6 +40,24 @@ let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, Cour
 let memoryStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore 
 let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
 let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> memEventStore
+
+let hostBuilder =
+    Host.CreateDefaultBuilder()
+        .ConfigureServices(fun (services: IServiceCollection) ->
+            services.AddHostedService<BalanceConsumer>() |> ignore
+        )
+
+let host = hostBuilder.Build()
+let hostTask = host.StartAsync()
+let services = host.Services
+
+let balanceConsumer =
+    host.Services.GetServices<IHostedService>()
+    |> Seq.find (fun s -> s.GetType() = typeof<BalanceConsumer>)
+    :?> BalanceConsumer
+
+
+
 
 let instances =
     [

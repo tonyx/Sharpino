@@ -25,6 +25,7 @@
     <Content Include=".gitignore" />
     <Content Include=".env" />
     <Content Include="README.md" />
+    <Content Include="appSettings.json" />
   </ItemGroup>
 
   <ItemGroup>

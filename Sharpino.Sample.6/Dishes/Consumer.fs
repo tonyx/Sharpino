@@ -35,28 +35,28 @@ module DishConsumer =
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Dish>>  =
             None
             
+        let consumer =  AsyncEventingBasicConsumer channel
+        
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Dish> ()
-        
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Dish>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer 
-        
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state"
-        
-        override this.ExecuteAsync (stoppingToken) =
-            let consumer =  AsyncEventingBasicConsumer channel
+       
+        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
+            match fallBackAggregateStateRetriever  with
+            | Some retriever ->
+                match retriever id with
+                | Result.Ok (eventId, state) ->
+                    statePerAggregate.[id] <- (eventId, state)
+                | _ -> ()
+            | None -> ()
+       
+        do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
                         logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Dish, DishEvents>> message
+                        let deserializedMessage = AggregateMessage<Dish, DishEvents>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
@@ -72,7 +72,7 @@ module DishConsumer =
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
                                     else
                                         let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
+                                        logger.LogError (e, "Error applying events to aggregate state: {aggregateId} {eventId} {endEventId} {events}", aggregateId, eventId, endEventId, events)
                                         match fallBackAggregateStateRetriever with
                                         | Some aggregateViewer ->
                                             let state = aggregateViewer aggregateId
@@ -84,13 +84,30 @@ module DishConsumer =
                                             ()
                                         | None ->
                                             logger.LogError ("no fallback aggregate state retriever set")
-                                        () 
                                 else
-                                    ()
+                                    logger.LogError ("no state for aggregateId {aggregateId}", aggregateId)
+                                    () 
                             | { Message = Message.Delete } ->
                                 if (statePerAggregate.ContainsKey aggregateId) then
-                                    statePerAggregate.TryRemove aggregateId  |> ignore
-                                
+                                    statePerAggregate.TryRemove aggregateId |> ignore
+                                else
+                                    logger.LogError ("no state for aggregateId {aggregateId}", aggregateId)
+                        | Error e ->
+                            logger.LogError ("Error {error}", e)            
                         return ()
-                   })
+                   }
+                )
+            
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Dish>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer 
+      
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state"
+        
+        override this.ExecuteAsync (stoppingToken) =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
+            

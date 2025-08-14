@@ -33,18 +33,25 @@ module CartConsumer =
             |> Async.AwaitTask
             |> Async.RunSynchronously
 
+        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Cart.Cart>>  =
+            None
+            
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Cart.Cart>()
-        
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state"
-                
-        override this.ExecuteAsync (stoppingToken) =
-            let consumer =  AsyncEventingBasicConsumer channel
+       
+        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
+            match fallBackAggregateStateRetriever  with
+            | Some retriever ->
+                match retriever id with
+                | Result.Ok (eventId, state) ->
+                    statePerAggregate.[id] <- (eventId, state)
+                    ()
+                | Result.Error e ->
+                    logger.LogError ("error {e}", e)
+                    ()
+         
+        let consumer =  AsyncEventingBasicConsumer channel
+        do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     task {
@@ -68,17 +75,28 @@ module CartConsumer =
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
-                                        ()
+                                        resyncWithFallbackAggregateStateRetriever aggregateId
+                                        
                                 else
-                                    logger.LogError ("no previous state exists for aggregate id {aggregateId}", aggregateId)
-                                    () 
-                                ()
+                                    resyncWithFallbackAggregateStateRetriever aggregateId
+                                
                             | { Message = Message.Delete } ->
                                 if (statePerAggregate.ContainsKey aggregateId) then
                                     statePerAggregate.TryRemove aggregateId  |> ignore
                                 else 
                                     logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)    
-                                ()     
+                                ()
+                        | Error e ->
+                            logger.LogError ("error {e}", e)         
                         return ()
                    })
+            
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state"
+                
+        override this.ExecuteAsync (stoppingToken) =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    

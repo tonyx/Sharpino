@@ -1,5 +1,6 @@
 module Sharpino.Sample._9.ItemManager
 
+open System.Threading.Tasks
 open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.CommandHandler
@@ -16,12 +17,16 @@ let doNothingBroker  =
         notify = None
         notifyAggregate = None
     }
+let emptyMessageSender =
+    fun queueName ->
+        fun message ->
+            ValueTask.CompletedTask
 
 type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>) =
     member this.AddItem (item: Item) =
         result {
             return!
-                runInit<Item, ItemEvent, string> eventStore doNothingBroker item
+                runInit<Item, ItemEvent, string> eventStore emptyMessageSender item
         }
     
     member this.GetItem (id: Guid) =
@@ -39,7 +44,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
     member this.DeleteItem (id: Guid) =
         result {
             return!
-                runDelete<Item, ItemEvent, string> eventStore doNothingBroker id (fun item -> item.ReferencesCounter = 0)
+                runDelete<Item, ItemEvent, string> eventStore emptyMessageSender id (fun item -> item.ReferencesCounter = 0)
         }
         
     member this.AddReservation (reservation: Reservation.Reservation) =
@@ -70,7 +75,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             let closeItem = ReservationCommands.CloseItem item.Id
             
             return! 
-                runTwoAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, ReservationEvents.ReservationEvents, string> item.Id reservationId eventStore doNothingBroker String.Empty decrementCounter closeItem
+                runTwoAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, ReservationEvents.ReservationEvents, string> item.Id reservationId eventStore emptyMessageSender String.Empty decrementCounter closeItem
         }    
             
         

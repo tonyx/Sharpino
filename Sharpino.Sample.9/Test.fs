@@ -1,12 +1,18 @@
 module Sharpino.Sample._9.Test
 
+open System.Threading
 open Expecto
 open ItemManager
 open ItemManager.Common
 open Sharpino.CommandHandler
+open Sharpino.Sample._9.BalanceConsumer
+open Sharpino.Sample._9.CourseConsumer
 open Sharpino.Sample._9.Events
 open Sharpino.Sample._9.Item
 open Sharpino.TestUtils
+
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
 
 let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
 let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
@@ -14,40 +20,70 @@ let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEven
 let pgStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore
 let memoryStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> memEventStore
 
+let hostBuilder =
+    Host.CreateDefaultBuilder()
+        .ConfigureServices(fun (services: IServiceCollection) ->
+            services.AddHostedService<BalanceConsumer>() |> ignore
+            services.AddHostedService<CourseConsumer>() |> ignore
+        )
+
+let host = hostBuilder.Build()
+let hostTask = host.StartAsync()
+let services = host.Services
+
+let balanceConsumer =
+    host.Services.GetServices<IHostedService>()
+    |> Seq.find (fun s -> s.GetType() = typeof<BalanceConsumer>)
+    :?> BalanceConsumer
+
+let courseConsumer =
+    host.Services.GetServices<IHostedService>()
+    |> Seq.find (fun s -> s.GetType() = typeof<CourseConsumer>)
+    :?> CourseConsumer
+
+let rabbitMqBalanceStateViewer = balanceConsumer.GetAggregateState
+let rabbitMqCourseStateViewer = courseConsumer.GetAggregateState
+
 let instances =
     [
-        (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
-        (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer)
+        (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
+        (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
     ]
 
 [<Tests>]
 let tests =
     testList "Sharpino.Sample._9" [
-        multipleTestCase "create a new item - Ok" instances <| fun (setUp, itemManger) ->
+        multipleTestCase "create a new item - Ok" instances <| fun (setUp, itemManger, delay) ->
             setUp()
             let item = Item.MkItem ("name", "description")
             let addItem = itemManger.AddItem item
             Expect.isOk addItem "should be ok"
+            
+            Async.Sleep delay |> Async.RunSynchronously
             let tryGetItem = itemManger.GetItem item.Id
             Expect.isOk tryGetItem "should be ok"
             
-        multipleTestCase "create and delete an Item" instances <| fun (setUp, itemManger) ->
+        multipleTestCase "create and delete an Item" instances <| fun (setUp, itemManger, delay) ->
             setUp()
             let item = Item.MkItem ("name", "description")
             let addItem = itemManger.AddItem item
             Expect.isOk addItem "should be ok"
+            
+            Async.Sleep (delay |> int) |> Async.RunSynchronously
             let tryGetItem = itemManger.GetItem item.Id
             Expect.isOk tryGetItem "should be ok"
             let deleteItem = itemManger.DeleteItem item.Id
             Expect.isOk deleteItem "should be ok"
+            Async.Sleep (delay |> int) |> Async.RunSynchronously
             let retrieveItem = itemManger.GetItem item.Id
             Expect.isError retrieveItem "should be error"
         
-        multipleTestCase "create an item and open a reservation. The counter should be 1" instances <| fun (setUp, itemManger) ->
+        multipleTestCase "create an item and open a reservation. The counter should be 1" instances <| fun (setUp, itemManger, delay) ->
             setUp()
             let item = Item.MkItem ("name", "description")
             let addItem = itemManger.AddItem item
             Expect.isOk addItem "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let tryGetItem = itemManger.GetItem item.Id
             Expect.isOk tryGetItem "should be ok"
             
@@ -60,17 +96,19 @@ let tests =
             let item = retrieveItem.OkValue
             Expect.equal item.ReferencesCounter 1 "should be 1"
             
-        multipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger) ->
+        multipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger, delay) ->
             setUp ()
             let item1 = Item.MkItem ("name", "description")
             let addItem1 = itemManger.AddItem item1
             Expect.isOk addItem1 "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let tryGetItem1 = itemManger.GetItem item1.Id
             Expect.isOk tryGetItem1 "should be ok"
             
             let item2 = Item.MkItem ("name", "description")
             let addItem2 = itemManger.AddItem item2
             Expect.isOk addItem2 "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let tryGetItem2 = itemManger.GetItem item2.Id
             Expect.isOk tryGetItem2 "should be ok"
             
@@ -78,13 +116,14 @@ let tests =
             let addReservation = itemManger.AddReservation reservation
             Expect.isOk addReservation "should be ok"
            
+            Async.Sleep delay |> Async.RunSynchronously
             let retrieveItem1 = itemManger.GetItem item1.Id
             Expect.equal retrieveItem1.OkValue.ReferencesCounter 1 "should be 1"
             
             let retrieveItem2 = itemManger.GetItem item2.Id
             Expect.equal retrieveItem2.OkValue.ReferencesCounter 1 "should be 1"
         
-        multipleTestCase "when an item has a reservation to it then it cannot be deleted - Error" instances <| fun (setUp, itemManager) ->
+        multipleTestCase "when an item has a reservation to it then it cannot be deleted - Error" instances <| fun (setUp, itemManager, delay) ->
             setUp ()
             let item = Item.MkItem ("name", "description")
             let addItem = itemManager.AddItem item
@@ -92,13 +131,14 @@ let tests =
             
             let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
             let addReservation = itemManager.AddReservation reservation
+            Async.Sleep delay |> Async.RunSynchronously
             let retrievedItem = itemManager.GetItem item.Id |> Result.get
             Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
             
             let tryDeleteItem = itemManager.DeleteItem item.Id
             Expect.isError tryDeleteItem "should be error"
        
-        multipleTestCase "add an item and a reservation to it, then close the item in the reservation and the item can be deleted - Ok" instances <| fun (setUp, itemManager) ->
+        multipleTestCase "add an item and a reservation to it, then close the item in the reservation and the item can be deleted - Ok" instances <| fun (setUp, itemManager, delay) ->
             setUp ()
             let item = Item.MkItem ("name", "description")
             let addItem = itemManager.AddItem item
@@ -106,12 +146,14 @@ let tests =
             
             let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
             let addReservation = itemManager.AddReservation reservation
+            Async.Sleep delay |> Async.RunSynchronously
             let retrievedItem = itemManager.GetItem item.Id |> Result.get
             Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
             
             let closeReservation = itemManager.CloseItemInReservation reservation.Id item.Id
             Expect.isOk closeReservation "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let retrieveReservation = itemManager.GetReservation reservation.Id
             Expect.isOk retrieveReservation "should be ok"
            
@@ -121,6 +163,7 @@ let tests =
             let tryDeleteItem = itemManager.DeleteItem item.Id
             Expect.isOk tryDeleteItem "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let retrieveItem = itemManager.GetItem item.Id
             Expect.isError retrieveItem "should be error"
             

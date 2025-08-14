@@ -243,7 +243,7 @@ let tests =
             // then
             Expect.isOk addCart "should be ok"
 
-        fmultipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add a good, increase its quantity and then put some of that good in a cart. The total quantity in the supermarket will be decreased - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
             
             // given

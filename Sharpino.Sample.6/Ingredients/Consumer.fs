@@ -38,29 +38,26 @@ module IngredientConsumer =
             
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Ingredient>>  =
             None
-            
+        
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Ingredient>()
-        
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Ingredient>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer    
-        
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state" 
-        
-        override this.ExecuteAsync (cancellationToken) =
-            let consumer = AsyncEventingBasicConsumer(channel)
+        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
+            match fallBackAggregateStateRetriever  with
+            | Some retriever ->
+                match retriever id with
+                | Result.Ok (eventId, state) ->
+                    statePerAggregate.[id] <- (eventId, state)
+                | _ -> ()
+            | None -> ()    
+        let consumer = AsyncEventingBasicConsumer(channel)
+        do    
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
                         logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Ingredient, IngredientEvents>> message
+                        let deserializedMessage = AggregateMessage<Ingredient, IngredientEvents>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
@@ -96,8 +93,23 @@ module IngredientConsumer =
                                     statePerAggregate.TryRemove aggregateId |> ignore
                                 else
                                     logger.LogError ("no state for aggregateId {aggregateId}", aggregateId)
+                        | Error e ->
+                            logger.LogError ("ErrorX {error}", e)            
                         return ()
-                   })
+                   }
+                )
+        
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Ingredient>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer    
+        
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state" 
+        
+        override this.ExecuteAsync (cancellationToken) =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
             
             

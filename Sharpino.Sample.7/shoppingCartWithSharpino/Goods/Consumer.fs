@@ -36,14 +36,8 @@ module GoodConsumer =
         
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Good.Good>()
-        
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer    
-       
-        member this.ResetFallbackAggregateStateRetriever () =
-            fallBackAggregateStateRetriever <- None
-            
-        member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
+     
+        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
             let retriever = fallBackAggregateStateRetriever
             match retriever with
             | Some retriever ->
@@ -53,17 +47,10 @@ module GoodConsumer =
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
-                logger.LogError "no fallback aggregate state retriever set"
-        
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state"
-         
-        override this.ExecuteAsync (stoppingToken) =
-            let consumer =  AsyncEventingBasicConsumer channel
+                logger.LogError "no fallback aggregate state retriever set"  
+       
+        let consumer = AsyncEventingBasicConsumer channel
+        do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     task {
@@ -87,9 +74,9 @@ module GoodConsumer =
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
-                                        this.ResyncWithFallbackAggregateStateRetriever aggregateId
+                                        resyncWithFallbackAggregateStateRetriever aggregateId
                                 else
-                                    this.ResyncWithFallbackAggregateStateRetriever aggregateId
+                                    resyncWithFallbackAggregateStateRetriever aggregateId
                             | { Message = Message.Delete } when statePerAggregate.ContainsKey aggregateId ->
                                 statePerAggregate.TryRemove aggregateId  |> ignore
                             | { Message = Message.Delete }  ->
@@ -99,4 +86,31 @@ module GoodConsumer =
                         return ()
                    }
                 )
+            
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer    
+        
+        member this.ResetFallbackAggregateStateRetriever () =
+            fallBackAggregateStateRetriever <- None
+            
+        member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
+            let retriever = fallBackAggregateStateRetriever
+            match retriever with
+            | Some retriever ->
+                match retriever id with
+                | Result.Ok (eventId, state) ->
+                    statePerAggregate.[id] <- (eventId, state)
+                | Result.Error e ->
+                    logger.LogError ("Error: {e}", e)
+            | None ->
+                logger.LogError "no fallback aggregate state retriever set"
+        
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state"
+         
+        override this.ExecuteAsync (stoppingToken) =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    

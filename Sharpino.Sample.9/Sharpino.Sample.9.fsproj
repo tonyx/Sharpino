@@ -22,9 +22,11 @@
     <Compile Include="models/Course/Course.fs" />
     <Compile Include="models/Course/Events.fs" />
     <Compile Include="models/Course/Commands.fs" />
+    <Compile Include="models\Course\Consumer.fs" />
     <Compile Include="models/Balance/Balance.fs" />
     <Compile Include="models/Balance/Events.fs" />
     <Compile Include="models/Balance/Commands.fs" />
+    <Compile Include="models\Balance\Consumer.fs" />
     <Compile Include="models/Teacher/Teacher.fs" />
     <Compile Include="models/Teacher/Events.fs" />
     <Compile Include="models/Teacher/Commands.fs" />

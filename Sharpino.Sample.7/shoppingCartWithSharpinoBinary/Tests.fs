@@ -48,7 +48,7 @@ let connection =
     "User Id=safe;"+
     $"Password={password};"
 
-// #if RABBITMQ
+#if RABBITMQ
 let hostBuilder = 
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
@@ -93,7 +93,7 @@ let messageSenders =
         match sender with
         | true, sender -> sender
         | _ -> failwith (sprintf "not found %s" queueName)
-// #endif
+#endif
 let eventStore = PgBinaryStore(connection)
 
 let setupPgEventStore () =
