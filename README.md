@@ -8,6 +8,7 @@
 
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 What is Event Sourcing?
 - Event sourcing is a design pattern for persisting the state of an object by storing the sequence of events that have occurred on the object.
 - Event sourcing fits the functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
