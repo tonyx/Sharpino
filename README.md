@@ -8,47 +8,55 @@
 
 [![NuGet version (Sharpino)](https://img.shields.io/nuget/v/Sharpino.svg?style=flat-square)](https://www.nuget.org/packages/Sharpino/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-## What is Event Sourcing?
+What is Event Sourcing?
 - Event sourcing is a design pattern for persisting the state of an object by storing the sequence of events that have occurred on the object.
-- Event sourcing fits functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
-- 
+- Event sourcing fits the functional paradigm as the state is defined by an evolve function that is a pure function of the initial state and the events.
+
 ## What is Sharpino?
 
-A library to support Event-Sourcing in F#
+A library to support Event-Sourcing in F# based on the following principles:
+- PostgresSQL-based event store to register events and snapshots.
+- In-memory event store to speed up the tests.
+- Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
+- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
+
+## Goals
+- Using F# for domain modelling and event sourcing in the .NET world, particularly in the backend.
+- Multilanguage environment and architecture (example of Blazor on front end and F# on backend is given).
+- Avoid impedance mismatch between the domain and the database.
 
 ## Overview and terms
- 
-- Contexts: event sourced objects with no id, so only one instance is around for each type
-- Aggregates: event sourced objects with id (Guid).
-- Multiple streams transactions, i.e. executing multiple commands involving different aggregates as single db transactions.
-- Functional based definition of any member aimed to "change the state", based on result type (signature: 'A -> Result<'A, string>').
-- Events are based on D.U. and are wrappers to transformational events
-- Commands generate list of events and, optionally, an "under" that will return a functionn to can produce, in the future, a list of undo (or compensating) events
-- Cache: Dictionary based cache of the current state of any ggregate or context.
-- Soft delete: it is possible to mark an aggregate as deleted.
-- StateViewer: a function to get the current state of any aggregate or context (by probing the cache and, in case of not found, querying the event store using the latest snapshot and the following events).
-- HistoryStateViewer: it is possible to get any aggregate, deleted or not.
-- Gdpr: it is possible to overwrite/clear/reset snapshots and events in case the users ask to delete their data.
-- Eventstore: for each aggregate/context type there are tables for snapshots and events based on PostgreSQL.
-- The SqlTemplates contains sql scripts to create (by simple text substitution) sql scripts for events and snapshots.
-- Optimistic lock based on event_id: check the event_id position on the basis of the event_id passed by the command handler to the event store.
-- In memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots on Postgres. The serialiation meechanism is up to the user. The examples use Fspickler to serialize/deserialize events and snapshots. The Json field are playn text fields, but they can be JSON or JSONB fields (with advantages - and a little overhead - as there is no querying on the JSON fields).
-- running any command of any type in a transaction.
-- Evolving the aggregate structure by keeping backward compatibility is based on upcasting.
-- Commands and events don't need upcasting. At most the way to make a command or event evolve is by adding new cases.
-- The core library supports both a strict "fold" based evolve function for aggregates and contexts and an alternative that may skip events that may produce an invalid state.
-- There are no "creation" or "deletion" events, for aggregates (unless the creation and the deletion goes together with events related to some other aggregates/contexts)
-- Creation of an aggregate is based on generating an initial snapshot. Deletion is based on generation a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
-- Contexts don't need initializaion or deletion. They support an initial state by a static Zero member. They can't be deleted.
+
+- Contexts: Event-sourced objects with no Id, so only one instance is around for each type.
+- Aggregates: Event-sourced objects with Id (Guid).
+- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
+- Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
+- Events are based on D.U. and are wrappers to transformation events.
+- Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events.
+- Cache: Dictionary-based cache of the current state of any aggregate or context.
+- Soft delete: Mark an aggregate as deleted.
+- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers based on DB probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
+- HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
+- GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
+- EventStore is based on PostgreSQL to store events and snapshots.
+- SQLTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
+- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matches fails no events are stored).
+- In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
+- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there is no querying on the JSON fields).
+- Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
+- Commands and events don't use versioning or upcasting. Just adding new events is the practice to evolve the functionality of any event-sourced object.
+- By default, the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
+- In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed).
+- Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
+  There may also be events associated with the creation and deletion of aggregates, but they are not needed.
+- Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
 
 ## Features and technical improvements planned to be added
-- sending events to a message bus after they have been stored
-- implementing a "state viewer" that listen events on a message bus
-- optimistic lock check on the database level
-- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 show some use cases about)
-
-
+- Sending events to a message bus after they have been stored (see the branch 20250802_rabbitmq for an example of implementation).
+- Implementing a "state viewer" that listens to events on a message bus (see the branch 20250802_rabbitmq for an example of implementation).
+- Enhanced Optimistic lock check on the database level (see 20250625_enhance_lock_pspgsql for an example of implementation).
+- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 shows some use cases about)
+- Pick up any open issue https://github.com/tonyx/Sharpino/issues or create a new one.
 ## Projects
 __Sharpino.Lib.Core__:
 
@@ -69,6 +77,12 @@ __Sharpino.Lib__:
 ```bash
 runTests.sh
 ```
+- Note: in this way you need to make sure the postgres based event store is up and running.
+- Otherwise, you may have to dig into the examples and exclude any postgres based examples (by commenting out at most one line in the test files).
+- If you use windows and don't have a unix shell, you may need to create an equivalent .bat file.
+
+## How to contribute
+Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for all the information about how to contribute to the project.
 
 Or you can run the test in the single directories.
 Any .Test project can be run by:
@@ -142,15 +156,15 @@ __Faq__:
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
 
 ## Possible improvements
-- Use a generic way to support publish/subscribe on event bus (event broker, message broker distributed cahce...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
+- Use a generic way to support publish/subscribe on event bus (event broker/message broker/distributed cache...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
 - Some StateViewer implementations may use an agent that listen to the published events.
-- Specify a more structured way to handle the "details" for instance by implemementing
+- Specify a more efficient way to handle the "details" version of any object for instance caching them or by implementing DB  based pre-computed projections.
 
 - Use the .net Cache
 - Implementing event store using Postgres event store but using Azure sql instead.
 - Write more examples (porting classic DDD examples implemented to test other libraries is fine).
 - Not sure about this: Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
-
+- subdivide the example dirs so that they can fully test any configuration of sdk and event store (i.e. make copies of them that uses also 8.0 with pgEventStore and also pgBinaryEventStore). The current focus is on 9.0 with pgEventStore using json wrapped in text fields. JSON/JSONB fields are not needed and indeed they may be problematic in conjuction with FsPickler. Some investigation is weclome.
 
 ## Acknowledgements
 
@@ -180,6 +194,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.3.2: updated dependencies, fixed date error in pgBinaryEventStore
 - Version 4.3.1: reintroduced concurrent dictionary aggregate cache
 - Version 4.3.0: Aggregate Cache is type independent. Added a way to "preExecute" any type of commands and then send them to the command handler. So now executing an arbitrary number of command of any type is allowed (see example 10). Note: some adjustments in passing metadata to "delete" commands will make them non-backward compatible (just add metadata to the command to fix).
 - Version 4.2.3: concurrent dictionary aggregates cache
@@ -227,7 +242,7 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
 - Version 2.6.4: the mkAggregateSnapshots and mkSnapshots are now public in commandhandler so that they can be used in the user application to create snapshots of the aggregates and contexts. This is userful after an aggregate refactoring update so that any application can do upcast of all aggregates and then store them as snapshots (and then foreget about the need to keep upcast logic active i.e. can get rid of any older version upcast chain).
 - Version 2.6.3: Stateview added  ```getFilteredAggregateSnapshotsInATimeInterval```which returns a list of snapshots of a specific type/version of aggregate in a time interval filtered by some criteria no matter if any context contains references to those aggregates, so you can retrieve aggregates even if no context has references to them (for instance "inactive users").
-- Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: Ilogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
+- Version 2.6.2: CommandHandler, PgEventStore and PgBinaryEventstore expose as setLogger (newLogger: ILogger) based on the ILogger interface replacing Log4net. You can then pass that value after retrieving it from the DI container (straightforward in a .net core/asp.net app).
 - Version 2.6.0: Added a function for the GDPR in command handler able to virtuallty delete snapshots and events, i.e. replace any event with an events that returns an empty version of the state and also replace any snapshot with the voided/empty version of that state (and also fill the cache with that empty value).
 - Version 2.5.9: Added the possibility via StateView to retrieve the initial state/initial snapshot of any aggregate to allow retrieving the data that the users claims. So when users unsubscribe to any app then they have the rights to get any data. This is possibile by getting the initial states and any following event. I think it will be ok to give the user a json of the  initial snapshots and any events via an anonymous record and then let the use download that JSON.
 - Version 2.5.8: Added query for aggregate events in a time interval. StateView/Readmodel can use it passing a predicate to filter events (example: Query all the payment events). Aggregate should not keep those list ob objects to avoid unlimited grow.
