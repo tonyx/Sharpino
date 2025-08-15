@@ -909,27 +909,57 @@ module CommandHandler =
                     let! eventIds =
                         currentStateEventIdEventsAndAggregateIds
                         |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize md 
+                    
+                    let finalWrittenEventIds = eventIds |>> List.last  
                         
                     for i in 0..(aggregateIds.Length - 1) do
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
                      
-                    let snapshotName = sprintf "%s%s" 'A2.Version 'A2.StorageName
-                    let snapshotMessageSender = messageSenders snapshotName
-                    let message =
+                    let snapshotStreamName = sprintf "%s%s" 'A2.Version 'A2.StorageName
+                    let snapshotMessageSender = messageSenders snapshotStreamName
+                    let snapshotMessage =
                         Message<'A2, 'E2>.InitialSnapshot initialInstance
                     
                     let aggregateMessage =
                         {
                             AggregateId = initialInstance.Id
-                            Message = message
+                            Message = snapshotMessage
                         }.Serialize
                     
+                    // todo: may be without enveloping a task as it is already a task 🤭
                     let sent =
                         task
                             {
                                 return! snapshotMessageSender aggregateMessage
                             }
+                            
+                    let eventsStreamName = sprintf "%s%s" 'A1.Version 'A1.StorageName
+                    let eventsMessageSender = messageSenders eventsStreamName
+                    let initialEventIdsFinalEventsIdsAndEvents =
+                        List.zip3 lastEventIds finalWrittenEventIds events
+                    let eventsMessages: List<EventsMessage<'E>> =
+                        initialEventIdsFinalEventsIdsAndEvents
+                        |>> fun (eventId, finalEventId, events) ->
+                            {
+                                InitEventId = eventId
+                                EndEventId = finalEventId
+                                Events = events
+                            }
+                        
+                    let aggregateMessages =
+                        List.zip aggregateIds eventsMessages
+                        |>> (fun (id, eventsMessage) ->
+                                {
+                                    AggregateId = id
+                                    Message = Message.Events eventsMessage
+                                }.Serialize
+                            )
+                    
+                    let sentAllEvents =
+                        aggregateMessages
+                        |> List.iter (fun message -> eventsMessageSender message |> ignore)
+                             
                     return ()
                 }
         #if USING_MAILBOXPROCESSOR         
