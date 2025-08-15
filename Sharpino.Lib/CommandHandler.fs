@@ -859,7 +859,7 @@ module CommandHandler =
                         
                     let! eventIds =
                         currentStateEventIdEventsAndAggregateIds
-                        |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize "" 
+                        |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize md 
                         
                     for i in 0..(aggregateIds.Length - 1) do
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
