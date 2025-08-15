@@ -36,22 +36,6 @@ module RabbitMq =
                     queueDeclare channel streamName
                 return channel
             }
-            
-    // let mkAggregateMessageSenderBack(host: string) (streamName: string)  =
-    //     taskResult
-    //         {
-    //             let factory = mkfactory(host)
-    //             let! channel = mkSimpleChannel(factory, streamName)
-    //             let aggregateMessageSender =
-    //                 fun (message: string) ->
-    //                     let body = Encoding.UTF8.GetBytes message
-    //                     channel.BasicPublishAsync(
-    //                         "",
-    //                         streamName,
-    //                         body
-    //                     )
-    //             return aggregateMessageSender        
-    //         }
 
     let mkMessageSender(host: string) (streamName: string) =
         result {

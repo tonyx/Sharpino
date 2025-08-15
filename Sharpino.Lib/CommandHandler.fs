@@ -868,7 +868,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSenders: StreamName -> MessageSender) 
         (initialInstance: 'A2)
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
@@ -908,11 +908,28 @@ module CommandHandler =
                         
                     let! eventIds =
                         currentStateEventIdEventsAndAggregateIds
-                        |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize "" 
+                        |> storage.SetInitialAggregateStateAndMultiAddAggregateEventsMd initialInstance.Id 'A2.Version 'A2.StorageName initialInstance.Serialize md 
                         
                     for i in 0..(aggregateIds.Length - 1) do
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                     
+                    let snapshotName = sprintf "%s%s" 'A2.Version 'A2.StorageName
+                    let snapshotMessageSender = messageSenders snapshotName
+                    let message =
+                        Message<'A2, 'E2>.InitialSnapshot initialInstance
+                    
+                    let aggregateMessage =
+                        {
+                            AggregateId = initialInstance.Id
+                            Message = message
+                        }.Serialize
+                    
+                    let sent =
+                        task
+                            {
+                                return! snapshotMessageSender aggregateMessage
+                            }
                     return ()
                 }
         #if USING_MAILBOXPROCESSOR         

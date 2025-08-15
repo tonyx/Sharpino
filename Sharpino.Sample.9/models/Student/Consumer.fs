@@ -12,11 +12,11 @@ open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
 
-open Sharpino.Sample._9.Course
-open Sharpino.Sample._9.CourseEvents
+open Sharpino.Sample._9.Student
+open Sharpino.Sample._9.StudentEvents
 
-module CourseConsumer =
-    type CourseConsumer(sp: IServiceProvider, logger: ILogger<CourseConsumer>) =
+module StudentConsumer =
+    type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -28,22 +28,22 @@ module CourseConsumer =
             |> Async.AwaitTask
             |> Async.RunSynchronously
         let queueDeclare =
-            let streamName = Course.Course.Version + Course.Course.StorageName
+            let streamName = Student.Student.Version + Student.Student.StorageName
             channel.QueueDeclareAsync (streamName, false, false, false, null)
             |> Async.AwaitTask
             |> Async.RunSynchronously
         
-        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Course.Course>>  =
+        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Student.Student>>  =
             None
         
         let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Course.Course>()
+            ConcurrentDictionary<AggregateId, EventId * Student.Student>()
             
-        let resetFallbackAggregateStateRetriever () =
-            fallBackAggregateStateRetriever <- None
-       
-        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            match fallBackAggregateStateRetriever  with
+        let setFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Student.Student>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer
+
+        let resyncWithAggregateStateRetriever (id: AggregateId) =
+            match fallBackAggregateStateRetriever with
             | Some retriever ->
                 match retriever id with
                 | Result.Ok (eventId, state) ->
@@ -51,8 +51,8 @@ module CourseConsumer =
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
-                logger.LogError "no fallback aggregate state retriever set" 
-          
+                logger.LogError "no fallback aggregate state retriever set"
+        
         let consumer = AsyncEventingBasicConsumer channel
         
         do
@@ -62,12 +62,13 @@ module CourseConsumer =
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
                         logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Course, CourseEvents>.Deserialize message
+                        let deserializedMessage = AggregateMessage<Student.Student, StudentEvents>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
+                            let aggregateId = message.AggregateId
                             match message with
-                            | {Message = InitialSnapshot course} ->
-                                statePerAggregate.[message.AggregateId] <- (0, course)
+                            | {Message = InitialSnapshot student} ->
+                                statePerAggregate.[message.AggregateId] <- (0, student)
                             | {Message = Message.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
                                 let currentEventId = statePerAggregate.[message.AggregateId] |> fst
                                 if currentEventId = eventId || currentEventId = 0 then
@@ -78,42 +79,24 @@ module CourseConsumer =
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
-                                        resyncWithFallbackAggregateStateRetriever message.AggregateId
+                                        resyncWithAggregateStateRetriever message.AggregateId
                                 else
-                                    resyncWithFallbackAggregateStateRetriever message.AggregateId
+                                    resyncWithAggregateStateRetriever message.AggregateId
                             | {Message = Message.Delete} when statePerAggregate.ContainsKey message.AggregateId ->
                                 statePerAggregate.TryRemove message.AggregateId  |> ignore
                             | {Message = Message.Delete}  ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", message.AggregateId)
                         | Error e ->
-                            logger.LogError ("Error: {e}", e)    
+                            logger.LogError ("error {e}", e)
                     }
-                )    
-            
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Course.Course>) =
+                )
+                
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Student.Student>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
-        
+            
         member this.ResetFallbackAggregateStateRetriever () =
-            fallBackAggregateStateRetriever <- None    
+            fallBackAggregateStateRetriever <- None
             
-        member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            let retriever = fallBackAggregateStateRetriever
-            match retriever with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
-                | Result.Error e ->
-                    logger.LogError ("Error: {e}", e)
-            | None ->
-                logger.LogError "no fallback aggregate state retriever set"
-            
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]  
-                |> Result.Ok
-            else
-                Result.Error "No state"
+        override this.ExecuteAsync cancellationToken =
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
         
-        override this.ExecuteAsync (cancellationToken) =
-            channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)

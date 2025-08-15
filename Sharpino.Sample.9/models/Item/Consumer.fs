@@ -1,4 +1,4 @@
-namespace  Sharpino.Sample._9
+namespace Sharpino.Sample._9
 
 open System
 open System.Collections.Concurrent
@@ -11,32 +11,38 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
-open Sharpino.Sample._9.Balance
-open Sharpino.Sample._9.BalanceEvents
 
-module BalanceConsumer =
-    type BalanceConsumer(sp: IServiceProvider, logger: ILogger<BalanceConsumer>) =
+open Sharpino.Sample._9.Item
+open Sharpino.Sample._9.Events
+
+module ItemConsumer =
+    type ItemConsumer(sp: IServiceProvider, logger : ILogger<ItemConsumer>) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
             factory.CreateConnectionAsync()
             |> Async.AwaitTask
             |> Async.RunSynchronously
+            
         let channel =
             connection.CreateChannelAsync ()
             |> Async.AwaitTask
             |> Async.RunSynchronously
+            
         let queueDeclare =
-            let streamName = Balance.Balance.Version + Balance.Balance.StorageName
+            let streamName = Item.Item.Version + Item.Item.StorageName
             channel.QueueDeclareAsync (streamName, false, false, false, null)
             |> Async.AwaitTask
             |> Async.RunSynchronously
             
-        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Balance.Balance>>  =
+        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Item.Item>>  =
             None
             
         let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Balance.Balance>()
+            ConcurrentDictionary<AggregateId, EventId * Item.Item>()
+       
+        let setFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Item.Item>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer
         
         let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
             let retriever = fallBackAggregateStateRetriever
@@ -48,10 +54,9 @@ module BalanceConsumer =
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
-                logger.LogError "no fallback aggregate state retriever set"
-                
+                logger.LogError "no fallback aggregate state retriever set" 
+            
         let consumer = AsyncEventingBasicConsumer channel
-        
         do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
@@ -59,13 +64,13 @@ module BalanceConsumer =
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
                         logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Balance, BalanceEvents>.Deserialize message
+                        let deserializedMessage = AggregateMessage<Item.Item, ItemEvent>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
                             match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
+                            | { Message = InitialSnapshot item } ->
+                                statePerAggregate.[aggregateId] <- (0, item)
                                 ()
                             | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
@@ -73,6 +78,7 @@ module BalanceConsumer =
                                     let newState = evolve currentState events
                                     if newState.IsOk then
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
+                                        ()
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
@@ -84,16 +90,15 @@ module BalanceConsumer =
                             | { Message = Message.Delete }  ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         | Error e ->
-                            logger.LogError ("Error: {e}", e)            
-                        return ()
-                   }
+                            logger.LogError ("error {e}", e)
+                    }
                 )
-        
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Balance.Balance>) =
+         
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Item.Item>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
-            
+       
         member this.ResetFallbackAggregateStateRetriever () =
-            fallBackAggregateStateRetriever <- None    
+            fallBackAggregateStateRetriever <- None     
         
         member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
             let retriever = fallBackAggregateStateRetriever
@@ -112,17 +117,7 @@ module BalanceConsumer =
                 statePerAggregate.[id]
                 |> Result.Ok
             else
-                Result.Error "No state"    
-
-        override this.ExecuteAsync (cancellationToken) =
-            channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
-            
-                
-                
-                
-                
-                
-                
-                
-                
-                
+                Result.Error "No state"
+        
+        override this.ExecuteAsync cancellationToken =
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)

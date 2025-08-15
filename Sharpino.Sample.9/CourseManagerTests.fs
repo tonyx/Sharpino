@@ -75,6 +75,7 @@ let instances =
                       
         // (fun () -> setUp memEventStore),  fun () ->CourseManager (memEventStore, memoryStorageCourseViewer, memoryStorageHistoryCourseViewer, memoryStorageStudentViewer, memoryStorageBalanceViewer, memoryStorageTeacherViewer, Balance.MkBalance 1000.0M)
     ]
+    
 [<Tests>]
 let tests =
     testList "CourseManagerTests" [

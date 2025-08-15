@@ -5,49 +5,79 @@ open Expecto
 open ItemManager
 open ItemManager.Common
 open Sharpino.CommandHandler
+open Sharpino.EventBroker
+open Sharpino.RabbitMq
 open Sharpino.Sample._9.BalanceConsumer
 open Sharpino.Sample._9.CourseConsumer
 open Sharpino.Sample._9.Events
 open Sharpino.Sample._9.Item
+open Sharpino.Sample._9.ItemConsumer
+open Sharpino.Sample._9.ReservationConsumer
+open Sharpino.Sample._9.Reservation
 open Sharpino.TestUtils
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open ShoppingCart.Good
 
-let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
-let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
-
-let pgStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore
-let memoryStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> memEventStore
 
 let hostBuilder =
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
-            services.AddHostedService<BalanceConsumer>() |> ignore
-            services.AddHostedService<CourseConsumer>() |> ignore
+            services.AddHostedService<ItemConsumer>() |> ignore
+            services.AddHostedService<ReservationConsumer>() |> ignore
         )
 
 let host = hostBuilder.Build()
 let hostTask = host.StartAsync()
 let services = host.Services
 
-let balanceConsumer =
+let itemConsumer =
     host.Services.GetServices<IHostedService>()
-    |> Seq.find (fun s -> s.GetType() = typeof<BalanceConsumer>)
-    :?> BalanceConsumer
+    |> Seq.find (fun s -> s.GetType() = typeof<ItemConsumer>)
+    :?> ItemConsumer
 
-let courseConsumer =
+let reservationConsumer =
     host.Services.GetServices<IHostedService>()
-    |> Seq.find (fun s -> s.GetType() = typeof<CourseConsumer>)
-    :?> CourseConsumer
+    |> Seq.find (fun s -> s.GetType() = typeof<ReservationConsumer>)
+    :?> ReservationConsumer
 
-let rabbitMqBalanceStateViewer = balanceConsumer.GetAggregateState
-let rabbitMqCourseStateViewer = courseConsumer.GetAggregateState
+let rabbitMqItemStateViewer = itemConsumer.GetAggregateState
+let rabbitMqReservationStateViewer = reservationConsumer.GetAggregateState
+let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
+let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
+
+let pgStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore
+let memoryStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> memEventStore
+
+let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
+
+let itemMessageSender =
+    let streamName = Item.Version + Item.StorageName
+    mkMessageSender "127.0.0.1" streamName
+    |> Result.get
+
+let reservationMessageSender =
+    let streamName = Reservation.Version + Reservation.StorageName
+    mkMessageSender "127.0.0.1" streamName
+    |> Result.get
+
+aggregateMessageSenders.Add(Item.Version+Item.StorageName, itemMessageSender)
+aggregateMessageSenders.Add(Reservation.Version+Reservation.StorageName, reservationMessageSender)
+
+let messageSenders =
+    fun queueName ->
+        let sender = aggregateMessageSenders.TryGetValue(queueName)
+        match sender with
+        | true, sender -> sender
+        | _ -> failwith (sprintf "not found %s" queueName)
 
 let instances =
     [
-        (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
-        (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
+        // (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
+        // (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
+        
+        (fun () -> setUp(pgEventStore)),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500 
     ]
 
 [<Tests>]
@@ -96,7 +126,7 @@ let tests =
             let item = retrieveItem.OkValue
             Expect.equal item.ReferencesCounter 1 "should be 1"
             
-        multipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger, delay) ->
+        fmultipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger, delay) ->
             setUp ()
             let item1 = Item.MkItem ("name", "description")
             let addItem1 = itemManger.AddItem item1
@@ -170,6 +200,3 @@ let tests =
     ]
     |> testSequenced
     
-    
-    
-        

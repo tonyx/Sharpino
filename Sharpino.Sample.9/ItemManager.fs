@@ -5,6 +5,7 @@ open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.CommandHandler
 open Sharpino.Core
+open Sharpino.EventBroker
 open Sharpino.Sample._9.Commands
 open Sharpino.Sample._9.Events
 open Sharpino.Sample._9.Item
@@ -22,11 +23,14 @@ let emptyMessageSender =
         fun message ->
             ValueTask.CompletedTask
 
-type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>) =
+type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>, messageSender : StreamName -> MessageSender ) =
+    new (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>) =
+        ItemManager (eventStore, itemViewer, reservationViewer, emptyMessageSender)
+        
     member this.AddItem (item: Item) =
         result {
             return!
-                runInit<Item, ItemEvent, string> eventStore emptyMessageSender item
+                runInit<Item, ItemEvent, string> eventStore messageSender item
         }
     
     member this.GetItem (id: Guid) =
@@ -44,7 +48,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
     member this.DeleteItem (id: Guid) =
         result {
             return!
-                runDelete<Item, ItemEvent, string> eventStore emptyMessageSender id (fun item -> item.ReferencesCounter = 0)
+                runDelete<Item, ItemEvent, string> eventStore messageSender id (fun item -> item.ReferencesCounter = 0)
         }
         
     member this.AddReservation (reservation: Reservation.Reservation) =
@@ -57,7 +61,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
                 itemIds |> List.map (fun _ -> ItemCommands.IncrementReferenceCounter 1)
             
             let! result =   
-                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string> itemIds eventStore doNothingBroker reservation "adding reservation" incrementCountersCommands
+                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string> itemIds eventStore messageSender reservation "adding reservation" incrementCountersCommands
             return result    
         }
     
@@ -75,7 +79,7 @@ type ItemManager(eventStore: IEventStore<string>, itemViewer: AggregateViewer<It
             let closeItem = ReservationCommands.CloseItem item.Id
             
             return! 
-                runTwoAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, ReservationEvents.ReservationEvents, string> item.Id reservationId eventStore emptyMessageSender String.Empty decrementCounter closeItem
+                runTwoAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, ReservationEvents.ReservationEvents, string> item.Id reservationId eventStore messageSender String.Empty decrementCounter closeItem
         }    
             
         

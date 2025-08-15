@@ -13,23 +13,27 @@
     <Compile Include="models/Item/Item.fs" />
     <Compile Include="models/Item/Events.fs" />
     <Compile Include="models/Item/Commands.fs" />
+    <Compile Include="models/Item/Consumer.fs" />
     <Compile Include="models/Reservation/Reservation.fs" />
     <Compile Include="models/Reservation/Events.fs" />
     <Compile Include="models/Reservation/Commands.fs" />
+    <Compile Include="models/Reservation/Consumer.fs" />
     <Compile Include="models/Student/Student.fs" />
     <Compile Include="models/Student/Event.fs" />
     <Compile Include="models/Student/Commands.fs" />
+    <Compile Include="models/Student/Consumer.fs" />
     <Compile Include="models/Course/Course.fs" />
     <Compile Include="models/Course/Events.fs" />
     <Compile Include="models/Course/Commands.fs" />
-    <Compile Include="models\Course\Consumer.fs" />
+    <Compile Include="models/Course/Consumer.fs" />
     <Compile Include="models/Balance/Balance.fs" />
     <Compile Include="models/Balance/Events.fs" />
     <Compile Include="models/Balance/Commands.fs" />
-    <Compile Include="models\Balance\Consumer.fs" />
+    <Compile Include="models/Balance/Consumer.fs" />
     <Compile Include="models/Teacher/Teacher.fs" />
     <Compile Include="models/Teacher/Events.fs" />
     <Compile Include="models/Teacher/Commands.fs" />
+    <Compile Include="models/Teacher/Consumer.fs" />
     <Compile Include="Commons.fs" />
     <Compile Include="ItemManager.fs" />
     <Compile Include="CourseManager.fs" />
@@ -49,6 +53,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+    <ProjectReference Include="../Sharpino.Sample.7/shoppingCartWithSharpino/shoppingCart.fsproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -56,6 +61,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="appSettings.json" />
     <Content Include="README.md" />
   </ItemGroup>
 </Project>
