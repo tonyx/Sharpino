@@ -56,9 +56,6 @@ let balanceConsumer =
     |> Seq.find (fun s -> s.GetType() = typeof<BalanceConsumer>)
     :?> BalanceConsumer
 
-
-
-
 let instances =
     [
         (fun () -> setUp pgEventStore),

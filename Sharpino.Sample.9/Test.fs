@@ -121,12 +121,13 @@ let tests =
             let addReservation = itemManger.AddReservation reservation
             Expect.isOk addReservation "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let retrieveItem = itemManger.GetItem item.Id
             Expect.isOk retrieveItem "should be ok"
             let item = retrieveItem.OkValue
             Expect.equal item.ReferencesCounter 1 "should be 1"
             
-        fmultipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger, delay) ->
+        multipleTestCase "create two items and an open reservation for both. Both the counters should be 1" instances <| fun (setUp, itemManger, delay) ->
             setUp ()
             let item1 = Item.MkItem ("name", "description")
             let addItem1 = itemManger.AddItem item1
