@@ -145,13 +145,15 @@ type CourseManager
                 do!
                     course.Students.Length = 0
                     |> Result.ofBool "can't delete"
-                
+                 
                 match course.Teachers with
                 | [] ->
+                    printf "XXXXXXX x1 delete course\n"
                     return!
                         runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
                 
                 | teacherIds ->
+                    printf "XXXXXXX x2 delete course\n"
                     let unsubscribeTeacherFromCourses: List<AggregateCommand<Teacher, TeacherEvents>> =
                         teacherIds
                         |> List.map (fun _ -> TeacherCommands.RemoveCourse id)

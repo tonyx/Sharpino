@@ -58,7 +58,7 @@ module BalanceConsumer =
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
+                        logger.LogDebug ("ReceivedX {message}", message)
                         let deserializedMessage = AggregateMessage<Balance, BalanceEvents>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
@@ -71,6 +71,10 @@ module BalanceConsumer =
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
+                                    logger.LogInformation ("XXXXX evolving {aggregateId} from {eventId} to {endEventId}", aggregateId, eventId, endEventId)
+                                    logger.LogInformation ("XXXXX currentState {currentState}", currentState)
+                                    logger.LogInformation ("XXXXX events {events}", events)
+                                    logger.LogInformation ("XXXXX newState {newState}", newState)
                                     if newState.IsOk then
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
                                     else

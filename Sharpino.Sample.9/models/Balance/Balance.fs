@@ -29,17 +29,21 @@ module Balance =
                 }
                 
         member this.PayCourseCreationFee (courseId: Guid) =
+            // printf "XXXXXXXX calling PayCourseCreationFee fee: %A\n" courseCreationFee
             result {
                 let! sufficientFunds =
                     this.Amount >= courseCreationFee
-                    |> Result.ofBool "Not enough funds to create course"
-                return
+                    |> Result.ofBool "Not enough funds to cancel the course"
+                
+                let result =    
                     {
                         this
                             with
                                 OpenCourses = this.OpenCourses @ [courseId]
                                 Amount = this.Amount - courseCreationFee
                     }
+                // printf "XXXXXX returing %A\n" result   
+                return result     
             }
             
         member this.PayCourseCancellationFee (courseId: Guid) =
@@ -47,7 +51,7 @@ module Balance =
                 let! sufficientFunds =
                     this.Amount >= courseDeletionFee
                     |> Result.ofBool "Not enough funds to delete course"
-                return
+                let result =    
                     {
                         this
                             with
@@ -55,6 +59,8 @@ module Balance =
                                     this.OpenCourses |> List.filter (fun x -> x <> courseId)
                                 Amount = this.Amount - courseDeletionFee
                     }
+                printf "XXXXXXX pay cancellation fee: returing %A\n" result   
+                return result     
             }
         
         static member Version = "_01"

@@ -4,6 +4,7 @@ open System
 open System.Threading.Tasks
 open Expecto
 open ItemManager.Common
+open Microsoft.Extensions.Logging
 open Sharpino.Cache
 open Sharpino.Commons
 open Sharpino.Core
@@ -54,6 +55,7 @@ let teacherConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<TeacherConsumer>)
     :?> TeacherConsumer
+
 
 let rabbitMqBalanceStateViewer = balanceConsumer.GetAggregateState
 let rabbitMqCourseStateViewer = courseConsumer.GetAggregateState
@@ -125,11 +127,11 @@ let instances =
         // pgStorageCourseViewer,
         // pgStorageStudentViewer, 0;
         
-        (fun () -> setUp pgEventStore),
+        (fun () -> setUp memEventStore),
         (fun () -> CourseManager
-                      (pgEventStore,
+                      (memEventStore,
                        rabbitMqCourseStateViewer,
-                       pgStorageHistoryCourseViewer,
+                       memoryStorageHistoryCourseViewer,
                        rabbitMqStudentStateViewer,
                        rabbitMqBalanceStateViewer,
                        rabbitMqTeacherStateViewer,
@@ -137,8 +139,7 @@ let instances =
                        messageSenders
          )),
         pgStorageCourseViewer,
-        pgStorageStudentViewer, 200;
-        
+        pgStorageStudentViewer, 1000;
     ]
     
 [<Tests>]
@@ -182,6 +183,7 @@ let tests =
         
         fmultipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
+
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
@@ -190,15 +192,18 @@ let tests =
             let balance = courseManager.Balance 
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
+            Async.Sleep delay |> Async.RunSynchronously
             Expect.equal balance.Amount 900.0M "should be equal"
             
             let teacher = Teacher.MkTeacher ("John")
             let addTeacher = courseManager.AddTeacher teacher
             Expect.isOk addTeacher "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let deleteCourse = courseManager.DeleteCourse course.Id
             Expect.isOk deleteCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously

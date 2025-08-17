@@ -620,7 +620,7 @@ module CommandHandler =
                     do!
                         ((aggregateIds1.Length = command1.Length) &&
                         (aggregateIds2.Length = command2.Length))
-                        |> Result.ofBool "aggregateIds and commands length must corresond"
+                        |> Result.ofBool "aggregateIds and commands length must correspond"
                         
                     let aggregateIdsWithCommands1 =
                         List.zip aggregateIds1 command1
@@ -743,6 +743,19 @@ module CommandHandler =
                             aggregateId
                             (toBeDeleted |> unbox<'A>).Serialize
                             allPacked
+                    
+                    let aggregateDeleteMessage =
+                        {
+                            AggregateId = aggregateId
+                            Message = Message<'A, 'E>.Delete
+                        }.Serialize
+                 
+                    let deleteMessageSender = messageSenders ('A.Version + 'A.StorageName)
+                     
+                    let sentDeleteMessage =
+                        task {
+                            return! deleteMessageSender aggregateDeleteMessage
+                        }
                         
                     let newDbBasedEventIds1 =
                         dbNewStatesEventIds
@@ -761,7 +774,62 @@ module CommandHandler =
                                 AggregateCache2.Instance.Memoize2 (newStates2.[i] |> box |> Ok) (newDbBasedEventIds2.[i] |> List.last, uniqueAggregateIds2.[i])
                                 mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore uniqueAggregateIds2.[i] newStates2.[i] (newDbBasedEventIds2.[i] |> List.last) |> ignore
                     doCacheResults ()
+                   
+                    let initialEventIdsFinalEventIdsAndEventsA1 =
+                        List.zip3 initialStateEventIds1 (newDbBasedEventIds1 |>> List.last) generatedEvents1
+                        |>> fun (eventId, finalEventId, events) ->
+                            {
+                                InitEventId = eventId
+                                EndEventId = finalEventId
+                                Events = events
+                            }
+                    logger.Value.LogDebug (sprintf "XXXXXXX Xevent A1 %A\n" initialEventIdsFinalEventIdsAndEventsA1)
+                            
+                    let aggregateMessagesA1 =
+                        List.zip uniqueAggregateIds1 initialEventIdsFinalEventIdsAndEventsA1
+                        |>> fun (id, message) ->
+                            {
+                                AggregateId = id
+                                Message = Message<'A1, 'E1>.Events message
+                            }.Serialize
                     
+                    let senderA1 = messageSenders ('A1.Version + 'A1.StorageName)
+                    
+                    // todo: evaluate this style of fire and forget and compare with other similar ones
+                    let sentAggregateMessagesA1 =
+                        aggregateMessagesA1
+                        |> List.iter
+                                (fun message ->
+                                    logger.Value.LogDebug (sprintf "XXXXXA1 sending message to %s %A\n" ('A1.Version + 'A1.StorageName) message)
+                                    senderA1 message |> ignore)
+                        
+                    let initialEventIdsFinalEventIdsAndEventsA2 =
+                        List.zip3 initialStateEventIds2 (newDbBasedEventIds2 |>> List.last) generatedEvents2
+                        |>> fun (eventId, finalEventId, events) ->
+                            {
+                                InitEventId = eventId
+                                EndEventId = finalEventId
+                                Events = events
+                            }
+                            
+                    logger.Value.LogDebug (sprintf "XXXXXXX Xevent A2 %A\n" initialEventIdsFinalEventIdsAndEventsA2)
+                    
+                    let aggregateMessagesA2 =
+                        List.zip uniqueAggregateIds2 initialEventIdsFinalEventIdsAndEventsA2
+                        |>> fun (id, message) ->
+                            {
+                                AggregateId = id
+                                Message = Message<'A2, 'E2>.Events message
+                            }.Serialize
+                    
+                    let senderA2 = messageSenders ('A2.Version + 'A2.StorageName)
+                    
+                    let sentAggregateMessagesA2 =
+                        aggregateMessagesA2
+                        |> List.iter (fun message ->
+                            logger.Value.LogDebug (sprintf "XXXXXA2 sending message to %s %A\n" ('A2.Version + 'A2.StorageName) message)
+                            senderA2 message |> ignore)
+                     
                     let allIds = uniqueAggregateIds1 @ uniqueAggregateIds2
                     let duplicatedIds =
                         allIds
@@ -778,7 +846,6 @@ module CommandHandler =
                             if (duplicatedIds |> List.contains id) then
                                 AggregateCache2.Instance.Clean id
                         )
-                        
                     return ()
                 }
         
