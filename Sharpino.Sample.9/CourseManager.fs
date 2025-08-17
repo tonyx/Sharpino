@@ -5,6 +5,7 @@ open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
 open Sharpino.CommandHandler
 open Sharpino.Core
+open Sharpino.EventBroker
 open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.BalanceCommands
 open Sharpino.Sample._9.BalanceEvents
@@ -25,7 +26,7 @@ let doNothingBroker  =
         notify = None
         notifyAggregate = None
     }
-let emptyMessageSender =
+let emptyMessageSenders =
     fun queueName ->
         fun message ->
             ValueTask.CompletedTask
@@ -37,12 +38,13 @@ type CourseManager
      studentViewer: AggregateViewer<Student>,
      balanceViewer: AggregateViewer<Balance>,
      teacherViewer: AggregateViewer<Teacher>,
-     initialBalance: Balance
-     ) =
+     initialBalance: Balance,
+     messageSenders: StreamName -> MessageSender
+    ) =
    
     do
         let initialized =
-            runInit<Balance, BalanceEvents, string> eventStore emptyMessageSender initialBalance
+            runInit<Balance, BalanceEvents, string> eventStore messageSenders initialBalance
         match initialized with
         | Error e -> raise (Exception $"Could not initialize balance. Error: {e}")
         | Ok _ -> ()
@@ -58,14 +60,14 @@ type CourseManager
         result
             {
                 return!
-                    runInit<Student, StudentEvents, string> eventStore emptyMessageSender student
+                    runInit<Student, StudentEvents, string> eventStore messageSenders student
             }
     
     member this.AddTeacher (teacher: Teacher) =
         result
             {
                 return!
-                    runInit<Teacher, TeacherEvents, string> eventStore emptyMessageSender teacher
+                    runInit<Teacher, TeacherEvents, string> eventStore messageSenders teacher
             }
     member this.GetTeacher (id: Guid) =
         result
@@ -86,7 +88,7 @@ type CourseManager
             {
                 let! teacher = this.GetTeacher id
                 return!
-                    runDelete<Teacher, TeacherEvents, string> eventStore emptyMessageSender id (fun teacher -> teacher.Courses.Length = 0)
+                    runDelete<Teacher, TeacherEvents, string> eventStore messageSenders id (fun teacher -> teacher.Courses.Length = 0)
             }
             
     member this.AddTeacherToCourse (teacherId: Guid, courseId: Guid) =
@@ -98,7 +100,7 @@ type CourseManager
                 let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
                 return!
                     runTwoAggregateCommands<Teacher, TeacherEvents, Course, CourseEvents, string>
-                        teacherId courseId eventStore emptyMessageSender assignTeacherToCourse assignCourseToTeacher
+                        teacherId courseId eventStore messageSenders assignTeacherToCourse assignCourseToTeacher
             }        
    
     member this.AddTeacherToCourseConsideringIncompatibilities (teacherId: Guid, courseId: Guid, crossAggregatesConstraint) =
@@ -125,7 +127,7 @@ type CourseManager
             {
                 let foundCourseCreation = BalanceCommands.PayCourseCreationFee course.Id
                 return!
-                    runInitAndAggregateCommand<Balance, BalanceEvents, Course, string> initialBalance.Id eventStore doNothingBroker course foundCourseCreation
+                    runInitAndAggregateCommand<Balance, BalanceEvents, Course, string> initialBalance.Id eventStore messageSenders course foundCourseCreation
             }
     
     member this.GetCourse (id: Guid) =
@@ -156,7 +158,7 @@ type CourseManager
                     return!
                         runDeleteAndTwoNAggregateCommandsMd<Course, CourseEvents, Balance, BalanceEvents, Teacher, TeacherEvents, string>
                             eventStore
-                            doNothingBroker
+                            emptyMessageSenders
                             "metadata"
                             id
                             [initialBalance.Id]
@@ -171,7 +173,7 @@ type CourseManager
             {
                 let! student = this.GetStudent id
                 return!
-                    runDelete<Student, StudentEvents, string> eventStore emptyMessageSender id (fun student -> student.Courses.Length = 0)
+                    runDelete<Student, StudentEvents, string> eventStore messageSenders id (fun student -> student.Courses.Length = 0)
             }
              
     member this.SubscribeStudentToCourse (studentId: Guid) (courseId: Guid) =
@@ -182,6 +184,6 @@ type CourseManager
                 let addCourseToStudent = StudentCommands.AddCourse courseId
                 let addStudentToCourse = CourseCommands.AddStudent studentId
                 return!
-                    runTwoAggregateCommands studentId courseId eventStore emptyMessageSender addCourseToStudent addStudentToCourse
+                    runTwoAggregateCommands studentId courseId eventStore messageSenders addCourseToStudent addStudentToCourse
             }
             

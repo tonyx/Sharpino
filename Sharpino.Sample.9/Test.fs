@@ -20,18 +20,6 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open ShoppingCart.Good
 
-
-let hostBuilder =
-    Host.CreateDefaultBuilder()
-        .ConfigureServices(fun (services: IServiceCollection) ->
-            services.AddHostedService<ItemConsumer>() |> ignore
-            services.AddHostedService<ReservationConsumer>() |> ignore
-        )
-
-let host = hostBuilder.Build()
-let hostTask = host.StartAsync()
-let services = host.Services
-
 let itemConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<ItemConsumer>)
@@ -77,8 +65,9 @@ let instances =
         // (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
         // (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
         
-        (fun () -> setUp(pgEventStore)),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500 
+        (fun () -> setUp pgEventStore),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500 
     ]
+    
 
 [<Tests>]
 let tests =

@@ -91,7 +91,12 @@ module TeacherConsumer =
                             logger.LogError ("Error: {e}", e)
                     }
                 )
-        
+       
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id] |> Result.Ok
+            else
+                Result.Error $"No state for aggregate {id}, in stream {Teacher.Teacher.Version + Teacher.Teacher.StorageName}"
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Teacher.Teacher>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
             

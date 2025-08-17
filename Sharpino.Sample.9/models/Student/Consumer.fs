@@ -90,7 +90,13 @@ module StudentConsumer =
                             logger.LogError ("error {e}", e)
                     }
                 )
-                
+        
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state"        
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Student.Student>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
             

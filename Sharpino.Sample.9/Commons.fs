@@ -4,13 +4,23 @@ open System
 open Sharpino
 open Sharpino.Cache
 open Sharpino.Core
+open Sharpino.Sample._9
 open Sharpino.Sample._9.Balance
+open Sharpino.Sample._9.BalanceConsumer
 open Sharpino.Sample._9.Course
+open Sharpino.Sample._9.CourseConsumer
 open Sharpino.Sample._9.Item
+open Sharpino.Sample._9.ItemConsumer
+open Sharpino.Sample._9.ReservationConsumer
 open Sharpino.Sample._9.Student
+open Sharpino.Sample._9.StudentConsumer
 open Sharpino.Sample._9.Teacher
+open Sharpino.Sample._9.TeacherConsumer
 open Sharpino.Storage
 open DotNetEnv
+
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
 
 module Common =
 
@@ -50,3 +60,18 @@ module Common =
         (eventStore: IEventStore<'F>) 
         =
             fun (id: Guid) -> StateView.getHistoryAggregateFreshState<'A, 'E, 'F> id eventStore
+
+    let hostBuilder =
+        Host.CreateDefaultBuilder()
+            .ConfigureServices(fun (services: IServiceCollection) ->
+                services.AddHostedService<ItemConsumer>() |> ignore
+                services.AddHostedService<ReservationConsumer>() |> ignore
+                
+                services.AddHostedService<BalanceConsumer>() |> ignore
+                services.AddHostedService<CourseConsumer>() |> ignore
+                services.AddHostedService<StudentConsumer>() |> ignore
+                services.AddHostedService<TeacherConsumer>() |> ignore
+            )
+    let host = hostBuilder.Build()
+    let hostTask = host.StartAsync()
+    let services = host.Services

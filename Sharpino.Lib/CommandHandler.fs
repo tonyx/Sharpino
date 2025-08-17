@@ -605,7 +605,7 @@ module CommandHandler =
         and 'E2 :(static member Deserialize: 'F -> Result<'E2, string>)
         and 'E2 : (member Serialize: 'F)>
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSenders: string -> MessageSender) 
         (md: Metadata)
         (aggregateId: AggregateId)
         (aggregateIds1: List<AggregateId>)
@@ -676,7 +676,6 @@ module CommandHandler =
                     let! newStatesAndEvents2 =
                         initialStatesAndMultiCommands2
                         |> List.traverseResultM (fun (state, commands) -> foldCommands (state |> unbox) commands)
-                        
                     
                     let newStates1 =
                         newStatesAndEvents1
@@ -820,7 +819,7 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSenders: StreamName -> MessageSender) 
         (initialInstance: 'A2)
         (md: Metadata)
         (command: AggregateCommand<'A1, 'E1>)
@@ -844,7 +843,42 @@ module CommandHandler =
             
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
                     
-                    return ()
+                    let snapshotMessageSenderA2 = messageSenders ('A2.Version + 'A2.StorageName)
+                    let eventsMessageSenderA1 = messageSenders ('A1.Version + 'A1.StorageName)
+                    
+                    let snapshotMessage =
+                        Message<'A2, 'E2>.InitialSnapshot initialInstance // (initialInstance |> unbox)
+                    
+                    let aggregateMessage =
+                        {
+                            AggregateId = initialInstance.Id
+                            Message = snapshotMessage
+                        }.Serialize
+                        
+                    let sentSnapshot =
+                        task {
+                            return! snapshotMessageSenderA2 aggregateMessage
+                        }
+                  
+                    let eventMessage =
+                        {
+                            InitEventId = eventId
+                            EndEventId = ids |> List.last
+                            Events = events
+                        }
+                    let packedEventMessage =
+                        {
+                            AggregateId = aggregateId
+                            Message = Message<'A1, 'E1>.Events eventMessage
+                        }.Serialize
+                    
+                    let sentEvent =
+                        task {
+                            return! eventsMessageSenderA1 packedEventMessage
+                        }
+                        
+                    return ()    
+                    
                 }
         #if USING_MAILBOXPROCESSOR         
             let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
@@ -984,12 +1018,13 @@ module CommandHandler =
         >
         (aggregateId: Guid)
         (storage: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        // (eventBroker: IEventBroker<'F>)
+        (messageSenders: StreamName -> MessageSender) 
         (initialInstance: 'A2)
         (command: AggregateCommand<'A1, 'E1>)
         =
             logger.Value.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
-            runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F> aggregateId storage eventBroker initialInstance String.Empty command
+            runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F> aggregateId storage messageSenders initialInstance String.Empty command
             
     let inline runInitAndTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F, 'A3
         when 'A1 :> Aggregate<'F>
