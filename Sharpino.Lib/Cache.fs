@@ -89,7 +89,7 @@ module Cache =
             then
                 statePerAggregate.[aggregateId]
             else
-                Error "not found"
+                Error (sprintf "cache miss: %A" aggregateId)
         
         member this.Clear () =
             lastEventIdPerAggregate.Clear ()
@@ -117,7 +117,7 @@ module Cache =
         member this.GetState() =
             match cachedValue with
             | Some res -> Ok res
-            | None -> Error "state not found"
+            | None -> Error "context state not found"
    
         member this.Memoize (f: unit -> Result<'A, string>)  (eventId: EventId)=
             // f ()
