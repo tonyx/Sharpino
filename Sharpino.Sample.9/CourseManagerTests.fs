@@ -36,6 +36,19 @@ open Sharpino.Sample._9.Balance
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
+let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore
+let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
+let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
+let pgStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore 
+let pgTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> pgEventStore
+
+let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
+let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
+let memoryStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore 
+let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
+let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> memEventStore
+
+#if RABBITMQ
 let balanceConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<BalanceConsumer>)
@@ -55,25 +68,17 @@ let teacherConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<TeacherConsumer>)
     :?> TeacherConsumer
-
-let logger = host.Services.GetService<ILogger<CourseManager>>()
+    
+let resetConsumers () =
+    balanceConsumer.ResetAllStates()
+    courseConsumer.ResetAllStates()
+    studentConsumer.ResetAllStates()
+    teacherConsumer.ResetAllStates()
 
 let rabbitMqBalanceStateViewer = balanceConsumer.GetAggregateState
 let rabbitMqCourseStateViewer = courseConsumer.GetAggregateState
 let rabbitMqStudentStateViewer = studentConsumer.GetAggregateState
 let rabbitMqTeacherStateViewer = teacherConsumer.GetAggregateState
-    
-let pgStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore
-let pgStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
-let pgStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
-let pgStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore 
-let pgTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> pgEventStore
-
-let memoryStorageStudentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> memEventStore
-let memoryStorageCourseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore
-let memoryStorageHistoryCourseViewer = getHistoryAggregateStorageFreshStateViewer<Course, CourseEvents, string> memEventStore 
-let memoryStorageBalanceViewer = getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> memEventStore
-let memoryStorageTeacherViewer = getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> memEventStore
 
 let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
 let balanceMessageSender =
@@ -106,39 +111,22 @@ aggregateMessageSenders.Add(Course.Version+Course.StorageName, courseMessageSend
 aggregateMessageSenders.Add(Student.Version+Student.StorageName, studentMessageSender)
 aggregateMessageSenders.Add(Teacher.Version+Teacher.StorageName, teacherMessageSender)
 
-
 let messageSenders =
     fun queueName ->
         let sender = aggregateMessageSenders.TryGetValue(queueName)
         match sender with
         | true, sender -> sender
         | _ -> failwith (sprintf "not found %s" queueName)
-
+#endif
 let emptyMessageSenders =
     fun queueName ->
         fun message ->
             ValueTask.CompletedTask
-let resetConsumers () =
-    balanceConsumer.ResetAllStates()
-    courseConsumer.ResetAllStates()
-    studentConsumer.ResetAllStates()
-    teacherConsumer.ResetAllStates()
 
+// let logger = host.Services.GetService<ILogger<CourseManager>>()
 let instances =
     [
-        // (fun () -> setUp pgEventStore),
-        // (fun () -> CourseManager
-        //               (pgEventStore,
-        //                pgStorageCourseViewer,
-        //                pgStorageHistoryCourseViewer,
-        //                pgStorageStudentViewer,
-        //                pgStorageBalanceViewer,
-        //                pgTeacherViewer,
-        //                Balance.MkBalance 1000.0M,
-        //                emptyMessageSenders)),
-        // pgStorageCourseViewer,
-        // pgStorageStudentViewer, 0;
-        
+        #if RABBITMQ  
         (fun () ->
             setUp memEventStore
             resetConsumers ()
@@ -153,8 +141,22 @@ let instances =
                        Balance.MkBalance 1000.0M,
                        messageSenders
          )),
+        rabbitMqCourseStateViewer,
+        rabbitMqStudentStateViewer, 200
+        #else
+        (fun () -> setUp pgEventStore),
+        (fun () -> CourseManager
+                      (pgEventStore,
+                       pgStorageCourseViewer,
+                       pgStorageHistoryCourseViewer,
+                       pgStorageStudentViewer,
+                       pgStorageBalanceViewer,
+                       pgTeacherViewer,
+                       Balance.MkBalance 1000.0M,
+                       emptyMessageSenders)),
         pgStorageCourseViewer,
-        pgStorageStudentViewer, 200;
+        pgStorageStudentViewer, 0;
+        #endif
     ]
     
 [<Tests>]
@@ -698,7 +700,7 @@ let tests =
             // then 
             Expect.isError assignTeacher "should be error"
             
-        fmultipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+        multipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
             Async.Sleep delay |> Async.RunSynchronously
             let teacher = Teacher.MkTeacher "John"

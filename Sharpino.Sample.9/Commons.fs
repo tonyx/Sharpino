@@ -61,6 +61,7 @@ module Common =
         =
             fun (id: Guid) -> StateView.getHistoryAggregateFreshState<'A, 'E, 'F> id eventStore
 
+    #if RABBITMQ
     let hostBuilder =
         Host.CreateDefaultBuilder()
             .ConfigureServices(fun (services: IServiceCollection) ->
@@ -75,3 +76,4 @@ module Common =
     let host = hostBuilder.Build()
     let hostTask = host.StartAsync()
     let services = host.Services
+    #endif

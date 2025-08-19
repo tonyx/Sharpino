@@ -2007,9 +2007,6 @@ module CommandHandler =
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
                     
-                   
-                    
-                     
                     return ()     
                 }
         #if USING_MAILBOXPROCESSOR

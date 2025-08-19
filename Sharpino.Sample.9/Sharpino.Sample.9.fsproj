@@ -55,6 +55,11 @@
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
     <ProjectReference Include="../Sharpino.Sample.7/shoppingCartWithSharpino/shoppingCart.fsproj" />
   </ItemGroup>
+  
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
+
 
   <ItemGroup>
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />

@@ -20,6 +20,13 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open ShoppingCart.Good
 
+let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
+let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
+
+let pgStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore
+let memoryStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> memEventStore
+
+#if RABBITMQ
 let itemConsumer =
     host.Services.GetServices<IHostedService>()
     |> Seq.find (fun s -> s.GetType() = typeof<ItemConsumer>)
@@ -32,11 +39,6 @@ let reservationConsumer =
 
 let rabbitMqItemStateViewer = itemConsumer.GetAggregateState
 let rabbitMqReservationStateViewer = reservationConsumer.GetAggregateState
-let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
-let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
-
-let pgStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore
-let memoryStorageReservationViewer = getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> memEventStore
 
 let aggregateMessageSenders = System.Collections.Generic.Dictionary<string, MessageSender>()
 
@@ -53,6 +55,7 @@ let reservationMessageSender =
 aggregateMessageSenders.Add(Item.Version+Item.StorageName, itemMessageSender)
 aggregateMessageSenders.Add(Reservation.Version+Reservation.StorageName, reservationMessageSender)
 
+
 let messageSenders =
     fun queueName ->
         let sender = aggregateMessageSenders.TryGetValue(queueName)
@@ -60,14 +63,17 @@ let messageSenders =
         | true, sender -> sender
         | _ -> failwith (sprintf "not found %s" queueName)
 
+#endif
+
 let instances =
     [
-        // (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
-        // (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
-        
-        (fun () -> setUp pgEventStore),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500 
+        #if RABBITMQ
+            (fun () -> setUp pgEventStore),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500
+        #else
+            (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
+            (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0
+        #endif
     ]
-    
 
 [<Tests>]
 let tests =
