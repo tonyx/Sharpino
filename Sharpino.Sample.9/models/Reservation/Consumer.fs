@@ -111,5 +111,8 @@ module ReservationConsumer =
                 Result.Error "No state" 
           
         override this.ExecuteAsync cancellationToken =
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)     
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+            
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 
         

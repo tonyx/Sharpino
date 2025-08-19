@@ -59,7 +59,7 @@ module Balance =
                                     this.OpenCourses |> List.filter (fun x -> x <> courseId)
                                 Amount = this.Amount - courseDeletionFee
                     }
-                printf "XXXXXXX pay cancellation fee: returing %A\n" result   
+                // printf "XXXXXXX pay cancellation fee: returing %A\n" result   
                 return result     
             }
         

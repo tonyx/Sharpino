@@ -112,7 +112,7 @@ type CourseManager
                 let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
                 return!
                     runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<Teacher, TeacherEvents, Course, CourseEvents, string>
-                        teacherId courseId eventStore doNothingBroker "md" assignTeacherToCourse assignCourseToTeacher crossAggregatesConstraint
+                        teacherId courseId eventStore messageSenders "md" assignTeacherToCourse assignCourseToTeacher crossAggregatesConstraint
             }
             
     member this.GetStudent (id: Guid) =
@@ -148,19 +148,19 @@ type CourseManager
                  
                 match course.Teachers with
                 | [] ->
-                    printf "XXXXXXX x1 delete course\n"
+                    // printf "XXXXXXX x1 delete course\n"
                     return!
-                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore doNothingBroker "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
+                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore messageSenders "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
                 
                 | teacherIds ->
-                    printf "XXXXXXX x2 delete course\n"
+                    // printf "XXXXXXX x2 delete course\n"
                     let unsubscribeTeacherFromCourses: List<AggregateCommand<Teacher, TeacherEvents>> =
                         teacherIds
                         |> List.map (fun _ -> TeacherCommands.RemoveCourse id)
                     return!
                         runDeleteAndTwoNAggregateCommandsMd<Course, CourseEvents, Balance, BalanceEvents, Teacher, TeacherEvents, string>
                             eventStore
-                            emptyMessageSenders
+                            messageSenders
                             "metadata"
                             id
                             [initialBalance.Id]

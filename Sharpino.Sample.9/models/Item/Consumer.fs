@@ -121,3 +121,6 @@ module ItemConsumer =
         
         override this.ExecuteAsync cancellationToken =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+            
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 

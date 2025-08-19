@@ -71,12 +71,13 @@ module BalanceConsumer =
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
-                                    logger.LogInformation ("XXXXX evolving {aggregateId} from {eventId} to {endEventId}", aggregateId, eventId, endEventId)
-                                    logger.LogInformation ("XXXXX currentState {currentState}", currentState)
-                                    logger.LogInformation ("XXXXX events {events}", events)
-                                    logger.LogInformation ("XXXXX newState {newState}", newState)
+                                    // logger.LogInformation ("XXXXX evolving {aggregateId} from {eventId} to {endEventId}", aggregateId, eventId, endEventId)
+                                    // logger.LogInformation ("XXXXX currentState {currentState}", currentState)
+                                    // logger.LogInformation ("XXXXX events {events}", events)
+                                    // logger.LogInformation ("XXXXX newState {newState}", newState)
                                     if newState.IsOk then
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
+                                        // logger.LogInformation ("XXXXYYYYYX newState {newState}", (newState.OkValue).ToString())
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
@@ -118,6 +119,9 @@ module BalanceConsumer =
             else
                 Result.Error "No state"    
 
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 
+        
         override this.ExecuteAsync (cancellationToken) =
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
             

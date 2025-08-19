@@ -48,6 +48,7 @@ module RabbitMq =
             
             let aggregateMessageSender =
                 fun (message: string) ->
+                    // printf "XXXXX messagesender: sending message: %s\n" message
                     let body = Encoding.UTF8.GetBytes message
                     channel.BasicPublishAsync(
                         "",

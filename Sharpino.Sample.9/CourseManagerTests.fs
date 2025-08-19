@@ -56,6 +56,7 @@ let teacherConsumer =
     |> Seq.find (fun s -> s.GetType() = typeof<TeacherConsumer>)
     :?> TeacherConsumer
 
+let logger = host.Services.GetService<ILogger<CourseManager>>()
 
 let rabbitMqBalanceStateViewer = balanceConsumer.GetAggregateState
 let rabbitMqCourseStateViewer = courseConsumer.GetAggregateState
@@ -80,6 +81,11 @@ let balanceMessageSender =
     mkMessageSender "127.0.0.1" streamName
     |> Result.get
 
+balanceConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Balance, BalanceEvents, string> pgEventStore)
+courseConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore)
+studentConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore)
+teacherConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Teacher, TeacherEvents, string> pgEventStore)
+
 let courseMessageSender =
     let streamName = Course.Version + Course.StorageName
     mkMessageSender "127.0.0.1" streamName
@@ -100,6 +106,7 @@ aggregateMessageSenders.Add(Course.Version+Course.StorageName, courseMessageSend
 aggregateMessageSenders.Add(Student.Version+Student.StorageName, studentMessageSender)
 aggregateMessageSenders.Add(Teacher.Version+Teacher.StorageName, teacherMessageSender)
 
+
 let messageSenders =
     fun queueName ->
         let sender = aggregateMessageSenders.TryGetValue(queueName)
@@ -111,6 +118,11 @@ let emptyMessageSenders =
     fun queueName ->
         fun message ->
             ValueTask.CompletedTask
+let resetConsumers () =
+    balanceConsumer.ResetAllStates()
+    courseConsumer.ResetAllStates()
+    studentConsumer.ResetAllStates()
+    teacherConsumer.ResetAllStates()
 
 let instances =
     [
@@ -127,7 +139,10 @@ let instances =
         // pgStorageCourseViewer,
         // pgStorageStudentViewer, 0;
         
-        (fun () -> setUp memEventStore),
+        (fun () ->
+            setUp memEventStore
+            resetConsumers ()
+            ),
         (fun () -> CourseManager
                       (memEventStore,
                        rabbitMqCourseStateViewer,
@@ -139,7 +154,7 @@ let instances =
                        messageSenders
          )),
         pgStorageCourseViewer,
-        pgStorageStudentViewer, 1000;
+        pgStorageStudentViewer, 200;
     ]
     
 [<Tests>]
@@ -181,7 +196,7 @@ let tests =
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
         
-        fmultipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+        multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
 
             let course = Course.MkCourse  ("Math", 10)
@@ -214,6 +229,40 @@ let tests =
             
             let tryGetCourse = courseManager.GetCourse course.Id
             Expect.isError tryGetCourse "should be error"
+        
+        multipleTestCase "add many courses and verify balance - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+            setUp ()
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse (Course.MkCourse  ("Math", 10))
+            Expect.isOk addCourse "should be ok"
+            let addCourse = courseManager.AddCourse (Course.MkCourse  ("English", 10))
+            Expect.isOk addCourse "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 800.0M "should be equal"
+        
+        multipleTestCase "add two courses, delete one of them and verify balance - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+            setUp ()
+            let courseManager = courseManager ()
+            let addCourse = courseManager.AddCourse (Course.MkCourse  ("Math", 10))
+            Expect.isOk addCourse "should be ok"
+            let englishCourse = Course.MkCourse  ("English", 10)
+            let addCourse = courseManager.AddCourse (englishCourse)
+            Expect.isOk addCourse "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 800.0M "should be equal"
+            let deleteCourse = courseManager.DeleteCourse (englishCourse.Id)
+            Expect.isOk deleteCourse "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 750.0M "should be equal"
             
         multipleTestCase "add and retrieve a course - Ok"  instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
@@ -247,6 +296,7 @@ let tests =
             Expect.isOk subscribe "should be ok"
             
             // then
+            Async.Sleep delay |> Async.RunSynchronously
             let result = courseManager.GetStudent student.Id
             Expect.isOk result "should be ok"
             let retrievedStudent = result.OkValue
@@ -396,8 +446,10 @@ let tests =
             Expect.isError tryGetTeacher "should be error"
         
         multipleTestCase "add a teacher to a course, then delete that course, and the teacher courses list will be decreased by 1 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
-            setUp ()            
-            let teacher = Teacher.MkTeacher ("John")
+            setUp ()
+            
+            Async.Sleep delay |> Async.RunSynchronously
+            let teacher = Teacher.MkTeacher "John"
             let courseManager = courseManager ()
             let addTeacher = courseManager.AddTeacher teacher
             Expect.isOk addTeacher "should be ok"
@@ -409,6 +461,7 @@ let tests =
             let assignTeacher = courseManager.AddTeacherToCourse (teacher.Id, course.Id)
             Expect.isOk assignTeacher "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let deleteCourse = courseManager.DeleteCourse course.Id
             Expect.isOk deleteCourse "should be ok"
             
@@ -478,6 +531,7 @@ let tests =
         
         multipleTestCase "add and retrieve a course without the cache - Ok"   instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
+            Async.Sleep delay |> Async.RunSynchronously
             let course = Course.MkCourse  ("Math", 10)
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
@@ -489,6 +543,7 @@ let tests =
             let deleteCourse = courseManager.DeleteCourse course.Id
             Expect.isOk deleteCourse "should be ok"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let retrievedCourse = courseManager.GetCourse course.Id
             Expect.isError retrievedCourse "should be error"
             
@@ -499,6 +554,7 @@ let tests =
          
         multipleTestCase "add more teacher to a course and then, after deleting the course, verify that the teachers will not be part of the course anymore - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()            
+            Async.Sleep delay |> Async.RunSynchronously
             let teacher1 = Teacher.MkTeacher ("John")
             let courseManager = courseManager ()
             let addTeacher = courseManager.AddTeacher teacher1
@@ -517,6 +573,7 @@ let tests =
             let assignTeacher2 = courseManager.AddTeacherToCourse (teacher2.Id, course.Id)
             Expect.isOk assignTeacher2 "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let deleteCourse = courseManager.DeleteCourse course.Id
             Expect.isOk deleteCourse "should be ok"
             
@@ -641,13 +698,15 @@ let tests =
             // then 
             Expect.isError assignTeacher "should be error"
             
-        multipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+        fmultipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
+            Async.Sleep delay |> Async.RunSynchronously
             let teacher = Teacher.MkTeacher "John"
             let courseManager = courseManager ()
             let addTeacher = courseManager.AddTeacher teacher
             Expect.isOk addTeacher "should be ok"
             let math = Course.MkCourse  ("Math", 10)
+            Async.Sleep delay |> Async.RunSynchronously
             let addCourse = courseManager.AddCourse math
             Expect.isOk addCourse "should be ok"
             
@@ -655,6 +714,7 @@ let tests =
             let addLiterature = courseManager.AddCourse literature
             Expect.isOk addLiterature "should be ok"
             
+            Async.Sleep delay |> Async.RunSynchronously
             let jack = Student.MkStudent ("Jack", 5)
             let addStudent = courseManager.AddStudent jack
             
@@ -681,7 +741,7 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
             
-            Expect.isOk assignTeacher "should be error"
+            Expect.isOk assignTeacher "should be Ok"
             
     ]
     |> testSequenced

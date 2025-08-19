@@ -104,5 +104,8 @@ module StudentConsumer =
             fallBackAggregateStateRetriever <- None
             
         override this.ExecuteAsync cancellationToken =
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+            
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 
         

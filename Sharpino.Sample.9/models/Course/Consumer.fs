@@ -117,3 +117,6 @@ module CourseConsumer =
         
         override this.ExecuteAsync (cancellationToken) =
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
+            
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 

@@ -117,7 +117,7 @@ let messageSender =
         let sender = aggregateMessageSenders.TryGetValue(queueName)
         match sender with
         | true, sender -> sender
-        | _ -> failwith "not found azz"
+        | _ -> failwith "not found XX"
 
 let pgRabbitMqTransportTycoon = TransportTycoon (eventStorePg, messageSender, rabbitMqTransportStateViewer, rabbitMqTruckStateViewer)
 

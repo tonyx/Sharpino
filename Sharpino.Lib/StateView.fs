@@ -45,7 +45,7 @@ module StateView =
                                 logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
                                 Error (sprintf "deserialization error for snapshot %A" snapshot')
                         | None ->
-                            Error "not found"
+                            Error (sprintf "snapshot not found %A" aggregateId)
                     return result
                 }, Commons.generalAsyncTimeOut)
    
