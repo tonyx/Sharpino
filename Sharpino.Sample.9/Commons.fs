@@ -4,6 +4,7 @@ open System
 open Sharpino
 open Sharpino.Cache
 open Sharpino.Core
+open Sharpino.RabbitMq
 open Sharpino.Sample._9
 open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.BalanceConsumer
@@ -65,6 +66,7 @@ module Common =
     let hostBuilder =
         Host.CreateDefaultBuilder()
             .ConfigureServices(fun (services: IServiceCollection) ->
+                services.AddSingleton<RabbitMqReceiver>() |> ignore 
                 services.AddHostedService<ItemConsumer>() |> ignore
                 services.AddHostedService<ReservationConsumer>() |> ignore
                 

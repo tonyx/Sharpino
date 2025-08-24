@@ -11,11 +11,13 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
+open Sharpino.RabbitMq
 open ShoppingCartBinary
+open ShoppingCartBinary.Good
 open ShoppingCartBinary.GoodEvents
 
 module GoodConsumer =
-    type GoodConsumer (sp: IServiceProvider, logger: ILogger<GoodConsumer>) =
+    type GoodConsumer (sp: IServiceProvider, logger: ILogger<GoodConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -41,55 +43,6 @@ module GoodConsumer =
         
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Good.Good>>  =
             None
-      
-        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            let retriever = fallBackAggregateStateRetriever
-            match retriever with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
-                | Result.Error e ->
-                    logger.LogError ("Error retrieving aggregate state: {e}", e)
-            | None ->
-                logger.LogError ("No fallback aggregate state retriever set") 
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    task {
-                        let body = ea.Body.ToArray()
-                        let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Good.Good, GoodEvents>> message
-                        match deserializedMessage with
-                        | Ok message ->
-                            let aggregateId = message.AggregateId
-                            match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
-                                ()
-                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
-                                    let currentState = statePerAggregate.[aggregateId] |> snd
-                                    let newState = evolve currentState events
-                                    if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                    else
-                                        let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
-                                        resyncWithFallbackAggregateStateRetriever aggregateId
-                                else
-                                    resyncWithFallbackAggregateStateRetriever aggregateId
-                            | { Message = MessageType.Delete } ->
-                                if (statePerAggregate.ContainsKey aggregateId) then
-                                    statePerAggregate.TryRemove aggregateId  |> ignore
-                                else
-                                    logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-                        | Error e ->
-                            logger.LogError ("Error deserializing message: {e}", e)            
-                        return ()
-                   }
-                )
           
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer 
@@ -102,39 +55,9 @@ module GoodConsumer =
                 Result.Error "No state"
                 
         override this.ExecuteAsync (stoppingToken) =
-            // let consumer =  AsyncEventingBasicConsumer channel
-            // consumer.add_ReceivedAsync
-            //     (fun _ ea ->
-            //         task {
-            //             let body = ea.Body.ToArray()
-            //             let message = Encoding.UTF8.GetString(body)
-            //             logger.LogDebug ("Received {message}", message)
-            //             let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Good.Good, GoodEvents>> message
-            //             match deserializedMessage with
-            //             | Ok message ->
-            //                 let aggregateId = message.AggregateId
-            //                 match message with
-            //                 | { Message = InitialSnapshot good } ->
-            //                     statePerAggregate.[aggregateId] <- (0, good)
-            //                     ()
-            //                 | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-            //                     if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
-            //                         let currentState = statePerAggregate.[aggregateId] |> snd
-            //                         let newState = evolve currentState events
-            //                         if newState.IsOk then
-            //                             statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-            //                         else
-            //                             let (Error e) = newState
-            //                             logger.LogError ("error {e}", e)
-            //                             ()
-            //                     else
-            //                         logger.LogError ("no previous state exists for aggregate id {aggregateId}", aggregateId)
-            //                         ()
-            //                 | { Message = Message.Delete } ->
-            //                     if (statePerAggregate.ContainsKey aggregateId) then
-            //                         statePerAggregate.TryRemove aggregateId  |> ignore
-            //                     else
-            //                         logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-            //             return ()
-            //        })
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Good, GoodEvents, byte[]> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    

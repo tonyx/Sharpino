@@ -12,11 +12,12 @@ open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
 
+open Sharpino.RabbitMq
 open Sharpino.Sample._9.Student
 open Sharpino.Sample._9.StudentEvents
 
 module StudentConsumer =
-    type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>) =
+    type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -57,38 +58,8 @@ module StudentConsumer =
         
         do
             consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    task {
-                        let body = ea.Body.ToArray()
-                        let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Student.Student, StudentEvents>.Deserialize message
-                        match deserializedMessage with
-                        | Ok message ->
-                            let aggregateId = message.AggregateId
-                            match message with
-                            | {Message = InitialSnapshot student} ->
-                                statePerAggregate.[message.AggregateId] <- (0, student)
-                            | {Message = MessageType.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
-                                let currentEventId = statePerAggregate.[message.AggregateId] |> fst
-                                if currentEventId = eventId || currentEventId = 0 then
-                                    let currentState = statePerAggregate.[message.AggregateId] |> snd
-                                    let newState = evolve currentState events
-                                    if newState.IsOk then
-                                        statePerAggregate.[message.AggregateId] <- (endEventId, newState.OkValue)
-                                    else
-                                        let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
-                                        resyncWithAggregateStateRetriever message.AggregateId
-                                else
-                                    resyncWithAggregateStateRetriever message.AggregateId
-                            | {Message = MessageType.Delete} when statePerAggregate.ContainsKey message.AggregateId ->
-                                statePerAggregate.TryRemove message.AggregateId  |> ignore
-                            | {Message = MessageType.Delete}  ->
-                                logger.LogError ("deleting an unexisting aggregate: {aggregateId}", message.AggregateId)
-                        | Error e ->
-                            logger.LogError ("error {e}", e)
-                    }
+                ( fun _ ea ->
+                    rb.BuildReceiver<Student, StudentEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
                 )
         
         member this.GetAggregateState (id: AggregateId) =

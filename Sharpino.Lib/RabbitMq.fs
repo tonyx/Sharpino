@@ -59,42 +59,42 @@ module RabbitMq =
                     )
             return aggregateMessageSender
        }
-    
-    let resyncWithFallBackAggregateStateRetriever
-        (optStateViewer: Option<AggregateViewer<'A>>)
-        (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
-        (aggregateId: AggregateId)
-        =
-            match optStateViewer with
-            | Some viewer ->
-                let tryState = viewer aggregateId
-                match tryState with
-                | Ok (eventId, state) -> statesPerAggregate.[aggregateId] <- (eventId, state)
-            | None ->
-                // logerror
-                ()
             
     type RabbitMqReceiver (logger: ILogger<RabbitMqReceiver>) =
+        
+        member private this.ResyncWithFallbackAggregateStateRetriever
+            (optStateViewer: Option<AggregateViewer<'A>>)
+            (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
+            (aggregateId: AggregateId)
+            =
+                match optStateViewer with
+                | Some viewer ->
+                    let tryState = viewer aggregateId
+                    match tryState with
+                    | Ok (eventId, state) -> statesPerAggregate.[aggregateId] <- (eventId, state)
+                    | Error e ->
+                        logger.LogError ("Error: {e}", e)
+                | None ->
+                    // logerror
+                    ()
+        
         member this.BuildReceiver<'A, 'E, 'F
             when 'E :> Event<'A> and
             'A :> Aggregate<'F>>
             (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
             (optAggregateStateViewer: Option<AggregateViewer<'A>>)
             (ea: BasicDeliverEventArgs) =
-              task {
-                let body = ea.Body.ToArray()
-                let message = Encoding.UTF8.GetString(body)
-                logger.LogDebug ("Received {message}")
-                let deserializedMessage = AggregateMessage<'A, 'E>.Deserialize message
-                match deserializedMessage with
-                | Ok message ->
-                    let aggregateId = message.AggregateId
-                    match message with
-                    | { Message = InitialSnapshot good } ->
+                task {
+                    let body = ea.Body.ToArray()
+                    let message = Encoding.UTF8.GetString(body)
+                    logger.LogDebug $"Received {message}"
+                    let deserializedMessage = AggregateMessage<'A, 'E>.Deserialize message
+                    match deserializedMessage with
+                    | Ok { Message = InitialSnapshot good; AggregateId = aggregateId } ->
                         statesPerAggregate.[aggregateId] <- (0, good)
                         ()
-                    | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                        if (statesPerAggregate.ContainsKey aggregateId && (statesPerAggregate.[aggregateId] |> fst = eventId || statesPerAggregate.[aggregateId] |> fst = 0)) then
+                    | Ok { Message = MessageType.Events { InitEventId = initEventId; EndEventId = endEventId; Events = events  }; AggregateId = aggregateId }
+                        when (statesPerAggregate.ContainsKey aggregateId && (statesPerAggregate.[aggregateId] |> fst = initEventId || statesPerAggregate.[aggregateId] |> fst = 0)) ->
                             let currentState = statesPerAggregate.[aggregateId] |> snd
                             let newState = evolve currentState events
                             if newState.IsOk then
@@ -102,19 +102,18 @@ module RabbitMq =
                             else
                                 let (Error e) = newState
                                 logger.LogError ("error {e}", e)
-                                resyncWithFallBackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
-                        else
-                            resyncWithFallBackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
-                    | { Message = MessageType.Delete } when statesPerAggregate.ContainsKey aggregateId ->
-                        statesPerAggregate.TryRemove aggregateId  |> ignore
-                    | { Message = MessageType.Delete }  ->
+                                this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
+                    | Ok { Message = MessageType.Events {InitEventId = initEventId; EndEventId = endEventId}; AggregateId = aggregateId } ->
+                        logger.LogError ("events disalignments for aggregate: {aggregateId}", aggregateId)
+                        this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
+                    | Ok { Message = MessageType.Delete; AggregateId = aggregateId } when statesPerAggregate.ContainsKey aggregateId ->
+                            statesPerAggregate.TryRemove aggregateId  |> ignore
+                    | Ok { Message = MessageType.Delete; AggregateId = aggregateId }  ->
                         logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-                        ()
-                | Error e ->
-                    logger.LogError ("Error: {e}", e)
-                    ()
-                return ()
-             }
+                    | Error e ->
+                        logger.LogError ("Error: {e}", e)
+                    return ()
+               }
                 
     
             

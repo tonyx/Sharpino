@@ -1,5 +1,6 @@
 module Sharpino.TransportTycoon.Truck
 
+open Sharpino.RabbitMq
 open Sharpino.TransportTycoon.Transporter
 open Sharpino.TransportTycoon.TruckEvents
 open System
@@ -15,7 +16,7 @@ open Sharpino.EventBroker
 open Sharpino.Core
 
 module Consumer =
-    type TransporterConsumer(sp: IServiceProvider, logger: ILogger<TransporterConsumer>) =
+    type TransporterConsumer(sp: IServiceProvider, logger: ILogger<TransporterConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService ()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -52,38 +53,8 @@ module Consumer =
         do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
-                    task {
-                        let body = ea.Body.ToArray()
-                        let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Transporter, TruckEvents>.Deserialize message
-                        match deserializedMessage with
-                        | Ok message ->
-                            let aggregateId = message.AggregateId
-                            match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
-                                ()
-                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
-                                    let currentState = statePerAggregate.[aggregateId] |> snd
-                                    let newState = evolve currentState events
-                                    if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                    else
-                                        let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
-                                        resyncWithFallbackAggregateStateRetriever aggregateId
-                                else
-                                    resyncWithFallbackAggregateStateRetriever aggregateId
-                            | { Message = MessageType.Delete } when statePerAggregate.ContainsKey aggregateId ->
-                                statePerAggregate.TryRemove aggregateId  |> ignore
-                            | { Message = MessageType.Delete } ->
-                                logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-                        | Error e ->
-                            logger.LogError ("error {e}", e)
-                    })  
-            
+                    rb.BuildReceiver<Transporter, TruckEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
             
         member this.SetFallbackAggregateStateRetriever (retriever: AggregateViewer<Transporter>) =
             fallBackAggregateStateRetriever <- Some retriever

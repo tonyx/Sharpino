@@ -11,12 +11,14 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
+open Sharpino.RabbitMq
 open ShoppingCartBinary
+open ShoppingCartBinary.Cart
 open ShoppingCartBinary.CartEvents
 
 
 module CartConsumer =
-    type CartConsumer(sp: IServiceProvider, logger: ILogger<CartConsumer>) =
+    type CartConsumer(sp: IServiceProvider, logger: ILogger<CartConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -38,58 +40,8 @@ module CartConsumer =
             
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Cart.Cart>()
-       
-        let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            match fallBackAggregateStateRetriever  with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
-                    ()
-                | Result.Error e ->
-                    logger.LogError ("error {e}", e)
-                    ()
          
         let consumer =  AsyncEventingBasicConsumer channel
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    task {
-                        let body = ea.Body.ToArray()
-                        let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Cart.Cart, CartEvents>> message
-                        match deserializedMessage with
-                        | Ok message ->
-                            let aggregateId = message.AggregateId
-                            match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
-                                ()
-                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                if (statePerAggregate.ContainsKey aggregateId && statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0) then
-                                    let currentState = statePerAggregate.[aggregateId] |> snd
-                                    let newState = evolve currentState events
-                                    if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                    else
-                                        let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
-                                        resyncWithFallbackAggregateStateRetriever aggregateId
-                                        
-                                else
-                                    resyncWithFallbackAggregateStateRetriever aggregateId
-                                
-                            | { Message = MessageType.Delete } ->
-                                if (statePerAggregate.ContainsKey aggregateId) then
-                                    statePerAggregate.TryRemove aggregateId  |> ignore
-                                else 
-                                    logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)    
-                                ()
-                        | Error e ->
-                            logger.LogError ("error {e}", e)         
-                        return ()
-                   })
             
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
@@ -99,4 +51,8 @@ module CartConsumer =
                 Result.Error "No state"
                 
         override this.ExecuteAsync (stoppingToken) =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Cart, CartEvents, byte[]> statePerAggregate fallBackAggregateStateRetriever ea
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    

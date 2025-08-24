@@ -11,11 +11,12 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
+open Sharpino.RabbitMq
 open Sharpino.Sample._9.Balance
 open Sharpino.Sample._9.BalanceEvents
 
 module BalanceConsumer =
-    type BalanceConsumer(sp: IServiceProvider, logger: ILogger<BalanceConsumer>) =
+    type BalanceConsumer(sp: IServiceProvider, logger: ILogger<BalanceConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -54,39 +55,8 @@ module BalanceConsumer =
         
         do
             consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    task {
-                        let body = ea.Body.ToArray()
-                        let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("ReceivedX {message}", message)
-                        let deserializedMessage = AggregateMessage<Balance, BalanceEvents>.Deserialize message
-                        match deserializedMessage with
-                        | Ok message ->
-                            let aggregateId = message.AggregateId
-                            match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
-                                ()
-                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                                if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
-                                    let currentState = statePerAggregate.[aggregateId] |> snd
-                                    let newState = evolve currentState events
-                                    if newState.IsOk then
-                                        statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                    else
-                                        let (Error e) = newState
-                                        logger.LogError ("error {e}", e)
-                                        resyncWithFallbackAggregateStateRetriever aggregateId
-                                else
-                                    resyncWithFallbackAggregateStateRetriever aggregateId
-                            | { Message = MessageType.Delete } when statePerAggregate.ContainsKey aggregateId ->
-                                statePerAggregate.TryRemove aggregateId  |> ignore
-                            | { Message = MessageType.Delete }  ->
-                                logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-                        | Error e ->
-                            logger.LogError ("Error: {e}", e)            
-                        return ()
-                   }
+                ( fun _ ea ->
+                    rb.BuildReceiver<Balance, BalanceEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
                 )
         
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Balance.Balance>) =
@@ -94,18 +64,6 @@ module BalanceConsumer =
             
         member this.ResetFallbackAggregateStateRetriever () =
             fallBackAggregateStateRetriever <- None    
-        
-        member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            let retriever = fallBackAggregateStateRetriever
-            match retriever with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
-                | Result.Error e ->
-                    logger.LogError ("Error: {e}", e)
-            | None ->
-                logger.LogError "no fallback aggregate state retriever set"
             
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
