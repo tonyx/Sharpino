@@ -4,6 +4,7 @@ open System
 open System.Threading.Tasks
 
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open Sharpino
 open Sharpino.EventBroker
 
@@ -67,10 +68,12 @@ let connection =
 let memoryStorage: IEventStore<_> = new MemoryStorage()
 let dbEventStore:IEventStore<string> = PgEventStore(connection)
 
-#if RABBITMQ
+// #if RABBITMQ
 let (hostBuilder: IHostBuilder) =
     Host.CreateDefaultBuilder()
         .ConfigureServices  (fun (services: IServiceCollection) ->
+            services.AddSingleton<RabbitMqReceiver>() |> ignore
+
             services.AddHostedService<BookingConsumer>() |> ignore
             services.AddHostedService<VoucherConsumer>() |> ignore
             services.AddHostedService<RowsConsumer>() |> ignore
@@ -115,7 +118,8 @@ let messageSenders =
         | true, sender -> sender
         | false, _ -> failwith (sprintf "queue not found: %s" queueName)
 
-#endif
+
+// #endif
 
 let theaterContextViewer = getStorageFreshStateViewer<Theater, TheaterEvents, string> memoryStorage
 
@@ -146,7 +150,6 @@ let theaterContextdbViewer = getStorageFreshStateViewer<Theater, TheaterEvents, 
 let rowsAggregatedbViewer = getAggregateStorageFreshStateViewer<Row, RowEvents, string> dbEventStore
 let bookingsAggregatedbViewer =  getAggregateStorageFreshStateViewer<Booking, BookingEvents, string> dbEventStore
 let vouchersAggregatedbViewer =  getAggregateStorageFreshStateViewer<Voucher, VoucherEvents, string> dbEventStore
-
 
 // put the password of db user safe in the .env file
 // in the format

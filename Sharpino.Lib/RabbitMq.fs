@@ -4,6 +4,7 @@ open System
 open System.Collections.Concurrent
 open FsToolkit.ErrorHandling
 open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.EventBroker
@@ -28,7 +29,6 @@ module RabbitMq =
         with
         | _ as ex ->
             ex |> Error
-            
         
     let mkSimpleChannel(factory: ConnectionFactory, streamName: string): TaskResult<IChannel, exn> =
         taskResult
@@ -73,19 +73,18 @@ module RabbitMq =
             | None ->
                 // logerror
                 ()
-     
-    let buildReceiver<'A, 'E, 'F
-        when 'E :> Event<'A> and
-        'A :> Aggregate<'F>>
-        (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
-        (optAggregateStateViewer: Option<AggregateViewer<'A>>)
-        (ea: BasicDeliverEventArgs) 
-        
-        =
-            task {
+            
+    type RabbitMqReceiver (logger: ILogger<RabbitMqReceiver>) =
+        member this.BuildReceiver<'A, 'E, 'F
+            when 'E :> Event<'A> and
+            'A :> Aggregate<'F>>
+            (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
+            (optAggregateStateViewer: Option<AggregateViewer<'A>>)
+            (ea: BasicDeliverEventArgs) =
+              task {
                 let body = ea.Body.ToArray()
                 let message = Encoding.UTF8.GetString(body)
-                // logger.LogDebug ("ReceivedX {message}", message)
+                logger.LogDebug ("Received {message}")
                 let deserializedMessage = AggregateMessage<'A, 'E>.Deserialize message
                 match deserializedMessage with
                 | Ok message ->
@@ -102,20 +101,22 @@ module RabbitMq =
                                 statesPerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
                             else
                                 let (Error e) = newState
-                                // logger.LogError ("error {e}", e)
+                                logger.LogError ("error {e}", e)
                                 resyncWithFallBackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
                         else
                             resyncWithFallBackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
                     | { Message = MessageType.Delete } when statesPerAggregate.ContainsKey aggregateId ->
                         statesPerAggregate.TryRemove aggregateId  |> ignore
                     | { Message = MessageType.Delete }  ->
-                        // logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
+                        logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         ()
                 | Error e ->
-                    // logger.LogError ("Error: {e}", e)
+                    logger.LogError ("Error: {e}", e)
                     ()
                 return ()
-           }
+             }
+                
+    
             
         
         

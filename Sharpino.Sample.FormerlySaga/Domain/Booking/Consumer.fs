@@ -17,7 +17,7 @@ open Sharpino.Sample.Saga.Domain.Booking.Booking
 open Sharpino.Sample.Saga.Domain.Booking.Events
 
 module BookingConsumer =
-    type BookingConsumer(sp: IServiceProvider, logger: ILogger<BookingConsumer>) =
+    type BookingConsumer(sp: IServiceProvider, logger: ILogger<BookingConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -51,55 +51,11 @@ module BookingConsumer =
        
         let consumer = AsyncEventingBasicConsumer channel
        
-        let receiver =
-            buildReceiver<Booking, BookingEvents, string>
-                statePerAggregate
-                fallBackAggregateStateRetriever
-        
         do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
-                    buildReceiver<Booking, BookingEvents, string>
-                        statePerAggregate
-                        fallBackAggregateStateRetriever
-                        ea
+                    rb.BuildReceiver<Booking, BookingEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
                 )
-                
-                
-                // (fun _ ea ->
-                //     task {
-                //         let body = ea.Body.ToArray()
-                //         let message = Encoding.UTF8.GetString(body)
-                //         logger.LogDebug ("ReceivedX {message}", message)
-                //         let deserializedMessage = AggregateMessage<Booking, BookingEvents>.Deserialize message
-                //         match deserializedMessage with
-                //         | Ok message ->
-                //             let aggregateId = message.AggregateId
-                //             match message with
-                //             | { Message = InitialSnapshot good } ->
-                //                 statePerAggregate.[aggregateId] <- (0, good)
-                //                 ()
-                //             | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
-                //                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
-                //                     let currentState = statePerAggregate.[aggregateId] |> snd
-                //                     let newState = evolve currentState events
-                //                     if newState.IsOk then
-                //                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                //                     else
-                //                         let (Error e) = newState
-                //                         logger.LogError ("error {e}", e)
-                //                         resyncWithFallbackAggregateStateRetriever aggregateId
-                //                 else
-                //                     resyncWithFallbackAggregateStateRetriever aggregateId
-                //             | { Message = MessageType.Delete } when statePerAggregate.ContainsKey aggregateId ->
-                //                 statePerAggregate.TryRemove aggregateId  |> ignore
-                //             | { Message = MessageType.Delete }  ->
-                //                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
-                //         | Error e ->
-                //             logger.LogError ("Error: {e}", e)            
-                //         return ()
-                //    }
-                // )
         
         member this.SetFallbackAggregateStateRetriever retriever =
             fallBackAggregateStateRetriever <- Some retriever
