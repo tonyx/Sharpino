@@ -100,7 +100,7 @@ let setupPgEventStore () =
     setUp eventStore
     ()
         
-let emptyMessageSender =
+let emptyMessageSenders =
     fun queueName ->
         fun message ->
             ValueTask.CompletedTask
@@ -117,9 +117,10 @@ let doNothingBroker: IEventBroker<byte[]> =
 let marketInstances =
     [
           #if RABBITMQ 
-            Supermarket(eventStore, messageSenders, goodsContainerViewer, rabbitMqGoodsStateViewer, rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, rabbitMqGoodsStateViewer, eventStore:> IEventStore<byte[]>, messageSenders, 500
+            Supermarket(eventStore, messageSenders, goodsContainerViewer, rabbitMqGoodsStateViewer, rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, rabbitMqGoodsStateViewer, eventStore:> IEventStore<byte[]>, messageSenders, 100
           #else   
-            Supermarket(eventStore, emptyMessageSender, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>, emptyMessageSender, 0
+            Supermarket(eventStore, emptyMessageSenders, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>,
+                                                                                                                                                                  emptyMessageSenders, 0
           #endif  
     ]
    

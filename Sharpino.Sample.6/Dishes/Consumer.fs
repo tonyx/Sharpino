@@ -64,7 +64,7 @@ module DishConsumer =
                             | { Message = InitialSnapshot good } ->
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 ()
-                            | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
+                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
@@ -87,7 +87,7 @@ module DishConsumer =
                                 else
                                     logger.LogError ("no state for aggregateId {aggregateId}", aggregateId)
                                     () 
-                            | { Message = Message.Delete } ->
+                            | { Message = MessageType.Delete } ->
                                 if (statePerAggregate.ContainsKey aggregateId) then
                                     statePerAggregate.TryRemove aggregateId |> ignore
                                 else

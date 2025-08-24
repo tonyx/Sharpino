@@ -68,7 +68,7 @@ module TeacherConsumer =
                             match message with
                             | {Message = InitialSnapshot reservation} ->
                                 statePerAggregate.[aggregateId] <- (0, reservation)
-                            | {Message = Message.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
+                            | {Message = MessageType.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
@@ -83,9 +83,9 @@ module TeacherConsumer =
                                 else
                                     resyncFallbackAggregateStateRetriever aggregateId
                                     ()
-                            | {Message = Message.Delete} when statePerAggregate.ContainsKey aggregateId ->
+                            | {Message = MessageType.Delete} when statePerAggregate.ContainsKey aggregateId ->
                                 statePerAggregate.TryRemove aggregateId  |> ignore
-                            | {Message = Message.Delete}  ->
+                            | {Message = MessageType.Delete}  ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         | Error e ->
                             logger.LogError ("Error: {e}", e)

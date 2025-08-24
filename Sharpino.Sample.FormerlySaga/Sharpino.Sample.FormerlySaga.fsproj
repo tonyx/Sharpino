@@ -13,25 +13,27 @@
       <Compile Include="Domain/Rows/Row.fs" />
       <Compile Include="Domain/Rows/Events.fs" />
       <Compile Include="Domain/Rows/Commands.fs" />
+      <Compile Include="Domain/Rows/Consumer.fs" />
       <Compile Include="Domain/Booking/Booking.fs" />
       <Compile Include="Domain/Booking/Events.fs" />
       <Compile Include="Domain/Booking/Commands.fs" />
-      <Compile Include="Domain\Voucher\Voucher.fs" />
-      <Compile Include="Domain\Voucher\Events.fs" />
-      <Compile Include="Domain\Voucher\Commands.fs" />
+      <Compile Include="Domain/Booking/Consumer.fs" />
+      <Compile Include="Domain/Voucher/Voucher.fs" />
+      <Compile Include="Domain/Voucher/Events.fs" />
+      <Compile Include="Domain/Voucher/Commands.fs" />
+      <Compile Include="Domain/Voucher/Consumer.fs" />
       <Compile Include="Context/Theater.fs" />
       <Compile Include="Context/Events.fs" />
       <Compile Include="Context/Commands.fs" />
       <Compile Include="Api/SeatBooking.fs" />
     </ItemGroup>
     
-    
 <!--    <ItemGroup>-->
 <!--      <PackageReference Include="Sharpino" Version="3.0.0" />-->
 <!--    </ItemGroup>-->
     
     <ItemGroup>
-      <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+      <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
     </ItemGroup>
 
 </Project>

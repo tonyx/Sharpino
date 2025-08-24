@@ -17,7 +17,7 @@ module EventBroker =
         }
  
     type StreamName = string 
-    type Message<'A, 'E> =
+    type MessageType<'A, 'E> =
         | InitialSnapshot of 'A
         | Delete
         | Events of EventsMessage<'E>
@@ -25,7 +25,7 @@ module EventBroker =
     type AggregateMessage<'A, 'E> =
         {
             AggregateId: AggregateId
-            Message: Message<'A, 'E>
+            Message: MessageType<'A, 'E>
         }
         with
             member this.Serialize =

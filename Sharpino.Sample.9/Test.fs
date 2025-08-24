@@ -18,7 +18,6 @@ open Sharpino.TestUtils
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open ShoppingCart.Good
 
 let pgStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore
 let memoryStorageItemViewer = getAggregateStorageFreshStateViewer<Item, ItemEvent, string> memEventStore
@@ -68,7 +67,7 @@ let messageSenders =
 let instances =
     [
         #if RABBITMQ
-            (fun () -> setUp pgEventStore),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 500
+            (fun () -> setUp pgEventStore),  ItemManager(pgEventStore, rabbitMqItemStateViewer, rabbitMqReservationStateViewer, messageSenders), 100
         #else
             (fun () -> setUp(pgEventStore)), ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer), 0
             (fun () -> setUp(memEventStore)),  ItemManager(memEventStore, memoryStorageItemViewer, memoryStorageReservationViewer), 0

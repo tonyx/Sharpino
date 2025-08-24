@@ -21,6 +21,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+    <ProjectReference Include="..\Sharpino.Sample.3\Sharpino.Sample.3.fsproj" />
     <ProjectReference Include="..\Sharpino.Sample.FormerlySaga\Sharpino.Sample.FormerlySaga.fsproj" />
+  </ItemGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="appSettings.json" />
   </ItemGroup>
 </Project>

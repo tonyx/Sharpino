@@ -339,6 +339,21 @@ module CommandHandler =
                     StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
                     let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> storage newState (ids |> List.last)
                     AggregateCache2.Instance.Memoize2 (initialInstance |> box |> Ok) (ids |> List.last, initialInstance.Id)
+                    
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    let sender = messageSender queueName
+                    let message =
+                        MessageType<'A1, 'E1>.InitialSnapshot initialInstance
+                    let aggregateMessage =
+                        {
+                            AggregateId = initialInstance.Id
+                            Message = message
+                        }.Serialize
+                    let sent =
+                        task {
+                            return! sender aggregateMessage
+                        }    
+                    
                     return ()
                 }
         #if USING_MAILBOXPROCESSOR        
@@ -372,7 +387,7 @@ module CommandHandler =
                 let queueName = 'A1.Version + 'A1.StorageName 
                 let sender = messageSender queueName // todo: check not found also
                 let message =
-                    Message<'A1, 'E>.InitialSnapshot initialInstance
+                    MessageType<'A1, 'E>.InitialSnapshot initialInstance
                 let aggregateMessage =
                     {
                         AggregateId = initialInstance.Id
@@ -419,7 +434,7 @@ module CommandHandler =
                 
                 let sender = messageSender queueName // todo: check not found also
                 let message =
-                    Message<'A1, 'E>.Delete
+                    MessageType<'A1, 'E>.Delete
                 let aggregateMessage =
                     {
                         AggregateId = id
@@ -496,7 +511,7 @@ module CommandHandler =
                 let aggregateDeleteMessage =
                     {
                         AggregateId = id
-                        Message = Message<'A1, 'E1>.Delete
+                        Message = MessageType<'A1, 'E1>.Delete
                     }.Serialize
                     
                 let deleteMessageSender = messageSenders ('A1.Version + 'A1.StorageName)
@@ -515,7 +530,7 @@ module CommandHandler =
                 let aggregateMessageA2 =
                     {
                         AggregateId = streamAggregateId
-                        Message = Message<'A2, 'E2>.Events eventMessageA2
+                        Message = MessageType<'A2, 'E2>.Events eventMessageA2
                     }.Serialize
                 let senderA2 = messageSenders ('A2.Version + 'A2.StorageName)
                 let sentAggregateMessageA2 =
@@ -780,7 +795,7 @@ module CommandHandler =
                     let aggregateDeleteMessage =
                         {
                             AggregateId = aggregateId
-                            Message = Message<'A, 'E>.Delete
+                            Message = MessageType<'A, 'E>.Delete
                         }.Serialize
                  
                     let deleteMessageSender = messageSenders ('A.Version + 'A.StorageName)
@@ -823,7 +838,7 @@ module CommandHandler =
                         |>> fun (id, message) ->
                             {
                                 AggregateId = id
-                                Message = Message<'A1, 'E1>.Events message
+                                Message = MessageType<'A1, 'E1>.Events message
                             }.Serialize
                     
                     let senderA1 = messageSenders ('A1.Version + 'A1.StorageName)
@@ -856,7 +871,7 @@ module CommandHandler =
                         |>> fun (id, message) ->
                             {
                                 AggregateId = id
-                                Message = Message<'A2, 'E2>.Events message
+                                Message = MessageType<'A2, 'E2>.Events message
                             }.Serialize
                     
                     let senderA2 = messageSenders ('A2.Version + 'A2.StorageName)
@@ -951,7 +966,7 @@ module CommandHandler =
                     let eventsMessageSenderA1 = messageSenders ('A1.Version + 'A1.StorageName)
                     
                     let snapshotMessage =
-                        Message<'A2, 'E2>.InitialSnapshot initialInstance // (initialInstance |> unbox)
+                        MessageType<'A2, 'E2>.InitialSnapshot initialInstance // (initialInstance |> unbox)
                     
                     let aggregateMessage =
                         {
@@ -973,7 +988,7 @@ module CommandHandler =
                     let packedEventMessage =
                         {
                             AggregateId = aggregateId
-                            Message = Message<'A1, 'E1>.Events eventMessage
+                            Message = MessageType<'A1, 'E1>.Events eventMessage
                         }.Serialize
                     
                     let sentEvent =
@@ -1057,7 +1072,7 @@ module CommandHandler =
                     let snapshotStreamName = sprintf "%s%s" 'A2.Version 'A2.StorageName
                     let snapshotMessageSender = messageSenders snapshotStreamName
                     let snapshotMessage =
-                        Message<'A2, 'E2>.InitialSnapshot initialInstance
+                        MessageType<'A2, 'E2>.InitialSnapshot initialInstance
                     
                     let aggregateMessage =
                         {
@@ -1090,7 +1105,7 @@ module CommandHandler =
                         |>> (fun (id, eventsMessage) ->
                                 {
                                     AggregateId = id
-                                    Message = Message.Events eventsMessage
+                                    Message = MessageType.Events eventsMessage
                                 }.Serialize
                             )
                     
@@ -1452,8 +1467,7 @@ module CommandHandler =
                 let sender = messageSender queueName
                 
                 let message =
-                    // Message<'A, 'E>.Events (eventId, events)
-                    Message<'A, 'E>.Events {InitEventId = eventId; EndEventId = ids |> List.last; Events = events}
+                    MessageType<'A, 'E>.Events {InitEventId = eventId; EndEventId = ids |> List.last; Events = events}
                 let aggregateMessage =
                     {
                         AggregateId = aggregateId
@@ -1546,7 +1560,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: StreamName -> MessageSender) 
+        (messageSenders: StreamName -> MessageSender) 
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
@@ -1609,6 +1623,24 @@ module CommandHandler =
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (dbEventIds.[i] |> List.last, uniqueAggregateIds.[i])
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds.[i] newStates.[i] (dbEventIds.[i] |> List.last) |> ignore
                         
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    let sender = messageSenders queueName
+                    
+                    let aggregateIdsAndEvents =
+                        List.zip uniqueAggregateIds newEvents
+                    
+                    let aggregateMessages =
+                        List.zip3 initialStatesEventIds aggregateIdsAndEvents dbEventIds
+                        |>> fun (currentStateEventId, (aggregateId, events), dbEventIds) ->
+                            {
+                                AggregateId = aggregateId
+                                Message = MessageType<'A1, 'E1>.Events { InitEventId = currentStateEventId; EndEventId = dbEventIds |> List.last; Events = events  }
+                            }.Serialize
+                   
+                    let sending =
+                        aggregateMessages
+                        |> List.iter (fun x -> sender x |> ignore)
+                        
                     return ()    
                 }
             
@@ -1650,7 +1682,7 @@ module CommandHandler =
         >
         (aggregateIds: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: StramName -> MessageSender)
+        (messageSenders: StramName -> MessageSender)
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
@@ -1689,12 +1721,32 @@ module CommandHandler =
                     let currentStateEventIdEventsAndAggregateIds =
                         List.zip3 lastEventIds serializedEvents aggregateIds
                         |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
-                    let! eventIds =
+                    let! storedEventIds =
                         eventStore.MultiAddAggregateEventsMd md currentStateEventIdEventsAndAggregateIds
                     
                     for i in 0..(aggregateIds.Length - 1) do
-                        AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (eventIds.[i] |> List.last, aggregateIds.[i])
-                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                        AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (storedEventIds.[i] |> List.last, aggregateIds.[i])
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (storedEventIds.[i] |> List.last) |> ignore
+                        
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    let sender = messageSenders queueName
+                    
+                    let aggregateIdsAndEvents =
+                        List.zip aggregateIds events
+                   
+                    let aggregateMessages =
+                        List.zip3 lastEventIds aggregateIdsAndEvents storedEventIds
+                        |> List.map (fun (eventId, (aggregateId, events), storedEventIds) ->
+                            {
+                                AggregateId = aggregateId
+                                Message = MessageType<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events}
+                                
+                            }.Serialize
+                        )
+                        
+                    let sending =
+                        aggregateMessages
+                        |> List.iter (fun x -> sender x |> ignore) 
                         
                     return ()    
                 }
@@ -1778,14 +1830,14 @@ module CommandHandler =
                 let senderA2 = messageSender queueNameA2
                 
                 let messageA1 =
-                    Message<'A1, 'E1>.Events
+                    MessageType<'A1, 'E1>.Events
                         {
                             InitEventId = firstExecutedCommand.EventId
                             EndEventId = ids.[0] |> List.last
                             Events = eventsA1
                         }
                 let messageA2 =
-                    Message<'A2, 'E2>.Events
+                    MessageType<'A2, 'E2>.Events
                         {
                             InitEventId = secondExecutedCommand.EventId
                             EndEventId = ids.[1] |> List.last
@@ -1972,14 +2024,14 @@ module CommandHandler =
                     let queueA1 = 'A1.Version + 'A1.StorageName
                     let queueA2 = 'A2.Version + 'A2.StorageName
                     let messageA1 =
-                        Message<'A1, 'E1>.Events
+                        MessageType<'A1, 'E1>.Events
                             {
                                 InitEventId = eventId1
                                 EndEventId = newLastStateIdsList.[0] |> List.last
                                 Events = events1
                             }
                     let messageA2 =
-                        Message<'A2, 'E2>.Events
+                        MessageType<'A2, 'E2>.Events
                             {
                                 InitEventId = eventId2
                                 EndEventId = newLastStateIdsList.[1] |> List.last
@@ -2204,7 +2256,7 @@ module CommandHandler =
                             (fun (eventId, (state, events), storedEventIds) ->
                                 {
                                     AggregateId = state.Id
-                                    Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last
+                                    Message = MessageType<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last
                                 }.Serialize
                             
                             )
@@ -2215,7 +2267,7 @@ module CommandHandler =
                             (fun (eventId, (state, events), storedEventIds) ->
                                 {
                                     AggregateId = state.Id
-                                    Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last
+                                    Message = MessageType<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last
                                 }.Serialize
                             )
                     
@@ -2413,7 +2465,7 @@ module CommandHandler =
                                (fun (eventId, (state, events), storedEventIds) ->
                                     {
                                         AggregateId = state.Id
-                                        Message = Message<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last 
+                                        Message = MessageType<'A1, 'E1>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // EndEventId should be the last like eventIds1'.[i] |> List.last 
                                     }.Serialize
                                )
                         
@@ -2423,7 +2475,7 @@ module CommandHandler =
                                (fun (eventId, (state, events), storedEventIds) ->
                                     {
                                         AggregateId = state.Id
-                                        Message = Message<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last 
+                                        Message = MessageType<'A2, 'E2>.Events {InitEventId = eventId; EndEventId = storedEventIds |> List.last; Events = events} // TODO: foxus EndEventId should be the last like eventIds1'.[i] |> List.last 
                                     }.Serialize
                                )
                     let _ =
@@ -2509,7 +2561,7 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: StreamName -> MessageSender)
+        (messageSenders: StreamName -> MessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2713,6 +2765,58 @@ module CommandHandler =
                             if (duplicateIds |> List.contains id) then
                                 AggregateCache2.Instance.Clean id
                         )
+                        
+                    let a1Queue = 'A1.Version + 'A1.StorageName
+                    let a2Queue = 'A2.Version + 'A2.StorageName
+                    let a3Queue = 'A3.Version + 'A3.StorageName
+                   
+                    let a1Sender = messageSenders a1Queue 
+                    let a2Sender = messageSenders a2Queue 
+                    let a3Sender = messageSenders a3Queue
+                    
+                    let aggregateIdsAndEventsA1 = List.zip uniqueAggregateIds1 generatedEvents1
+                    let aggregateIdsAndEventsA2 = List.zip uniqueAggregateIds2 generatedEvents2
+                    let aggregateIdsAndEventsA3 = List.zip uniqueAggregateIds3 generatedEvents3
+                    
+                    let aggregateMessagesA1 =
+                        List.zip3 initialEventIds1 aggregateIdsAndEventsA1 newDbBasedEventIds1
+                        |>> fun (initialEventId, (aggregateId, events), newDbBasedEventId) ->
+                            {
+                                AggregateId = aggregateId
+                                Message = MessageType<'A1, 'E1>.Events { InitEventId = initialEventId; Events = events; EndEventId = newDbBasedEventId |> List.last }
+                            }.Serialize
+                    
+                    let aggregateMessagesA2 =
+                        List.zip3 initialEventIds2 aggregateIdsAndEventsA2 newDbBasedEventIds2
+                        |>> fun (initialEventId, (aggregateId, events), newDbBasedEventId) ->
+                            {
+                                AggregateId = aggregateId
+                                Message = MessageType<'A2, 'E2>.Events { InitEventId = initialEventId; Events = events; EndEventId = newDbBasedEventId |> List.last }
+                            }.Serialize
+                    
+                    let aggregateMessagesA3 =
+                        List.zip3 initialEventIds3 aggregateIdsAndEventsA3 newDbBasedEventIds3
+                        |>> fun (initialEventId, (aggregateId, events), newDbBasedEventId) ->
+                            {
+                                AggregateId = aggregateId
+                                Message = MessageType<'A3, 'E3>.Events { InitEventId = initialEventId; Events = events; EndEventId = newDbBasedEventId |> List.last }
+                            }.Serialize
+                   
+                    let sendingA1 =
+                        aggregateMessagesA1
+                        |> List.map (fun x ->
+                            a1Sender x |> ignore     
+                        )
+                    let sendingA2 =
+                        aggregateMessagesA2
+                        |> List.map (fun x ->
+                            a2Sender x |> ignore
+                        )
+                    let sendingA3 =
+                        aggregateMessagesA3
+                        |> List.map (fun x ->
+                            a3Sender x |> ignore
+                        )
                     
                     return ()
                 }
@@ -2792,7 +2896,7 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (messageSender: IEventBroker<'F>)
+        (messageSenders: StreamName -> MessageSender)
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
@@ -2959,13 +3063,13 @@ module CommandHandler =
         (aggregateIds2: List<Guid>)
         (aggregateIds3: List<Guid>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: IEventBroker<'F>)
+        (messageSenders: StreamName -> MessageSender)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
         =
             logger.Value.LogDebug "runThreeNAggregateCommands"
-            runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore eventBroker Metadata.Empty command1 command2 command3
+            runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore messageSenders Metadata.Empty command1 command2 command3
     
     let inline runThreeAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 :> Aggregate<'F>

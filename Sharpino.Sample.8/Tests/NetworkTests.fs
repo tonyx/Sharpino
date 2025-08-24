@@ -58,9 +58,6 @@ let emptyMessageSender =
 let eventStoreMemory: IEventStore<string> = MemoryStorage ()
 let eventStorePg: IEventStore<string> = PgEventStore connection
 
-// let networkViewerMemory = getStorageFreshStateViewer<Network, NetworkEvents, string> eventStoreMemory
-// let networkViewerPg = getStorageFreshStateViewer<Network, NetworkEvents, string> eventStorePg
-
 let siteViewerMemory = getAggregateStorageFreshStateViewer<Site, SiteEvents, string> eventStoreMemory
 let siteViewerPg = getAggregateStorageFreshStateViewer<Site, SiteEvents, string> eventStorePg
 
@@ -126,7 +123,7 @@ let pgRabbitMqTransportTycoon = TransportTycoon (eventStorePg, messageSender, ra
 let transportTycoons =
     [
         #if RABBITMQ
-            pgRabbitMqTransportTycoon, (fun () -> setUp eventStorePg), 1000
+            pgRabbitMqTransportTycoon, (fun () -> setUp eventStorePg), 100
         #else
             pgTransportTycoon, (fun () -> setUp eventStorePg), 0
         #endif

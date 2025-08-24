@@ -136,7 +136,7 @@ let emptyMessageSender =
 let marketInstances =
     [
 #if RABBITMQ
-        Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, messageSender, 500
+        Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, messageSender, 100
 #else
         Supermarket(eventStorePostgres, emptyMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, emptyMessageSender, 0 ;
 #endif

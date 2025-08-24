@@ -31,11 +31,6 @@ Env.Load() |> ignore
 
 let password = Environment.GetEnvironmentVariable("password")
 
-let doNothingBroker: IEventBroker<string> =
-    {
-        notify = None
-        notifyAggregate =  None
-    }
 let emptyMessageSenders =
     fun queueName ->
         fun message ->
@@ -51,18 +46,7 @@ let pgEventStore = PgEventStore(connection)
 let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, emptyMessageSenders)
 let stadiumSystem = StadiumBookingSystem(pgEventStore, emptyMessageSenders)
 
-let pgReset () =
-    pgEventStore.Reset Stadium.Version Stadium.StorageName
-    pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
-    pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
-    StateCache2<Stadium>.Instance.Invalidate()
-    AggregateCache2.Instance.Clear()
-let memReset () =
-    memoryStorage.Reset Stadium.Version Stadium.StorageName
-    memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
-    StateCache2<Stadium>.Instance.Invalidate()
-    AggregateCache2.Instance.Clear()
-
+#if RABBITMQ
 let hostBuilder =
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
@@ -93,15 +77,30 @@ let rabbitMQmessageSender =
         match sender with
         | true, sender -> sender
         | _ -> failwith (sprintf "not found %s" queueName)
+#endif        
+        
+let pgReset () =
+    pgEventStore.Reset Stadium.Version Stadium.StorageName
+    pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
+    pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
+    StateCache2<Stadium>.Instance.Invalidate()
+    AggregateCache2.Instance.Clear()
+let memReset () =
+    memoryStorage.Reset Stadium.Version Stadium.StorageName
+    memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
+    StateCache2<Stadium>.Instance.Invalidate()
+    AggregateCache2.Instance.Clear()
 
 [<Tests>]
 let tests =
    
     let stadiumInstances =
         [
-            // (StadiumBookingSystem (memoryStorage, emptyMessageSenders),  memReset )
-            (StadiumBookingSystem (pgEventStore, emptyMessageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 100)
-            // (StadiumBookingSystem (pgEventStore, rabbitMQmessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100)
+            #if RABBITMQ
+            StadiumBookingSystem (pgEventStore, rabbitMQmessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100
+            #else
+            StadiumBookingSystem (pgEventStore, emptyMessageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 0
+            #endif
         ]
         
     testList "samples" [
@@ -713,13 +712,16 @@ let tests =
 
             let seat4 = { Id = 2; State = Free; RowId = None }
 
+            Thread.Sleep delay
             let addAllSeats = stadiumSystem.AddSeatsToRows [(rowId1, [seat1]); (rowId2, [seat2; seat3])]
             Expect.isOk addAllSeats "should be Ok"
 
+            Thread.Sleep delay
             // Act
             let addSingleSeatAgain = stadiumSystem.AddSeat rowId1 seat4
             Expect.isOk addSingleSeatAgain "should be Ok"
 
+            Thread.Sleep delay
             // Assert
             let retrievedRow1 = stadiumSystem.GetRow rowId1
             let retrievedRow2 = stadiumSystem.GetRow rowId2

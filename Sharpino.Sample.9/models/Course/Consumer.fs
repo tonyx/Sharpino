@@ -68,7 +68,7 @@ module CourseConsumer =
                             match message with
                             | {Message = InitialSnapshot course} ->
                                 statePerAggregate.[message.AggregateId] <- (0, course)
-                            | {Message = Message.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
+                            | {Message = MessageType.Events {InitEventId = eventId; EndEventId = endEventId; Events = events}} ->
                                 let currentEventId = statePerAggregate.[message.AggregateId] |> fst
                                 if currentEventId = eventId || currentEventId = 0 then
                                     let currentState = statePerAggregate.[message.AggregateId] |> snd
@@ -81,9 +81,9 @@ module CourseConsumer =
                                         resyncWithFallbackAggregateStateRetriever message.AggregateId
                                 else
                                     resyncWithFallbackAggregateStateRetriever message.AggregateId
-                            | {Message = Message.Delete} when statePerAggregate.ContainsKey message.AggregateId ->
+                            | {Message = MessageType.Delete} when statePerAggregate.ContainsKey message.AggregateId ->
                                 statePerAggregate.TryRemove message.AggregateId  |> ignore
-                            | {Message = Message.Delete}  ->
+                            | {Message = MessageType.Delete}  ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", message.AggregateId)
                         | Error e ->
                             logger.LogError ("Error: {e}", e)    

@@ -79,7 +79,7 @@ module SiteConsumer =
                             | { Message = InitialSnapshot good } ->
                                 statePerAggregate.[aggregateId] <- (0, good)
                                 ()
-                            | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
+                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 if (statePerAggregate.ContainsKey aggregateId
                                     && (statePerAggregate.[aggregateId] |> fst = eventId
                                         || statePerAggregate.[aggregateId] |> fst = 0)) then
@@ -93,7 +93,7 @@ module SiteConsumer =
                                         this.ResyncWithFallbackAggregateStateRetriever aggregateId
                                 else
                                     this.ResyncWithFallbackAggregateStateRetriever aggregateId
-                            | { Message = Message.Delete } ->
+                            | { Message = MessageType.Delete } ->
                                 if (statePerAggregate.ContainsKey aggregateId) then
                                     statePerAggregate.TryRemove aggregateId  |> ignore
                                 else

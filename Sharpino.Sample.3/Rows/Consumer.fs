@@ -76,10 +76,10 @@ module RowConsumer =
                         | Result.Ok message ->
                             let aggregateId = message.AggregateId
                             match message with
-                            | { Message = InitialSnapshot good } ->
-                                statePerAggregate.[aggregateId] <- (0, good)
+                            | { Message = InitialSnapshot seatsRow } ->
+                                statePerAggregate.[aggregateId] <- (0, seatsRow)
                                 ()
-                            | { Message = Message.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
+                            | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
                                     let currentState = statePerAggregate.[aggregateId] |> snd
                                     let newState = evolve currentState events
@@ -91,9 +91,9 @@ module RowConsumer =
                                         this.ResyncWithFallbackAggregateStateRetriever aggregateId
                                 else
                                     this.ResyncWithFallbackAggregateStateRetriever aggregateId
-                            | {Message = Message.Delete } when (statePerAggregate.ContainsKey aggregateId) ->
+                            | {Message = MessageType.Delete } when (statePerAggregate.ContainsKey aggregateId) ->
                                 statePerAggregate.TryRemove aggregateId  |> ignore
-                            | {Message = Message.Delete } ->
+                            | {Message = MessageType.Delete } ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         | Error e ->
                             logger.LogError ("error {e}", e)

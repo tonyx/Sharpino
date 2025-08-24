@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._9
+module Sharpino.Sample.Saga.Domain.Rows.Consumer
 
 open System
 open System.Collections.Concurrent
@@ -11,66 +11,62 @@ open Sharpino.Commons
 open Sharpino.Definitions
 open Sharpino.EventBroker
 open Sharpino.Core
+open Sharpino.Sample.Saga.Domain.Seat.Row
+open Sharpino.Sample.Saga.Domain.Seat.Events
 
-open Sharpino.Sample._9.Item
-open Sharpino.Sample._9.Events
-
-module ItemConsumer =
-    type ItemConsumer(sp: IServiceProvider, logger : ILogger<ItemConsumer>) =
+module RowsConsumer =
+    type RowsConsumer(sp: IServiceProvider, logger: ILogger<RowsConsumer>) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
-            factory.CreateConnectionAsync()
+            factory.CreateConnectionAsync ()
             |> Async.AwaitTask
             |> Async.RunSynchronously
-            
+        
         let channel =
             connection.CreateChannelAsync ()
             |> Async.AwaitTask
             |> Async.RunSynchronously
-            
+        
         let queueDeclare =
-            let streamName = Item.Item.Version + Item.Item.StorageName
+            let streamName = Row.Version + Row.StorageName
             channel.QueueDeclareAsync (streamName, false, false, false, null)
             |> Async.AwaitTask
             |> Async.RunSynchronously
             
-        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Item.Item>>  =
-            None
-            
-        let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Item.Item>()
-       
-        let setFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Item.Item>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer
+        let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Row>> = None
         
+        let statePerAggregate =
+            ConcurrentDictionary<AggregateId, EventId * Row>()
+
         let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            let retriever = fallBackAggregateStateRetriever
-            match retriever with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
+            match fallBackAggregateStateRetriever with
+            | Some aggregateStateRetriever ->
+                match aggregateStateRetriever id with
+                | Ok (eventId, state) ->
                     statePerAggregate.[id] <- (eventId, state)
-                | Result.Error e ->
+                | Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
-                logger.LogError "no fallback aggregate state retriever set" 
-            
+                logger.LogError "no fallback aggregate state retriever set"         
+       
         let consumer = AsyncEventingBasicConsumer channel
+        
         do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     task {
                         let body = ea.Body.ToArray()
                         let message = Encoding.UTF8.GetString(body)
-                        logger.LogDebug ("Received {message}", message)
-                        let deserializedMessage = AggregateMessage<Item.Item, ItemEvent>.Deserialize message
+                        // printf "received X %A\n" message
+                        logger.LogDebug ("ReceivedX {message}", message)
+                        let deserializedMessage = AggregateMessage<Row, RowEvents>.Deserialize message
                         match deserializedMessage with
                         | Ok message ->
                             let aggregateId = message.AggregateId
                             match message with
-                            | { Message = InitialSnapshot item } ->
-                                statePerAggregate.[aggregateId] <- (0, item)
+                            | { Message = InitialSnapshot good } ->
+                                statePerAggregate.[aggregateId] <- (0, good)
                                 ()
                             | { Message = MessageType.Events { InitEventId = eventId; EndEventId = endEventId; Events = events  } }  ->
                                 if (statePerAggregate.ContainsKey aggregateId && (statePerAggregate.[aggregateId] |> fst = eventId || statePerAggregate.[aggregateId] |> fst = 0)) then
@@ -78,7 +74,6 @@ module ItemConsumer =
                                     let newState = evolve currentState events
                                     if newState.IsOk then
                                         statePerAggregate.[aggregateId] <- (endEventId, newState.OkValue)
-                                        ()
                                     else
                                         let (Error e) = newState
                                         logger.LogError ("error {e}", e)
@@ -90,37 +85,29 @@ module ItemConsumer =
                             | { Message = MessageType.Delete }  ->
                                 logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
                         | Error e ->
-                            logger.LogError ("error {e}", e)
-                    }
+                            logger.LogError ("Error: {e}", e)            
+                        return ()
+                   }
                 )
-         
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Item.Item>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer
-       
+        
+        member this.SetFallbackAggregateStateRetriever retriever =
+            fallBackAggregateStateRetriever <- Some retriever
+        
         member this.ResetFallbackAggregateStateRetriever () =
-            fallBackAggregateStateRetriever <- None     
+            fallBackAggregateStateRetriever <- None
         
-        member this.ResyncWithFallbackAggregateStateRetriever (id: AggregateId) =
-            let retriever = fallBackAggregateStateRetriever
-            match retriever with
-            | Some retriever ->
-                match retriever id with
-                | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
-                | Result.Error e ->
-                    logger.LogError ("Error: {e}", e)
-            | None ->
-                logger.LogError "no fallback aggregate state retriever set"
-            
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state"
-        
-        override this.ExecuteAsync cancellationToken =
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
-            
         member this.ResetAllStates () =
-            statePerAggregate.Clear() 
+            statePerAggregate.Clear()
+      
+        member this.GetAggregateState (aggregateId: AggregateId) =
+            if (statePerAggregate.ContainsKey aggregateId) then
+                statePerAggregate.[aggregateId] |> Ok
+            else
+                Error $"Aggregate {aggregateId} not found viewer for type: {Row.Version + Row.StorageName}" 
+         
+        override this.ExecuteAsync  cancellationToken =
+            channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
+        
+            
+            
+        

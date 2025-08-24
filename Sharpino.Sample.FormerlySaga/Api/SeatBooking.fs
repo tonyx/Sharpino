@@ -1,11 +1,13 @@
 namespace Sharpino.Sample.Saga.Api
 open System
+open System.Threading.Tasks
 open Sharpino
 open Sharpino.CommandHandler
 
 open Sharpino.Core
 open FsToolkit.ErrorHandling
 
+open Sharpino.EventBroker
 open Sharpino.Sample.Saga.Commons.Commons
 open Sharpino.Sample.Saga.Context.SeatBookings
 open Sharpino.Sample.Saga.Context.Events
@@ -29,9 +31,14 @@ module SeatBooking =
             notifyAggregate = None
         }
         
+    // let emptyMessageSender =
+    //     fun queueName ->
+    //         fun message ->
+    //             ValueTask.CompletedTask    
+        
     type SeatBookingService
         (eventStore: IEventStore<string>,
-         eventBroker: IEventBroker<string>,
+         messageSenders: string -> MessageSender,
          theaterViewer: StateViewer<Theater>,
          seatsViewer: AggregateViewer<Row>,
          bookingsViewer: AggregateViewer<Booking>,
@@ -59,7 +66,7 @@ module SeatBooking =
                 let! (_, theater) = theaterViewer ()
                 let addRowReferenceCommand = AddRowReference (row.Id)
                 let! result =
-                    runInitAndCommand<Theater, TheaterEvents, Row, string> eventStore eventBroker row addRowReferenceCommand
+                    runInitAndCommand<Theater, TheaterEvents, Row, string> eventStore messageSenders row addRowReferenceCommand
                 return result    
             }
        
@@ -67,7 +74,7 @@ module SeatBooking =
             result {
                 let addVoucherReferenceCommand = AddVoucherReference (voucher.Id)
                 let! result =
-                    runInitAndCommand<Theater, TheaterEvents, Voucher, string> eventStore eventBroker voucher addVoucherReferenceCommand
+                    runInitAndCommand<Theater, TheaterEvents, Voucher, string> eventStore messageSenders voucher addVoucherReferenceCommand
                 return result    
             }
         
@@ -82,7 +89,7 @@ module SeatBooking =
                 let! (_, row) = seatsViewer rowId
                 let addSeatsCommand = RowCommands.AddSeats n
                 let! result =
-                    runAggregateCommand<Row, RowEvents, string> rowId eventStore eventBroker addSeatsCommand
+                    runAggregateCommand<Row, RowEvents, string> rowId eventStore messageSenders addSeatsCommand
                 return result    
             }
        
@@ -91,7 +98,7 @@ module SeatBooking =
                 let! (_, row) = seatsViewer rowId
                 let removeSeatsCommand = RowCommands.RemoveSeats n
                 let! result =
-                    runAggregateCommand<Row, RowEvents, string> rowId eventStore eventBroker removeSeatsCommand
+                    runAggregateCommand<Row, RowEvents, string> rowId eventStore messageSenders removeSeatsCommand
                 return result    
             }
             
@@ -107,7 +114,7 @@ module SeatBooking =
                         [ for i in 1 .. ns.Length -> rowId ]
                         
                     let! result =
-                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
                         // runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
                     return result    
                 }
@@ -123,7 +130,7 @@ module SeatBooking =
                     let rowIds =
                         [ for i in 1 .. ns.Length -> rowId ]
                     let! result =
-                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
+                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
                     return result    
                 }
                 
@@ -137,7 +144,7 @@ module SeatBooking =
             result {
                 let addBookingReferenceCommand = AddBookingReference (booking.Id)
                 let! result =
-                    runInitAndCommand<Theater, TheaterEvents, Booking, string> eventStore eventBroker booking addBookingReferenceCommand
+                    runInitAndCommand<Theater, TheaterEvents, Booking, string> eventStore messageSenders booking addBookingReferenceCommand
                 return result    
             }
         member this.GetBookings() =
@@ -155,7 +162,7 @@ module SeatBooking =
                 let assignRowToBookingCommand = BookingCommands.Assign rowId
                 let assignBookingToRowCommand = RowCommands.Book (bookingId, booking.ClaimedSeats)
                 let! result =
-                    runTwoAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingId rowId eventStore eventBroker assignRowToBookingCommand assignBookingToRowCommand
+                    runTwoAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingId rowId eventStore messageSenders assignRowToBookingCommand assignBookingToRowCommand
                 return result    
             }
         
@@ -180,7 +187,7 @@ module SeatBooking =
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)    
               
                 return!    
-                    runTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
+                    runTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
         
         // "force" means we can use the "force" version of the run multiple aggregates accepting repetition of the same aggregate ID
@@ -205,7 +212,7 @@ module SeatBooking =
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)    
               
                 return!
-                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
+                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
             
         member this.AssignBookingsSpendingVouchers (bookingRowsAndVouchers: List<BookingId * RowId * VoucherId>) =
@@ -242,7 +249,7 @@ module SeatBooking =
                     [ for i in 0 .. bookingRowsAndVouchers.Length - 1 -> VoucherCommands.Consume (seatsPerRows.[i])]
                     
                 return!
-                    runThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
+                    runThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
             }
             
         member this.ForceAssignBookingsSpendingVouchers (bookingRowsAndVouchers: List<BookingId * RowId * VoucherId>) =
@@ -279,7 +286,7 @@ module SeatBooking =
                     [ for i in 0 .. bookingRowsAndVouchers.Length - 1 -> VoucherCommands.Consume (seatsPerRows.[i])]
                     
                 return!
-                    forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
+                    forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
             }
             
         member this.AssignBookingUsingSagaWayNotSagaishAnymore (bookingAndRows: List<Guid * Guid>) =
@@ -303,7 +310,7 @@ module SeatBooking =
                     |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)
                     
                 let! result =
-                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore eventBroker assignRowsToBookingsCommands assignBookingsToRowsCommands
+                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands
                 return result
             }   
                 
