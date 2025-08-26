@@ -54,7 +54,6 @@ let reservationMessageSender =
 aggregateMessageSenders.Add(Item.Version+Item.StorageName, itemMessageSender)
 aggregateMessageSenders.Add(Reservation.Version+Reservation.StorageName, reservationMessageSender)
 
-
 let messageSenders =
     fun queueName ->
         let sender = aggregateMessageSenders.TryGetValue(queueName)

@@ -1,5 +1,8 @@
 namespace Sharpino.Sample._10
+
+open System.Threading.Tasks
 open Sharpino.Core
+open Sharpino.EventBroker
 open Sharpino.Sample._10.Models.Account
 open Sharpino.Sample._10.Models.AccountCommands
 open Sharpino.Sample._10.Models.AccountEvents
@@ -22,20 +25,25 @@ open System
     
 module CounterApi =
     
-    let doNothingBroker: IEventBroker<_> =
-        {  notify = None
-           notifyAggregate = None }
+    // let doNothingBroker: IEventBroker<_> =
+    //     {  notify = None
+    //        notifyAggregate = None }
+    
+    let emptyMessageSenders: StreamName -> MessageSender =
+        fun _ ->
+            fun _ ->
+                ValueTask.CompletedTask                
 
 type CounterApi
     (eventStore: IEventStore<byte[]>,
-     eventBroker: IEventBroker<_>,
+     messageSender: StreamName -> MessageSender,
      counterStateViewer: AggregateViewer<Counter>,
      accountStateViewer: AggregateViewer<Account>)
     =
     member this.CreateCounter (counter: Counter) =
         result
             {
-                let! result = runInit<Counter, CounterEvents, byte[]> eventStore eventBroker counter
+                let! result = runInit<Counter, CounterEvents, byte[]> eventStore messageSender counter
                 return result
             }
     member this.GetCounter (id: Guid) =
@@ -49,13 +57,13 @@ type CounterApi
             {
                 let! counter = this.GetCounter id
                 let! result = 
-                    runAggregateCommand<Counter, CounterEvents, byte[]> id eventStore eventBroker Increment
+                    runAggregateCommand<Counter, CounterEvents, byte[]> id eventStore messageSender Increment
                 return result
             }
     member this.CreateAccount (account: Account) =
         result
             {
-                let! result = runInit<Account, AccountEvents, byte[]> eventStore eventBroker account
+                let! result = runInit<Account, AccountEvents, byte[]> eventStore messageSender account
                 return result
             }
     member this.GetAccount (id: Guid) =
@@ -71,10 +79,10 @@ type CounterApi
                 let! preExecutedAggregateCommands =
                     ids
                     |> List.traverseResultM (fun id ->
-                        preExecuteAggregateCommandMd<Counter, CounterEvents, byte[]> id eventStore eventBroker "md" Increment
+                        preExecuteAggregateCommandMd<Counter, CounterEvents, byte[]> id eventStore messageSender "md" Increment
                     )
                 let! incrementAlls =
-                    runPreExecutedAggregateCommands<byte[]> preExecutedAggregateCommands eventStore eventBroker
+                    runPreExecutedAggregateCommands<byte[]> preExecutedAggregateCommands eventStore messageSender
                 return incrementAlls    
             }
     
@@ -84,17 +92,17 @@ type CounterApi
                 let! preExecutedAggregateCommands =
                     counterIds
                     |> List.traverseResultM (fun id ->
-                        preExecuteAggregateCommandMd<Counter, CounterEvents, byte[]> id eventStore eventBroker "md" Increment
+                        preExecuteAggregateCommandMd<Counter, CounterEvents, byte[]> id eventStore messageSender "md" Increment
                     )
                 let! preExecuteAggregateCommands2 =
                     accountIds
                     |> List.traverseResultM (fun id ->
-                        preExecuteAggregateCommandMd<Account, AccountEvents, byte[]> id eventStore eventBroker "md" (AddAmount 1)
+                        preExecuteAggregateCommandMd<Account, AccountEvents, byte[]> id eventStore messageSender "md" (AddAmount 1)
                     )
                 let totalPreExecutedAggregateCommands =
                     preExecutedAggregateCommands @ preExecuteAggregateCommands2    
                 let! executeAll =
-                    runPreExecutedAggregateCommands<byte[]> totalPreExecutedAggregateCommands eventStore eventBroker
+                    runPreExecutedAggregateCommands<byte[]> totalPreExecutedAggregateCommands eventStore messageSender
                 return executeAll    
              }
         

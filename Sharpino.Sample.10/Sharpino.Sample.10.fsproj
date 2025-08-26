@@ -13,9 +13,11 @@
     <Compile Include="Models/Counter/Counter.fs" />
     <Compile Include="Models/Counter/Events.fs" />
     <Compile Include="Models/Counter/Commands.fs" />
+    <Compile Include="Models\Counter\Consumer.fs" />
     <Compile Include="Models/Account/Account.fs" />
     <Compile Include="Models/Account/Events.fs" />
     <Compile Include="Models\Account\Commands.fs" />
+    <Compile Include="Models\Account\Consumer.fs" />
     <Compile Include="CounterApi.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Main.fs" />
@@ -31,11 +33,14 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
-<!--    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="appSettings.json" />
     <Content Include="sharpinoSettings.json" />
   </ItemGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
+    <DefineConstants>RABBITMQ</DefineConstants>
+  </PropertyGroup>
 
 </Project>

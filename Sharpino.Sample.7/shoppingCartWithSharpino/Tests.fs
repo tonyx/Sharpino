@@ -113,7 +113,6 @@ let messageSender =
         | _ -> failwith "not found XX"
 #endif
 
-
 let jsonDbGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStorePostgres
 let jsonDbCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStorePostgres
 let jsonDbGoodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStorePostgres

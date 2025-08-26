@@ -43,6 +43,7 @@ let pgEventStore: IEventStore<string> = PgEventStore(connection)
 let hostBuilder = 
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
+            services.AddSingleton<RabbitMqReceiver>() |> ignore
             services.AddHostedService<DishConsumer>() |> ignore
             services.AddHostedService<IngredientConsumer>() |> ignore
             services.AddHostedService<SupplierConsumer>() |> ignore
