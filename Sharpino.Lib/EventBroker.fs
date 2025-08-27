@@ -8,6 +8,7 @@ open Sharpino.Core
 open FsToolkit.ErrorHandling
 
 type RawMessage = string
+type StreamName = string 
 module EventBroker =
     type EventsMessage<'E> =
         {
@@ -16,7 +17,6 @@ module EventBroker =
             Events: List<'E>
         }
  
-    type StreamName = string 
     type MessageType<'A, 'E> =
         | InitialSnapshot of 'A
         | Delete
@@ -36,4 +36,8 @@ module EventBroker =
     
     type MessageSender =
         RawMessage -> ValueTask
+    
+    type MessageSenders =
+        | NoSender
+        | MessageSender of (StreamName -> MessageSender)
         

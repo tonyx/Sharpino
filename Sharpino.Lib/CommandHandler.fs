@@ -42,6 +42,7 @@ module CommandHandler =
            Version: string
            StorageName: string
            SnapshotsInterval: int
+           EventType: Type
         }
                 
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
@@ -321,6 +322,7 @@ module CommandHandler =
         >
         (storage: IEventStore<'F>)
         (messageSender: StreamName -> MessageSender)
+        // (messageSender: MessageSender)
         (initialInstance: 'A1)
         (md: Metadata)
         (command: Command<'A, 'E>)
@@ -1522,11 +1524,11 @@ module CommandHandler =
                       NewState = box newState
                       // NewState = newState
                       SerializedEvents = events |>> (fun x -> x.Serialize)
-                      // Events = events |>> unbox // (fun x -> x :?> Event<'A>)
                       Metadata = md
                       Version = 'A.Version
                       StorageName = 'A.StorageName
                       SnapshotsInterval = 'A.SnapshotsInterval
+                      EventType = typeof<'E>
                     }
                 return result
             }
@@ -1998,7 +2000,22 @@ module CommandHandler =
                                 (secondExecutedCommand.NewState :?> Aggregate<'F>).Serialize
                 return ()
             }
-  
+ 
+    let convertToTargetType (targetType: Type) (value: obj) =
+        try
+            // For value types, use Convert.ChangeType
+            if targetType.IsValueType || targetType = typeof<string> then
+                Convert.ChangeType(value, targetType)
+            else
+                // For reference types, you can use direct cast if the type matches
+                // or implement custom conversion logic
+                value
+        with
+        | _ -> 
+            // Handle conversion failure
+            failwithf "Failed to convert %A to type %s" value targetType.FullName
+ 
+     
     let inline runPreExecutedAggregateCommands<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: string -> MessageSender) =
         logger.Value.LogDebug "runPreExecutedCommands"
         result {
@@ -2006,7 +2023,8 @@ module CommandHandler =
                 storeMultipleEvents eventStore eventBroker
                     preExecutedAggregateCommands
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
-                AggregateCache2.Instance.Memoize2 (preExecutedAggregateCommands.[i].NewState |> Ok) (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].AggregateId)
+                AggregateCache2.Instance.Memoize2
+                    (preExecutedAggregateCommands.[i].NewState |> Ok) (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].AggregateId)
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
                 mkAggregateSnapshotIfIntervalPassed3<'F>
@@ -2022,15 +2040,80 @@ module CommandHandler =
             // wip
             let queueNames =
                 preExecutedAggregateCommands
-                |> List.map (fun x -> x.StorageName + x.Version)
-           
-            let senders =
-                queueNames
-                |> List.map eventBroker
-                
-            return ()    
+                |> List.map (fun x -> x.Version + x.StorageName)
+            
+            // let eventTypes =
+            //     preExecutedAggregateCommands
+            //     |> List.map (fun x -> x.EventType)
+            //
+            // let initEventIdEndEventIdAndAndSerializedEvents =
+            //     List.zip3 (storedIds |>> List.last) (preExecutedAggregateCommands |>> _.EventId) (preExecutedAggregateCommands |>> _.SerializedEvents)
+            //     
+            // let deserializers = preExecutedAggregateCommands |>> _.EventType.GetProperty("Deserialize") //, BindingFlags.Public ||| BindingFlags.Static)
+            // let initEventIdAndEventIdAndDeserializers =
+            //     List.zip initEventIdEndEventIdAndAndSerializedEvents deserializers
+            //
+            // let eventMessages =
+            //     initEventIdAndEventIdAndDeserializers
+            //     |> List.map (fun ((initEventId, eventId, serializedEvents), deserializer) ->
+            //         let deserializedEvents = serializedEvents |> List.map (fun x -> deserializer.GetMethod.Invoke(null, ([x |> box] |> List.toArray)) :?> 'E)
+            //         (initEventId, eventId, deserializedEvents)
+            //     )
+            //     
+            // let eventMessages' =
+            //     eventMessages
+            //     |>
+            //     List.map
+            //         (fun (x, y, z)  ->
+            //             {
+            //                 InitEventId = x
+            //                 EndEventId = y
+            //                 Events = z |> unbox
+            //             } 
+            //         )
+            //
+            // let eventMessagesWithTypes =
+            //     List.zip eventMessages' eventTypes
+            //     // |> List.map (fun (x, y) -> {InitEventId = x.InitEventId; EndEventId = x.EndEventId; Events = x.Events |> List.map (fun x' -> x' :?> )  })
+            //     // |> List.map (fun (x, y) -> {InitEventId = x.InitEventId; EndEventId = x.EndEventId; Events = x.Events |> List.map (fun x' -> convertToTargetType y x')  })
+             
+            // let senders =
+            //     queueNames
+            //     |> List.map eventBroker
+            
+            return ()
         }
      
+    let inline runPreExecutedAggregateCommands2<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: string -> MessageSender) =
+        logger.Value.LogDebug "runPreExecutedCommands"
+        result {
+            let! storedIds =
+                storeMultipleEvents eventStore eventBroker
+                    preExecutedAggregateCommands
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                AggregateCache2.Instance.Memoize2
+                    (preExecutedAggregateCommands.[i].NewState |> Ok) (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].AggregateId)
+            
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                mkAggregateSnapshotIfIntervalPassed3<'F>
+                    eventStore
+                    preExecutedAggregateCommands.[i].AggregateId
+                    preExecutedAggregateCommands.[i].Version
+                    preExecutedAggregateCommands.[i].StorageName
+                    (storedIds.[i] |> List.last)
+                    preExecutedAggregateCommands.[i].SnapshotsInterval
+                    (preExecutedAggregateCommands.[i].NewState :?> Aggregate<'F>).Serialize
+                |> ignore
+            
+            // wip
+            // let queueNames =
+            //     preExecutedAggregateCommands
+            //     |> List.map (fun x -> x.StorageName + x.Version)
+
+            let result =
+                storedIds |>> List.last
+            return result    
+        }         
     [<Obsolete("Use runTwoAggregateCommandsMd instead")>]
     let inline runTwoAggregateCommandsMdBack<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>

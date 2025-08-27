@@ -52,7 +52,7 @@ module Tests =
                 ()
         )
    
-    #if RABBITMQ 
+    // #if RABBITMQ 
     let host = hostBuilder.Build()
     let hostTask = host.StartAsync()
     
@@ -95,7 +95,7 @@ module Tests =
             | true, sender -> sender
             | false, _ -> failwith (sprintf "queue not found: %s" queueName)
         
-    #endif
+    // #endif
     
     let setUp (eventStore: IEventStore<byte[]>) =
         eventStore.Reset Counter.Version Counter.StorageName

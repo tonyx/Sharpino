@@ -1,6 +1,7 @@
 namespace Sharpino.Sample._10
 
 open System.Threading.Tasks
+open Sharpino
 open Sharpino.Core
 open Sharpino.EventBroker
 open Sharpino.Sample._10.Models.Account
@@ -82,7 +83,7 @@ type CounterApi
                         preExecuteAggregateCommandMd<Counter, CounterEvents, byte[]> id eventStore messageSender "md" Increment
                     )
                 let! incrementAlls =
-                    runPreExecutedAggregateCommands<byte[]> preExecutedAggregateCommands eventStore messageSender
+                    runPreExecutedAggregateCommands2<byte[]> preExecutedAggregateCommands eventStore messageSender
                 return incrementAlls    
             }
     
@@ -102,7 +103,8 @@ type CounterApi
                 let totalPreExecutedAggregateCommands =
                     preExecutedAggregateCommands @ preExecuteAggregateCommands2    
                 let! executeAll =
-                    runPreExecutedAggregateCommands<byte[]> totalPreExecutedAggregateCommands eventStore messageSender
-                return executeAll    
-             }
+                    runPreExecutedAggregateCommands2<byte[]> totalPreExecutedAggregateCommands eventStore messageSender
+                return ()    
+                // return executeAll    
+            }
         

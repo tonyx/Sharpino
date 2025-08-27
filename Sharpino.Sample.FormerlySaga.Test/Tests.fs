@@ -68,7 +68,7 @@ let connection =
 let memoryStorage: IEventStore<_> = new MemoryStorage()
 let dbEventStore:IEventStore<string> = PgEventStore(connection)
 
-// #if RABBITMQ
+#if RABBITMQ
 let (hostBuilder: IHostBuilder) =
     Host.CreateDefaultBuilder()
         .ConfigureServices  (fun (services: IServiceCollection) ->
@@ -118,8 +118,7 @@ let messageSenders =
         | true, sender -> sender
         | false, _ -> failwith (sprintf "queue not found: %s" queueName)
 
-
-// #endif
+#endif
 
 let theaterContextViewer = getStorageFreshStateViewer<Theater, TheaterEvents, string> memoryStorage
 
