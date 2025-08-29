@@ -20,7 +20,7 @@ cd ..
 cd Sharpino.Sample.9
 dotnet run --configuration:rabbitmq
 cd ..
-cd Sharpino.Sample.10
-dotnet run --configuration:rabbitmq
-cd ..
+# cd Sharpino.Sample.10
+# dotnet run --configuration:rabbitmq
+# cd ..
 

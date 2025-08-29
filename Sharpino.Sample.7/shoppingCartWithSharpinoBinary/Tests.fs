@@ -89,11 +89,13 @@ aggregateMessageSenders.Add("_01_cart", cartMessageSender)
 aggregateMessageSenders.Add("_01_good", goodMessageSender)
 
 let messageSenders =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith (sprintf "not found %s" queueName)
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith (sprintf "not found %s" queueName)
+        )
 #endif
 let eventStore = PgBinaryStore(connection)
 
@@ -118,10 +120,10 @@ let doNothingBroker: IEventBroker<byte[]> =
 let marketInstances =
     [
           #if RABBITMQ 
-            Supermarket(eventStore, messageSenders, goodsContainerViewer, rabbitMqGoodsStateViewer, rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, rabbitMqGoodsStateViewer, eventStore:> IEventStore<byte[]>, messageSenders, 100
+            Supermarket(eventStore, messageSenders, goodsContainerViewer, rabbitMqGoodsStateViewer, rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, rabbitMqGoodsStateViewer, eventStore:> IEventStore<byte[]>, messageSenders, 200
           #else   
-            Supermarket(eventStore, emptyMessageSenders, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>,
-                                                                                                                                                                  emptyMessageSenders, 0
+            Supermarket(eventStore, MessageSenders.NoSender, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>,
+                                                                                                                                                                  MessageSenders.NoSender, 0
           #endif  
     ]
    
@@ -207,6 +209,7 @@ let tests =
             Expect.isOk addQuantity "should be ok"
             
             // then
+            Thread.Sleep(delay)
             let retrievedQuantity = supermarket.GetGoodsQuantity id
             Expect.isOk retrievedQuantity "should be ok"
             let result = retrievedQuantity.OkValue
@@ -557,6 +560,7 @@ let tests =
             let priceChanged = supermarket.SetPrice (good.Id, newPrice)
             Expect.isOk priceChanged "should be ok"
             
+            Thread.Sleep(delay)
             let retrieved = supermarket.RetrieveGoodBypassingContainer good.Id
             Expect.isOk retrieved "should be ok"
             let retrieved' = retrieved.OkValue

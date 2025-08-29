@@ -68,7 +68,7 @@ let connection =
 let memoryStorage: IEventStore<_> = new MemoryStorage()
 let dbEventStore:IEventStore<string> = PgEventStore(connection)
 
-#if RABBITMQ
+// #if RABBITMQ
 let (hostBuilder: IHostBuilder) =
     Host.CreateDefaultBuilder()
         .ConfigureServices  (fun (services: IServiceCollection) ->
@@ -112,13 +112,16 @@ aggregateMessageSenders.Add (Booking.Version + Booking.StorageName, bookingsMess
 aggregateMessageSenders.Add (Voucher.Version + Voucher.StorageName, vouchersMessageSender)
 
 let messageSenders =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue queueName
-        match sender with
-        | true, sender -> sender
-        | false, _ -> failwith (sprintf "queue not found: %s" queueName)
-
-#endif
+    MessageSenders.MessageSender
+        (
+            fun queueName ->
+                let sender = aggregateMessageSenders.TryGetValue queueName
+                match sender with
+                | true, sender -> sender
+                | false, _ -> failwith (sprintf "queue not found: %s" queueName)
+        )
+    
+// #endif
 
 let theaterContextViewer = getStorageFreshStateViewer<Theater, TheaterEvents, string> memoryStorage
 
@@ -194,7 +197,7 @@ let appVersionsEnvs =
         (setupDbEventStore, "postgres db and rabbitmq", (fun () -> SeatBookingService(dbEventStore, messageSenders,
                                                                                       theaterContextdbViewer, rabbitMqRowStateViewer, rabbitMqBookingStateViewer, rabbitMqVoucherStateViewer)), 100)
         #else                                                                              
-        (setupDbEventStore, "postgres db", (fun () -> SeatBookingService(dbEventStore, emptyMessageSenders, theaterContextdbViewer,
+        (setupDbEventStore, "postgres db", (fun () -> SeatBookingService(dbEventStore, MessageSenders.NoSender, theaterContextdbViewer,
                                                                           rowsAggregatedbViewer, bookingsAggregatedbViewer, vouchersAggregatedbViewer)), 0)
         #endif 
     ]
@@ -291,6 +294,7 @@ let tests =
             let assignBooking = service.AssignBooking booking.Id row.Id
             Expect.isOk assignBooking "should be ok"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let row = service.GetRow row.Id    
             Expect.isOk row "should be ok"
             let associatedBookings = row.OkValue.AssociatedBookings
@@ -383,10 +387,14 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             Expect.isOk (service.AddBooking booking1) "should be ok"
             let booking2 = { Id = Guid.NewGuid(); ClaimedSeats = 1; RowId = None}
+            Async.Sleep delay |> Async.RunSynchronously
             Expect.isOk (service.AddBooking booking2) "should be ok"
         
             // action
-            let assignBookings = service.AssignBookings ([(booking1.Id, row1.Id); (booking2.Id, row2.Id)]) 
+            Async.Sleep delay |> Async.RunSynchronously
+            let assignBookings = service.AssignBookings ([(booking1.Id, row1.Id); (booking2.Id, row2.Id)])
+            Async.Sleep delay |> Async.RunSynchronously
+            
             Expect.isOk assignBookings "should be ok"
             let row1 = service.GetRow row1.Id
             let row2 = service.GetRow row2.Id
@@ -516,7 +524,8 @@ let tests =
         
             // expectation
             Expect.isOk assignBookings "should be ok"
-        
+            
+            Async.Sleep delay |> Async.RunSynchronously 
             let row = service.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 6 "should be equal"
@@ -549,14 +558,17 @@ let tests =
             // expectation
             Expect.isOk assignBookings "should be ok"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let row = service.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 6 "should be equal"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let booking1 = service.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"    
             Expect.equal booking1.OkValue.RowId (Some row.OkValue.Id) "should be equal"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let booking2 = service.GetBooking booking2.Id
             Expect.isOk booking2 "should be ok"
             Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
@@ -790,6 +802,7 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             let addSeats = seatBookingService.AddSeatsToRow (row.Id, 10)
             Expect.isOk addSeats "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let retrievedRow = seatBookingService.GetRow row.Id
             Expect.isOk retrievedRow "should be ok"
             Expect.equal retrievedRow.OkValue.FreeSeats 30 "should be equal"
@@ -804,6 +817,7 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             let removeSeats = seatBookingService.RemoveSeatsFromRow (row.Id, 10)
             Expect.isOk removeSeats "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let retrievedRow = seatBookingService.GetRow row.Id
             Expect.isOk retrievedRow "should be ok"
             Expect.equal retrievedRow.OkValue.FreeSeats 10 "should be equal"
@@ -840,6 +854,7 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             let bookingAssigned = seatBookingService.AssignBooking booking.Id row.Id 
             Expect.isOk bookingAssigned "should be ok"    
+            Async.Sleep delay |> Async.RunSynchronously
             let row = seatBookingService.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 10 "should be equal"
@@ -1372,12 +1387,15 @@ let tests =
             Expect.isOk addRow "should be ok" 
             let addBooking1 = seatBookingService.AddBooking booking1
             Expect.isOk addBooking1 "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
             let addBooking2 = seatBookingService.AddBooking booking2
             Expect.isOk addBooking2 "should be ok"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let addBooking3 = seatBookingService.AddBooking booking3
             Expect.isOk addBooking3 "should be ok"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let addBooking4 = seatBookingService.AddBooking booking4
             Expect.isOk addBooking4 "should be ok"
         
@@ -1395,10 +1413,12 @@ let tests =
             Expect.isError assignBookings "should be ok"
             
             // expectation    
+            Async.Sleep delay |> Async.RunSynchronously
             let row = seatBookingService.GetRow row.Id
             Expect.isOk row "should be ok"
             Expect.equal row.OkValue.FreeSeats 20 "should be equal"
         
+            Async.Sleep delay |> Async.RunSynchronously
             let booking1 = seatBookingService.GetBooking booking1.Id
             Expect.isOk booking1 "should be ok"
         

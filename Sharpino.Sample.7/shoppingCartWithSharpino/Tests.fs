@@ -105,12 +105,14 @@ let goodMessageSender =
 aggregateMessageSenders.Add("_01_cart", cartMessageSender)
 aggregateMessageSenders.Add("_01_good", goodMessageSender)
 
-let messageSender =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith "not found XX"
+let rabbitMqmessageSender =
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith "not found XX"
+        )    
 #endif
 
 let jsonDbGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStorePostgres
@@ -136,9 +138,9 @@ let emptyMessageSender =
 let marketInstances =
     [
 #if RABBITMQ
-        Supermarket(eventStorePostgres, messageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, messageSender, 100
+        Supermarket(eventStorePostgres, rabbitMqmessageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, rabbitMqmessageSender, 300
 #else
-        Supermarket(eventStorePostgres, emptyMessageSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, emptyMessageSender, 0 ;
+        Supermarket(eventStorePostgres, MessageSenders.NoSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, MessageSenders.NoSender, 0 ;
 #endif
     ]
     
@@ -225,6 +227,7 @@ let tests =
             let addQuantity = supermarket.AddQuantity(id, 10)
             Expect.isOk addQuantity "should be ok"
             
+            Thread.Sleep(timeToWait)
             // then
             let retrievedQuantity = supermarket.GetGoodsQuantity id
             Expect.isOk retrievedQuantity "should be ok"
@@ -577,6 +580,7 @@ let tests =
             let priceChanged = supermarket.SetPrice (good.Id, newPrice)
             Expect.isOk priceChanged "should be ok"
             
+            Thread.Sleep(timeToWait)
             let retrieved = supermarket.RetrieveGoodBypassingContainer good.Id
             Expect.isOk retrieved "should be ok"
             let retrieved' = retrieved.OkValue

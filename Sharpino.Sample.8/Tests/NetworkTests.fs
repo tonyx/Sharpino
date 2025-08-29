@@ -64,8 +64,8 @@ let siteViewerPg = getAggregateStorageFreshStateViewer<Site, SiteEvents, string>
 let truckViewerMemory = getAggregateStorageFreshStateViewer<Transporter, TruckEvents, string> eventStoreMemory
 let truckViewerPg = getAggregateStorageFreshStateViewer<Transporter, TruckEvents, string> eventStorePg
 
-let memoryTransportTycoon = TransportTycoon (eventStoreMemory, emptyMessageSender, siteViewerMemory, truckViewerMemory)
-let pgTransportTycoon = TransportTycoon (eventStorePg, emptyMessageSender, siteViewerPg, truckViewerPg)
+let memoryTransportTycoon = TransportTycoon (eventStoreMemory, MessageSenders.NoSender, siteViewerMemory, truckViewerMemory)
+let pgTransportTycoon = TransportTycoon (eventStorePg, MessageSenders.NoSender, siteViewerPg, truckViewerPg)
 
 #if RABBITMQ
  
@@ -84,7 +84,6 @@ let host = hostBuilder.Build()
 let hostTask = host.StartAsync()
 
 let services = host.Services
-
 
 let goodConsumer =
     host.Services.GetServices<IHostedService>()
@@ -111,11 +110,12 @@ aggregateMessageSenders.Add("_01_site", siteMessageSender)
 aggregateMessageSenders.Add("_01_truck", truckMessageSender)
 
 let messageSender =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith "not found XX"
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith "not found XX")
 
 let pgRabbitMqTransportTycoon = TransportTycoon (eventStorePg, messageSender, rabbitMqTransportStateViewer, rabbitMqTruckStateViewer)
 

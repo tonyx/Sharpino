@@ -43,8 +43,8 @@ let connection =
     $"Password={password};"
 let memoryStorage = MemoryStorage.MemoryStorage()
 let pgEventStore = PgEventStore(connection)
-let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, emptyMessageSenders)
-let stadiumSystem = StadiumBookingSystem(pgEventStore, emptyMessageSenders)
+let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, MessageSenders.NoSender)
+let stadiumSystem = StadiumBookingSystem(pgEventStore, MessageSenders.NoSender)
 
 let hostBuilder =
     Host.CreateDefaultBuilder()
@@ -71,12 +71,15 @@ let seatRowMessageSender =
 
 aggregateMessageSenders.Add("_01_seatrow", seatRowMessageSender)
 
-let rabbitMQmessageSender =
+let rabbitMQMessageSender =
     fun queueName ->
         let sender = aggregateMessageSenders.TryGetValue(queueName)
         match sender with
         | true, sender -> sender
         | _ -> failwith (sprintf "not found %s" queueName)
+
+let rMessageSender =
+    MessageSenders.MessageSender rabbitMQMessageSender
         
 let pgReset () =
     pgEventStore.Reset Stadium.Version Stadium.StorageName
@@ -96,9 +99,9 @@ let tests =
     let stadiumInstances =
         [
             #if RABBITMQ
-            StadiumBookingSystem (pgEventStore, rabbitMQmessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100
+            StadiumBookingSystem (pgEventStore, rMessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100
             #else
-            StadiumBookingSystem (pgEventStore, emptyMessageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 0
+            StadiumBookingSystem (pgEventStore, MessageSenders.NoSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 0
             #endif
         ]
         
@@ -136,6 +139,7 @@ let tests =
             let rowId = Guid.NewGuid()
             let addRow = service.AddRow rowId
             Expect.isOk addRow "should be ok"
+            
             let seat = { Id = 1; State = Free; RowId = None }
             let addSeat = service.AddSeat rowId seat
             Expect.isOk addSeat "should be ok"

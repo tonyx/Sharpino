@@ -34,11 +34,11 @@ module StorageStadiumBookingSystem =
 
     type StadiumBookingSystem
         // (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
-        (eventStore: IEventStore<string>, messageSenders: string -> MessageSender, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (eventStore: IEventStore<string>, messageSenders: MessageSenders, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
         new (eventStore: IEventStore<string>) =
-            StadiumBookingSystem(eventStore, emptyMessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
-        new (eventStore: IEventStore<string>, messageSenders: string -> MessageSender) =
+            StadiumBookingSystem(eventStore, MessageSenders.NoSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+        new (eventStore: IEventStore<string>, messageSenders: MessageSenders) =
             StadiumBookingSystem(eventStore, messageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
             
         member this.AddRow (rowId: Guid)  =

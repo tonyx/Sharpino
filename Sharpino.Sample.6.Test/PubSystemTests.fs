@@ -91,11 +91,12 @@ aggregateMessageSenders.Add("_01_ingredient", ingredientMessageSender)
 aggregateMessageSenders.Add("_01_supplier", supplierMessageSender)
 
 let rabbitMQmessageSender =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith (sprintf "not found %s" queueName)
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith (sprintf "not found %s" queueName))
 #endif
 
 [<Tests>]
@@ -118,7 +119,7 @@ let tests =
          #if RABBITMQ
             PubSystem.PubSystem(pgEventStore, rabbitMQmessageSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore), pgEventStore, rabbitMQmessageSender, 100, 0
          #else
-            PubSystem.PubSystem(pgEventStore, emptyMessageSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore), pgEventStore, emptyMessageSender, 0, 0
+            PubSystem.PubSystem(pgEventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore), pgEventStore, emptyMessageSender, 0, 0
          #endif
     ]
    

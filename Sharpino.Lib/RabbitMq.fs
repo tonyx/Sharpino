@@ -2,6 +2,7 @@ namespace Sharpino
 
 open System
 open System.Collections.Concurrent
+open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -59,9 +60,85 @@ module RabbitMq =
                     )
             return aggregateMessageSender
        }
+   
+    let optionallySendAggregateEventsAsync<'A, 'E when 'E :> Event<'A>>
+        (queueName: StreamName)
+        (messageSenders: MessageSenders)
+        (aggregateId: AggregateId)
+        (events: List<'E>)
+        (initEventId: EventId)
+        (endEventId: EventId)
+        =
+        match messageSenders with
+        | MessageSenders.MessageSender messageSender ->
+            let sender = messageSender queueName
+            let message =
+                MessageType<'A, 'E>.Events
+                    {
+                        InitEventId = initEventId
+                        EndEventId = endEventId
+                        Events = events
+                    }
+            let aggregateMessage =
+                {
+                  AggregateId = aggregateId
+                  Message = message
+                }.Serialize
+            sender aggregateMessage
+        | _ ->
+            ValueTask.CompletedTask
+   
+    let optionallySendMultipleAggregateEventsAsync<'A, 'E when 'E :> Event<'A>>
+        (queueName: StreamName)
+        (messageSenders: MessageSenders)
+        (aggregateIdsInitEventIdEndEventIdAndEvents: List<AggregateId * EventId * EventId * List<'E>>)
+        =
+        aggregateIdsInitEventIdEndEventIdAndEvents
+        |> List.iter (fun (aggregateId, initEventId, endEventId, events) ->
+            let _ = optionallySendAggregateEventsAsync<'A, 'E> queueName messageSenders aggregateId events initEventId endEventId
+            ()
+        )
+     
+    let optionallySendInitialInstanceAsync<'A, 'E when 'E :> Event<'A>>
+        (queueName: string)
+        (messageSenders: MessageSenders)
+        (aggregateId: AggregateId)
+        (initialInstance: 'A)
+        =
+        match messageSenders with
+        | MessageSenders.MessageSender messageSender ->
+            let sender = messageSender queueName // todo handle lookup error using option or result
+            let message =
+                MessageType<'A, 'E>.InitialSnapshot initialInstance
+            let aggregateMessage =
+                {
+                    AggregateId = aggregateId
+                    Message = message
+                }.Serialize
+            sender aggregateMessage
+        | _ ->
+            ValueTask.CompletedTask
             
-    type RabbitMqReceiver (logger: ILogger<RabbitMqReceiver>) =
+    let optionallySendDeleteMessageAsync<'A>
+        (queueName: StreamName)
+        (messageSenders: MessageSenders)
+        (aggregateId: AggregateId)
+        =
+        match messageSenders with
+        | MessageSenders.MessageSender messageSender ->
+            let sender = messageSender queueName // todo handle lookup error using option or result
+            let message =
+                MessageType<'A, _>.Delete
+            let aggregateMessage =
+                {
+                    AggregateId = aggregateId
+                    Message = message
+                }.Serialize
+            sender aggregateMessage    
+        | _ ->
+            ValueTask.CompletedTask
         
+    type RabbitMqReceiver (logger: ILogger<RabbitMqReceiver>) =
         member private this.ResyncWithFallbackAggregateStateRetriever
             (optStateViewer: Option<AggregateViewer<'A>>)
             (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)

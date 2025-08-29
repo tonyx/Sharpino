@@ -4,6 +4,7 @@ open System.Threading.Tasks
 open DotNetEnv
 open Expecto
 open Sharpino.Cache
+open Sharpino.EventBroker
 open Sharpino.Lib.Test.Models.SampleObject.Events
 open Sharpino.MemoryStorage
 open Sharpino.PgStorage
@@ -19,16 +20,16 @@ let tests =
 
     let password = Environment.GetEnvironmentVariable("password")
 
-    let doNothingBroker: IEventBroker<string> =
-        {
-            notify = None
-            notifyAggregate =  None
-        }
-   
-    let emptyMessageSenders =
-        fun queueName ->
-            fun message ->
-                ValueTask.CompletedTask 
+    // let doNothingBroker: IEventBroker<string> =
+    //     {
+    //         notify = None
+    //         notifyAggregate =  None
+    //     }
+    //
+    // let emptyMessageSenders =
+    //     fun queueName ->
+    //         fun message ->
+    //             ValueTask.CompletedTask 
         
     let connection =
         "Server=127.0.0.1;"+
@@ -67,7 +68,7 @@ let tests =
             
             // Act
             let initialized =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
             Expect.isOk initialized "should be ok"
             
             // Assert
@@ -83,7 +84,7 @@ let tests =
             let sampleObjectId = Guid.NewGuid()
             let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
             let initialized =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
             Expect.isOk initialized "should be ok"
             
             // Act
@@ -109,10 +110,10 @@ let tests =
             let sampleObject1 = SampleObject.MkSampleObject(sampleObjectId1, "sample object 1")
             let sampleObject2 = SampleObject.MkSampleObject(sampleObjectId2, "sample object 2")
             let initialized1 =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject1
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject1
             Expect.isOk initialized1 "should be ok"
             let initialized2 =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject2
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject2
             Expect.isOk initialized2 "should be ok"
             
             // Act
@@ -150,10 +151,10 @@ let tests =
             let sampleObject2 = SampleObject.MkSampleObject(sampleObjectId2, "sample object 2")
             
             let initialized1 =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject1
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject1
             Expect.isOk initialized1 "should be ok"
             let initialized2 =
-                runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject2
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject2
             Expect.isOk initialized2 "should be ok"
             
             let changeName1 = SampleObjectRenamed "new name 1"
@@ -194,7 +195,7 @@ let tests =
                     let sampleObjectId = Guid.NewGuid()
                     let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
                     let initialized =
-                        runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject
+                        runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
                     Expect.isOk initialized "should be ok"
                     yield sampleObject ]
             let eventChanges =
@@ -212,7 +213,7 @@ let tests =
                     let sampleObjectId = Guid.NewGuid()
                     let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
                     let initialized =
-                        runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject
+                        runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
                     Expect.isOk initialized "should be ok"
                     yield sampleObject ]
                 
@@ -232,7 +233,7 @@ let tests =
                     let sampleObjectId = Guid.NewGuid()
                     let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
                     let initialized =
-                        runInit<SampleObject, SampleObjectEvents, string> eventStore emptyMessageSenders sampleObject
+                        runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
                     Expect.isOk initialized "should be ok"
                     yield sampleObject ]
                 

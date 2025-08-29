@@ -13,19 +13,19 @@ open Sharpino.Storage
 open Sharpino
 open System
 
-let doNothingBroker  =
-    {
-        notify = None
-        notifyAggregate = None
-    }
-let emptyMessageSender =
-    fun queueName ->
-        fun message ->
-            ValueTask.CompletedTask
+// let doNothingBroker  =
+//     {
+//         notify = None
+//         notifyAggregate = None
+//     }
+// let emptyMessageSender =
+//     fun queueName ->
+//         fun message ->
+//             ValueTask.CompletedTask
 
-type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>, messageSender : StreamName -> MessageSender ) =
+type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>, messageSender: MessageSenders ) =
     new (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>) =
-        ItemManager (eventStore, itemViewer, reservationViewer, emptyMessageSender)
+        ItemManager (eventStore, itemViewer, reservationViewer, MessageSenders.NoSender)
         
     member this.AddItem (item: Item) =
         result {

@@ -21,15 +21,15 @@ open Sharpino.Storage
 open Sharpino
 open System
 
-let doNothingBroker  =
-    {
-        notify = None
-        notifyAggregate = None
-    }
-let emptyMessageSenders =
-    fun queueName ->
-        fun message ->
-            ValueTask.CompletedTask
+// let doNothingBroker  =
+//     {
+//         notify = None
+//         notifyAggregate = None
+//     }
+// let emptyMessageSenders =
+//     fun queueName ->
+//         fun message ->
+//             ValueTask.CompletedTask
 
 type CourseManager
     (eventStore: IEventStore<string>,
@@ -39,7 +39,7 @@ type CourseManager
      balanceViewer: AggregateViewer<Balance>,
      teacherViewer: AggregateViewer<Teacher>,
      initialBalance: Balance,
-     messageSenders: StreamName -> MessageSender
+     messageSenders: MessageSenders
     ) =
    
     do

@@ -38,7 +38,7 @@ module SeatBooking =
         
     type SeatBookingService
         (eventStore: IEventStore<string>,
-         messageSenders: string -> MessageSender,
+         messageSenders: MessageSenders,
          theaterViewer: StateViewer<Theater>,
          seatsViewer: AggregateViewer<Row>,
          bookingsViewer: AggregateViewer<Booking>,
@@ -115,7 +115,6 @@ module SeatBooking =
                         
                     let! result =
                         forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
-                        // runSagaNAggregateCommands<Row, RowEvents, string> rowIds eventStore eventBroker removeSeatsCommands
                     return result    
                 }
         member this.ForceRemoveSeatsFromRow (rowId: RowId, ns: List<int>) =

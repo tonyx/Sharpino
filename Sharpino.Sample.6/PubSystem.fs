@@ -27,11 +27,11 @@ module PubSystem =
             fun message ->
                 ValueTask.CompletedTask
     // type PubSystem (storage: IEventStore<string>, messageSender: string -> MessageSender) =
-    type PubSystem (storage: IEventStore<string>, messageSenders: string -> MessageSender, AggregateStateViewer : AggregateViewer<Ingredient>) =
+    type PubSystem (storage: IEventStore<string>, messageSenders: MessageSenders, AggregateStateViewer : AggregateViewer<Ingredient>) =
             let ingredientStateViewer = getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> storage
 
             new (storage: IEventStore<string>) =
-                PubSystem(storage, emptyMessageSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> storage)
+                PubSystem(storage, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> storage)
             member this.AddDish (dish: Dish) =
                 result {
                     let! result = runInit<Dish, DishEvents, string> storage messageSenders dish

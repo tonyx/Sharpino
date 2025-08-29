@@ -21,12 +21,12 @@ module Supermarket =
     open Sharpino.CommandHandler
         
     // type Supermarket (eventStore: IEventStore<'F>, eventBroker: IEventBroker<_>, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
-    type Supermarket (eventStore: IEventStore<'F>, messageSender: string -> MessageSender, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
-        new (eventStore: IEventStore<'F>, messageSender: string -> MessageSender) =
+    type Supermarket (eventStore: IEventStore<'F>, messageSenders: MessageSenders, goodsContainerViewer:StateViewer<GoodsContainer>, goodsViewer:AggregateViewer<Good>, cartViewer:AggregateViewer<Cart> ) =
+        new (eventStore: IEventStore<'F>, messageSenders: MessageSenders) =
             let goodsContainerViewer:StateViewer<GoodsContainer> = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, byte[]> eventStore
             let goodsViewer:AggregateViewer<Good> = getAggregateStorageFreshStateViewer<Good, GoodEvents, byte[]> eventStore
             let cartViewer:AggregateViewer<Cart> = getAggregateStorageFreshStateViewer<Cart, CartEvents, byte[]> eventStore
-            Supermarket (eventStore, messageSender, goodsContainerViewer, goodsViewer, cartViewer)
+            Supermarket (eventStore, messageSenders, goodsContainerViewer, goodsViewer, cartViewer)
 
         member this.GoodRefs = 
             result {
@@ -51,7 +51,7 @@ module Supermarket =
                 let command = GoodCommands.AddQuantity  quantity
                 return! 
                     command 
-                    |> runAggregateCommand<Good, GoodEvents, byte[]> goodId eventStore messageSender
+                    |> runAggregateCommand<Good, GoodEvents, byte[]> goodId eventStore messageSenders
             }
             
         member this.SetPrice (goodId: Guid, price: decimal) = 
@@ -60,7 +60,7 @@ module Supermarket =
                 let command = GoodCommands.ChangePrice  price
                 return! 
                     command 
-                    |> runAggregateCommand<Good, GoodEvents, byte[]> goodId eventStore messageSender
+                    |> runAggregateCommand<Good, GoodEvents, byte[]> goodId eventStore messageSenders
             }     
             
         member this.RetrieveGoodBypassingContainer (id: Guid)    =     
@@ -103,7 +103,7 @@ module Supermarket =
 
                 let! goodAdded =
                     good
-                    |> runInit<Good, GoodEvents,'F> eventStore messageSender
+                    |> runInit<Good, GoodEvents,'F> eventStore messageSenders
                 return ()
             }
         member this.AddGoodAsync (good: Good) =
@@ -117,14 +117,14 @@ module Supermarket =
             result {
                 let! (_, good) = goodsViewer id
                 return! 
-                    runDelete<Good, GoodEvents, byte[]> eventStore messageSender id (fun _ -> true)
+                    runDelete<Good, GoodEvents, byte[]> eventStore messageSenders id (fun _ -> true)
             }
 
         member this.AddCart (cart: Cart) = 
             result {
                 return! 
                     cart
-                    |> runInit<Cart, CartEvents,'F> eventStore messageSender
+                    |> runInit<Cart, CartEvents,'F> eventStore messageSenders
             }
 
         member this.GetCart (cartRef: Guid) = 
@@ -142,7 +142,7 @@ module Supermarket =
                         [goodId]
                         [cartId] 
                         eventStore 
-                        messageSender
+                        messageSenders
                         [removeQuantity] 
                         [addGood] 
             }
@@ -169,7 +169,7 @@ module Supermarket =
                         goodIds
                         cartids
                         eventStore 
-                        messageSender
+                        messageSenders
                         removeFromMarket
                         addToCart
             } 

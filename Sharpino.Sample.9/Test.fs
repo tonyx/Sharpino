@@ -55,11 +55,13 @@ aggregateMessageSenders.Add(Item.Version+Item.StorageName, itemMessageSender)
 aggregateMessageSenders.Add(Reservation.Version+Reservation.StorageName, reservationMessageSender)
 
 let messageSenders =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith (sprintf "not found %s" queueName)
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith (sprintf "not found %s" queueName)
+        )    
 
 #endif
 

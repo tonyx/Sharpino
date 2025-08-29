@@ -112,11 +112,13 @@ aggregateMessageSenders.Add(Student.Version+Student.StorageName, studentMessageS
 aggregateMessageSenders.Add(Teacher.Version+Teacher.StorageName, teacherMessageSender)
 
 let messageSenders =
-    fun queueName ->
-        let sender = aggregateMessageSenders.TryGetValue(queueName)
-        match sender with
-        | true, sender -> sender
-        | _ -> failwith (sprintf "not found %s" queueName)
+    MessageSenders.MessageSender
+        (fun queueName ->
+            let sender = aggregateMessageSenders.TryGetValue(queueName)
+            match sender with
+            | true, sender -> sender
+            | _ -> failwith (sprintf "not found %s" queueName)
+        )    
 #endif
 let emptyMessageSenders =
     fun queueName ->
@@ -153,7 +155,8 @@ let instances =
                        pgStorageBalanceViewer,
                        pgTeacherViewer,
                        Balance.MkBalance 1000.0M,
-                       emptyMessageSenders)),
+                       MessageSenders.NoSender
+                       )),
         pgStorageCourseViewer,
         pgStorageStudentViewer, 0;
         #endif

@@ -30,7 +30,7 @@ module TransportTycoon =
         {  notify = None
            notifyAggregate = None }
 
-    type TransportTycoon (eventStore: IEventStore<string>, eventBroker: string -> MessageSender, siteViewer:AggregateViewer<Site>, truckViewer: AggregateViewer<Transporter> ) =
+    type TransportTycoon (eventStore: IEventStore<string>, messageSenders: MessageSenders, siteViewer:AggregateViewer<Site>, truckViewer: AggregateViewer<Transporter> ) =
             
         member this.Sites () = 
             result {
@@ -49,13 +49,13 @@ module TransportTycoon =
         member this.AddSite (site: Site) =
             result {
                 return!
-                    runInit<Site, SiteEvents, string> eventStore eventBroker site
+                    runInit<Site, SiteEvents, string> eventStore messageSenders site
             }
             
         member this.AddTruck (truck: Transporter) =
             result {
                 return!
-                    runInit<Transporter, TruckEvents, string> eventStore eventBroker truck
+                    runInit<Transporter, TruckEvents, string> eventStore messageSenders truck
             }
             
         member this.GetSite (siteRef: Guid) =
@@ -77,7 +77,7 @@ module TransportTycoon =
                 let placeTruck = SiteCommands.PlaceTruck truckId
                  
                 let! result =
-                    runTwoAggregateCommands truckId siteId eventStore eventBroker setSite placeTruck
+                    runTwoAggregateCommands truckId siteId eventStore messageSenders setSite placeTruck
                 return result
             }
 
@@ -95,7 +95,7 @@ module TransportTycoon =
                 let addConnectionToSecondNode = SiteCommands.AddConnection endToStartConnection
                
                 return!
-                    runTwoAggregateCommands startConnection endConnection eventStore eventBroker addConnectionToFirstNode addConnectionToSecondNode
+                    runTwoAggregateCommands startConnection endConnection eventStore messageSenders addConnectionToFirstNode addConnectionToSecondNode
             }
             
         member this.ConnectSitesByRoad (siteId1: Guid) (siteId2: Guid) (startPath: Guid) (endPath: Guid) (timeToTravel: int) =
