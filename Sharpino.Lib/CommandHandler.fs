@@ -810,7 +810,6 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runInitAndCommand %A %A" 'A.StorageName command)
             runInitAndCommandMd<'A, 'E, 'A1, 'F> storage messageSenders initialInstance Metadata.Empty command
             
-    // todo: focus refactor writing a test about        
     let rec inline runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -834,8 +833,8 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
             let command = fun () ->
                 result {
-                    let! (eventId, state) = getAggregateFreshState<'A1, 'E1, 'F> aggregateId storage
-                    let! (newState, events) =
+                    let! eventId, state = getAggregateFreshState<'A1, 'E1, 'F> aggregateId storage
+                    let! newState, events =
                         state
                         |> unbox
                         |> command.Execute
@@ -934,16 +933,14 @@ module CommandHandler =
                     let _ =
                         optionallySendInitialInstanceAsync<'A2, _> snapshotStreamName messageSenders initialInstance.Id initialInstance
                     
-                    let eventStreamName = sprintf "%s%s" 'A1.Version 'A1.StorageName
-                    
-                    let initialEventIdsFinalEventsIdsAndEvents =
-                        List.zip3 lastEventIds finalWrittenEventIds events
-                    
                     let aggregateIdsInitialEventIdsFinalEventIdsAndEvents =
+                        let initialEventIdsFinalEventsIdsAndEvents =
+                            List.zip3 lastEventIds finalWrittenEventIds events
                         List.zip aggregateIds initialEventIdsFinalEventsIdsAndEvents
                         |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
                     
                     let _ =
+                        let eventStreamName = sprintf "%s%s" 'A1.Version 'A1.StorageName
                         optionallySendMultipleAggregateEventsAsync
                             eventStreamName messageSenders aggregateIdsInitialEventIdsFinalEventIdsAndEvents
                         
@@ -1375,14 +1372,6 @@ module CommandHandler =
             logger.Value.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command aggregateId)
             runAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders Metadata.Empty command
     
-     
-    // the "force" version of running N Commands has been improved and so
-    // it is safe to use them in place of the non-force version
-    // even though some aggregateId is repeated in parameters
-    // i.e. more commands hit the same aggregate (particularly
-    // tricky as the aggregate state and so the behavior of a command may
-    // depend on the result of some other commands)
-    
     let inline forceRunNAggregateCommandsMd<'A1, 'E1, 'F
         when 'A1 :> Aggregate<'F>
         and 'E1 :> Event<'A1>
@@ -1458,10 +1447,10 @@ module CommandHandler =
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (dbEventIds.[i] |> List.last, uniqueAggregateIds.[i])
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds.[i] newStates.[i] (dbEventIds.[i] |> List.last) |> ignore
                    
-                    let initialEventIdEnEventIdAndEvents =
-                        List.zip3 initialStatesEventIds (dbEventIds |>> List.last) newEvents
                     
                     let aggregateIdInitialEventIdEndEventIdAndEvents =
+                        let initialEventIdEnEventIdAndEvents =
+                            List.zip3 initialStatesEventIds (dbEventIds |>> List.last) newEvents
                         List.zip uniqueAggregateIds initialEventIdEnEventIdAndEvents
                         |>> fun (id, (initEventId, endEventId, events)) -> (id, initEventId, endEventId, events)
                     
@@ -1555,10 +1544,9 @@ module CommandHandler =
                         AggregateCache2.Instance.Memoize2 (newStates.[i] |> box |> Ok) (storedEventIds.[i] |> List.last, aggregateIds.[i])
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] newStates.[i] (storedEventIds.[i] |> List.last) |> ignore
                     
-                    let initialEventIdEndEventIdAndEvents =
-                        List.zip3 lastEventIds (storedEventIds |>> List.last) events
-                        
                     let aggregateIdAndInitialEventIdEndEventIdAndEvents =
+                        let initialEventIdEndEventIdAndEvents =
+                            List.zip3 lastEventIds (storedEventIds |>> List.last) events
                         List.zip aggregateIds initialEventIdEndEventIdAndEvents
                         |>> fun (id, (eventId, storedEventIds, events)) -> (id, eventId, storedEventIds, events)
                     
@@ -2063,12 +2051,10 @@ module CommandHandler =
                     let aggregateIdInitEventIdEndEventIdAndEventA1 =
                         List.zip aggregateIds1 initEventIdEndEventIdAndEventA1
                         |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
-                        
                     let initEventIdEndEventIdAndEventA2 = List.zip3 initialStateEventIds2 (newDbBasedEventIds2 |>> List.last) generatedEvents2
                     let aggregateIdInitEventIdEndEventIdAndEventA2 =
                         List.zip aggregateIds2 initEventIdEndEventIdAndEventA2
                         |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
-                    
                     let _ = optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventA1
                     let _ = optionallySendMultipleAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventA2
                        
@@ -2937,7 +2923,6 @@ module CommandHandler =
 
                     return ()
                 }
-            // using the aggregateIds to determine the name of the mailboxprocessor can be overkill: revise this ASAP
         #if USING_MAILBOXPROCESSOR    
             let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
             MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
