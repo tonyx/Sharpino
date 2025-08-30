@@ -513,7 +513,7 @@ module MemoryStorage =
                 else     
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryHead
-                    |> Result.ofOption "not found"
+                    |> Result.ofOption (sprintf "aggregate %s%s id %A not found" version name aggregateId)
                     >>= (fun x -> (x.Id, x.Snapshot) |> Ok)
             
             member this.TryGetSnapshotById version name id =

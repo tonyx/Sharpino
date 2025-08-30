@@ -195,6 +195,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.3.4: added more info in some error messages
 - Version 4.3.3: fix md parameter
 - Version 4.3.2: updated dependencies, fixed date error in pgBinaryEventStore
 - Version 4.3.1: reintroduced concurrent dictionary aggregate cache

@@ -19,7 +19,9 @@ module StateView =
 
     let inline private tryGetAggregateSnapshot<'A, 'F
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)
         >
         (aggregateId: Guid)
         (id: int)
@@ -45,7 +47,7 @@ module StateView =
                                 logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
                                 Error (sprintf "deserialization error for snapshot %A" snapshot')
                         | None ->
-                            Error (sprintf "snapshot not found %A" aggregateId)
+                            Error (sprintf "snapshot not found. Stream %A %A, aggregate id %A" 'A.Version 'A.StorageName aggregateId)
                     return result
                 }, Commons.generalAsyncTimeOut)
    
@@ -93,7 +95,9 @@ module StateView =
 
     let inline private getLastAggregateSnapshot<'A, 'F 
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)
         >
         (aggregateId: Guid)
         (version: string)
@@ -117,7 +121,9 @@ module StateView =
                 
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)
         >
         (aggregateId: Guid)
         (version: string)
@@ -148,7 +154,9 @@ module StateView =
                 
     let inline private getLastHistoryAggregateSnapshotOrStateCache<'A, 'F 
         when 'A :> Aggregate<'F> and
-        'A: (static member Deserialize: 'F -> Result<'A, string>)
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)
         >
         (aggregateId: Guid)
         (version: string)
@@ -160,7 +168,6 @@ module StateView =
                 (async {
                     return
                         result {
-                            // let lastCacheEventId = Cache.AggregateCache<'A, 'F>.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastHistorySnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
@@ -169,7 +176,6 @@ module StateView =
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        // Cache.AggregateCache<'A, 'F>.Instance.GetState (lastCacheEventId, aggregateId)
                                         Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
