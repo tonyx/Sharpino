@@ -12,10 +12,6 @@ open Sharpino.TransportTycoon.Site
 open Sharpino.TransportTycoon.SiteEvents
 open Sharpino.TransportTycoon.SiteCommands
 
-// open Sharpino.TransportTycoon.Network
-// open Sharpino.TransportTycoon.NetworkEvents
-// open Sharpino.TransportTycoon.NetworkCommands
-
 open Sharpino.TransportTycoon.Transporter
 open Sharpino.Core
 open Sharpino.PgStorage
@@ -50,11 +46,6 @@ let connection =
         "User Id=safe;"+
         $"Password={password};"
 
-let emptyMessageSender =
-    fun queueName ->
-        fun message ->
-            ValueTask.CompletedTask
-            
 let eventStoreMemory: IEventStore<string> = MemoryStorage ()
 let eventStorePg: IEventStore<string> = PgEventStore connection
 
@@ -67,8 +58,7 @@ let truckViewerPg = getAggregateStorageFreshStateViewer<Transporter, TruckEvents
 let memoryTransportTycoon = TransportTycoon (eventStoreMemory, MessageSenders.NoSender, siteViewerMemory, truckViewerMemory)
 let pgTransportTycoon = TransportTycoon (eventStorePg, MessageSenders.NoSender, siteViewerPg, truckViewerPg)
 
-#if RABBITMQ
- 
+#if RABBITMQ 
 let hostBuilder = 
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
@@ -114,12 +104,13 @@ let messageSender =
         (fun queueName ->
             let sender = aggregateMessageSenders.TryGetValue(queueName)
             match sender with
-            | true, sender -> sender
-            | _ -> failwith "not found XX")
+            | true, sender -> sender |> Ok
+            | _ -> (sprintf "rabbitq queue %s not found" queueName) |> Error
+        )
 
 let pgRabbitMqTransportTycoon = TransportTycoon (eventStorePg, messageSender, rabbitMqTransportStateViewer, rabbitMqTruckStateViewer)
+#endif        
 
-#endif
 
 let transportTycoons =
     [
@@ -179,16 +170,16 @@ let tests =
             
         multipleTestCase "add a site to the network - Ok" transportTycoons <| fun (transportTycoon, setUp, delay) ->
             // given
-            // setUp ()
+            setUp ()
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             // when
             let siteAdded = transportTycoon.AddSite site
             Expect.isOk siteAdded "should be ok"
             
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveSite = transportTycoon.GetSite site.Id
             Expect.isOk retrieveSite "should be ok"
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveSiteVal = retrieveSite.OkValue
             Expect.equal site retrieveSiteVal "should be equal"
             
@@ -197,7 +188,7 @@ let tests =
             setUp ()
             let siteRef = Guid.NewGuid()
             // when
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveSite = transportTycoon.GetSite siteRef
             // then
             Expect.isError retrieveSite "should be an error"
@@ -212,7 +203,7 @@ let tests =
             // then
             Expect.isOk truckAdded "should be ok"
             
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveTruck = transportTycoon.GetTruck truck.Id
             Expect.isOk retrieveTruck "should be ok"
             let trackVal = retrieveTruck.OkValue
@@ -233,20 +224,20 @@ let tests =
             let truckId = Guid.NewGuid()
             let truck = Transporter.Transporter.MkTransporter (truckId, "A", Guid.NewGuid())
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let truckAdded = transportTycoon.AddTruck truck
             Expect.isOk truckAdded "should be ok"
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let siteAdded = transportTycoon.AddSite site
             Expect.isOk siteAdded "should be ok"
             
             // when
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let truckPlaced = transportTycoon.PlaceTruckOnSite (truck.Id, site.Id)
             Expect.isOk truckPlaced "should be ok"
            
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveTruck = transportTycoon.GetTruck truck.Id
             Expect.isOk retrieveTruck "should be ok"
             let retrieveTruckVal = retrieveTruck.OkValue
@@ -260,17 +251,17 @@ let tests =
             let site = Site.MkSite (Guid.NewGuid(), SiteType.Factory)
             let truckAdded = transportTycoon.AddTruck truck
             Expect.isOk truckAdded "should be ok"
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let siteAdded = transportTycoon.AddSite site
             Expect.isOk siteAdded "should be ok"
             
             // when
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let truckPlaced = transportTycoon.PlaceTruckOnSite (truck.Id, site.Id)
             Expect.isOk truckPlaced "should be ok"
             
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveSite = transportTycoon.GetSite site.Id
             Expect.isOk retrieveSite "should be ok"
             let retrievedSiteVal = retrieveSite.OkValue
@@ -299,7 +290,7 @@ let tests =
             Expect.isOk truck2Placed "should be ok"
             
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveSite = transportTycoon.GetSite site.Id
             Expect.isOk retrieveSite "should be ok"
             let retrievedSiteVal = retrieveSite.OkValue
@@ -323,7 +314,7 @@ let tests =
             Expect.isOk connectFactoryToPort "should be ok"
             
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveFactory = transportTycoon.GetSite factory.Id
             Expect.isOk retrieveFactory "should be ok"
             let retrieveFactoryValue = retrieveFactory.OkValue
@@ -386,7 +377,7 @@ let tests =
             Expect.isOk connectPortToNodeA "should be ok"
 
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveFactory = transportTycoon.GetSite factory.Id
             Expect.isOk retrieveFactory "should be ok"
             let retrieveFactoryValue = retrieveFactory.OkValue
@@ -426,30 +417,30 @@ let tests =
             let addFactory = transportTycoon.AddSite factory
             Expect.isOk addFactory "should be ok"
             let nodeA = Site.MkSite (Guid.NewGuid(), SiteType.Destination "A")
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let addNodeA = transportTycoon.AddSite nodeA
             Expect.isOk addNodeA "should be ok"
             let port = Site.MkSite (Guid.NewGuid(), SiteType.Port)
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let addPort = transportTycoon.AddSite port
             Expect.isOk addPort "should be ok"
 
             // when
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let connectFactoryToPort = transportTycoon.ConnectSitesByRoad factory.Id port.Id factory.Id nodeA.Id 1
             Expect.isOk connectFactoryToPort "should be ok"
             
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let connectPortToNodeA = transportTycoon.ConnectSitesBySea port.Id nodeA.Id factory.Id nodeA.Id 1
             Expect.isOk connectPortToNodeA "should be ok"
 
             // then
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveFactory = transportTycoon.GetSite factory.Id
             Expect.isOk retrieveFactory "should be ok"
             let retrievePortValue = retrieveFactory.OkValue
             
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             Expect.equal retrievePortValue.SiteConnections.Length 1 "should be equal"
             let firstConnection = retrievePortValue.SiteConnections |> List.head
             let expectedFirstConnection = 
@@ -466,7 +457,7 @@ let tests =
         multipleTestCase "verify that the network is seeded correctly - Ok" transportTycoons <| fun (transportTycoon, setUp, delay) ->
             // given
             setUp ()
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let seedNetwork = seedDefaultNetwork transportTycoon
             let retrieveFactory = transportTycoon.GetSite testDataIds.FactoryId
             Expect.isOk retrieveFactory "should be ok"
@@ -524,7 +515,7 @@ let tests =
             let truckPlaced = transportTycoon.PlaceTruckOnSite (truck.Id, factory.Id)
             Expect.isOk truckPlaced "should be ok"
 
-            Thread.Sleep (delay)
+            Thread.Sleep delay
             let retrieveTruck = transportTycoon.GetTruck truck.Id
             Expect.isOk retrieveTruck "should be ok"
             let retrieveTruckValue = retrieveTruck.OkValue

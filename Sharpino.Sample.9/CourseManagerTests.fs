@@ -116,8 +116,8 @@ let messageSenders =
         (fun queueName ->
             let sender = aggregateMessageSenders.TryGetValue(queueName)
             match sender with
-            | true, sender -> sender
-            | _ -> failwith (sprintf "not found %s" queueName)
+            | true, sender -> sender |> Ok
+            | _ -> (sprintf "not found %s" queueName) |> Error
         )    
 #endif
 let emptyMessageSenders =
@@ -254,14 +254,17 @@ let tests =
             let addCourse = courseManager.AddCourse (Course.MkCourse  ("Math", 10))
             Expect.isOk addCourse "should be ok"
             let englishCourse = Course.MkCourse  ("English", 10)
-            let addCourse = courseManager.AddCourse (englishCourse)
+            let addCourse = courseManager.AddCourse englishCourse
             Expect.isOk addCourse "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
+            let retrievedCourse = courseManager.GetCourse englishCourse.Id
+            Expect.isOk retrievedCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
             let balance = courseManager.Balance 
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
             Expect.equal balance.Amount 800.0M "should be equal"
-            let deleteCourse = courseManager.DeleteCourse (englishCourse.Id)
+            let deleteCourse = courseManager.DeleteCourse englishCourse.Id
             Expect.isOk deleteCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
             let balance = courseManager.Balance 

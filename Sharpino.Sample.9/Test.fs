@@ -59,8 +59,9 @@ let messageSenders =
         (fun queueName ->
             let sender = aggregateMessageSenders.TryGetValue(queueName)
             match sender with
-            | true, sender -> sender
-            | _ -> failwith (sprintf "not found %s" queueName)
+            | true, sender -> sender |> Ok
+            | _ -> (sprintf "not found %s" queueName) |> Error
+//             | _ -> (sprintf "not found %s" queueName)
         )    
 
 #endif

@@ -110,8 +110,8 @@ let rabbitMqmessageSender =
         (fun queueName ->
             let sender = aggregateMessageSenders.TryGetValue(queueName)
             match sender with
-            | true, sender -> sender
-            | _ -> failwith "not found XX"
+            | true, sender -> sender |> Ok
+            | _ -> sprintf "sender not found %s" queueName |> Error
         )    
 #endif
 
@@ -129,11 +129,6 @@ let setupPgEventStore () =
 let setupMemoryEventStore () =
     setUp eventStoreMemory
     ()
-
-let emptyMessageSender =
-    fun queueName ->
-        fun message ->
-            ValueTask.CompletedTask
                 
 let marketInstances =
     [

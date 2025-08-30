@@ -39,5 +39,5 @@ module EventBroker =
     
     type MessageSenders =
         | NoSender
-        | MessageSender of (StreamName -> MessageSender)
+        | MessageSender of (StreamName -> Result<MessageSender, string>)
         

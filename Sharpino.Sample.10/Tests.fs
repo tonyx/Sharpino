@@ -34,10 +34,6 @@ module Tests =
     Env.Load()
     let password = Environment.GetEnvironmentVariable("password")
     
-    let emptyMessageSenders: StreamName -> MessageSender =
-        fun _ ->
-            fun _ ->
-                ValueTask.CompletedTask
     let connection =
         "Server=127.0.0.1;"+
         "Database=sharpino_sample_10;" +
@@ -52,7 +48,7 @@ module Tests =
                 ()
         )
    
-    // #if RABBITMQ 
+    #if RABBITMQ 
     let host = hostBuilder.Build()
     let hostTask = host.StartAsync()
     
@@ -89,13 +85,15 @@ module Tests =
     aggregateMessageSenders.Add (Account.Version + Account.StorageName, accountMessageSender)
     
     let messageSenders =
-        fun queueName ->
-            let sender = aggregateMessageSenders.TryGetValue queueName
-            match sender with
-            | true, sender -> sender
-            | false, _ -> failwith (sprintf "queue not found: %s" queueName)
+        MessageSenders.MessageSender
+            (fun queueName ->
+                let sender = aggregateMessageSenders.TryGetValue queueName
+                match sender with
+                | true, sender -> sender |> Ok
+                | false, _ -> (sprintf "queue not found: %s" queueName) |> Error
+            )    
         
-    // #endif
+    #endif
     
     let setUp (eventStore: IEventStore<byte[]>) =
         eventStore.Reset Counter.Version Counter.StorageName
@@ -110,7 +108,7 @@ module Tests =
     let counterApi = fun () -> CounterApi (eventStore, messageSenders, rabbitMqCounterStateViewer , rabbitMqAccountStateViewer)
     let timeout = 1000
     #else
-    let counterApi = fun () -> CounterApi (eventStore, emptyMessageSenders, getAggregateStorageFreshStateViewer<Counter, CounterEvents, byte[]> eventStore, getAggregateStorageFreshStateViewer<Account, AccountEvents, byte[]> eventStore)
+    let counterApi = fun () -> CounterApi (eventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Counter, CounterEvents, byte[]> eventStore, getAggregateStorageFreshStateViewer<Account, AccountEvents, byte[]> eventStore)
     let timeout = 0
     #endif
         

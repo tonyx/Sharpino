@@ -70,8 +70,8 @@ module RabbitMq =
         (endEventId: EventId)
         =
         match messageSenders with
-        | MessageSenders.MessageSender messageSender ->
-            let sender = messageSender queueName
+        | MessageSenders.MessageSender messageSender when (messageSender queueName |> Result.isOk) ->
+            let sender = messageSender queueName |> Result.get
             let message =
                 MessageType<'A, 'E>.Events
                     {
@@ -106,8 +106,8 @@ module RabbitMq =
         (initialInstance: 'A)
         =
         match messageSenders with
-        | MessageSenders.MessageSender messageSender ->
-            let sender = messageSender queueName // todo handle lookup error using option or result
+        | MessageSenders.MessageSender messageSender when (messageSender queueName |> Result.isOk) ->
+            let sender = messageSender queueName |> Result.get 
             let message =
                 MessageType<'A, 'E>.InitialSnapshot initialInstance
             let aggregateMessage =
@@ -125,8 +125,8 @@ module RabbitMq =
         (aggregateId: AggregateId)
         =
         match messageSenders with
-        | MessageSenders.MessageSender messageSender ->
-            let sender = messageSender queueName // todo handle lookup error using option or result
+        | MessageSenders.MessageSender messageSender when (messageSender queueName |> Result.isOk) ->
+            let sender = messageSender queueName |> Result.get
             let message =
                 MessageType<'A, _>.Delete
             let aggregateMessage =
@@ -152,7 +152,7 @@ module RabbitMq =
                     | Error e ->
                         logger.LogError ("Error: {e}", e)
                 | None ->
-                    // logerror
+                    logger.LogInformation ($"No state viewer is set for aggregateId {aggregateId}", aggregateId)
                     ()
         
         member this.BuildReceiver<'A, 'E, 'F
@@ -180,8 +180,8 @@ module RabbitMq =
                                 let (Error e) = newState
                                 logger.LogError ("error {e}", e)
                                 this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
-                    | Ok { Message = MessageType.Events {InitEventId = initEventId; EndEventId = endEventId}; AggregateId = aggregateId } ->
-                        logger.LogError ("events disalignments for aggregate: {aggregateId}", aggregateId)
+                    | Ok { Message = MessageType.Events e; AggregateId = aggregateId } ->
+                        logger.LogError ("events indexes unalignments for aggregate: {aggregateId}, unexpected indexes in message {e}", aggregateId, e)
                         this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
                     | Ok { Message = MessageType.Delete; AggregateId = aggregateId } when statesPerAggregate.ContainsKey aggregateId ->
                             statesPerAggregate.TryRemove aggregateId  |> ignore
