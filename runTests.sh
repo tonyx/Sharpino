@@ -1,4 +1,4 @@
-echo many tests require postgres active and running (or change the tests  code to use only in-memory storage)
+echo many tests require postgres active and running or change the tests  code to use only inmemory storage
 cd Sharpino.Sample.Test
 dotnet run
 cd ..

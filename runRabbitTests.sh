@@ -1,4 +1,4 @@
-echo remember that rabbit must be active (rabbitmq-server)
+echo remember that rabbit must be active: rabbitmq-server
 cd Sharpino.Sample.3.Test
 dotnet run --configuration:rabbitmq
 cd ..

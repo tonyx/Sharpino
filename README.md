@@ -51,6 +51,7 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
   There may also be events associated with the creation and deletion of aggregates, but they are not needed.
 - Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
+- MessageSenders: can be set to NoSender or to a MessageSender that returns a ValueTask that can be used to send messages to a message bus.
 
 ## Features and technical improvements planned to be added
 - Sending events to a message bus after they have been stored (see the branch 20250802_rabbitmq for an example of implementation).
@@ -195,6 +196,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.4.0: added MessageSenders (replacing partially the old IEventBroker) to send events to a message bus after they have been stored. Some Rabbitmq examples are provided. (warning. In case of compilation errors, replace the old IEventBroker with MessageSenders in the code)
 - Version 4.3.4: added more info in some error messages
 - Version 4.3.3: fix md parameter
 - Version 4.3.2: updated dependencies, fixed date error in pgBinaryEventStore
