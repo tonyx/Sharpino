@@ -65,6 +65,16 @@ module DishConsumer =
                 (fun _ ea ->
                     rb.BuildReceiver<Dish, DishEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
                 )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Dish Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
-            
+        
+        override this.Dispose () =
+            channel.Dispose()

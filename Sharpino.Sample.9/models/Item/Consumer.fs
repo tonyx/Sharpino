@@ -82,6 +82,9 @@ module ItemConsumer =
             | None ->
                 logger.LogError "no fallback aggregate state retriever set"
             
+        member this.ResetAllStates () =
+            statePerAggregate.Clear()
+            
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
                 statePerAggregate.[id]
@@ -90,7 +93,11 @@ module ItemConsumer =
                 Result.Error "No state"
         
         override this.ExecuteAsync cancellationToken =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Item, ItemEvent, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
-            
-        member this.ResetAllStates () =
-            statePerAggregate.Clear() 
+       
+        override this.Dispose () =
+            channel.Dispose ()     

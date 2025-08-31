@@ -67,6 +67,15 @@ module IngredientConsumer =
                 (fun _ ea ->
                     rb.BuildReceiver<Ingredient, IngredientEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
                 )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Ingredient Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
-            
+        override this.Dispose () =
+            channel.Dispose()    
             

@@ -55,11 +55,12 @@ module TeacherConsumer =
                 logger.LogError "no fallback aggregate state retriever set" 
        
         let consumer = AsyncEventingBasicConsumer channel
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Teacher, TeacherEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
+        
+        // do
+        //     consumer.add_ReceivedAsync
+        //         (fun _ ea ->
+        //             rb.BuildReceiver<Teacher, TeacherEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+        //         )
        
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
@@ -73,6 +74,18 @@ module TeacherConsumer =
             fallBackAggregateStateRetriever <- None
         
         override this.ExecuteAsync cancellationToken =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Teacher, TeacherEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Teacher Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
             
         member this.ResetAllStates () =

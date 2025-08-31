@@ -55,4 +55,15 @@ module CartConsumer =
                 (fun _ ea ->
                     rb.BuildReceiver<Cart, CartEvents, byte[]> statePerAggregate fallBackAggregateStateRetriever ea
                 )
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Cart Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+        
+        override this.Dispose () =
+            channel.Dispose()

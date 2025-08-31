@@ -60,11 +60,11 @@ module ReservationConsumer =
          
         let consumer = AsyncEventingBasicConsumer channel
         
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Reservation, ReservationEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
+        // do
+        //     consumer.add_ReceivedAsync
+        //         (fun _ ea ->
+        //             rb.BuildReceiver<Reservation, ReservationEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+        //         )
          
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Reservation.Reservation>) =
             setFallbackAggregateStateRetriever aggregateViewer
@@ -80,8 +80,22 @@ module ReservationConsumer =
                 Result.Error "No state" 
           
         override this.ExecuteAsync cancellationToken =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Reservation, ReservationEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Reservation Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
             
         member this.ResetAllStates () =
             statePerAggregate.Clear() 
         
+        member this.Dispose () =
+            channel.Dispose () 

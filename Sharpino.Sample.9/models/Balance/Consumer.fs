@@ -53,12 +53,6 @@ module BalanceConsumer =
                 
         let consumer = AsyncEventingBasicConsumer channel
         
-        do
-            consumer.add_ReceivedAsync
-                ( fun _ ea ->
-                    rb.BuildReceiver<Balance, BalanceEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-        
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Balance.Balance>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
             
@@ -76,6 +70,19 @@ module BalanceConsumer =
             statePerAggregate.Clear() 
         
         override this.ExecuteAsync (cancellationToken) =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Balance, BalanceEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Balance Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
+               
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
             
                 

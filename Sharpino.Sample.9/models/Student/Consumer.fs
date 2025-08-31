@@ -56,11 +56,11 @@ module StudentConsumer =
         
         let consumer = AsyncEventingBasicConsumer channel
         
-        do
-            consumer.add_ReceivedAsync
-                ( fun _ ea ->
-                    rb.BuildReceiver<Student, StudentEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
+        // do
+        //     consumer.add_ReceivedAsync
+        //         ( fun _ ea ->
+        //             rb.BuildReceiver<Student, StudentEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+        //         )
         
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
@@ -75,6 +75,18 @@ module StudentConsumer =
             fallBackAggregateStateRetriever <- None
             
         override this.ExecuteAsync cancellationToken =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Student, StudentEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Student Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
             
         member this.ResetAllStates () =

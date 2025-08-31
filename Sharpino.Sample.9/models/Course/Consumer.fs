@@ -55,12 +55,6 @@ module CourseConsumer =
                 logger.LogError "no fallback aggregate state retriever set" 
           
         let consumer = AsyncEventingBasicConsumer channel
-        
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Course, CourseEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
             
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Course.Course>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
@@ -79,6 +73,9 @@ module CourseConsumer =
                     logger.LogError ("Error: {e}", e)
             | None ->
                 logger.LogError "no fallback aggregate state retriever set"
+                
+        member this.ResetAllStates () =
+            statePerAggregate.Clear() 
             
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
@@ -88,7 +85,18 @@ module CourseConsumer =
                 Result.Error "No state"
         
         override this.ExecuteAsync (cancellationToken) =
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Course, CourseEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Course Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
-            
-        member this.ResetAllStates () =
-            statePerAggregate.Clear() 
+        override this.Dispose () =
+            channel.Dispose ()    

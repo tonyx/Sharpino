@@ -50,11 +50,6 @@ module Consumer =
             | None ->
                 logger.LogError "no fallback aggregate state retriever set"    
         let consumer =  AsyncEventingBasicConsumer channel
-        do
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Transporter, TruckEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
             
         member this.SetFallbackAggregateStateRetriever (retriever: AggregateViewer<Transporter>) =
             fallBackAggregateStateRetriever <- Some retriever
@@ -82,6 +77,19 @@ module Consumer =
                 Result.Error "No state"
          
         override this.ExecuteAsync (stoppingToken) =
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
-
-
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Transporter, TruckEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Truck Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose ()
+                        }
+                )
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+            
+        override this.Dispose () =
+            channel.Dispose ()
