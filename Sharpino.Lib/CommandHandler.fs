@@ -1296,7 +1296,6 @@ module CommandHandler =
         =
             logger.Value.LogDebug (sprintf "runAggregateCommandRefactor %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             result {
-                // duplication here as the preExecute does similar stuff
                 let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
                 let! _, events =
                     state
