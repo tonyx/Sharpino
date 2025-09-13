@@ -65,6 +65,8 @@ ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
 create index ix{Version}_events{AggregateStorageName}_id on public.events{Version}{AggregateStorageName}(aggregate_id);
 create index ix{Version}_aggregate_events{AggregateStorageName}_id on public.aggregate_events{Version}{AggregateStorageName}(aggregate_id);
 create index ix{Version}_snapshot{AggregateStorageName}_id on public.snapshots{Version}{AggregateStorageName}(aggregate_id);
+create index ix{Version}_events{AggregateStorageName}_timestamp on public.events{Version}{AggregateStorageName}("timestamp");
+create index ix{Version}_snapshots{AggregateStorageName}_timestamp on public.snapshots{Version}{AggregateStorageName}("timestamp");
                                                                                                                                                           
 CREATE OR REPLACE FUNCTION insert{Version}{AggregateStorageName}_event_and_return_id(
     IN event_in {Format},
