@@ -1,6 +1,5 @@
 -- migrate:up
 
-
 CREATE TABLE public.events_01_reservations (
                                                id integer NOT NULL,
                                                aggregate_id uuid NOT NULL,
@@ -62,6 +61,12 @@ ALTER TABLE ONLY public.aggregate_events_01_reservations
 
 ALTER TABLE ONLY public.aggregate_events_01_reservations
     ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_reservations (id) MATCH FULL ON DELETE CASCADE;
+
+create index ix_01_events_reservations_id on public.events_01_reservations(aggregate_id);
+create index ix_01_aggregate_events_reservations_id on public.aggregate_events_01_reservations(aggregate_id);
+create index ix_01_snapshot_reservations_id on public.snapshots_01_reservations(aggregate_id);
+create index ix_01_events_reservations_timestamp on public.events_01_reservations("timestamp");
+create index ix_01_snapshots_reservations_timestamp on public.snapshots_01_reservations("timestamp");
 
 CREATE OR REPLACE FUNCTION insert_01_reservations_event_and_return_id(
     IN event_in text,
@@ -141,4 +146,3 @@ END;
 $$;
 
 -- migrate:down
-

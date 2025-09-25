@@ -12,12 +12,8 @@ open Sharpino.RabbitMq
 open Sharpino.Storage
 open Sharpino.TestUtils
 open Tonyx.Sharpino.Pub
-open Tonyx.Sharpino.Pub.Dish
 open Tonyx.Sharpino.Pub.DishConsumer
-open Tonyx.Sharpino.Pub.DishEvents
-open Tonyx.Sharpino.Pub.Ingredient
 open Tonyx.Sharpino.Pub.IngredientConsumer
-open Tonyx.Sharpino.Pub.IngredientEvents
 open Tonyx.Sharpino.Pub.Supplier
 open System
 open Sharpino.Cache
@@ -26,7 +22,6 @@ open DotNetEnv
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Tonyx.Sharpino.Pub.SupplierConsumer
-open Tonyx.Sharpino.Pub.SupplierEvents
 
 Env.Load()
 let password = Environment.GetEnvironmentVariable("password")
@@ -135,7 +130,7 @@ let tests =
         multipleTestCase "add a dish and retrieve it - OK" storages <| fun (pubSystem, eventStore, _, delay, _) ->
             setUp ()
         
-            let dish = Dish.Dish(Guid.NewGuid(), "test", [])
+            let dish = Dish(Guid.NewGuid(), "test", [])
             let addDish = pubSystem.AddDish dish
             Expect.isOk addDish "should be ok"
             Thread.Sleep delay

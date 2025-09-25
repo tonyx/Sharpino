@@ -16,7 +16,6 @@ open System.Collections.Concurrent
 open System.Text
 open Sharpino.RabbitMq
 open Tonyx.Sharpino.Pub.Supplier
-open Tonyx.Sharpino.Pub.SupplierEvents
 
 module SupplierConsumer =
     type SupplierConsumer(sp: IServiceProvider, logger: ILogger<SupplierConsumer>, rb: RabbitMqReceiver) =

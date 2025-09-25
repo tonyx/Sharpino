@@ -116,8 +116,6 @@ module Supermarket =
                 let! (_, good) = goodsViewer id
                 return! 
                     runDelete<Good, GoodEvents, string> eventStore eventBroker id (fun _ -> true)
-                    // command
-                    // |> runCommand<GoodsContainer, GoodsContainerEvents, string> eventStore legacyBroker 
             }
 
         member this.AddCart (cart: Cart) = 

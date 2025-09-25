@@ -1,8 +1,6 @@
 namespace Tonyx.Sharpino.Pub
 open FSharpPlus
 open FsToolkit.ErrorHandling
-open Tonyx.Sharpino.Pub.Ingredient
-open Tonyx.Sharpino.Pub.IngredientEvents
 open Sharpino.Definitions
 open Sharpino.Utils
 open Sharpino.Core

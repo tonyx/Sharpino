@@ -14,7 +14,6 @@ open Sharpino.Utils
 open Sharpino.Lib.Core.Commons
 open System
 
-module Ingredient =
     type MeasureType =
         | Centiliters
         | Grams

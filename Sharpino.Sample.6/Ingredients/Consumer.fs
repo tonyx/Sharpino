@@ -16,8 +16,6 @@ open System.Collections.Concurrent
 open System.Text
 open Sharpino.RabbitMq
 open Tonyx.Sharpino.Pub.Commons
-open Tonyx.Sharpino.Pub.Ingredient
-open Tonyx.Sharpino.Pub.IngredientEvents
 
 module IngredientConsumer =
     type IngredientConsumer(sp: IServiceProvider, logger: ILogger<IngredientConsumer>, rb: RabbitMqReceiver) =

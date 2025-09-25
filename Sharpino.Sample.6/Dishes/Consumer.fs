@@ -12,8 +12,6 @@ open System
 open System.Collections.Concurrent
 open System.Text
 open Sharpino.RabbitMq
-open Tonyx.Sharpino.Pub.Dish
-open Tonyx.Sharpino.Pub.DishEvents
 
 module DishConsumer =
     type DishConsumer (sp: IServiceProvider, logger: ILogger<DishConsumer>, rb: RabbitMqReceiver) =

@@ -53,7 +53,7 @@ CREATE SEQUENCE public.aggregate_events{Version}{AggregateStorageName}_id_seq
 CREATE TABLE public.aggregate_events{Version}{AggregateStorageName} (
                                                     id integer DEFAULT nextval('public.aggregate_events{Version}{AggregateStorageName}_id_seq') NOT NULL,
                                                     aggregate_id uuid NOT NULL,
-                                                    event_id integer
+                                                    event_id integer UNIQUE
 );
 
 ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
@@ -65,6 +65,7 @@ ALTER TABLE ONLY public.aggregate_events{Version}{AggregateStorageName}
 create index ix{Version}_events{AggregateStorageName}_id on public.events{Version}{AggregateStorageName}(aggregate_id);
 create index ix{Version}_aggregate_events{AggregateStorageName}_id on public.aggregate_events{Version}{AggregateStorageName}(aggregate_id);
 create index ix{Version}_snapshot{AggregateStorageName}_id on public.snapshots{Version}{AggregateStorageName}(aggregate_id);
+create index ix{Version}_snapshot{AggregateStorageName}_event_id on public.snapshots{Version}{AggregateStorageName}(event_id);
 create index ix{Version}_events{AggregateStorageName}_timestamp on public.events{Version}{AggregateStorageName}("timestamp");
 create index ix{Version}_snapshots{AggregateStorageName}_timestamp on public.snapshots{Version}{AggregateStorageName}("timestamp");
                                                                                                                                                           

@@ -239,36 +239,6 @@ $$;
 
 
 --
--- Name: insert_enhanced_01_item_event_and_return_id(text, integer, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_enhanced_01_item_event_and_return_id(event_in text, event_id_check integer, aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
-
-    IF (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check THEN
-        INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
-        VALUES(aggregate_id, event_id)
-            RETURNING id INTO inserted_id;
-    ELSE
-        ROLLBACK;
-        return -1;
-    END IF;
-
-return event_id;
-COMMIT;
-
-END;
-$$;
-
-
---
 -- Name: insert_md_01_balance_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -350,7 +320,7 @@ CREATE FUNCTION public.insert_md_01_item_aggregate_event_and_return_id(event_in 
     LANGUAGE plpgsql
     AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
     event_id integer;
 BEGIN
     event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
@@ -982,6 +952,14 @@ ALTER TABLE ONLY public.aggregate_events_01_course
 
 
 --
+-- Name: aggregate_events_01_item aggregate_events_01_item_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_item
+    ADD CONSTRAINT aggregate_events_01_item_event_id_key UNIQUE (event_id);
+
+
+--
 -- Name: aggregate_events_01_item aggregate_events_01_item_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1167,10 +1145,24 @@ CREATE INDEX ix_01_events_balance_id ON public.events_01_balance USING btree (ag
 
 
 --
+-- Name: ix_01_events_balance_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_balance_timestamp ON public.events_01_balance USING btree ("timestamp");
+
+
+--
 -- Name: ix_01_events_course_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_events_course_id ON public.events_01_course USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_course_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_course_timestamp ON public.events_01_course USING btree ("timestamp");
 
 
 --
@@ -1181,10 +1173,24 @@ CREATE INDEX ix_01_events_item_id ON public.events_01_item USING btree (aggregat
 
 
 --
+-- Name: ix_01_events_item_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_item_timestamp ON public.events_01_item USING btree ("timestamp");
+
+
+--
 -- Name: ix_01_events_reservations_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_events_reservations_id ON public.events_01_reservations USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_reservations_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_reservations_timestamp ON public.events_01_reservations USING btree ("timestamp");
 
 
 --
@@ -1195,10 +1201,24 @@ CREATE INDEX ix_01_events_student_id ON public.events_01_student USING btree (ag
 
 
 --
+-- Name: ix_01_events_student_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_student_timestamp ON public.events_01_student USING btree ("timestamp");
+
+
+--
 -- Name: ix_01_events_teacher_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_events_teacher_id ON public.events_01_teacher USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_teacher_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_teacher_timestamp ON public.events_01_teacher USING btree ("timestamp");
 
 
 --
@@ -1213,6 +1233,13 @@ CREATE INDEX ix_01_snapshot_balance_id ON public.snapshots_01_balance USING btre
 --
 
 CREATE INDEX ix_01_snapshot_course_id ON public.snapshots_01_course USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshot_event_item_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_event_item_id ON public.snapshots_01_item USING btree (event_id);
 
 
 --
@@ -1241,6 +1268,48 @@ CREATE INDEX ix_01_snapshot_student_id ON public.snapshots_01_student USING btre
 --
 
 CREATE INDEX ix_01_snapshot_teacher_id ON public.snapshots_01_teacher USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshots_balance_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_balance_timestamp ON public.snapshots_01_balance USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_course_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_course_timestamp ON public.snapshots_01_course USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_item_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_item_timestamp ON public.snapshots_01_item USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_reservations_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_reservations_timestamp ON public.snapshots_01_reservations USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_student_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_student_timestamp ON public.snapshots_01_student USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_teacher_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_teacher_timestamp ON public.snapshots_01_teacher USING btree ("timestamp");
 
 
 --

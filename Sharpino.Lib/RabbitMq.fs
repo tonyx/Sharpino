@@ -181,7 +181,6 @@ module RabbitMq =
                                 logger.LogError ("error {e}", e)
                                 this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
                     | Ok { Message = MessageType.Events e; AggregateId = aggregateId } ->
-                        // todo: sample 9 shows something strange in this indexes checks leading here as it should not
                         logger.LogError ("events indexes unalignments for aggregate: {aggregateId}, unexpected indexes in message {e}", aggregateId, e)
                         this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
                     | Ok { Message = MessageType.Delete; AggregateId = aggregateId } when statesPerAggregate.ContainsKey aggregateId ->

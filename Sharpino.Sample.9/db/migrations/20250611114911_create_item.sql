@@ -53,7 +53,7 @@ CREATE SEQUENCE public.aggregate_events_01_item_id_seq
 CREATE TABLE public.aggregate_events_01_item (
                                                  id integer DEFAULT nextval('public.aggregate_events_01_item_id_seq') NOT NULL,
                                                  aggregate_id uuid NOT NULL,
-                                                 event_id integer
+                                                 event_id integer UNIQUE
 );
 
 ALTER TABLE ONLY public.aggregate_events_01_item
@@ -61,6 +61,13 @@ ALTER TABLE ONLY public.aggregate_events_01_item
 
 ALTER TABLE ONLY public.aggregate_events_01_item
     ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_item (id) MATCH FULL ON DELETE CASCADE;
+
+create index ix_01_events_item_id on public.events_01_item(aggregate_id);
+create index ix_01_aggregate_events_item_id on public.aggregate_events_01_item(aggregate_id);
+create index ix_01_snapshot_item_id on public.snapshots_01_item(aggregate_id);
+create index ix_01_snapshot_event_item_id on public.snapshots_01_item(event_id);
+create index ix_01_events_item_timestamp on public.events_01_item("timestamp");
+create index ix_01_snapshots_item_timestamp on public.snapshots_01_item("timestamp");
 
 CREATE OR REPLACE FUNCTION insert_01_item_event_and_return_id(
     IN event_in text,
@@ -128,7 +135,7 @@ RETURNS int
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    inserted_id integer;
+inserted_id integer;
     event_id integer;
 BEGIN
     event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
@@ -139,36 +146,4 @@ return event_id;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION insert_enhanced_01_item_event_and_return_id(
-       event_in text,
-       event_id_check integer,
-       aggregate_id uuid,
-       md text
-   )
-RETURNS int
-LANGUAGE plpgsql      
-AS $$       
-       
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN 
-    event_id := insert_md_01_item_event_and_return_id(event_in, aggregate_id, md);
-             
-    IF (SELECT MAX(id) FROM aggregate_events_01_item WHERE aggregate_id = aggregate_id) = event_id_check THEN
-        INSERT INTO aggregate_events_01_item(aggregate_id, event_id)
-        VALUES(aggregate_id, event_id)
-            RETURNING id INTO inserted_id;
-    ELSE    
-        ROLLBACK;
-        return -1;
-    END IF;
-    
-return event_id;
-COMMIT;
-
-END;
-$$;
-
 -- migrate:down
-

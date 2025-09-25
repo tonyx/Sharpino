@@ -1,4 +1,5 @@
 -- migrate:up
+
 CREATE TABLE public.events_01_student (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
@@ -60,6 +61,12 @@ ALTER TABLE ONLY public.aggregate_events_01_student
 
 ALTER TABLE ONLY public.aggregate_events_01_student
     ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_student (id) MATCH FULL ON DELETE CASCADE;
+
+create index ix_01_events_student_id on public.events_01_student(aggregate_id);
+create index ix_01_aggregate_events_student_id on public.aggregate_events_01_student(aggregate_id);
+create index ix_01_snapshot_student_id on public.snapshots_01_student(aggregate_id);
+create index ix_01_events_student_timestamp on public.events_01_student("timestamp");
+create index ix_01_snapshots_student_timestamp on public.snapshots_01_student("timestamp");
 
 CREATE OR REPLACE FUNCTION insert_01_student_event_and_return_id(
     IN event_in text,
@@ -138,8 +145,4 @@ return event_id;
 END;
 $$;
 
- 
-    
-
 -- migrate:down
-

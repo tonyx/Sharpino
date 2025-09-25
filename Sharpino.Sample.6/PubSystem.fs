@@ -5,7 +5,6 @@ open Sharpino.EventBroker
 open Tonyx.Sharpino.Pub.Commons
 open Tonyx.Sharpino.Pub.Supplier
 
-open Tonyx.Sharpino.Pub.Dish
 open Sharpino.CommandHandler
 open Sharpino.Definitions
 open System
@@ -15,18 +14,12 @@ open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
 open System
-open Tonyx.Sharpino.Pub.SupplierEvents
 
 module PubSystem =
-    open DishEvents
-    open Ingredient
-    open IngredientEvents
-        
     let emptyMessageSender =
         fun queueName ->
             fun message ->
                 ValueTask.CompletedTask
-    // type PubSystem (storage: IEventStore<string>, messageSender: string -> MessageSender) =
     type PubSystem (storage: IEventStore<string>, messageSenders: MessageSenders, AggregateStateViewer : AggregateViewer<Ingredient>) =
             let ingredientStateViewer = getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> storage
 
@@ -40,7 +33,7 @@ module PubSystem =
                 
             member this.AddIngredient ( ingredientId: Guid, name: string ) =
                 result {
-                    let! result = runInit<Ingredient, IngredientEvents, string> storage messageSenders (Ingredient.Ingredient(ingredientId, name, [], []))
+                    let! result = runInit<Ingredient, IngredientEvents, string> storage messageSenders (Ingredient(ingredientId, name, [], []))
                     return result
                 }
                 

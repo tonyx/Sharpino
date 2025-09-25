@@ -21,6 +21,12 @@ module Entities =
             Id: Guid
             Name: string
         }
+        static member
+            MkCategory name =
+            {
+                Id = Guid.NewGuid()
+                Name = name
+            }
         interface Entity with
             member this.Id: Guid = 
                 this.Id
@@ -36,9 +42,23 @@ module Entities =
             Name: string
             Color: Color
         }
+        static member mkTag name color =
+            {
+                Id = Guid.NewGuid()
+                Name = name
+                Color = color
+            }
+        static member MkTag name color =
+            {
+                Id = Guid.NewGuid()
+                Name = name
+                Color = color
+            }
+
         interface Entity with
             member this.Id: Guid = 
                 this.Id
+
 
     type Todo =
         {
@@ -55,6 +75,9 @@ module Entities =
                 TagIds = []
                 Description = name
             }
+        static member MkTodo name categoryIds tagIds =
+            { Id = Guid.NewGuid(); Description = ""; CategoryIds = categoryIds; TagIds = tagIds }
+
         interface Entity with
             member this.Id: Guid = 
                 this.Id

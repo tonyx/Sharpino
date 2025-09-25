@@ -1,4 +1,5 @@
 -- migrate:up
+
 CREATE TABLE public.events_01_balance (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
@@ -60,6 +61,12 @@ ALTER TABLE ONLY public.aggregate_events_01_balance
 
 ALTER TABLE ONLY public.aggregate_events_01_balance
     ADD CONSTRAINT aggregate_events_01_fk  FOREIGN KEY (event_id) REFERENCES public.events_01_balance (id) MATCH FULL ON DELETE CASCADE;
+
+create index ix_01_events_balance_id on public.events_01_balance(aggregate_id);
+create index ix_01_aggregate_events_balance_id on public.aggregate_events_01_balance(aggregate_id);
+create index ix_01_snapshot_balance_id on public.snapshots_01_balance(aggregate_id);
+create index ix_01_events_balance_timestamp on public.events_01_balance("timestamp");
+create index ix_01_snapshots_balance_timestamp on public.snapshots_01_balance("timestamp");
 
 CREATE OR REPLACE FUNCTION insert_01_balance_event_and_return_id(
     IN event_in text,
@@ -138,6 +145,4 @@ return event_id;
 END;
 $$;
 
-
 -- migrate:down
-
