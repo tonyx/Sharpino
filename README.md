@@ -51,13 +51,12 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
   There may also be events associated with the creation and deletion of aggregates, but they are not needed.
 - Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
-- MessageSenders: can be set to NoSender or to a MessageSender that returns a ValueTask that can be used to send messages to a message bus.
+- MessageSenders: can be set to NoSender or to a MessageSender that, given the name of a stream, returns a ValueTask that can be used to send messages to a message bus: examples with RabbitMQ are provided.
 
 ## Features and technical improvements planned to be added
-- Sending events to a message bus after they have been stored (see the branch 20250802_rabbitmq for an example of implementation).
-- Implementing a "state viewer" that listens to events on a message bus (see the branch 20250802_rabbitmq for an example of implementation).
 - Enhanced Optimistic lock check on the database level (see 20250625_enhance_lock_pspgsql for an example of implementation).
-- "cross aggregates invariants" should matter at the level of command handler and optimistic lock db checking (example 10 shows some use cases about)
+- "cross aggregates invariants" should matter for the command handler and must be taken into account in optimistic lock db checking (example 10 shows some use cases about). This concept is similar to the dynamic consistency boundaries of event sourcing. 
+- 
 - Pick up any open issue https://github.com/tonyx/Sharpino/issues or create a new one.
 ## Projects
 __Sharpino.Lib.Core__:
