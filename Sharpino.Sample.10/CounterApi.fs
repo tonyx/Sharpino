@@ -27,11 +27,6 @@ open FsToolkit.ErrorHandling
 open System
     
 module CounterApi =
-    
-    // let doNothingBroker: IEventBroker<_> =
-    //     {  notify = None
-    //        notifyAggregate = None }
-    
     let emptyMessageSenders: StreamName -> MessageSender =
         fun _ ->
             fun _ ->
@@ -114,7 +109,7 @@ type CounterApi
                         preExecuteAggregateCommands2
                         |> List.traverseResultM (fun preExecutedAggregateCommand -> preExecutedAggregateCommand.SerializedEvents |> List.traverseResultM (fun x -> AccountEvents.Deserialize x) )
                    
-                    // having to prepare the sending call in this way is unconfortable
+                    // todo: Move this logic in a separate util
                     let aggregateIdInitEventIdEndEventIdAndEventsCounter =
                         let initEventIdEndEventIdAndEventsCounter =
                             List.zip3 (preExecutedAggregateCommands |>> _.EventId) counterGeneratedIds counterEvents
@@ -137,5 +132,4 @@ type CounterApi
                     ()
                     
                 return ()    
-                // return executeAll    
             }
