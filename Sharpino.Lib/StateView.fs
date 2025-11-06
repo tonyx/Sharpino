@@ -332,25 +332,43 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> (state |> unbox)
                         return newState |> box
                     }
+            
+            let computeNewStateAndLatestEventId =
+                fun () ->
+                    result {
+                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                        let! deserEvents =
+                            events 
+                            |>> snd 
+                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        let! newState = 
+                            deserEvents |> evolve<'A, 'E> (state |> unbox)
+                        return (events |> List.last |> fst, newState |> box)
+                    }
                     
+                     
             // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
             // we will get rid of reading lastEventId on db soon and rely only on the cache
             
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             
-            // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
-            // AggregateCache2.Instance.Clear () 
             let state = AggregateCache2.Instance.Memoize computeNewState (lastEventId, id)
             
-            // let state = computeNewState ()
+            let state2 = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
             
-            
-            match state with
-            | Ok state ->
-                (lastEventId, state) |> Ok
+            match state2 with
+            | Ok (eventId, state) ->
+                (eventId, state) |> Ok
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
+            
+            // match state with
+            // | Ok state ->
+            //     (lastEventId, state) |> Ok
+            // | Error e ->
+            //     logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
+            //     Error e
   
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>

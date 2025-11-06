@@ -87,11 +87,13 @@ let pgReset () =
     pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
     AggregateCache2.Instance.Clear()
+    AggregateCache3.Instance.Clear()
 let memReset () =
     memoryStorage.Reset Stadium.Version Stadium.StorageName
     memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
     AggregateCache2.Instance.Clear()
+    AggregateCache3.Instance.Clear()
 
 [<Tests>]
 let tests =
@@ -129,7 +131,8 @@ let tests =
             
             // Assert
             Expect.isError result "should be error"
-        
+       
+        /// bim 
         multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
@@ -170,6 +173,28 @@ let tests =
             Expect.isOk retrievedRow "should be ok"
             let result = retrievedRow.OkValue
             Expect.equal result.Seats.Length 1 "should be 1"
+       
+        fmultipleTestCase "add a row and two seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            // Arrange
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addRow = service.AddRow rowId
+            Expect.isOk addRow "should be ok"
+            
+            let seat = { Id = 1; State = Free; RowId = None }
+            let seat2 = { Id = 2; State = Free; RowId = None }
+            let addSeat = service.AddSeat rowId seat
+            Expect.isOk addSeat "should be ok"
+            let addSeat2 = service.AddSeat rowId seat2
+            Expect.isOk addSeat2 "should be ok"
+            
+            // Assert
+            Thread.Sleep delay
+            let retrievedRow = service.GetRow rowId
+            Expect.isOk retrievedRow "should be ok"
+            let result = retrievedRow.OkValue
+            Expect.equal result.Seats.Length 2 "should be 2"
         
         multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
