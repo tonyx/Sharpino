@@ -59,12 +59,6 @@ module ReservationConsumer =
                 logger.LogError "no fallback aggregate state retriever set" 
          
         let consumer = AsyncEventingBasicConsumer channel
-        
-        // do
-        //     consumer.add_ReceivedAsync
-        //         (fun _ ea ->
-        //             rb.BuildReceiver<Reservation, ReservationEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-        //         )
          
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Reservation.Reservation>) =
             setFallbackAggregateStateRetriever aggregateViewer

@@ -225,6 +225,7 @@ let tests =
             
             Async.Sleep delay |> Async.RunSynchronously
             let deleteCourse = courseManager.DeleteCourse course.Id
+            
             Expect.isOk deleteCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
             let balance = courseManager.Balance 
@@ -251,22 +252,30 @@ let tests =
         multipleTestCase "add two courses, delete one of them and verify balance - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
             let courseManager = courseManager ()
+            let course = Course.MkCourse ("Math", 10)
+            // printf "XXXX math course Id %A\n" course.Id
             let addCourse = courseManager.AddCourse (Course.MkCourse  ("Math", 10))
             Expect.isOk addCourse "should be ok"
             let englishCourse = Course.MkCourse  ("English", 10)
+            // printf "XXXX english course Id %A\n" englishCourse.Id
             let addCourse = courseManager.AddCourse englishCourse
             Expect.isOk addCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
             let retrievedCourse = courseManager.GetCourse englishCourse.Id
             Expect.isOk retrievedCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
-            let balance = courseManager.Balance 
+            let balance = courseManager.Balance
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
+            // printf "XXXX balance Id %A\n" balance.Id
             Expect.equal balance.Amount 800.0M "should be equal"
+            
             let deleteCourse = courseManager.DeleteCourse englishCourse.Id
             Expect.isOk deleteCourse "should be ok"
+            
             Async.Sleep delay |> Async.RunSynchronously
+           
+            
             let balance = courseManager.Balance 
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
@@ -513,7 +522,7 @@ let tests =
             let courseManager = courseManager ()
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
-            let voidCache = AggregateCache2.Instance.Clear()
+            let voidCache = AggregateCache3.Instance.Clear()
             Async.Sleep delay |> Async.RunSynchronously
             let retrieve = courseManager.GetCourse course.Id
             Expect.isOk retrieve "should be Ok"
@@ -528,12 +537,12 @@ let tests =
             let addCourse = courseManager.AddCourse course
             Expect.isOk addCourse "should be ok"
             
-            let voidCache = AggregateCache2.Instance.Clear()
+            let voidCache = AggregateCache3.Instance.Clear()
             Async.Sleep delay |> Async.RunSynchronously
             let retrieve1 = courseManager.GetCourse course.Id
             Expect.isOk retrieve1 "should be Ok"
             
-            let voidCache = AggregateCache2.Instance.Clear()
+            let voidCache = AggregateCache3.Instance.Clear()
             let retrieveH = courseManager.GetHistoryCourse course.Id
             Expect.isOk retrieveH "should be Ok"
         

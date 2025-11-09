@@ -28,6 +28,7 @@ module Cache =
             Conf.defaultConf
    
     
+    // AggregateCache3 replaces AggregateCache2 to simplify eventId handling
     type AggregateCache3 private ()  =
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
         let statePerAggregate = ConcurrentDictionary<AggregateId, EventId * obj>(concurrencyLevel, config.CacheAggregateSize)
@@ -37,13 +38,14 @@ module Cache =
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
                 statePerAggregate.[aggregateId] <- (eventId, resultState)
-                
+            
                 if (not (aggregateQueue.Contains aggregateId)) then 
                     aggregateQueue.Enqueue aggregateId
-                    
+                
                 if (aggregateQueue.Count > config.CacheAggregateSize) then
                     let removed = aggregateQueue.Dequeue()
                     statePerAggregate.TryRemove removed  |> ignore
+                    
                 ()
                 
             with :? _ as e -> 
@@ -51,7 +53,7 @@ module Cache =
                 statePerAggregate.Clear()
                 aggregateQueue.Clear()
                 () 
-    
+   
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
             if (statePerAggregate.ContainsKey aggregateId) then
                 statePerAggregate.[aggregateId] |> Ok
@@ -73,8 +75,22 @@ module Cache =
         
         member this.Clear () =
             statePerAggregate.Clear()
-            aggregateQueue.Clear() 
+            aggregateQueue.Clear()
+        
+        member this.LastEventId (aggregateId: AggregateId) =
+            if (statePerAggregate.ContainsKey aggregateId) then
+                statePerAggregate.[aggregateId] |> fst |> Some
+            else
+                None
+        
+        member this.GetState (aggregateId: AggregateId) =
+            if (statePerAggregate.ContainsKey aggregateId) then
+                statePerAggregate.[aggregateId] |> snd |> Ok
+            else
+                Error "aggregate not found"        
          
+         
+    [<Obsolete("Use AggregateCache3 instead")>]
     type AggregateCache2  private () =
         let lastEventIdPerAggregate = ConcurrentDictionary<AggregateId, EventId>(concurrencyLevel, config.CacheAggregateSize)
         let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
@@ -150,9 +166,6 @@ module Cache =
                 lastEventIdPerAggregate.[aggregateId] |> Some
             else
                 None
-  
-    
-     
      
     type StateCache2<'A> private () =
         let mutable cachedValue: 'A option = None

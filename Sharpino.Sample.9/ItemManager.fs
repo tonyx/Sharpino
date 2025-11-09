@@ -13,15 +13,6 @@ open Sharpino.Storage
 open Sharpino
 open System
 
-// let doNothingBroker  =
-//     {
-//         notify = None
-//         notifyAggregate = None
-//     }
-// let emptyMessageSender =
-//     fun queueName ->
-//         fun message ->
-//             ValueTask.CompletedTask
 
 type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>, messageSender: MessageSenders ) =
     new (eventStore: IEventStore<string>, itemViewer: AggregateViewer<Item>, reservationViewer: AggregateViewer<Reservation.Reservation>) =
@@ -61,7 +52,8 @@ type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<I
                 itemIds |> List.map (fun _ -> ItemCommands.IncrementReferenceCounter 1)
             
             let! result =   
-                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string> itemIds eventStore messageSender reservation "adding reservation" incrementCountersCommands
+                runInitAndNAggregateCommandsMd<Item, ItemEvent, Reservation.Reservation, string>
+                    itemIds eventStore messageSender reservation "adding reservation" incrementCountersCommands
             return result    
         }
     

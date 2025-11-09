@@ -152,7 +152,7 @@ module RabbitMq =
                     | Error e ->
                         logger.LogError ("Error: {e}", e)
                 | None ->
-                    logger.LogInformation ($"No state viewer is set for aggregateId {aggregateId}", aggregateId)
+                    logger.LogInformation ($"No fallback state viewer is set for aggregateId {aggregateId}", aggregateId)
                     ()
         
         member this.BuildReceiver<'A, 'E, 'F
@@ -171,7 +171,9 @@ module RabbitMq =
                         statesPerAggregate.[aggregateId] <- (0, good)
                         ()
                     | Ok { Message = MessageType.Events { InitEventId = initEventId; EndEventId = endEventId; Events = events  }; AggregateId = aggregateId }
-                        when (statesPerAggregate.ContainsKey aggregateId && (statesPerAggregate.[aggregateId] |> fst = initEventId || statesPerAggregate.[aggregateId] |> fst = 0)) ->
+                        when
+                            // todo: there are still some corner cases where this index match fails (and it shouldn't) leaving control to the "ResyncWithFallbackAggregateStateRetriever" next pattern
+                            (statesPerAggregate.ContainsKey aggregateId && (statesPerAggregate.[aggregateId] |> fst = initEventId || statesPerAggregate.[aggregateId] |> fst = 0)) ->
                             let currentState = statesPerAggregate.[aggregateId] |> snd
                             let newState = evolve currentState events
                             if newState.IsOk then

@@ -135,7 +135,7 @@ module StateView =
                 (async {
                     return
                         result {
-                            let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            let lastCacheEventId = Cache.AggregateCache3.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
@@ -143,7 +143,7 @@ module StateView =
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
+                                        Cache.AggregateCache3.Instance.GetState aggregateId
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
@@ -168,7 +168,7 @@ module StateView =
                 (async {
                     return
                         result {
-                            let lastCacheEventId = Cache.AggregateCache2.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
+                            let lastCacheEventId = Cache.AggregateCache3.Instance.LastEventId(aggregateId) |> Option.defaultValue 0
                             let (snapshotEventId, lastSnapshotId) = storage.TryGetLastHistorySnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
                             if (lastSnapshotId = 0 && lastCacheEventId = 0) then
                                 return None
@@ -176,7 +176,7 @@ module StateView =
                                 if 
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
-                                        Cache.AggregateCache2.Instance.GetState (lastCacheEventId, aggregateId)
+                                        Cache.AggregateCache3.Instance.GetState aggregateId
                                     return (lastCacheEventId |> Some, state) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
@@ -320,55 +320,32 @@ module StateView =
         (eventStore: IEventStore<'F>)
         =
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
-            let computeNewState =
-                fun () ->
-                    result {
-                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
-                        let! deserEvents =
-                            events 
-                            |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
-                        let! newState = 
-                            deserEvents |> evolve<'A, 'E> (state |> unbox)
-                        return newState |> box
-                    }
             
             let computeNewStateAndLatestEventId =
                 fun () ->
                     result {
-                        let! (_, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                        let! (eventId, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
                         let! deserEvents =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
                         let! newState = 
                             deserEvents |> evolve<'A, 'E> (state |> unbox)
-                        return (events |> List.last |> fst, newState |> box)
+                        let lastEventId =
+                            if (events.Length > 0)
+                                then (events |> List.last |> fst)
+                            else (eventId |> Option.defaultValue 0)
+                        let result = (lastEventId, newState |> box)
+                        return result 
                     }
                     
-                     
-            // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
-            // we will get rid of reading lastEventId on db soon and rely only on the cache
-            
-            let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
-            
-            let state = AggregateCache2.Instance.Memoize computeNewState (lastEventId, id)
-            
-            let state2 = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
-            
-            match state2 with
-            | Ok (eventId, state) ->
-                (eventId, state) |> Ok
+            let state = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
+            match state with
+            | Ok (eventId, stateValue) ->
+                (eventId, stateValue) |> Ok
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
-            
-            // match state with
-            // | Ok state ->
-            //     (lastEventId, state) |> Ok
-            // | Error e ->
-            //     logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
-            //     Error e
   
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
@@ -393,16 +370,9 @@ module StateView =
                             deserEvents |> evolve<'A, 'E> (state |> unbox)
                         return newState
                     }
-                    
-            // any test writing directly in the event store without invalidating the cache will fail because of this "improvement"
-            // we will get rid of reading lastEventId on db soon and rely only on the cache
             
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             let state = computeNewState ()
-            
-            // tipically, historical data are not cached and we don't want to cache them either
-            // not dare trying to cache this!!!
-            // let state = AggregateCache<'A, 'F>.Instance.Memoize computeNewState (lastEventId, id)
             
             match state with
             | Ok state -> 
@@ -518,7 +488,7 @@ module StateView =
                     return filteredEvents
                 }
     
-    [<Obsolete "get the state of the aggregate instead ">]
+    [<Obsolete "getFilteredAggregateStatesInATimeInterval2 instead ">]
     let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
         when 'A :> Aggregate<'F>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)

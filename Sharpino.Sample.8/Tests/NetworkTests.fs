@@ -34,8 +34,7 @@ open Microsoft.Extensions.Hosting
 let setUp (eventStore: IEventStore<'F>) =
     eventStore.Reset Site.Version Site.StorageName
     eventStore.Reset Transporter.Version Transporter.StorageName
-    AggregateCache2.Instance.Clear ()
-    AggregateCache2.Instance.Clear ()
+    AggregateCache3.Instance.Clear ()
           
 let connection = 
         Env.Load() |> ignore

@@ -100,7 +100,7 @@ module Tests =
         eventStore.ResetAggregateStream Counter.Version Counter.StorageName
         eventStore.Reset Account.Version Account.StorageName
         eventStore.ResetAggregateStream Account.Version Account.StorageName
-        AggregateCache2.Instance.Clear ()
+        AggregateCache3.Instance.Clear ()
   
     let eventStore = PgBinaryStore connection
     

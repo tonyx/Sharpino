@@ -21,16 +21,6 @@ open Sharpino.Storage
 open Sharpino
 open System
 
-// let doNothingBroker  =
-//     {
-//         notify = None
-//         notifyAggregate = None
-//     }
-// let emptyMessageSenders =
-//     fun queueName ->
-//         fun message ->
-//             ValueTask.CompletedTask
-
 type CourseManager
     (eventStore: IEventStore<string>,
      courseViewer: AggregateViewer<Course>,
@@ -138,28 +128,22 @@ type CourseManager
             }
             
     member this.DeleteCourse (id: Guid) =
-        // printf "XXXXX delete course \n"
         result
             {
-                // printf "XXXXX delete course 100 \n"
                 let! course = this.GetCourse id
-                // printf "XXXXX delete course 130 \n"
                 let payCourseCancellationFees = BalanceCommands.PayCourseCancellationFee id
                 do!
                     course.Students.Length = 0
                     |> Result.ofBool "can't delete"
                  
-                // printf "XXXXX delete course 150 \n"
                 match course.Teachers with
                 | [] ->
-                    // printf "XXXXX delete course 200x \n"
-                    // printf "XXXXX sending delete course command 100\n"
+                    // printf "XXXXXX deleting course with no teacher\n"
                     return!
-                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string> eventStore messageSenders "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
+                        runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string>
+                            eventStore messageSenders "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)
                 
                 | teacherIds ->
-                    // printf "XXXXX delete course 300x \n"
-                    // printf "XXXXX sending delete course command 200\n"
                     let unsubscribeTeacherFromCourses: List<AggregateCommand<Teacher, TeacherEvents>> =
                         teacherIds
                         |> List.map (fun _ -> TeacherCommands.RemoveCourse id)

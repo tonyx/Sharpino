@@ -26,7 +26,6 @@ open Tonyx.SeatsBooking.StorageStadiumBookingSystem
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
-
 Env.Load() |> ignore
 
 let password = Environment.GetEnvironmentVariable("password")
@@ -86,13 +85,11 @@ let pgReset () =
     pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
     pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
-    AggregateCache2.Instance.Clear()
     AggregateCache3.Instance.Clear()
 let memReset () =
     memoryStorage.Reset Stadium.Version Stadium.StorageName
     memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
-    AggregateCache2.Instance.Clear()
     AggregateCache3.Instance.Clear()
 
 [<Tests>]
@@ -174,7 +171,7 @@ let tests =
             let result = retrievedRow.OkValue
             Expect.equal result.Seats.Length 1 "should be 1"
        
-        fmultipleTestCase "add a row and two seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+        multipleTestCase "add a row and two seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
             let service = stadiumSystem
@@ -255,7 +252,204 @@ let tests =
 
             let okRetrievedRow = retrievedRow.OkValue
             Expect.equal okRetrievedRow.Seats.Length 5 "should be 5"
+       
+        multipleTestCase "add a row then, an a single seat then another seat " stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seat = { Id = 1; State = Free; RowId = None }
+            let seatAdded = service.AddSeat rowId seat
+            Expect.isOk seatAdded "should be ok"
+            
+            let seat2 = { Id = 2; State = Free; RowId = None }
+            let seatAdded2 = service.AddSeat rowId seat2
+            Expect.isOk seatAdded2 "should be ok"
+            
+        multipleTestCase "add a row then, a single seat (as a list of one element), then another seat (as a list of one element) - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [{ Id = 1; State = Free; RowId = None }]
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            let seats2 = [{ Id = 2; State = Free; RowId = None }]
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
         
+        multipleTestCase "add a row, then attach a list of a single seat and then a list of two seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [{ Id = 1; State = Free; RowId = None }]
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            Thread.Sleep delay
+            let seats2 = [
+                { Id = 2; State = Free; RowId = None }
+                { Id = 3; State = Free; RowId = None }
+            ]
+            Thread.Sleep delay
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 3 "should be 3"
+        
+        multipleTestCase "add a row, then attach a list of two seats and then a list of two seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [
+                { Id = 1; State = Free; RowId = None }
+                { Id = 2; State = Free; RowId = None }
+            ]
+            Thread.Sleep delay
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            let seats2 = [
+                { Id = 3; State = Free; RowId = None }
+                { Id = 4; State = Free; RowId = None }
+            ]
+            Thread.Sleep delay
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 4 "should be 4"
+        
+        multipleTestCase "add a row, then attach a list of three seats and then a list of three seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [
+                { Id = 1; State = Free; RowId = None }
+                { Id = 2; State = Free; RowId = None }
+                { Id = 3; State = Free; RowId = None }
+            ]
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            let seats2 = [
+                { Id = 4; State = Free; RowId = None }
+                { Id = 5; State = Free; RowId = None }
+                { Id = 6; State = Free; RowId = None }
+            ]
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 6 "should be 4"
+            
+        multipleTestCase "add a row, then attach a list of fours seats and then a list of fours seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [
+                { Id = 1; State = Free; RowId = None }
+                { Id = 2; State = Free; RowId = None }
+                { Id = 3; State = Free; RowId = None }
+                { Id = 4; State = Free; RowId = None }
+            ]
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            let seats2 = [
+                { Id = 5; State = Free; RowId = None }
+                { Id = 6; State = Free; RowId = None }
+                { Id = 7; State = Free; RowId = None }
+                { Id = 8; State = Free; RowId = None }
+            ]
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 8 "should be 4"
+            
+        multipleTestCase "add a row, then attach a list of five seats and then a list of five seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            
+            let seats = [
+                { Id = 1; State = Free; RowId = None }
+                { Id = 2; State = Free; RowId = None }
+                { Id = 3; State = Free; RowId = None }
+                { Id = 4; State = Free; RowId = None }
+                { Id = 5; State = Free; RowId = None }
+            ]
+            let seatAdded = service.AddSeats rowId seats
+            Expect.isOk seatAdded "should be ok"
+            
+            let seats2 = [
+                { Id = 6; State = Free; RowId = None }
+                { Id = 7; State = Free; RowId = None }
+                { Id = 8; State = Free; RowId = None }
+                { Id = 9; State = Free; RowId = None }
+                { Id = 10; State = Free; RowId = None }
+            ]
+            let seatAdded2 = service.AddSeats rowId seats2
+            Expect.isOk seatAdded2 "should be ok"
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 10 "should be 10"
+            
+        multipleTestCase "add a two rows and then add separately a seat for each row - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
+            setUp ()
+            let service = stadiumSystem
+            let rowId = Guid.NewGuid()
+            let addedRow = service.AddRow rowId
+            Expect.isOk addedRow "should be ok"
+            let rowId2 = Guid.NewGuid()
+            let addedRow2 = service.AddRow rowId2
+            Expect.isOk addedRow2 "should be ok"
+            let seatAdded = service.AddSeat rowId { Id = 1; State = Free; RowId = None }
+            Expect.isOk seatAdded "should be ok"
+            Thread.Sleep delay
+            let seatAdded2 = service.AddSeat rowId2 { Id = 2; State = Free; RowId = None }
+            Expect.isOk seatAdded2 "should be ok"
+            
+            Thread.Sleep delay
+            let retrieveRow = service.GetRow rowId
+            let retrieveRow2 = service.GetRow rowId2
+            Expect.isOk retrieveRow "should be ok"
+            let okRetrieveRow = retrieveRow.OkValue
+            let okRetrieveRow2 = retrieveRow2.OkValue
+            Expect.equal okRetrieveRow.Seats.Length 1 "should be 1"
+            Expect.equal okRetrieveRow2.Seats.Length 1 "should be 1"   
+            
         multipleTestCase "add two row references add a row reference and then some seats to it. Retrieve the seats then - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay)  ->
             // Arrange
             setUp ()
@@ -294,12 +488,12 @@ let tests =
             let retrievedRow = service.GetRow rowId
             Expect.isOk retrievedRow "should be ok"
             let okRetrievedRow = retrievedRow.OkValue
-            Expect.equal 5 okRetrievedRow.Seats.Length "should be 1"
+            Expect.equal 5 okRetrievedRow.Seats.Length "should be 5"
 
             let retrievedRow2 = service.GetRow rowId2
             Expect.isOk retrievedRow2 "should be ok"
             let okRetrievedRow2 = retrievedRow2.OkValue
-            Expect.equal 5 okRetrievedRow2.Seats.Length "should be 1"
+            Expect.equal 5 okRetrievedRow2.Seats.Length "should be 5"
             
         multipleTestCase "can't add a seat with the same id of another seat in the same row - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay)  ->
             // Arrange

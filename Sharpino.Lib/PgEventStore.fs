@@ -258,7 +258,7 @@ module PgStorage =
                                                     ex.Message |> Error
                                         else
                                             transaction.Rollback()
-                                            Error "EventId is not the last one"
+                                            Error $"EventId match conrtrol failed: passed eventId {eventId}. Latest eventId: {lastEventId}"
                                     try
                                         return result
                                     finally
@@ -287,9 +287,17 @@ module PgStorage =
                             (async {
                                 let lastEventIdsPerContext =
                                     arg |>> (fun (eventId, _, version, name) -> (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
+                                    
                                 let checkIds =
                                     lastEventIdsPerContext
                                     |> List.forall (fun (eventId, lastEventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+                                
+                                // todo: unify with checkIds to avoid redoundancy i.e. check and errors needs to be there at the same time
+                                let checkIdsErrors =
+                                    lastEventIdsPerContext
+                                    |> List.filter (fun (eventId, lastEventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                                    |> List.map (fun (eventId, lastEventId) -> sprintf "EventId %d does not match lastEventId %A" eventId lastEventId)
+                                    
                                 let result =
                                     if checkIds then
                                         try
@@ -318,7 +326,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error ("EventId is not the last one " + (checkIdsErrors |> String.concat ", "))
                                 try
                                     return result
                                 finally
@@ -499,7 +507,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error $"EventId check failed. EventId passed {eventId}. Latest eventId: {lastEventId}"
                                 try
                                     return result
                                 finally
@@ -578,7 +586,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
                                 try
                                     return result
                                 finally
@@ -617,7 +625,12 @@ module PgStorage =
                         
                         let checks =
                             List.zip lastEventIds eventIds
-                            |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+                            |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || (lastEventId.IsSome && lastEventId.Value = eventId))
+                        
+                        let errors =
+                            List.zip lastEventIds eventIds
+                            |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                            |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
                             
                         Async.RunSynchronously
                             (async {
@@ -671,7 +684,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error ("EventId is not the last one" + (errors |> String.concat ", "))
                                 try 
                                     return result
                                 finally
@@ -1052,7 +1065,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error $"in {stream_name} the EventId passed {eventId} does not match to the latest one {lastEventId} is not the last one"
                                 try
                                     return result
                                 finally
@@ -1090,6 +1103,11 @@ module PgStorage =
                         let checks = 
                             List.zip lastEventIds eventIds
                             |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+                        
+                        let errors =
+                            List.zip lastEventIds eventIds
+                            |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                            |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
 
                         Async.RunSynchronously
                             (async {
@@ -1122,7 +1140,7 @@ module PgStorage =
                                                 ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error "EventId is not the last one"
+                                        Error ("eventids check failed " + (errors |> String.concat ", "))
                                 try
                                     return result
                                 finally
@@ -1409,7 +1427,7 @@ module PgStorage =
                             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                             Error ex.Message
                     else
-                        Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}"
+                        Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}. LastStreamEventId: {lastStreamEventId}. StreamEventid: {streamEventId}"
                     
             member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
                 md
@@ -1435,6 +1453,11 @@ module PgStorage =
                     let eventIdsMatch = 
                         List.zip lastEventIds eventIds
                         |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+                    
+                    let errors =
+                        List.zip lastEventIds eventIds
+                        |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                        |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
                         
                     if ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) && eventIdsMatch then
                         
@@ -1488,6 +1511,6 @@ module PgStorage =
                                         conn.Close()
                                         return (ex.Message |> Error)
                         }, evenStoreTimeout) 
-                    else Error "optimistic lock failure"    
+                    else Error ("optimistic lock failure: " + (errors |> String.concat ", ") + $"lastEventId: {lastEventId}, eventId: {s1EventId}")
                         
                 

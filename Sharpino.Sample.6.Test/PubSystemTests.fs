@@ -98,13 +98,13 @@ let rabbitMQmessageSender =
 let tests =
     
     let setUp () =
-        AggregateCache2.Instance.Clear()
         memEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
         memEventStore.ResetAggregateStream Dish.Version Dish.StorageName
         memEventStore.ResetAggregateStream Supplier.Version Supplier.StorageName
         pgEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
         pgEventStore.ResetAggregateStream Dish.Version Dish.StorageName
         pgEventStore.ResetAggregateStream Supplier.Version Supplier.StorageName
+        AggregateCache3.Instance.Clear()
         
     let emptyMessageSender =
         fun queueName ->

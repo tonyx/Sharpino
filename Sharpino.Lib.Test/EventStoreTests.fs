@@ -42,10 +42,10 @@ let tests =
     let pgReset () =
         pgEventStore.Reset SampleObject.Version SampleObject.StorageName
         pgEventStore.ResetAggregateStream SampleObject.Version SampleObject.StorageName
-        AggregateCache2.Instance.Clear()
+        AggregateCache3.Instance.Clear()
     let memReset () =
         memoryStorage.Reset SampleObject.Version SampleObject.StorageName
-        AggregateCache2.Instance.Clear()
+        AggregateCache3.Instance.Clear()
    
     let getRandomString() =
         let random = System.Random()
@@ -94,6 +94,7 @@ let tests =
             Expect.isOk storeLowLevelEvent "should be ok"
             
             // Assert
+            AggregateCache3.Instance.Clear ()
             let retrieved = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId eventStore
             Expect.isOk retrieved "should be ok"
             let (eventId, okRetrieved) = retrieved.OkValue
@@ -126,6 +127,7 @@ let tests =
             Expect.isOk storeChangeName2 "should be ok"
             
             // Assert
+            AggregateCache3.Instance.Clear ()
             let retrieved1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId1 eventStore
             Expect.isOk retrieved1 "should be ok"
             let (eventId1, okRetrieved1) = retrieved1.OkValue
@@ -166,6 +168,7 @@ let tests =
             Expect.isOk storeChangeName2 "should be ok"
             
             // Act
+            AggregateCache3.Instance.Clear ()
             let retrieved1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId1 eventStore
             Expect.isOk retrieved1 "should be ok"
             let (eventId1, okRetrieved1) = retrieved1.OkValue
@@ -259,10 +262,10 @@ let tests =
                         
                     (
                          if storeChange.IsOk then 
-                            printf "isOk XXXX\n"
+                            // printf "isOk XXXX\n"
                             changed.AddOrUpdate (i, true, fun _ _ -> true) |> ignore
                          else
-                            printf "is not Ok YYYY\n"
+                            // printf "is not Ok YYYY\n"
                             changed.AddOrUpdate (i, false, fun _ _ -> false) |> ignore
                     )
             )

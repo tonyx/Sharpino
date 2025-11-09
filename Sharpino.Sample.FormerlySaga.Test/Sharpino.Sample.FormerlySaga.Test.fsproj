@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Tests.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
@@ -31,5 +32,6 @@
 
   <ItemGroup>
     <Content Include="appSettings.json" />
+    <Content Include="sharpinoSettings.json" />
   </ItemGroup>
 </Project>

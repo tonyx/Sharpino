@@ -36,6 +36,9 @@ let reservationConsumer =
     |> Seq.find (fun s -> s.GetType() = typeof<ReservationConsumer>)
     :?> ReservationConsumer
 
+reservationConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Reservation.Reservation, ReservationEvents.ReservationEvents, string> pgEventStore)
+itemConsumer.SetFallbackAggregateStateRetriever (getAggregateStorageFreshStateViewer<Item, ItemEvent, string> pgEventStore)
+
 let rabbitMqItemStateViewer = itemConsumer.GetAggregateState
 let rabbitMqReservationStateViewer = reservationConsumer.GetAggregateState
 
@@ -61,7 +64,6 @@ let messageSenders =
             match sender with
             | true, sender -> sender |> Ok
             | _ -> (sprintf "not found %s" queueName) |> Error
-//             | _ -> (sprintf "not found %s" queueName)
         )    
 
 #endif
@@ -104,6 +106,7 @@ let tests =
             let retrieveItem = itemManger.GetItem item.Id
             Expect.isError retrieveItem "should be error"
         
+        // placeholder to investigate the unneeded "resync" issue in rabbitmq message sending infrastructure
         multipleTestCase "create an item and open a reservation. The counter should be 1" instances <| fun (setUp, itemManger, delay) ->
             setUp()
             let item = Item.MkItem ("name", "description")
@@ -116,7 +119,6 @@ let tests =
             let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
             let addReservation = itemManger.AddReservation reservation
             Expect.isOk addReservation "should be ok"
-            
             Async.Sleep delay |> Async.RunSynchronously
             let retrieveItem = itemManger.GetItem item.Id
             Expect.isOk retrieveItem "should be ok"

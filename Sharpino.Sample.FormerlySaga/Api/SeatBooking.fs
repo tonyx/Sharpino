@@ -283,7 +283,7 @@ module SeatBooking =
                
                 let consumeVouchersCommands: List<AggregateCommand<Voucher, VoucherEvents>> =
                     [ for i in 0 .. bookingRowsAndVouchers.Length - 1 -> VoucherCommands.Consume (seatsPerRows.[i])]
-                    
+                
                 return!
                     forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
             }
