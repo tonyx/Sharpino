@@ -195,6 +195,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.4.1: fixed [Avoid db call to get lastEventId before probing the cache](https://github.com/tonyx/Sharpino/issues/45). In the getAggregateFreshState the lastEventId is computed within the events involved in the "evolve" from last snapshot and not in a second step.
 - Version 4.4.0: added MessageSenders (replacing partially the old IEventBroker) to send events to a message bus after they have been stored. Some Rabbitmq examples are provided. (warning. There is no backward compatibility as the MessageSenders replaces IEventBroker)
 - Version 4.3.4: added more info in some error messages
 - Version 4.3.3: fix md parameter

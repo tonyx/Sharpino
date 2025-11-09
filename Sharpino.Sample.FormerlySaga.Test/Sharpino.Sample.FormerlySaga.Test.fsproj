@@ -17,13 +17,9 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-<!--    <PackageReference Update="FSharp.Core" Version="8.*" />-->
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
-    <ProjectReference Include="..\Sharpino.Sample.3\Sharpino.Sample.3.fsproj" />
     <ProjectReference Include="..\Sharpino.Sample.FormerlySaga\Sharpino.Sample.FormerlySaga.fsproj" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">

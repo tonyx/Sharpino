@@ -253,11 +253,9 @@ let tests =
             setUp ()
             let courseManager = courseManager ()
             let course = Course.MkCourse ("Math", 10)
-            // printf "XXXX math course Id %A\n" course.Id
             let addCourse = courseManager.AddCourse (Course.MkCourse  ("Math", 10))
             Expect.isOk addCourse "should be ok"
             let englishCourse = Course.MkCourse  ("English", 10)
-            // printf "XXXX english course Id %A\n" englishCourse.Id
             let addCourse = courseManager.AddCourse englishCourse
             Expect.isOk addCourse "should be ok"
             Async.Sleep delay |> Async.RunSynchronously
@@ -267,7 +265,6 @@ let tests =
             let balance = courseManager.Balance
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
-            // printf "XXXX balance Id %A\n" balance.Id
             Expect.equal balance.Amount 800.0M "should be equal"
             
             let deleteCourse = courseManager.DeleteCourse englishCourse.Id

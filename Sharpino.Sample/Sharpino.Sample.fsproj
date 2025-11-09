@@ -30,14 +30,8 @@
   <!-- uncomment this while developing the library -->
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
-    <PackageReference Include="Fable.Remoting.Giraffe" Version="5.19.0" />
     <PackageReference Include="Saturn" Version="0.17.0" />
-   
-    <!-- include to test from the nuget repository -->
-    
     <PackageReference Update="FSharp.Core" Version="9.*" />
-    
-<!--    <PackageReference Include="Sharpino" Version="3.10.0" />-->
     
   </ItemGroup>
 

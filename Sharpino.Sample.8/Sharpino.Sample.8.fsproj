@@ -32,14 +32,11 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-<!--    <PackageReference Include="Sharpino" Version="3.0.9" />-->
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Update="FSharp.Core" Version="9.*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
-    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
   </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
     <DefineConstants>RABBITMQ</DefineConstants>

@@ -29,7 +29,6 @@ module Balance =
                 }
                 
         member this.PayCourseCreationFee (courseId: Guid) =
-            // printf "XXXXXXXX calling PayCourseCreationFee fee: %A\n" courseCreationFee
             result {
                 let! sufficientFunds =
                     this.Amount >= courseCreationFee
@@ -42,7 +41,6 @@ module Balance =
                                 OpenCourses = this.OpenCourses @ [courseId]
                                 Amount = this.Amount - courseCreationFee
                     }
-                // printf "XXXXXX returing %A\n" result   
                 return result     
             }
             
@@ -59,7 +57,6 @@ module Balance =
                                     this.OpenCourses |> List.filter (fun x -> x <> courseId)
                                 Amount = this.Amount - courseDeletionFee
                     }
-                // printf "XXXXXXX pay cancellation fee: returing %A\n" result   
                 return result     
             }
         

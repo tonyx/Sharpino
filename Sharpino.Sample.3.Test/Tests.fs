@@ -129,7 +129,6 @@ let tests =
             // Assert
             Expect.isError result "should be error"
        
-        /// bim 
         multipleTestCase "add a row reference and a seat to it. Retrieve the seat - Ok" stadiumInstances  <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()

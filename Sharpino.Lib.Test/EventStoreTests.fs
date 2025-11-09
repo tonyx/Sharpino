@@ -19,17 +19,6 @@ let tests =
     Env.Load() |> ignore
 
     let password = Environment.GetEnvironmentVariable("password")
-
-    // let doNothingBroker: IEventBroker<string> =
-    //     {
-    //         notify = None
-    //         notifyAggregate =  None
-    //     }
-    //
-    // let emptyMessageSenders =
-    //     fun queueName ->
-    //         fun message ->
-    //             ValueTask.CompletedTask 
         
     let connection =
         "Server=127.0.0.1;"+
@@ -227,7 +216,7 @@ let tests =
                     Expect.isOk storeChange "should be ok")
             |> ignore
         
-        // "in my machine" I can run up to 8 concurrent changes without timeout
+        // "on my machine" I can run up to 8 concurrent changes without timeout
         pmultipleTestCase "set initial state and then add events in parallel more times and then verify that only succesful changes changed the state accordingly - Ok" versions <| fun (eventStore, setUp)  ->
             setUp()
             let random = System.Random(System.DateTime.Now.Millisecond)
@@ -262,10 +251,8 @@ let tests =
                         
                     (
                          if storeChange.IsOk then 
-                            // printf "isOk XXXX\n"
                             changed.AddOrUpdate (i, true, fun _ _ -> true) |> ignore
                          else
-                            // printf "is not Ok YYYY\n"
                             changed.AddOrUpdate (i, false, fun _ _ -> false) |> ignore
                     )
             )

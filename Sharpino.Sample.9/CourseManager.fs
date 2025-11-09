@@ -138,7 +138,6 @@ type CourseManager
                  
                 match course.Teachers with
                 | [] ->
-                    // printf "XXXXXX deleting course with no teacher\n"
                     return!
                         runDeleteAndAggregateCommandMd<Course, CourseEvents, Balance, BalanceEvents, string>
                             eventStore messageSenders "metadata" id initialBalance.Id payCourseCancellationFees (fun course -> course.Students.Length = 0)

@@ -159,18 +159,14 @@ let tests =
             let addItem = itemManager.AddItem item
             Expect.isOk addItem "should be ok"
             
-            // printf "XXXXX going to delete 300\n"
             let reservation = Reservation.Reservation.MkReservation [item.Id] |> Result.get
-            // printf "XXXXX going to delete 400\n"
             let addReservation = itemManager.AddReservation reservation
             Async.Sleep delay |> Async.RunSynchronously
             let retrievedItem = itemManager.GetItem item.Id |> Result.get
             Expect.equal retrievedItem.ReferencesCounter 1 "should be equal"
             
-            // printf "XXXXX going to delete 500\n"
             Async.Sleep delay |> Async.RunSynchronously
             let tryDeleteItem = itemManager.DeleteItem item.Id
-            // printf "XXXXX going to delete 600\n"
             Expect.isError tryDeleteItem "should be error"
        
         multipleTestCase "add an item and a reservation to it, then close the item in the reservation and the item can be deleted - Ok" instances <| fun (setUp, itemManager, delay) ->
