@@ -132,6 +132,31 @@ module CommandHandler =
                                 return result 
                             }
                 }, Commons.generalAsyncTimeOut)
+    
+    let inline mkAggregateSnapshot<'A, 'E, 'F
+        when 'A :> Aggregate<'F> 
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        > 
+        (storage: IEventStore<'F>) 
+        (aggregateId: AggregateId) =
+            logger.Value.LogDebug (sprintf "mkAggregateSnapshot %A" aggregateId)
+            let stateViewer = getAggregateStorageFreshStateViewer<'A, 'E, 'F> storage
+            Async.RunSynchronously 
+                (async {
+                    return
+                        result
+                            {
+                                let! eventId, state = stateViewer aggregateId 
+                                let serState = state.Serialize 
+                                let result = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, serState) 'A.StorageName
+                                return! result 
+                            }
+                }, Commons.generalAsyncTimeOut)
                 
     let inline mkSnapshotIfIntervalPassed2<'A, 'E, 'F
         when 'A: (static member Zero: 'A)

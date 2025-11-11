@@ -15,11 +15,19 @@
 
 ## What is Sharpino?
 
-A library to support Event-Sourcing in F# based on the following principles:
+Sharpino is a library to support Event-Sourcing in F# based on the following principles:
 - PostgresSQL-based event store to register events and snapshots.
 - In-memory event store to speed up the tests.
 - Optimistic lock based on event_id: checking the first available event_id position on the basis of the event_id passed by the command handler to the event store.
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
+- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
+- HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
+- Soft delete: Mark an aggregate as deleted.
+- GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
+- Fire events to a message queue (RabbitMQ).
+- Listeners for messages will provide StateViewers as they interpted and process those messages
+- Messages are fired after the events are stored.
+- Messages can be of type InitialState, Events, Deletion
 
 ## Goals
 - Using F# in idiomatic way for domain modelling and event sourcing in a .NET solution, particularly in the backend.
@@ -53,11 +61,8 @@ A library to support Event-Sourcing in F# based on the following principles:
 - Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
 - MessageSenders: can be set to NoSender or to a MessageSender that, given the name of a stream, returns a ValueTask that can be used to send messages to a message bus: examples with RabbitMQ are provided.
 
-## Features and technical improvements planned to be added
-- Enhanced Optimistic lock check on the database level (see 20250625_enhance_lock_pspgsql for an example of implementation).
-- "cross aggregates invariants" should matter for the command handler and must be taken into account in optimistic lock db checking (example 10 shows some use cases about). This concept is similar to the dynamic consistency boundaries of event sourcing. 
-- 
-- Pick up any open issue https://github.com/tonyx/Sharpino/issues or create a new one.
+### Issues
+- A [temporary list of issues](https://github.com/tonyx/Sharpino/issues)
 ## Projects
 __Sharpino.Lib.Core__:
 
@@ -74,61 +79,39 @@ __Sharpino.Lib__:
 ## How to use it
 - Sharpino samples provide dbmate template files to set up the Postgres database for the event store.
 - A proper .env file must be set up with the DATABASE_URL environment variable to connect to the Postgres database with a connection string.
-- You can run all the samples by:
+- If the db is properly set then you can run all the samples by:
 ```bash
 runTests.sh
 ```
+- Equivalent .bat windows script would be trival to implement from the .sh
+- You can run single examples by locating the project (or test project) of any example and running it having set the .env file in the root of the project.
 - Note: in this way you need to make sure the postgres based event store is up and running.
-- Otherwise, you may have to dig into the examples and exclude any postgres based examples (by commenting out at most one line in the test files).
-- If you use windows and don't have a unix shell, you may need to create an equivalent .bat file.
+- Otherwise, you may have to dig into the examples and exclude any postgres based examples (by commenting out at most one line in the test files) allowing in memory eventstore test only.
+- Some examples can use the combination of postgres and rabbitmq by the following command (in the proper subproject directory)
+- Check the .fsproj file of the project to see if it uses rabbitmq or not.
+```bash
+    dotnet run --configuration:rabbitmq
+```
 
+- Rabbitmq must be up and running to run the examples that use it.
+- Rabbitmq can be launched in a different window by using the following command:
+```bash
+    rabbitmq-server
+```
+
+ 
 ## How to contribute
 Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for all the information about how to contribute to the project.
 
 Or you can run the test in the single directories.
-Any .Test project can be run by:
-```bash
-dotnet run
 
-to run all the tests
-
-Some tests run only the in-memory implementation of the storage. You can set up the Postgres tables and db by using dbmate.
-In the Sharpino.Sample folder you can run the following command to set up the Postgres database:
-```bash
-dbmate -e up
-```
-(see the .env to set up the DATABASE_URL environment variable to connect to the Postgres database with a connection string).
-
-
-## Few notes about the scope of some of the examples
-# Sample application 2 is a problem of booking seats in two rows of five seats.
-1. Booking seats among multiple rows (where those rows are aggregates) in an event-sourcing way.
-2. Booking seats in a single row by two concurrent commands that singularly do not violate any invariant rule and yet the final state is potentially invalid.
-
-## Problem 1
-
-I have two rows of seats related to two different streams of events. Each row has 5 seats. I want to book a seat in row 1 and a seat in row 2. I want to do this in a single transaction so that if just one of the claimed seats is already booked then the entire multiple-row transaction fails and no seats are booked at all.
-
-## Problem 2
-There is an invariant rule that says that no booking can end up in leaving the only middle seat free in a row.
-This invariant rule must be preserved even if two concurrent transactions try to book the two left seats and the two right seats independently so violating (together) this invariant.
-
-## Sample application 4
-The domain Sample application 4 is the same of the Sample 2 and uses aggregates to be able to create an arbitrary number of seat rows.
-Invariants can be represented by quoted expressions so that, ideally, this may allow us to move toward a DSL (Example: "no booking can end up in leaving the only middle seat free in a row").
-
-## Sample application former-Saga
-This application was using the "rollback" based on undoers (compensating events).
-I moved this by a full cross-streams transaction because the use of the "Saga-like" rollback mechanisms has been ditched
-(and will be reintroduced with an eventual distributed architecture where event sourced objects may live in different databases)
-
-__Faq__:
+__Faq__ and __trivia__:
 - Why the name "Sharpino"?
     - It's a mix of "Sharp" (as the '#' of  C# or F#) and fino (Italian for "thin").  "sciarpino" (same pronunciation) in Italian means also "little scarf".
 - Why another event-sourcing library?
-    - I wanted to study the subject, and I need it for a project for fun and profit:  (www.restaurantsystem.cloud).
+    - I wanted to study the topic, I also use it in a project for fun and hopefully profit (not listed: ask me for reference in case).
 - Why F#?
-    - Any functional language of the ML family language in my opinion is a good fit for the following reasons:
+    - Any functional language of the ML family language in my opinion is a good fit for event-sourcing for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
         - The use of the lambda expression is a nice trick for the undoers (compensator events, former "Saga-like").
@@ -138,8 +121,9 @@ __Faq__:
     - note: if you gets in a setup errors like  "A function labeled with the 'EntryPointAttribute' attribute must be the last declaration" then you may fix by adding this line in the .fsproj file:
     ```xml
     <GenerateProgramFile>false</GenerateProgramFile>
+    ```
 - How does it compare with other functional event-sourcing libraries?
-    - Some comparisons can be the following porting based on the [Equinox](https://github.com/jet/equinox) library.
+    - I can't be exaustive, but few comparisons in basic examples are the following respect to the [Equinox](https://github.com/jet/equinox) library.
         - [Counter in Sharpino](https://github.com/tonyx/SharpinoCounter3)
         - [Counter in Equinox](https://github.com/jet/equinox/blob/master/samples/Tutorial/Counter.fsx)
         - [Invoices in Sharpino](https://github.com/tonyx/sharpinoinvoices)
@@ -151,21 +135,10 @@ __Faq__:
     - The numbered examples provided in the library can be used as a starting point. I'd suggest to use the latest ones.
 - How to handle "projections"?
     - It is possible to use "details" as a way to handle the composition of information coming from aggregates and events. The examples provided prefer to use directly the aggregates state (which is efficient by using the cache) s state (which is efficient by using the cache).
-    - Events can be queried directly to retrieve any projections, however the user may need to do some work to be efficient.
-    - More complex projections may need some work to be efficient in the same way the aggregates are.
+    - Events can be queried directly to retrieve any projections (i.e. "ephemeral views"), however the user may need to do some work to be efficient.
+    - More complex projections (i.e. "materialized views") may need some work to be efficient in the same way the aggregates are.
 - Why caring about cross streams transactions and cross aggregates invariants (instead of just ruling them out)?
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
-
-## Possible improvements
-- Use a generic way to support publish/subscribe on event bus (event broker/message broker/distributed cache...). There is a parameter type IEventBroker that is not used and needs to be used to specify the publish events after storing them.
-- Some StateViewer implementations may use an agent that listen to the published events.
-- Specify a more efficient way to handle the "details" version of any object for instance caching them or by implementing DB  based pre-computed projections.
-
-- Use the .net Cache
-- Implementing event store using Postgres event store but using Azure sql instead.
-- Write more examples (porting classic DDD examples implemented to test other libraries is fine).
-- Not sure about this: Write a full-Saga/Process manager for running multiple commands involving arbitrary types. The "compensator"/"undoer" must be able to rollback the transaction in case of failure of any command.
-- subdivide the example dirs so that they can fully test any configuration of sdk and event store (i.e. make copies of them that uses also 8.0 with pgEventStore and also pgBinaryEventStore). The current focus is on 9.0 with pgEventStore using json wrapped in text fields. JSON/JSONB fields are not needed and indeed they may be problematic in conjuction with FsPickler. Some investigation is weclome.
 
 ## Acknowledgements
 
@@ -296,7 +269,9 @@ Usually the way we run commands against multiple aggregate doesn't require undoe
 Plus: I am planning to use the undoer in the future for the proper user level undo/redo feature.
 
 An example of the undoer for an aggregate is in the following module.
-
+Note: I try to avoid "undoer" that are meant to issue compensating events when two transactions are running in parallel and one fails
+and for any reason we decided to not use the cross aggregate transaction function in command handlers.
+The "undoers" are complex but still: they are in general not necessary (or if you want to suggest a way to simplify them it's fine).
 
 ```fsharp
 module CartCommands =
@@ -409,12 +384,6 @@ Example of line in your .fsproj or .csproj file:
   Note: the current examples provided are still referencing the previous 1.6.6 version.
   [Here is an example compatible with 2.0.0. with binary serialization](https://github.com/tonyx/shoppingCartWithSharpino.git)
 
-- Old videos (I need to review them because they may contain some errors or outdated info):
-
-https://youtu.be/OQKD5uluFPc
-https://youtu.be/ToZ_I_xRA-g
-https://youtu.be/WtGEQqznPnQ
-https://youtu.be/j2XoLkCt31c
 
 - added a few new examples (can be used for dojos)
   [pub system](https://github.com/tonyx/sharpinoDojoPubSystem)
@@ -437,66 +406,7 @@ Basically you may wan to write json fields into text fields  for various reasons
 (on my side I experienced that an external library may require further tuning to properly work with jsonb fields in Postgres, so in that case a quick fix is just using text fields).
 Remember that we don't necessarily need Json fields as at the moment we just do serialize/deserialize and not querying on the json fields (at the moment).
 
-- version 1.6.0: starting removing kafka for aggregates (will be replaced somehow). Use eventstore (postgres) based state viewers instead.
-  New sample: started an example of Restaurant/Pub management. (Sample 6)
-- Version 1.5.8: fix in adding events with stateId when adding more events (only the first stateId matters in adding many events, so the rest are new generated on the fly)
-- Version 1.5.7:
-- Added _runInitAndCommand_ that creates a new aggregate and a command context in a single transaction.
-- Changed the signature of runAggregate and runNAggregate (simplified the viewer passed as parameter avoiding a labmda)
-- Version 1.5.5:
-- fixed a key problem in dictionary keys in memory based eventstore (MemoryStorage). Note it is supposed to be used only for dev and testing.
-- _WARNING_: Kafka publishing is ok but __Kafka client integration needs heavy refactoring and fixing, particularly about aggregate viewer__.T That means that any program that tries to build the state using  _KafkaStateViewer_ may have some inefficiencies of even errors.
-  Just use the storage base state viewers for now (or build your own state viewers by subscribing to the Kafka topic and building the state locally).
-  I am ready to refactor now because I have an elmish sample app for (manual) testing. An example of hot try it is by taking a look in the src/Server/server.fs in Sample4 (commented code with different ways to instantiate the "bookingsystem" sample app)
-- Added SqlTemplate dir with template examples for creating table relate to events and snapshots for aggregates and contexts.
-- Added sample4 witch is almost the same as sample3 but using SAFE stack (Fable/Elmish) as envelope (going to ditch sample3 because
-  it is going to be messy)
-- Version 1.5.4 Replaces version 1.5.3 (that was deprecated )
-    - Aggregate snapshots added (in addition to contexts snapshots)
-
-- Version 1.5.3 (don't use it: it is deprecated: missing packages)
-
-- Version 1.5.1: -
-    - Added a new configuration file named appSettings.json in the root of the project with the following content:
-```json
-  {
-  "LockType":{"Case":"Optimistic"},
-  "RefreshTimeout": 100,
-  "CacheAggregateSize": 100
-}
-```
-- Moreover, the specific variant of optimitic lock (classic or more permissive) can be changed by code (evenstore method).
-  The "more permissive" optmistic lock will skip aggregate state version control so it allows that events generated in the same moment can be stored and published. Nevertheless if they end up in a violation of the invariant rule the core will skip them anyway.
-  __The more permissive optimistic lock cannot ensure that multiple aggregate transactions are handled properly__: if I book seats from multiple rows it is theoretically possible that only seats from one row are booked.
-
-- See the sql script of sample 4: it includes the steps related to change "on the fly" (by application) the db level constraints that inhibit adding two events with the same aggregate stateid.
-- (in the same stream) in the event store.
-- Current version 1.5.0: - Kafka integration for fine-grained aggregates (identified by Id) is included.
-- Version 1.4.8: streams of events can relate to proper aggregate identified by id (and not only context). I can run commands for an arbitrary number of aggregates of some specific type. See Sample4 (booking seats of rows where rows are aggregates of a context which is a stadium). Integration with Kafka for those "fine" aggregates identified by Id is not included in this version.
-
-- Booking seat example: https://github.com/tonyx/seatsLockWithSharpinoExample (it shows some scalability issues that will be fixed in future releases)
-- Version 1.4.7: contains sample app that builds state of contexts by using Kafka subscriber (receives and processes events to build locally the state of those contexts, despite can still access the "souce of truth", which is the db/event store, when something goes wrong in processing its state, i.e. out of sync events).
-- Version 1.4.6: fix bug in Postgres AddEvents
-- Version 1.4.5: Upgrade to net8.0
-- Info: in adding new features I may risk breaking backward compatibility. At the moment I am handling in this simple way: if I change the signature of a function I add a new function with the new signature and I deprecate the old one. I will keep the old one for a while. I will remove it only if I am sure that nobody is using it.
-- Version: 1.4.4 Postgres tables of events need a new column: kafkaoffset of type BigInt. It is used to store the offset/position of the event in the Kafka topic.
-  See the new four last alter_ Db script in Sharpino.Sample app. This feature is __Not backward compatible__: You need your equivalent script to update the tables of your stream of events.
-  (Error handling can be improved in writing/reading Kafka event info there).
-  Those data will be used in the future to feed the "kafkaViewer" on initialization. _Note_: kafkaoffset/kafkatopic fields on db in future versions will be unused.
-
-
-- From Version 1.4.1 CommandHandler changed: runCommand requires a further parameter: todoViewer of type (stateViewer: unit -> Result<EventId * 'A, string>). It can be obtained by the CommandHandler module itself.getStorageStateViewera<'A, 'E> (for database event-store based state viewer.)
-- [new blog post](https://medium.com/@tonyx1/a-little-f-event-sourcing-library-part-ii-84e0130752f3)
-- Version 1.4.1: little change in Kafka consumer. Can use DeliveryResults to optimize tests. Note: Kafka consumer is still in progress.
-- Version 1.4.0: runCommand instead of Result<unit, string> returns, under result, info about event-store created IDs (Postgres based) of new events and eventually Kafka Delivery result (if Kafka is configured).
-- Version 1.3.9: Repository interface changed (using Result type when it is needed). Note: the new Repository interface (and implementation) is __not compatible__ with the one introduced in Version 1.3.8!
-
-- Version 1.3.8: can use a new Repository type instead of lists (even though they are still implemented as plain lists at the moment) to handle collections of entities. Note repository is only an interface with only a plain list implementation.
-- Version 1.3.5: the library is split into two nuget packages: Sharpino.Core and Sharpino.Lib. the Sharpino.Core can be included in a Shared project in the Fable Remoting style. The collections of the entities used in the Sharpino.Sample are not lists anymore but use Repository data type (which at the moment uses plain lists anyway).
-
-- Version 1.3.4 there is the possibility to choose a pessimistic lock (or not) in command processing. Needed a configuration file named appSettings.json in the root of the project with the following content:
-  __don't use this because the configuration is changed in version 1.5.1__
-
+_old stuff deleted_
 
 More documentation [(Sharpino gitbook)](https://tonyx.github.io)
 
