@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Console</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sharpino.Sample._10</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
     <LangVersion>9.0</LangVersion>
@@ -28,7 +28,7 @@
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
-    <PackageReference Update="FSharp.Core" Version="9.*" />
+    <PackageReference Update="FSharp.Core" Version="10.*" />
   </ItemGroup>
 
   <ItemGroup>

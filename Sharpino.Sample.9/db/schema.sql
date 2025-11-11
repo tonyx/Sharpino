@@ -1,6 +1,12 @@
+\restrict ik3pXQQRQjbVfNgNYNBQqrW3fvVnlWs3F531OFqhhx2oA6mJdh561OB7iIcj3qY
+
+-- Dumped from database version 14.4
+-- Dumped by pg_dump version 18.0
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -1411,6 +1417,8 @@ ALTER TABLE ONLY public.snapshots_01_teacher
 --
 -- PostgreSQL database dump complete
 --
+
+\unrestrict ik3pXQQRQjbVfNgNYNBQqrW3fvVnlWs3F531OFqhhx2oA6mJdh561OB7iIcj3qY
 
 
 --
