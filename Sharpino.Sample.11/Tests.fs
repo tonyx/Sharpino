@@ -1,6 +1,7 @@
 module Tests
 
 open System
+open System.Diagnostics
 open Expecto
 open Sharpino
 open Sharpino.Cache
@@ -40,7 +41,7 @@ let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, Mes
 [<Tests>]
 let tests =
     testList "samples" [
-       testCase "add a course and a student" <| fun _ ->
+       ptestCase "add a course and a student" <| fun _ ->
           setUp ()
           let course = Course.MkCourse ("math", 10)
           let student = Student.MkStudent ("Jack", 3)
@@ -52,4 +53,31 @@ let tests =
           let studentRetrieved = courseManager.GetStudent student.Id
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
+          
+       testCase "insert 1000 students" <| fun _ ->
+          setUp ()
+          let students = Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+          stopwatch.Stop()
+          printfn "Inserting 1000 students took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 5000 students" <| fun _ ->
+          setUp ()
+          let students = Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+          stopwatch.Stop()
+          printfn "Inserting 5000 students took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 10000 students" <| fun _ ->
+          setUp ()
+          let students = Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+          stopwatch.Stop()
+          printfn "Inserting 10000 students took %d ms" stopwatch.ElapsedMilliseconds
   ]
