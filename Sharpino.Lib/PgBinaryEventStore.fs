@@ -426,7 +426,8 @@ module PgBinaryStore =
                                                             ]
                                                         ]
                                                 ]
-                                            //  needed?
+                                            // tests in sharpinoSample7 binary show that the following two statements are needed
+                                            // on the other hand the equivalent in jsonEventStore are not needed (to be investigated)
                                             |> Async.AwaitTask
                                             |> Async.RunSynchronously
                                         () |> Ok
@@ -437,6 +438,49 @@ module PgBinaryStore =
                             }, evenStoreTimeout)
                 try
                     result ()
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
+                   
+            member this.SetInitialAggregateStates version name idsAndSnapshots =
+                logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+              
+                try  
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                try
+                                    let _ =
+                                        connection
+                                        |> Sql.connect
+                                        |> Sql.executeTransaction
+                                            [
+                                                insertSnapshot,
+                                                    [
+                                                        for (aggregateId, json) in idsAndSnapshots do
+                                                        [
+                                                            ("@aggregate_id", Sql.uuid aggregateId);
+                                                            ("snapshot",  sqlBinary json);
+                                                            ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
+                                                        ]
+                                                    ]
+                                                firstEmptyAggregateEvent,
+                                                    [
+                                                        for (aggregateId, _) in idsAndSnapshots do
+                                                        [
+                                                            ("@aggregate_id", Sql.uuid aggregateId)
+                                                        ]
+                                                    ]
+                                            ]
+                                    () |> Ok
+                                with
+                                | _ as ex ->
+                                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                    ex.Message |> Error
+                        }, evenStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)

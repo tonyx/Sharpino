@@ -427,6 +427,25 @@ module MemoryStorage =
                 snapshots.Add(aggregateId, [initialState])
                 addAggregateSnapshots version name aggregateId initialState
                 () |> Ok
+           
+            member this.SetInitialAggregateStates version name idsAndSnapshots =
+                logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s" version name)
+                idsAndSnapshots
+                |> List.iter (fun (aggregateId, snapshot) ->
+                    let initialState =
+                        {
+                            Id = next_snapshot_id version name
+                            AggregateId = aggregateId
+                            Snapshot = snapshot
+                            TimeStamp = DateTime.UtcNow
+                            EventId = None 
+                            Deleted = false
+                        }
+                    let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                    snapshots.Add(aggregateId, [initialState])
+                    addAggregateSnapshots version name aggregateId initialState
+                )
+                () |> Ok
                 
             member this.TryGetLastEventId  version  name =
                 logger.Value.LogDebug (sprintf "TryGetLastEventId %s %s" version name)

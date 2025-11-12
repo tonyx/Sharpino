@@ -379,11 +379,6 @@ module CommandHandler =
         (initialInstance: 'A1) =
             logger.Value.LogDebug (sprintf "runInit %A" 'A1.StorageName)
             result {
-                let! notAlreadyExists =
-                    (StateView.getAggregateFreshState<'A1, 'E, 'F> initialInstance.Id eventStore
-                    |> Result.isError) // it must be true that this is an error to continue
-                    |> Result.ofBool (sprintf "Aggregate with id %A of type %s already exists" initialInstance.Id 'A1.StorageName)
-                        
                 let! _ = eventStore.SetInitialAggregateState initialInstance.Id 'A1.Version 'A1.StorageName initialInstance.Serialize
                 
                 AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
@@ -392,6 +387,37 @@ module CommandHandler =
                     let queueName = 'A1.Version + 'A1.StorageName
                     optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders initialInstance.Id initialInstance
                 
+                return ()
+            }
+            
+    let inline runMultipleInit<'A1, 'E, 'F
+        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (initialInstances: List<'A1>) =
+            logger.Value.LogDebug (sprintf "runInit %A" 'A1.StorageName)
+            result {
+                
+                let idWithserializedAggregates =
+                    initialInstances
+                    |> List.map (fun x -> x.Id, x.Serialize)
+                let! _ = eventStore.SetInitialAggregateStates 'A1.Version 'A1.StorageName idWithserializedAggregates
+                
+                let _ =
+                    initialInstances
+                    |> List.iter (fun x -> AggregateCache3.Instance.Memoize2 (0, x |> box) x.Id)
+                
+                // beware the mumber of threads here
+                let _ =
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    initialInstances
+                    |> List.iter (fun x -> optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders x.Id x |> ignore)
                 return ()
             }
             

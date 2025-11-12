@@ -35,6 +35,16 @@ module CourseManager =
                         student
                 }
         
+        member this.AddMultipleStudents (students: List<Student>) =
+            result
+                {
+                    return!
+                        runMultipleInit<Student, StudentEvents, string>
+                        eventStore
+                        messageSenders
+                        students
+                }
+        
         member this.GetStudent (id: Guid)  =
             result
                 {

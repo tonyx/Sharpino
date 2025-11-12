@@ -95,7 +95,7 @@ module Supermarket =
                         DateTime.MinValue
                         DateTime.MaxValue
                         (fun g -> g.Name = good.Name)
-                
+               
                 let! existsWithTheSameName =
                     existingGoods
                     |> List.length = 0

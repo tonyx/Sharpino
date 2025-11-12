@@ -80,4 +80,41 @@ let tests =
           Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
           stopwatch.Stop()
           printfn "Inserting 10000 students took %d ms" stopwatch.ElapsedMilliseconds
-  ]
+          
+       testCase "insert 1000 students in batch" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+             |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          courseManager.AddMultipleStudents students |> ignore
+          stopwatch.Stop()
+          printfn "Inserting 1000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+       
+       testCase "insert 5000 students in batch" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+             |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          courseManager.AddMultipleStudents students |> ignore
+          stopwatch.Stop()
+          printfn "Inserting 5000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+       
+       testCase "insert 10000 students in batch" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+             |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          courseManager.AddMultipleStudents students |> ignore
+          stopwatch.Stop()
+          printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds   
+    ]
+    |> testSequenced
+    
+    
+    
