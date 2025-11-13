@@ -400,24 +400,24 @@ module CommandHandler =
         >
         (eventStore: IEventStore<'F>)
         (messageSenders: MessageSenders)
-        (initialInstances: List<'A1>) =
+        (initialInstances: ('A1)[]) =
             logger.Value.LogDebug (sprintf "runInit %A" 'A1.StorageName)
             result {
                 
                 let idWithserializedAggregates =
                     initialInstances
-                    |> List.map (fun x -> x.Id, x.Serialize)
+                    |> Array.map (fun x -> x.Id, x.Serialize)
                 let! _ = eventStore.SetInitialAggregateStates 'A1.Version 'A1.StorageName idWithserializedAggregates
                 
                 let _ =
                     initialInstances
-                    |> List.iter (fun x -> AggregateCache3.Instance.Memoize2 (0, x |> box) x.Id)
+                    |> Array.iter (fun x -> AggregateCache3.Instance.Memoize2 (0, x |> box) x.Id)
                 
                 // beware the mumber of threads here
                 let _ =
                     let queueName = 'A1.Version + 'A1.StorageName
                     initialInstances
-                    |> List.iter (fun x -> optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders x.Id x |> ignore)
+                    |> Array.iter (fun x -> optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders x.Id x |> ignore)
                 return ()
             }
             

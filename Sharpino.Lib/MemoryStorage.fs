@@ -431,6 +431,7 @@ module MemoryStorage =
             member this.SetInitialAggregateStates version name idsAndSnapshots =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s" version name)
                 idsAndSnapshots
+                |> List.ofArray
                 |> List.iter (fun (aggregateId, snapshot) ->
                     let initialState =
                         {

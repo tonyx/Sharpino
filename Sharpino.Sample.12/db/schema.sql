@@ -1,4 +1,4 @@
-\restrict G9kybRJ2cr3jrDVM9n8CvSbYIQ8mKGPgNyjLV2qLyTNhNNzGSYZrz8fIf5NNtju
+\restrict EG9cZnFGesPN6xtKikhxscSItGaGBwwnFXaFUEahw1aIw0mZbeKjzE1ye1moSXo
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -23,10 +23,10 @@ SET row_security = off;
 
 
 --
--- Name: insert_01_course_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_course_aggregate_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_course_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_course_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -43,27 +43,27 @@ $$;
 
 
 --
--- Name: insert_01_course_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_course_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_course_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_course_event_and_return_id(event_in bytea, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_course(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
+VALUES(event_in::bytea, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_01_student_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_student_aggregate_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_student_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_student_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -80,27 +80,27 @@ $$;
 
 
 --
--- Name: insert_01_student_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_student_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_student_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_student_event_and_return_id(event_in bytea, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_student(event, aggregate_id, timestamp)
-VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
+VALUES(event_in::bytea, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_course_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_course_aggregate_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -117,27 +117,27 @@ $$;
 
 
 --
--- Name: insert_md_01_course_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_course_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_course_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_course_event_and_return_id(event_in bytea, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_course(event, aggregate_id, timestamp, md)
-VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_student_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_student_aggregate_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -154,17 +154,17 @@ $$;
 
 
 --
--- Name: insert_md_01_student_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_student_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_student_event_and_return_id(event_in bytea, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
 INSERT INTO events_01_student(event, aggregate_id, timestamp, md)
-VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -227,7 +227,7 @@ CREATE TABLE public.aggregate_events_01_student (
 CREATE TABLE public.events_01_course (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event text NOT NULL,
+    event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     md text
@@ -255,7 +255,7 @@ ALTER TABLE public.events_01_course ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 CREATE TABLE public.events_01_student (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
-    event text NOT NULL,
+    event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     md text
@@ -303,7 +303,7 @@ CREATE SEQUENCE public.snapshots_01_course_id_seq
 
 CREATE TABLE public.snapshots_01_course (
     id integer DEFAULT nextval('public.snapshots_01_course_id_seq'::regclass) NOT NULL,
-    snapshot text NOT NULL,
+    snapshot bytea NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
@@ -329,7 +329,7 @@ CREATE SEQUENCE public.snapshots_01_student_id_seq
 
 CREATE TABLE public.snapshots_01_student (
     id integer DEFAULT nextval('public.snapshots_01_student_id_seq'::regclass) NOT NULL,
-    snapshot text NOT NULL,
+    snapshot bytea NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
@@ -499,7 +499,7 @@ ALTER TABLE ONLY public.snapshots_01_student
 -- PostgreSQL database dump complete
 --
 
-\unrestrict G9kybRJ2cr3jrDVM9n8CvSbYIQ8mKGPgNyjLV2qLyTNhNNzGSYZrz8fIf5NNtju
+\unrestrict EG9cZnFGesPN6xtKikhxscSItGaGBwwnFXaFUEahw1aIw0mZbeKjzE1ye1moSXo
 
 
 --

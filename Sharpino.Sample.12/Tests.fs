@@ -24,7 +24,7 @@ let connection =
     "User Id=safe;"+
     $"Password={password}"
     
-let pgEventStore:IEventStore<string> = PgStorage.PgEventStore connection
+let pgEventStore:IEventStore<byte[]> = PgBinaryStore.PgBinaryStore connection
 
 let setUp () =
     pgEventStore.Reset Student.Version Student.StorageName
@@ -33,8 +33,8 @@ let setUp () =
     pgEventStore.ResetAggregateStream Course.Version Course.StorageName
     AggregateCache3.Instance.Clear()
 
-let courseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
-let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
+let courseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, byte[]> pgEventStore
+let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, byte[]> pgEventStore
 
 let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, MessageSenders.NoSender)
 

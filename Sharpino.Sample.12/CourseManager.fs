@@ -19,7 +19,7 @@ open System
 module CourseManager =
     type CourseManager
         (
-            eventStore: IEventStore<string>,
+            eventStore: IEventStore<byte[]>,
             courseViewer: AggregateViewer<Course>,
             studentViewer: AggregateViewer<Student>,
             messageSenders: MessageSenders
@@ -29,7 +29,7 @@ module CourseManager =
             result
                 {
                     return!
-                        runInit<Student, StudentEvents, string>
+                        runInit<Student, StudentEvents, byte[]>
                         eventStore
                         messageSenders
                         student
@@ -39,7 +39,7 @@ module CourseManager =
             result
                 {
                     return!
-                        runMultipleInit<Student, StudentEvents, string>
+                        runMultipleInit<Student, StudentEvents, byte[]>
                         eventStore
                         messageSenders
                         students
@@ -56,7 +56,7 @@ module CourseManager =
             result
                 {
                     return!
-                        runInit<Course, CourseEvents, string>
+                        runInit<Course, CourseEvents, byte[]>
                         eventStore
                         messageSenders
                         course
