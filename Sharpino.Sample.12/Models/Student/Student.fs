@@ -24,6 +24,10 @@ module Student =
                 {
                     do! 
                         this.Courses
+                        |> List.exists (fun x -> x = courseId)
+                        |> Result.ofBool "Course already exists"
+                    do! 
+                        this.Courses
                         |> List.length < this.MaxNumberOfCourses
                         |> Result.ofBool "Maximum number of courses reached"
                     return    

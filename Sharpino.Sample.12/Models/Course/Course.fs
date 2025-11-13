@@ -26,6 +26,10 @@ module  Course =
             member this.AddStudent (studentId: Guid) =
                 result
                     {
+                        do!
+                            this.Students
+                            |> List.exists (fun x -> x = studentId)
+                            |> Result.ofBool "student already enrolled"
                         do! 
                             (this.Students.Length < this.MaxNumberOfStudents)
                             |> Result.ofBool "course is full"

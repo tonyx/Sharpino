@@ -168,6 +168,9 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+
+- Added an article on mediumi[F# Domain Model with Event Sourcing vs C# with Entity Framework] (https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
+- Version 4.4.4: added bulk object initializations
 - Version 4.4.3: added support for net10.0
 - Version 4.4.2: mkAggregateSnapshot is reintroduced (was dropped in 4.4.1)
 - Version 4.4.1: fixed [Avoid db call to get lastEventId before probing the cache](https://github.com/tonyx/Sharpino/issues/45). In the getAggregateFreshState the lastEventId is computed within the events involved in the "evolve" from last snapshot and not in a second step.
