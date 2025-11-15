@@ -12,13 +12,13 @@ open System.Text.Json.Serialization
 
 module StudentEvents =
     type StudentEvents =
-        | CourseAdded of Guid
-        | CourseRemoved of Guid
+        | EnrolledCourse of Guid
+        | UnenrolledCourse of Guid
         interface Event<Student> with
             member this.Process (student: Student) =
                 match this with
-                | CourseAdded id -> student.AddCourse id
-                | CourseRemoved id -> student.RemoveCourse id
+                | EnrolledCourse id -> student.EnrollCourse id
+                | UnenrolledCourse id -> student.UnenrollCourse id
        
         static member Deserialize (x: string) =
             try

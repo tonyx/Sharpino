@@ -19,7 +19,7 @@ module Student =
         static member MkStudent (name: string, maxNumberOfCourses: int) =
             { Id = Guid.NewGuid(); Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
    
-        member this.AddCourse (courseId: Guid) =
+        member this.EnrollCourse (courseId: Guid) =
             result
                 {
                     do! 
@@ -34,7 +34,7 @@ module Student =
                         }
                 }
             
-        member this.RemoveCourse (courseId: Guid) =
+        member this.UnenrollCourse (courseId: Guid) =
             result
                 {
                     let! courseExists =

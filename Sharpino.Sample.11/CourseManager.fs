@@ -69,11 +69,11 @@ module CourseManager =
                     return course
                 }
         
-        member this.SubscribeStudentToCourse (studentId: Guid) (courseId: Guid) =
+        member this.EnrolleStudentToCourse (studentId: Guid) (courseId: Guid) =
             result
                 {
-                    let addCourseToStudent = StudentCommands.AddCourse courseId
-                    let addStudentToCourse = CourseCommands.AddStudent studentId
+                    let addCourseToStudent = StudentCommands.Enroll courseId
+                    let addStudentToCourse = CourseCommands.EnrollStudent studentId
                     return!
                         runTwoAggregateCommands studentId courseId eventStore messageSenders addCourseToStudent addStudentToCourse
                 }
