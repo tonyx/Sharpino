@@ -64,12 +64,18 @@ let tests =
            let retrievedCourse = retrieved.OkValue
            Expect.equal course retrievedCourse "should be equal"
        
-       // ftestCase "add a course and then get by getLastAggregateSnapshotOrStateCache - Ok" <| fun _ ->
-       //     let course = Course.MkCourse ("course", 10)
-       //     let added = courseManager.AddCourse course
-       //     let removeCache = AggregateCache3.Instance.Clear ()
-       //     let retrieved = Sharpino.StateView.getLastAggregateSnapshotOrStateCache<Course, string> course.Id Course.Version Course.StorageName pgEventStore
-       //     Expect.isTrue true "true"
+       ftestCase "add a course and then get by getLastAggregateSnapshotOrStateCache - Ok" <| fun _ ->
+           let course = Course.MkCourse ("course", 10)
+           let added = courseManager.AddCourse course
+           let removeCache = AggregateCache3.Instance.Clear ()
+           let retrieved = Sharpino.StateView.getLastAggregateSnapshot<Course, string> course.Id Course.Version Course.StorageName pgEventStore
+           Expect.isOk retrieved "should be ok"
+           let retrievedOkValue = retrieved.OkValue
+           Expect.isSome retrievedOkValue "should be some"
+           let retrievedOkValueValue = retrievedOkValue.Value
+           let retrievedOkValueValueId = retrievedOkValueValue |> fst
+           let retrievedOkValueValueState = retrievedOkValueValue |> snd
+           Expect.equal course.Id retrievedOkValueValueState.Id "should be equal"
            
     ]
     |> testSequenced

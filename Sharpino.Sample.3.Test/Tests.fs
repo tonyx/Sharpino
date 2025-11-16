@@ -523,7 +523,7 @@ let tests =
             // Assert
             Expect.isError tryBooking "should be error"
             let (Error e ) = tryBooking
-            Expect.equal e (sprintf "There is no aggregate of version \"_01\", name \"_seatrow\" with id %A" rowId) "should be equal"
+            Expect.equal e (sprintf "object %A type _01_seatrow not existing" rowId) "should be equal"
             
         multipleTestCase "add a booking on an existing row and unexisting seat - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange

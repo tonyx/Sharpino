@@ -1025,7 +1025,40 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     None
-            
+          
+            member this.TryGetLastAggregateSnapshot version name aggregateId =
+                logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
+                
+                let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            let result =     
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
+                                |> Sql.execute (fun read ->
+                                    (
+                                        read.intOrNone "event_id",
+                                        readAsText read "snapshot",
+                                        read.bool "is_deleted"
+                                    )
+                                )
+                                |> Seq.tryHead
+                            match result with
+                            | Some (eventId, snapshot, isDeleted) ->
+                                if isDeleted then
+                                    return Error $"object {aggregateId} type {version}{name} previously deleted"
+                                else
+                                    return Ok (eventId, snapshot)
+                            | None -> return Error $"object {aggregateId} type {version}{name} not existing"    
+                        }, evenStoreTimeout)
+                with
+                | _ as ex ->
+                    logger.Value.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
+                    Error (sprintf "error occurred %A" ex.Message)
+              
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name

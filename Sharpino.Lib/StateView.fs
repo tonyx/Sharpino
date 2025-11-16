@@ -93,7 +93,7 @@ module StateView =
                     }, Commons.generalAsyncTimeOut)
                             
 
-    let inline private getLastAggregateSnapshot<'A, 'F 
+    let inline  getLastAggregateSnapshot<'A, 'F 
         when 'A :> Aggregate<'F> and
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
@@ -102,20 +102,22 @@ module StateView =
         (aggregateId: Guid)
         (version: string)
         (storageName: string)
-        (storage: IEventStore<'F>) 
+        (storage: IEventStore<'F>)
+        :Result<(Option<Definitions.EventId> * 'A) option,string>
         =
             logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
                         result {
-                            let (_, lastSnapshotId) = storage.TryGetLastSnapshotIdByAggregateId version storageName aggregateId |> Option.defaultValue (None, 0)
-                            if (lastSnapshotId = 0) then
-                                return None
-                            else
-                                let! (eventId, snapshot) = 
-                                    tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                return (eventId , snapshot) |> Some 
+                            let found = storage.TryGetLastAggregateSnapshot version storageName aggregateId
+                            match found with
+                            | Ok (eventId, snapshot) ->
+                                let deserialized = 'A.Deserialize snapshot
+                                match deserialized with
+                                | Ok deserialized -> return (eventId , deserialized) |> Some 
+                                | Error e -> return! Error e
+                            | Error e -> return! Error e
                         }
                 }, Commons.generalAsyncTimeOut)
                 

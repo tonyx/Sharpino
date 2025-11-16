@@ -506,6 +506,22 @@ module MemoryStorage =
                     snapshots_dic.[version].[name]
                     |> List.tryLast
                     |>> (fun x -> x.EventId)
+                    
+                    
+            member this.TryGetLastAggregateSnapshot version name aggregateId =
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
+                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                        Error "not found"
+                else
+                    let result =
+                        aggregate_snapshots_dic.[version].[name].[aggregateId]
+                        |> List.tryLast
+                        |>> (fun x -> (x.EventId, x.Id, x.Deleted, x.Snapshot))
+                    match result with
+                    | None -> Error "not found"
+                    | Some (_, _, true, _) -> Error "was deleted"
+                    | Some (eventId, id, _, json) -> Ok (eventId, json)
+                    
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
