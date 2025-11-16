@@ -1025,7 +1025,7 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     None
-                
+            
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name

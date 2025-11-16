@@ -18,6 +18,7 @@
     <Compile Include="Models/Student/Commands.fs" />
     <Compile Include="CourseManager.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="BulkLoadTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
     <Content Include="README.md" />

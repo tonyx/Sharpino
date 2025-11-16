@@ -45,6 +45,16 @@ module CourseManager =
                         students
                 }
         
+        member this.AddMultipleCourses (courses: Course[]) =
+            result
+                {
+                    return!
+                        runMultipleInit<Course, CourseEvents, string>
+                        eventStore
+                        messageSenders
+                        courses
+                }        
+        
         member this.GetStudent (id: Guid)  =
             result
                 {
@@ -68,6 +78,17 @@ module CourseManager =
                     let! _, course = courseViewer id
                     return course
                 }
+        
+        member this.GetCourses (ids: Guid[]) =
+            result
+                {
+                    let!
+                        courses =
+                            ids
+                            |> List.ofArray
+                            |> List.traverseResultM (fun id -> this.GetCourse id )
+                    return courses
+                }        
         
         member this.EnrolleStudentToCourse (studentId: Guid) (courseId: Guid) =
             result

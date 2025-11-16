@@ -222,7 +222,7 @@ module StateView =
         async {
             return
                 result {
-                    let! eventIdAndState = getLastAggregateSnapshotOrStateCache<'A, 'F> id 'A.Version 'A.StorageName eventStore
+                    let! eventIdAndState = getLastAggregateSnapshot<'A, 'F> id 'A.Version 'A.StorageName eventStore
                     match eventIdAndState with
                     | None -> 
                         return! Error (sprintf "There is no aggregate of version %A, name %A with id %A" 'A.Version 'A.StorageName id)
@@ -320,7 +320,7 @@ module StateView =
         (eventStore: IEventStore<'F>)
         =
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
-            
+            // getLastAggregateSnapshot 
             let computeNewStateAndLatestEventId =
                 fun () ->
                     result {
@@ -346,7 +346,7 @@ module StateView =
             | Error e ->
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
-  
+
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
