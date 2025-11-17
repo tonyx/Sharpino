@@ -170,6 +170,7 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 
 
 - Version 4.4.6: avoid an unnecessary access to last snapshot event id to get last aggregateSnapshot
+- Version 4.4.6: avoid an unnecessary access to last snapshot event id to get last aggregateSnapshot
 - Added an article on mediumi[F# Domain Model with Event Sourcing vs C# with Entity Framework] (https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
 - Version 4.4.4: added bulk object initializations
 - Version 4.4.3: added support for net10.0
