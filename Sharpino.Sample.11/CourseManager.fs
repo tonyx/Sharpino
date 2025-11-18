@@ -62,6 +62,16 @@ module CourseManager =
                     return student
                 }
         
+        member this.GetStudents (ids: List<Guid>) =
+            result
+                {
+                    let!
+                        students =
+                            ids
+                            |> List.traverseResultM (fun id -> studentViewer id |> Result.map snd)
+                    return students
+                }
+        
         member this.AddCourse (course: Course) =
             result
                 {

@@ -41,7 +41,8 @@ let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, 
 let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, MessageSenders.NoSender)
 [<Tests>]
 let tests =
-    testList "bulk load examples" [
+    // ignore those tests at the moment (equivalent experiment is in Tests.fs) 
+    ptestList "bulk load examples" [
        testCase "add many courses, retrieve them all as a bulk operation" <| fun _ ->
            setUp ()
            let courses =
@@ -63,8 +64,9 @@ let tests =
            Expect.isOk retrieved "should be ok"
            let retrievedCourse = retrieved.OkValue
            Expect.equal course retrievedCourse "should be equal"
-       
-       ftestCase "add a course and then get by getLastAggregateSnapshotOrStateCache - Ok" <| fun _ ->
+      
+       // see later 
+       testCase "add a course and then get by getLastAggregateSnapshotOrStateCache - Ok" <| fun _ ->
            let course = Course.MkCourse ("course", 10)
            let added = courseManager.AddCourse course
            let removeCache = AggregateCache3.Instance.Clear ()

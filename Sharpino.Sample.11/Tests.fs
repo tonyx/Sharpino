@@ -119,7 +119,98 @@ let tests =
           stopwatch.Start()
           courseManager.AddMultipleStudents students |> ignore
           stopwatch.Stop()
-          printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds   
+          printfn "Inserting 100000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 1000 students in batch and retrieve them - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 1000 students took %d ms" stopwatch.ElapsedMilliseconds
+       
+       testCase "insert 5000 students in batch and retrieve them - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 5000 students took %d ms" stopwatch.ElapsedMilliseconds
+       
+       testCase "insert 10000 students in batch and retrieve them - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 10000 students took %d ms" stopwatch.ElapsedMilliseconds
+      
+       testCase "insert 100000 student in batch and retrieve them - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 100000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 100000 students took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 5000 students in batch and retrieve them without cache - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          let _ =
+             AggregateCache3.Instance.Clear ()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 5000 students without cache took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 10000 students in batch and retrieve them without cache - Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          let _ =
+             AggregateCache3.Instance.Clear ()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 10000 students without cache took %d ms" stopwatch.ElapsedMilliseconds
+          
+       testCase "insert 100000 student in batch and retrieve them without cache- Ok" <| fun _ ->
+          setUp ()
+          let students =
+             Array.init 100000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+          let added = courseManager.AddMultipleStudents students
+          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let stopwatch = Stopwatch()
+          let _ =
+             AggregateCache3.Instance.Clear ()
+          stopwatch.Start()
+          let retrieved = courseManager.GetStudents ids
+          stopwatch.Stop()
+          printfn "Retrieving 100000 students without cache took %d ms" stopwatch.ElapsedMilliseconds
+   
     ]
     |> testSequenced
     
