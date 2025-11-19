@@ -1,10 +1,10 @@
 namespace Sharpino.Sample._11
 
 open System
-open System.Collections.Concurrent
 open System.Text
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Caching.Memory
 open RabbitMQ.Client
 open RabbitMQ.Client.Events
 open Sharpino.Commons
@@ -17,7 +17,7 @@ open Sharpino.Sample._11.Course
 open Sharpino.Sample._11.CourseEvents
 
 module CourseConsumer =
-    type CourseConsumer(sp: IServiceProvider, logger: ILogger<CourseConsumer>, rb: RabbitMqReceiver) =
+    type CourseConsumer(sp: IServiceProvider, logger: ILogger<CourseConsumer>, rb: RabbitMqReceiver2) =
         inherit BackgroundService()
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
@@ -38,7 +38,8 @@ module CourseConsumer =
             None
         
         let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Course.Course>()
+            // I decided to not set any size so the GC will do the work for me
+            new MemoryCache(MemoryCacheOptions())
             
         let resetFallbackAggregateStateRetriever () =
             fallBackAggregateStateRetriever <- None
@@ -48,7 +49,8 @@ module CourseConsumer =
             | Some retriever ->
                 match retriever id with
                 | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
+                    let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                    statePerAggregate.Set<(EventId * Course.Course)>(id, (eventId, state), entryOptions) |> ignore
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
@@ -81,21 +83,19 @@ module CourseConsumer =
             | Some retriever ->
                 match retriever id with
                 | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
+                    let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                    statePerAggregate.Set<(EventId * Course.Course)>(id, (eventId, state), entryOptions) |> ignore
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
                 logger.LogError "no fallback aggregate state retriever set"
                 
         member this.ResetAllStates () =
-            statePerAggregate.Clear() 
+            statePerAggregate.Compact(1.0) 
             
         member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]  
-                |> Result.Ok
-            else
-                Result.Error "No state"
+            let v = statePerAggregate.Get<(EventId * Course.Course)>(id)
+            if not (obj.ReferenceEquals(v, null)) then v |> Result.Ok else Result.Error "No state"
         
         override this.ExecuteAsync (cancellationToken) =
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)

@@ -2,10 +2,13 @@ namespace Sharpino
 
 open System
 open System.Collections.Concurrent
+open System.Linq
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Caching.Memory
+
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.EventBroker
@@ -138,6 +141,7 @@ module RabbitMq =
         | _ ->
             ValueTask.CompletedTask
         
+    // this will become obsolete in that the replacement, RabbitMqReceiver2 uses MemoryCache instead of ConcurrentDictionary    
     type RabbitMqReceiver (logger: ILogger<RabbitMqReceiver>) =
         member private this.ResyncWithFallbackAggregateStateRetriever
             (optStateViewer: Option<AggregateViewer<'A>>)
@@ -194,9 +198,68 @@ module RabbitMq =
                     return ()
                }
                 
-    
-            
+    // same as RabbitMqReceiver using MemoryCache rather than ConcurrentDictionary    
+    type RabbitMqReceiver2 (logger: ILogger<RabbitMqReceiver>) =
+        member private this.ResyncWithFallbackAggregateStateRetriever
+            (optStateViewer: Option<AggregateViewer<'A>>)
+            (statesPerAggregate: MemoryCache)
+            (aggregateId: AggregateId)
+            =
+                match optStateViewer with
+                | Some viewer ->
+                    let tryState = viewer aggregateId
+                    match tryState with
+                    | Ok (eventId, state) ->
+                        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                        statesPerAggregate.Set<(EventId * 'A)>(aggregateId, (eventId, state), entryOptions) |> ignore
+                    | Error e ->
+                        logger.LogError ("Error: {e}", e)
+                | None ->
+                    logger.LogInformation ($"No fallback state viewer is set for aggregateId {aggregateId}", aggregateId)
+                    ()
         
+        member this.BuildReceiver<'A, 'E, 'F
+            when 'E :> Event<'A> and
+            'A :> Aggregate<'F>>
+            (statesPerAggregate: MemoryCache)
+            (optAggregateStateViewer: Option<AggregateViewer<'A>>)
+            (ea: BasicDeliverEventArgs) =
+                task {
+                    let body = ea.Body.ToArray()
+                    let message = Encoding.UTF8.GetString(body)
+                    logger.LogDebug $"Received {message}"
+                    let deserializedMessage = AggregateMessage<'A, 'E>.Deserialize message
+                    match deserializedMessage with
+                    | Ok { Message = InitialSnapshot good; AggregateId = aggregateId } ->
+                        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                        statesPerAggregate.Set<(EventId * 'A)>(aggregateId, (0, good), entryOptions) |> ignore
+                        ()
+                    | Ok { Message = MessageType.Events { InitEventId = initEventId; EndEventId = endEventId; Events = events  }; AggregateId = aggregateId }
+                        when
+                            // todo: there are still some corner cases where this index match fails (and it shouldn't) leaving control to the "ResyncWithFallbackAggregateStateRetriever" next pattern
+                            (let v = statesPerAggregate.Get<(EventId * 'A)>(aggregateId)
+                             not (obj.ReferenceEquals(v, null)) && ((v |> fst) = initEventId || (v |> fst) = 0)) ->
+                            let currentState = (statesPerAggregate.Get<(EventId * 'A)>(aggregateId)) |> snd
+                            let newState = evolve currentState events
+                            if newState.IsOk then
+                                let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                                statesPerAggregate.Set<(EventId * 'A)>(aggregateId, (endEventId, newState.OkValue), entryOptions) |> ignore
+                            else
+                                let (Error e) = newState
+                                logger.LogError ("error {e}", e)
+                                this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
+                    | Ok { Message = MessageType.Events e; AggregateId = aggregateId } ->
+                        logger.LogError ("events indexes unalignments for aggregate: {aggregateId}, unexpected indexes in message {e}", aggregateId, e)
+                        this.ResyncWithFallbackAggregateStateRetriever optAggregateStateViewer statesPerAggregate aggregateId
+                    | Ok { Message = MessageType.Delete; AggregateId = aggregateId } when not (obj.ReferenceEquals(statesPerAggregate.Get<(EventId * 'A)>(aggregateId), null)) ->
+                            statesPerAggregate.Remove aggregateId
+                    | Ok { Message = MessageType.Delete; AggregateId = aggregateId }  ->
+                        logger.LogError ("deleting an unexisting aggregate: {aggregateId}", aggregateId)
+                    | Error e ->
+                        logger.LogError ("Error: {e}", e)
+                    return ()
+               }
+                
         
         
         

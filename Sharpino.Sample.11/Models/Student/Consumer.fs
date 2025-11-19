@@ -4,6 +4,7 @@ open System
 open System.Collections.Concurrent
 open System.Text
 open System.Threading
+open Microsoft.Extensions.Caching.Memory
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open RabbitMQ.Client
@@ -21,7 +22,7 @@ open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
 
 module StudentConsumer =
-    type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>, rb: RabbitMqReceiver) =
+    type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>, rb: RabbitMqReceiver2) =
         inherit BackgroundService()
         
         let factory = ConnectionFactory (HostName = "localhost")
@@ -43,7 +44,7 @@ module StudentConsumer =
             None
         
         let statePerAggregate =
-            ConcurrentDictionary<AggregateId, EventId * Student>()
+            new MemoryCache(MemoryCacheOptions())
        
         let setFallBackAggregateStateRetriever (aggregateViewer: AggregateViewer<Student>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
@@ -71,7 +72,8 @@ module StudentConsumer =
             | Some retriever ->
                 match retriever id with
                 | Result.Ok (eventId, state) ->
-                    statePerAggregate.[id] <- (eventId, state)
+                    let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                    statePerAggregate.Set<(EventId * Student.Student)>(id, (eventId, state), entryOptions) |> ignore
                 | Result.Error e ->
                     logger.LogError ("Error: {e}", e)
             | None ->
@@ -82,16 +84,22 @@ module StudentConsumer =
             statePerAggregate.Clear()
         
         member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]  
-                |> Result.Ok
-            else
-                Result.Error "No state"
+            let v = statePerAggregate.Get<(EventId * Student.Student)>(id)
+            if not (obj.ReferenceEquals(v, null)) then v |> Result.Ok else Result.Error "No state"
         
         member this.GetAllAggregateStates () =
-            statePerAggregate.Values
+            statePerAggregate.Keys
+            |> Seq.map (fun x -> statePerAggregate.Get<(EventId * Student.Student)>(x))
             |> List.ofSeq
-            |> Result.Ok        
+            |> Result.Ok
+            
+            //
+            // statePerAggregate.AsEnumerable<AggregateId, (EventId * Student.Student)>()
+            // |> Seq.map (fun x -> x.Value)
+            
+            // statePerAggregate.Values
+            // |> List.ofSeq
+            // |> Result.Ok        
 
         override this.ExecuteAsync (stoppingToken: CancellationToken) =
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)

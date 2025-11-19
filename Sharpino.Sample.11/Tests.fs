@@ -38,7 +38,7 @@ let connection =
 let hostBuilder =
    Host.CreateDefaultBuilder()
       .ConfigureServices (fun (services: IServiceCollection) ->
-         services.AddSingleton<RabbitMqReceiver>() |> ignore
+         services.AddSingleton<RabbitMqReceiver2>() |> ignore
          services.AddHostedService<CourseConsumer>() |> ignore
          services.AddHostedService<StudentConsumer>() |> ignore
          ()
