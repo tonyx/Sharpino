@@ -23,6 +23,7 @@ open Sharpino.Sample._11.StudentEvents
 module StudentConsumer =
     type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>, rb: RabbitMqReceiver) =
         inherit BackgroundService()
+        
         let factory = ConnectionFactory (HostName = "localhost")
         let connection =
             factory.CreateConnectionAsync()
@@ -40,6 +41,7 @@ module StudentConsumer =
         
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Student>> =
             None
+        
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Student>()
        
@@ -77,7 +79,8 @@ module StudentConsumer =
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Student>) =
             setFallBackAggregateStateRetriever aggregateViewer        
         member this.ResetAllStates () =
-            statePerAggregate.Clear() 
+            statePerAggregate.Clear()
+        
         member this.GetAggregateState (id: AggregateId) =
             if (statePerAggregate.ContainsKey id) then
                 statePerAggregate.[id]  

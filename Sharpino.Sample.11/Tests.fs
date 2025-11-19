@@ -447,7 +447,6 @@ let tests =
           stopwatch.Stop()
           printfn "Retrieving 100000 students without passing their ids took %d ms" stopwatch.ElapsedMilliseconds
           
-          
       #endif 
     ]
     |> testSequenced

@@ -9,6 +9,7 @@
   <ItemGroup>
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Definitions.fs" />
+    <Folder Include="Helpers\" />
     <Compile Include="Models/Course/Course.fs" />
     <Compile Include="Models/Course/Events.fs" />
     <Compile Include="Models/Course/Commands.fs" />
@@ -46,4 +47,5 @@
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
   </ItemGroup>
+
 </Project>
