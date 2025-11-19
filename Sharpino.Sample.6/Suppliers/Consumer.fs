@@ -42,7 +42,21 @@ module SupplierConsumer =
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Supplier>()
         
-        let consumer = AsyncEventingBasicConsumer channel    
+        let consumer = AsyncEventingBasicConsumer channel
+        
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Supplier, SupplierEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Supplier Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
         
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Supplier>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer
@@ -58,18 +72,6 @@ module SupplierConsumer =
                 Result.Error "No state"    
         
         override this.ExecuteAsync(stoppingToken) =
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Supplier, SupplierEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Supplier Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
 
         override this.Dispose () =

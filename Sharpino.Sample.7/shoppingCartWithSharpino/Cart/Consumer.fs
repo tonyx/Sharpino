@@ -42,6 +42,19 @@ module CartConsumer =
             ConcurrentDictionary<AggregateId, EventId * Cart.Cart>()
          
         let consumer = AsyncEventingBasicConsumer channel
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Cart, CartEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Cart Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
         
         member this.SetFallbackAggregateStateRetriever (aggregateStateRetriever: AggregateViewer<Cart.Cart>) =
             fallBackAggregateStateRetriever <- Some aggregateStateRetriever
@@ -57,18 +70,6 @@ module CartConsumer =
                 Result.Error "No state"
                 
         override this.ExecuteAsync (stoppingToken) =
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Cart, CartEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Cart Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
         
         override this.Dispose () =

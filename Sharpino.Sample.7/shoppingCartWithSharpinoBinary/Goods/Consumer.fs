@@ -39,10 +39,22 @@ module GoodConsumer =
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Good.Good>()
             
-        let consumer =  AsyncEventingBasicConsumer channel
-        
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Good.Good>>  =
             None
+        let consumer =  AsyncEventingBasicConsumer channel
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Good, GoodEvents, byte[]> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Good Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
           
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer 
@@ -55,19 +67,7 @@ module GoodConsumer =
                 Result.Error "No state"
                 
         override this.ExecuteAsync (stoppingToken) =
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Good, GoodEvents, byte[]> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Good Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )    
-            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
+            channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer, stoppingToken)
             
         override this.Dispose () =
             channel.Dispose()    

@@ -1,6 +1,8 @@
 namespace Sharpino.Sample._11
 
+open FSharpPlus.Operators
 open FsToolkit.ErrorHandling
+open Microsoft.Extensions.Logging
 open Sharpino.CommandHandler
 open Sharpino.Core
 
@@ -11,7 +13,6 @@ open Sharpino.Sample._11.CourseCommands
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
 open Sharpino.Sample._11.StudentCommands
-
 open Sharpino.Storage
 open Sharpino
 open System
@@ -22,7 +23,8 @@ module CourseManager =
             eventStore: IEventStore<string>,
             courseViewer: AggregateViewer<Course>,
             studentViewer: AggregateViewer<Student>,
-            messageSenders: MessageSenders
+            messageSenders: MessageSenders,
+            allStudentsAggregateStatesViewer: unit -> Result<(Definitions.EventId * Student) list, string>
         )
         =
         member this.AddStudent (student: Student) =
@@ -71,6 +73,25 @@ module CourseManager =
                             |> List.traverseResultM (fun id -> studentViewer id |> Result.map snd)
                     return students
                 }
+        
+        member this.GetAllStudents () =
+            result
+                {
+                    let! students = allStudentsAggregateStatesViewer()
+                    return (students |>> snd)
+                }
+            
+            
+            // result
+            //     {
+            //         let! students =
+            //             StateView.getFilteredAggregateStatesInATimeInterval2<Student, StudentEvents, string>
+            //                 eventStore
+            //                 DateTime.MinValue
+            //                 DateTime.MaxValue
+            //                 (fun _ -> true)
+            //         return (students |>> snd)
+            //     }
         
         member this.AddCourse (course: Course) =
             result

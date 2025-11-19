@@ -34,10 +34,22 @@ module DishConsumer =
         let mutable fallBackAggregateStateRetriever: Option<AggregateViewer<Dish>>  =
             None
             
-        let consumer =  AsyncEventingBasicConsumer channel
-        
         let statePerAggregate =
             ConcurrentDictionary<AggregateId, EventId * Dish> ()
+        let consumer =  AsyncEventingBasicConsumer channel
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Dish, DishEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Dish Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
        
         let resyncWithFallbackAggregateStateRetriever (id: AggregateId) =
             match fallBackAggregateStateRetriever  with
@@ -59,19 +71,6 @@ module DishConsumer =
                 Result.Error "No state"
         
         override this.ExecuteAsync (stoppingToken) =
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<Dish, DishEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Dish Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )
-            
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
         
         override this.Dispose () =

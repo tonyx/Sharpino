@@ -49,6 +49,19 @@ module IngredientConsumer =
                 | _ -> ()
             | None -> ()    
         let consumer = AsyncEventingBasicConsumer(channel)
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<Ingredient, IngredientEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Ingredient Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
         
         member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Ingredient>) =
             fallBackAggregateStateRetriever <- Some aggregateViewer    
@@ -61,18 +74,6 @@ module IngredientConsumer =
                 Result.Error "No state" 
         
         override this.ExecuteAsync (cancellationToken) =
-            consumer.add_ReceivedAsync 
-                (fun _ ea ->
-                    rb.BuildReceiver<Ingredient, IngredientEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Ingredient Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)    
         override this.Dispose () =
             channel.Dispose()    

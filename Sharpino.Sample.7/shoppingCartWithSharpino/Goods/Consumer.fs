@@ -40,18 +40,7 @@ module GoodConsumer =
             ConcurrentDictionary<AggregateId, EventId * Good.Good>()
      
         let consumer = AsyncEventingBasicConsumer channel
-        
-        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
-            fallBackAggregateStateRetriever <- Some aggregateViewer    
-        
-        member this.GetAggregateState (id: AggregateId) =
-            if (statePerAggregate.ContainsKey id) then
-                statePerAggregate.[id]
-                |> Result.Ok
-            else
-                Result.Error "No state"
-         
-        override this.ExecuteAsync (stoppingToken) =
+        do
             consumer.add_ReceivedAsync
                 (fun _ ea ->
                     rb.BuildReceiver<Good, GoodEvents, string> statePerAggregate fallBackAggregateStateRetriever ea
@@ -64,6 +53,18 @@ module GoodConsumer =
                             channel.Dispose()
                         }
                 )
+        
+        member this.SetFallbackAggregateStateRetriever (aggregateViewer: AggregateViewer<Good.Good>) =
+            fallBackAggregateStateRetriever <- Some aggregateViewer    
+        
+        member this.GetAggregateState (id: AggregateId) =
+            if (statePerAggregate.ContainsKey id) then
+                statePerAggregate.[id]
+                |> Result.Ok
+            else
+                Result.Error "No state"
+         
+        override this.ExecuteAsync (stoppingToken) =
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
             
         override this.Dispose () =

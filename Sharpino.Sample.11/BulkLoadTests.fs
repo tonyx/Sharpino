@@ -38,7 +38,19 @@ let setUp () =
 let courseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
 let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 
-let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, MessageSenders.NoSender)
+let courseManager =
+    CourseManager(
+        pgEventStore,
+        courseViewer,
+        studentViewer,
+        MessageSenders.NoSender,
+            fun () ->
+                StateView.getFilteredAggregateStatesInATimeInterval2<Student, StudentEvents, string>
+                   pgEventStore
+                   DateTime.MinValue
+                   DateTime.MaxValue
+                   (fun _ -> true)
+        )
 [<Tests>]
 let tests =
     // ignore those tests at the moment (equivalent experiment is in Tests.fs) 

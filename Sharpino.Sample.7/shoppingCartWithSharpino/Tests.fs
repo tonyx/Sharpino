@@ -459,7 +459,7 @@ let tests =
             let addedTwice = supermarket.AddGood good2
             Expect.isError addedTwice "should be an error"
 
-        fmultipleTestCase "add a good and remove it - Ok" marketInstances <| fun (supermarket,_ , setup, _, _, _, timeToWait) ->
+        multipleTestCase "add a good and remove it - Ok" marketInstances <| fun (supermarket,_ , setup, _, _, _, timeToWait) ->
             setup ()
 
             let good = Good.MkGood (Guid.NewGuid(), "Good", 10.0m)

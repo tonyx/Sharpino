@@ -43,6 +43,21 @@ module RowConsumer =
             ConcurrentDictionary<AggregateId, EventId * SeatsRow>()
             
         let consumer = AsyncEventingBasicConsumer channel
+        
+        do
+            consumer.add_ReceivedAsync
+                (fun _ ea ->
+                    rb.BuildReceiver<SeatsRow, RowAggregateEvent, string> statePerAggregate fallBackAggregateStateRetriever ea
+                )
+            consumer.add_ShutdownAsync
+                (fun _ ea ->
+                    task
+                        {
+                            logger.LogInformation($"Row Consumer shutdown: {consumer.ShutdownReason}")
+                            channel.Dispose()
+                        }
+                )
+        
         member this.SetFallbackAggregateStateRetriever (aggregateStateRetriever: AggregateViewer<SeatsRow>) =
             fallBackAggregateStateRetriever <- Some aggregateStateRetriever
         
@@ -66,18 +81,6 @@ module RowConsumer =
                 logger.LogError "no fallback aggregate state retriever set"
        
         override this.ExecuteAsync (cancellationToken: CancellationToken) =
-            consumer.add_ReceivedAsync
-                (fun _ ea ->
-                    rb.BuildReceiver<SeatsRow, RowAggregateEvent, string> statePerAggregate fallBackAggregateStateRetriever ea
-                )
-            consumer.add_ShutdownAsync
-                (fun _ ea ->
-                    task
-                        {
-                            logger.LogInformation($"Row Consumer shutdown: {consumer.ShutdownReason}")
-                            channel.Dispose()
-                        }
-                )
             channel.BasicConsumeAsync(queueDeclare.QueueName, true, consumer)
             
         override this.Dispose() =
