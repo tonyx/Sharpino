@@ -2,6 +2,7 @@ namespace Sharpino
 
 open System.Collections.Concurrent
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Caching.Memory
 open Sharpino
 open Sharpino.Core
 open Sharpino.Definitions
@@ -27,36 +28,26 @@ module Cache =
             printf "sharpinoSettings.json file not found using default!!! %A\n" ex
             Conf.defaultConf
    
-    
-    // AggregateCache3 replaces AggregateCache2 to simplify eventId handling
     type AggregateCache3 private ()  =
-        let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
-        let statePerAggregate = ConcurrentDictionary<AggregateId, EventId * obj>(concurrencyLevel, config.CacheAggregateSize)
+        let statePerAggregate = new MemoryCache(MemoryCacheOptions())
         static let instance = AggregateCache3()
         static member Instance = instance
         
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
-                statePerAggregate.[aggregateId] <- (eventId, resultState)
-            
-                if (not (aggregateQueue.Contains aggregateId)) then 
-                    aggregateQueue.Enqueue aggregateId
-                
-                if (aggregateQueue.Count > config.CacheAggregateSize) then
-                    let removed = aggregateQueue.Dequeue()
-                    statePerAggregate.TryRemove removed  |> ignore
-                    
+                let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+                statePerAggregate.Set<(EventId * obj)>(aggregateId, (eventId, resultState), entryOptions) |> ignore
                 ()
                 
             with :? _ as e -> 
                 logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                statePerAggregate.Clear()
-                aggregateQueue.Clear()
+                statePerAggregate.Compact(1.0)
                 () 
    
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
-            if (statePerAggregate.ContainsKey aggregateId) then
-                statePerAggregate.[aggregateId] |> Ok
+            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            if not (obj.ReferenceEquals(v, null)) then
+                v |> Ok
             else
                 let res = f()
                 match res with
@@ -71,101 +62,18 @@ module Cache =
             this.TryCache (aggregateId, eventId, x)
         
         member this.Clean (aggregateId: AggregateId)  =
-            statePerAggregate.TryRemove aggregateId  |> ignore
+            statePerAggregate.Remove aggregateId
         
         member this.Clear () =
-            statePerAggregate.Clear()
-            aggregateQueue.Clear()
+            statePerAggregate.Compact(1.0)
         
         member this.LastEventId (aggregateId: AggregateId) =
-            if (statePerAggregate.ContainsKey aggregateId) then
-                statePerAggregate.[aggregateId] |> fst |> Some
-            else
-                None
+            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            if not (obj.ReferenceEquals(v, null)) then v |> fst |> Some else None
         
         member this.GetState (aggregateId: AggregateId) =
-            if (statePerAggregate.ContainsKey aggregateId) then
-                statePerAggregate.[aggregateId] |> snd |> Ok
-            else
-                Error "aggregate not found"        
-         
-         
-    [<Obsolete("Use AggregateCache3 instead")>]
-    type AggregateCache2  private () =
-        let lastEventIdPerAggregate = ConcurrentDictionary<AggregateId, EventId>(concurrencyLevel, config.CacheAggregateSize)
-        let aggregateQueue = Generic.Queue<AggregateId>(config.CacheAggregateSize)
-        let statePerAggregate = ConcurrentDictionary<AggregateId, Result<'A, string>>(concurrencyLevel, config.CacheAggregateSize)
-
-        static let instance = AggregateCache2()
-        static member Instance = instance
-        
-        member private this.TryAddToDictionary ((eventId, aggregateId), resultState: Result<'A, string>) =
-            try
-                lastEventIdPerAggregate.[aggregateId] <- eventId
-                statePerAggregate.[aggregateId] <- resultState
-                
-                if (not (aggregateQueue.Contains aggregateId)) then 
-                    aggregateQueue.Enqueue aggregateId
-                    
-                if (aggregateQueue.Count > config.CacheAggregateSize) then
-                    let removed = aggregateQueue.Dequeue ()
-                    lastEventIdPerAggregate.TryRemove removed  |> ignore
-                    statePerAggregate.TryRemove removed  |> ignore
-                ()
-                
-            with :? _ as e -> 
-                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                lastEventIdPerAggregate.Clear()
-                statePerAggregate.Clear()
-                aggregateQueue.Clear()
-                () 
-        
-        member this.TryGetLastEventId(aggregateId: AggregateId) =
-            if (lastEventIdPerAggregate.ContainsKey aggregateId) then
-                lastEventIdPerAggregate.[aggregateId] |> Some
-            else
-                None
-                    
-        
-        member this.Memoize (f: unit -> Result<'A, string>) (eventId: EventId, aggregateId: AggregateId): Result<'A, string> =
-            if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
-                (lastEventIdPerAggregate.[aggregateId] = eventId) &&
-                (statePerAggregate.ContainsKey aggregateId)) 
-            then 
-                statePerAggregate[aggregateId]
-            else
-                let res = f()
-                this.TryAddToDictionary ((eventId, aggregateId), res) 
-                res
-               
-        member this.Clean (aggregateId: AggregateId) =
-            aggregateQueue.TryDequeue() |> ignore
-            lastEventIdPerAggregate.TryRemove aggregateId  |> ignore
-            statePerAggregate.TryRemove aggregateId  |> ignore
-       
-        member this.Memoize2 (x:Result<'A, string>) (eventId: EventId, aggregateId: AggregateId) =
-            this.Clean aggregateId
-            this.TryAddToDictionary ((eventId, aggregateId), x)
-                    
-        member this.GetState (eventId: EventId, aggregateId: AggregateId) =
-            if ((lastEventIdPerAggregate.ContainsKey aggregateId) &&
-                (lastEventIdPerAggregate.[aggregateId] = eventId) &&
-                (statePerAggregate.ContainsKey aggregateId))
-            then
-                statePerAggregate.[aggregateId]
-            else
-                Error (sprintf "cache miss: %A" aggregateId)
-        
-        member this.Clear () =
-            lastEventIdPerAggregate.Clear ()
-            aggregateQueue.Clear ()
-            statePerAggregate.Clear ()
-        
-        member this.LastEventId(aggregateId: AggregateId) =
-            if (lastEventIdPerAggregate.ContainsKey aggregateId) then
-                lastEventIdPerAggregate.[aggregateId] |> Some
-            else
-                None
+            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            if not (obj.ReferenceEquals(v, null)) then v |> snd |> Ok else Error "aggregate not found"        
      
     type StateCache2<'A> private () =
         let mutable cachedValue: 'A option = None
@@ -185,7 +93,6 @@ module Cache =
             | None -> Error "context state not found"
    
         member this.Memoize (f: unit -> Result<'A, string>)  (eventId: EventId)=
-            // f ()
             match cachedValue with
             | Some res -> Ok res
             | _ ->
@@ -197,17 +104,14 @@ module Cache =
                 | Error e ->
                     Error (e.ToString())
         member this.GetEventIdAndState () =
-            // None
             match cachedValue with
             | Some res -> Some (eventId, res)
             | None -> None
             
         member this.Memoize2 (x: 'A) (eventId: EventId) =
-            // ()
             this.TryCache (x, eventId)
        
         member this.LastEventId() =
-            // 0
             eventId
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]      

@@ -168,7 +168,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
-
+- Version 4.4.9: Replaced ConcurrentDictionary based cache with MemoryCache
 - Version 4.4.7: fix a problem of indexes in aggregateCache that was unoticed and harmless (until 4.4.6).
 - Version 4.4.6 (DEPRECATED. need fix): avoid an unnecessary access to last snapshot event id to get last aggregateSnapshot
 - Added an article on mediumi[F# Domain Model with Event Sourcing vs C# with Entity Framework] (https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)

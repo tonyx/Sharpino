@@ -367,7 +367,7 @@ let tests =
           stopwatch.Stop()
           printfn "Retrieving 100000 students without passing their ids took %d ms" stopwatch.ElapsedMilliseconds  
         
-       #if RABBITMQ  
+    #if RABBITMQ  
        ftestCase "insert 1000 students in batch and retrieve them using message receiver and passing their ids - Ok" <| fun _ ->
           setUp ()
           purgeRabbitMqQueue (Student.Version + Student.StorageName)
