@@ -93,13 +93,6 @@ module StudentConsumer =
             |> List.ofSeq
             |> Result.Ok
             
-            //
-            // statePerAggregate.AsEnumerable<AggregateId, (EventId * Student.Student)>()
-            // |> Seq.map (fun x -> x.Value)
-            
-            // statePerAggregate.Values
-            // |> List.ofSeq
-            // |> Result.Ok        
 
         override this.ExecuteAsync (stoppingToken: CancellationToken) =
             channel.BasicConsumeAsync (queueDeclare.QueueName, false, consumer)
