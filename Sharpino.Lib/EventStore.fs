@@ -1,5 +1,7 @@
 namespace Sharpino
 open System
+open System.Threading
+open System.Threading.Tasks
 open Sharpino.Definitions
 
 // the "md" version of any function is the one that takes a metadata parameter
@@ -102,6 +104,7 @@ module Storage =
 
         abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
         abstract member AddAggregateEventsMd: EventId -> Version -> Name -> AggregateId ->  Metadata -> List<'F> -> Result<List<EventId>, string>
+        abstract member AddAggregateEventsMdAsync: EventId * Version * Name * System.Guid * Metadata * List<'F> * ?ct:CancellationToken -> Task<Result<List<int>, string>> 
 
         abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
         abstract member MultiAddEventsMd:  Metadata -> List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>

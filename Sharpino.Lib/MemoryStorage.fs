@@ -2,10 +2,13 @@
 namespace Sharpino
 
 open System.Runtime.CompilerServices
+open System.Threading
 open FSharpPlus
 open FSharpPlus.Operators
 open System
 open System.Collections
+open FsToolkit.ErrorHandling
+open Sharpino.PgStorage
 open Sharpino.Storage
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
@@ -239,6 +242,28 @@ module MemoryStorage =
                 this.Reset version name
             member this.ResetAggregateStream version name =
                 this.Reset version name
+                
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
+            member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<string>, ?ct: CancellationToken) =
+                taskResult
+                    {
+                        let newEvents =
+                            [
+                                for e in events do
+                                    yield {
+                                        AggregateId = aggregateId
+                                        Id = next_aggregate_event_id version name aggregateId
+                                        JsonEvent = e
+                                        KafkaOffset = None
+                                        KafkaPartition = None
+                                        Timestamp = DateTime.UtcNow
+                                    }
+                            ]
+                        let events' = getExistingAggregateEvents version name aggregateId @ newEvents
+                        storeAggregateEvents version name aggregateId events'
+                        let ids = newEvents |>> (fun x -> x.Id)
+                        return ids
+                    }
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddEvents _ version name xs: Result<List<int>, string> =

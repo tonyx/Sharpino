@@ -3,6 +3,7 @@ namespace Sharpino
 
 open System
 
+open System.Threading
 open FSharp.Core
 open FSharpPlus
 
@@ -1309,6 +1310,14 @@ module CommandHandler =
                 block.SerializedEvents
                 |> eventStore.AddAggregateEventsMd block.EventId block.Version block.StorageName block.AggregateId block.Metadata
             return ids  
+        }
+        
+    let storeEventsAsync (eventStore: IEventStore<'F>) (block: PreExecutedAggregateCommand<_, _>, ct: CancellationToken) =
+        logger.Value.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
+        taskResult {
+            let ids =
+                eventStore.AddAggregateEventsMdAsync (block.EventId, block.Version, block.StorageName, block.AggregateId, block.Metadata, block.SerializedEvents, ct)
+            return! ids  
         }
     
     let storeMultipleEvents (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
