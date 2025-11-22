@@ -851,5 +851,18 @@ module MemoryStorage =
                 s1Snapshot
                 (arg: List<EventId * List<string> * Version * Name * AggregateId>) =
                     (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
-                    (this:> IEventStore<string>).MultiAddAggregateEventsMd md arg 
-                    
+                    (this:> IEventStore<string>).MultiAddAggregateEventsMd md arg
+
+            member this.MultiAddAggregateEventsMdAsync(arg, md, ct) =
+                taskResult {
+                    let! result =
+                        (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
+                    return result    
+                }     
+                
+            member this.SnapshotAndMarkDeletedAsync(version, name, eventId, aggregateId, napshot, ?ct) =
+                taskResult {
+                    let! result =
+                        (this :> IEventStore<string>).SnapshotAndMarkDeleted version name eventId aggregateId napshot
+                    return result    
+                }
