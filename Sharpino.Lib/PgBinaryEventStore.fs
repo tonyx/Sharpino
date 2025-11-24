@@ -65,43 +65,72 @@ module PgBinaryStore =
             else
                 failwith "operation allowed only in test db"
         
-        member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<byte[]>, ?ct: CancellationToken) : Task<Result<List<int>, string>> =
-            task {
-                logger.Value.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
-                let stream_name = version + name
-                let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
-                use conn = new NpgsqlConnection(connection)
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
-                try
-                    do! conn.OpenAsync(ct)
-                    use transaction = conn.BeginTransaction()
-                    let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
-                    if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
-                        try
-                            let ids = ResizeArray<int>()
-                            for x in events do
-                                use command' = new NpgsqlCommand(commandText, conn, transaction)
-                                command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
-                                command'.Parameters.AddWithValue("event", x) |> ignore
-                                command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                                command'.Parameters.AddWithValue("md", md) |> ignore
-                                let! scalar = command'.ExecuteScalarAsync(ct)
-                                ids.Add(unbox<int> scalar)
-                            do! transaction.CommitAsync(ct)
-                            return Ok (List.ofSeq ids)
-                        with ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                            do! transaction.RollbackAsync(ct)
-                            return Error ex.Message
-                    else
-                        do! transaction.RollbackAsync(ct)
-                        return Error "EventId is not the last one"
-                with ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                    return Error ex.Message
-            }
         
         interface IEventStore<byte []> with
+            member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and date >= @dateFrom and date <= @dateTo ORDER BY id"  version name
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                
+                task
+                    {
+                        try
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(ct)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                            use! reader = command.ExecuteReaderAsync(ct)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(ct)
+                                if hasRow then
+                                    let eventId = reader.GetInt32(0)
+                                    let event = reader.GetFieldValue<byte[]>(1)
+                                    results.Add(eventId, event)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList |> Ok
+                        with ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return Error ex.Message
+                    }
+            member this.GetAggregateEventsAfterIdAsync(version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                task
+                    {
+                       try
+                           use conn = new NpgsqlConnection(connection)
+                           do! conn.OpenAsync(ct)
+                           use command = new NpgsqlCommand(query, conn)
+                           command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                           command.Parameters.AddWithValue("id", id) |> ignore
+                           command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                           use! reader = command.ExecuteReaderAsync(ct)
+                           let results = ResizeArray<_>()
+                           let rec loop () = task {
+                               let! hasRow = reader.ReadAsync(ct)
+                               if hasRow then
+                                   let eventId = reader.GetInt32(0)
+                                   let eventJson = reader.GetFieldValue<byte[]>(1)
+                                   results.Add(eventId, eventJson)
+                                   return! loop ()
+                               else
+                                   return ()
+                           }
+                           do! loop ()
+                           return results |> Seq.toList |> Ok
+                       with ex ->
+                           logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                           return Error ex.Message
+                    }
             member this.SnapshotAndMarkDeletedAsync (version: Version, name: Name, eventId: EventId, aggregateId: System.Guid, napshot: byte[], ?ct: CancellationToken) =
                 let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
@@ -127,14 +156,45 @@ module PgBinaryStore =
                         return Error $"error checking event alignments. eventId passed: {eventId}. Latest event id: {lastEventId}"
                 }
                 
-            // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
                 this.Reset version name
             member this.ResetAggregateStream(version: Version) (name: Name): unit =
                 this.ResetAggregateStream version name    
             member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<byte[]>, ?ct: CancellationToken) =
                 let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
-                this.AddAggregateEventsMdAsync (eventId, version, name, aggregateId, md, events, ct)
+                task {
+                    logger.Value.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
+                    let stream_name = version + name
+                    let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
+                    use conn = new NpgsqlConnection(connection)
+                    try
+                        do! conn.OpenAsync(ct)
+                        use transaction = conn.BeginTransaction()
+                        let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
+                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                            try
+                                let ids = ResizeArray<int>()
+                                for x in events do
+                                    use command' = new NpgsqlCommand(commandText, conn, transaction)
+                                    command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                                    command'.Parameters.AddWithValue("event", x) |> ignore
+                                    command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                                    command'.Parameters.AddWithValue("md", md) |> ignore
+                                    let! scalar = command'.ExecuteScalarAsync(ct)
+                                    ids.Add(unbox<int> scalar)
+                                do! transaction.CommitAsync(ct)
+                                return Ok (List.ofSeq ids)
+                            with ex ->
+                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                do! transaction.RollbackAsync(ct)
+                                return Error ex.Message
+                        else
+                            do! transaction.RollbackAsync(ct)
+                            return Error "EventId is not the last one"
+                    with ex ->
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
                 
             member this.MultiAddAggregateEventsMdAsync (arg: List<EventId * List<byte[]> * Version * Name * AggregateId>, md: Metadata, ?ct: CancellationToken) =
                 let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
@@ -208,7 +268,6 @@ module PgBinaryStore =
                         return (Error ex.Message)
                 }
             member this.TryGetLastSnapshot version name =
-                // let cts = new CancellationTokenSource (100)
                 logger.Value.LogDebug("TryGetLastSnapshot")
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 try
@@ -232,7 +291,6 @@ module PgBinaryStore =
                     logger.Value.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
                     None
 
-            // todo: start using result datatype when error is possible (wrap try catch into Result)
             member this.TryGetLastEventId version name =
                 logger.Value.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
@@ -288,8 +346,7 @@ module PgBinaryStore =
                 | None -> None
                 | Some (eventId, id, false) -> Some (eventId, id)
                 | _ -> None
-            // todo: that's not good approach. revise handling error possibly using result
-
+                
             member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
@@ -958,6 +1015,7 @@ module PgBinaryStore =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
            
+            // todo: verify the "async" version and wrap to it if working fine
             member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -1287,7 +1345,7 @@ module PgBinaryStore =
                 (this :> IEventStore<byte[]>).AddAggregateEventsMd eventId version name aggregateId "" events
 
             member this.AddAggregateEventsMd (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (md: Metadata) (events: List<byte[]>) : Result<List<int>,string> =
-                this.AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
+                (this :> IEventStore<byte[]>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
                     
             member this.MultiAddAggregateEvents (arg: List<EventId * List<byte array> * Version * Name * System.Guid>) =
                 (this :> IEventStore<byte[]>).MultiAddAggregateEventsMd "" arg
@@ -1365,37 +1423,43 @@ module PgBinaryStore =
 
             member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * byte array>,string> = 
                 logger.Value.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
+                taskResult
+                    {
+                        return! (this :> IEventStore<byte[]>).GetAggregateEventsAfterIdAsync(version, name, aggregateId, id)
+                    }
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
                 
-                let result =
-                    fun _ ->
-                        Async.RunSynchronously
-                            (async {
-                                return
-                                    try
-                                        connection
-                                        |> Sql.connect
-                                        |> Sql.query query
-                                        |> Sql.parameters ["id", Sql.int id; "aggregateId", Sql.uuid aggregateId]
-                                        |> Sql.execute ( fun read ->
-                                            (
-                                                read.int "id",
-                                                readAsBinary read "event"
-                                            )
-                                        )
-                                        |> Seq.toList
-                                        |> Ok
-                                    with
-                                    | _ as ex -> 
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                                        ex.Message |> Error
-                                }, evenStoreTimeout)
-                try
-                    result ()
-                with
-                | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
+                
+                // let result =
+                //     fun _ ->
+                //         Async.RunSynchronously
+                //             (async {
+                //                 return
+                //                     try
+                //                         connection
+                //                         |> Sql.connect
+                //                         |> Sql.query query
+                //                         |> Sql.parameters ["id", Sql.int id; "aggregateId", Sql.uuid aggregateId]
+                //                         |> Sql.execute ( fun read ->
+                //                             (
+                //                                 read.int "id",
+                //                                 readAsBinary read "event"
+                //                             )
+                //                         )
+                //                         |> Seq.toList
+                //                         |> Ok
+                //                     with
+                //                     | _ as ex -> 
+                //                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                //                         ex.Message |> Error
+                //                 }, evenStoreTimeout)
+                // try
+                //     result ()
+                // with
+                // | _ as ex ->
+                //     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                //     Error ex.Message
                                 
             member this.GetAggregateEvents version name aggregateId: Result<List<EventId * byte array>, string> = 
                 logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)

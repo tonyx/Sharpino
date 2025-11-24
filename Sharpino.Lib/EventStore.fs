@@ -117,11 +117,13 @@ module Storage =
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result< List< EventId * 'F >, string >
 
         abstract member GetAggregateEventsAfterId: Version ->  Name -> AggregateId -> EventId-> Result< List< EventId * 'F >, string >
+        abstract member GetAggregateEventsAfterIdAsync: Version * Name * AggregateId * EventId * ?ct:CancellationToken -> Task<Result< List< EventId * 'F >, string >>
         abstract member GetAggregateEvents: Version ->  Name -> AggregateId -> Result< List< EventId * 'F >, string >
 
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
         abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
+        abstract member GetAggregateEventsInATimeIntervalAsync: Version * Name * Guid * DateTime * DateTime * ?ct:CancellationToken -> Task<Result<List<EventId * 'F >, string>>
         abstract member GetMultipleAggregateEventsInATimeInterval: Version -> Name -> List<AggregateId> -> DateTime -> DateTime -> Result<List<EventId * AggregateId * 'F >, string>
         abstract member GetAllAggregateEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
@@ -132,8 +134,6 @@ module Storage =
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         
-    // type AggregateMessageSender<'F> =
-    //     Version -> Name -> AggregateId -> EventId -> List<'F> -> Result<unit, string>
     
     type IEventBroker<'F> =
         {

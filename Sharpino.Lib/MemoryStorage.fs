@@ -866,3 +866,20 @@ module MemoryStorage =
                         (this :> IEventStore<string>).SnapshotAndMarkDeleted version name eventId aggregateId napshot
                     return result    
                 }
+
+            member this.GetAggregateEventsAfterIdAsync(version, name, aggregateId, eventId, ?ct) =
+                taskResult {
+                    let! result =
+                        (this :> IEventStore<string>).GetAggregateEventsAfterId version name aggregateId eventId
+                    return result    
+                }
+
+            member this.GetAggregateEventsInATimeIntervalAsync(version, name, aggregateId, dateFrom, dateTo, ct) =
+                logger.Value.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
+                taskResult
+                    {
+                        let! result  =
+                            (this :> IEventStore<string>).GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo
+                        return result    
+                    }
+                

@@ -74,7 +74,13 @@ module Core =
         
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
         #if EVOLVE_SKIPS_ERRORS
-            evolveSkippingErrors (h |> Ok) events h 
+            let result =
+                evolveUNforgivingErrors h events
+            match result with
+            | Ok x -> Ok x
+            | Error e ->
+                logger.Value.LogCritical (sprintf "!!!! Unconsistency detected in eventstore. A reboot or cache clear (of the involved aggregate at least) is highly recommended: %s" e)
+                evolveSkippingErrors (h |> Ok) events h 
         #else    
             evolveUNforgivingErrors h events
         #endif     
