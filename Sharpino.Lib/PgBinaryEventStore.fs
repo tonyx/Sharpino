@@ -76,16 +76,16 @@ module PgBinaryStore =
                     {
                         try
                             use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(ct)
+                            do! conn.OpenAsync(ct).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
                             command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                            use! reader = command.ExecuteReaderAsync(ct)
+                            use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
                             let results = ResizeArray<_>()
                             let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(ct)
+                                let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
                                 if hasRow then
                                     let eventId = reader.GetInt32(0)
                                     let event = reader.GetFieldValue<byte[]>(1)
@@ -108,15 +108,15 @@ module PgBinaryStore =
                     {
                        try
                            use conn = new NpgsqlConnection(connection)
-                           do! conn.OpenAsync(ct)
+                           do! conn.OpenAsync(ct).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                            command.Parameters.AddWithValue("id", id) |> ignore
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                           use! reader = command.ExecuteReaderAsync(ct)
+                           use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
                            let results = ResizeArray<_>()
                            let rec loop () = task {
-                               let! hasRow = reader.ReadAsync(ct)
+                               let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
                                if hasRow then
                                    let eventId = reader.GetInt32(0)
                                    let eventJson = reader.GetFieldValue<byte[]>(1)
@@ -138,7 +138,7 @@ module PgBinaryStore =
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                     use conn = new NpgsqlConnection(connection)
-                    do! conn.OpenAsync(ct)
+                    do! conn.OpenAsync(ct).ConfigureAwait(false)
                     if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                         try
                             use command' = new NpgsqlCommand(command, conn)
@@ -147,7 +147,7 @@ module PgBinaryStore =
                             command'.Parameters.AddWithValue("snapshot", napshot) |> ignore
                             command'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             command'.Parameters.AddWithValue("is_deleted", true) |> ignore
-                            let! result = command'.ExecuteScalarAsync(ct)
+                            let! result = command'.ExecuteScalarAsync(ct).ConfigureAwait(false)
                             return Ok ()
                         with
                             | _ as e ->
@@ -168,7 +168,7 @@ module PgBinaryStore =
                     let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                     use conn = new NpgsqlConnection(connection)
                     try
-                        do! conn.OpenAsync(ct)
+                        do! conn.OpenAsync(ct).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
@@ -180,16 +180,16 @@ module PgBinaryStore =
                                     command'.Parameters.AddWithValue("event", x) |> ignore
                                     command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
                                     command'.Parameters.AddWithValue("md", md) |> ignore
-                                    let! scalar = command'.ExecuteScalarAsync(ct)
+                                    let! scalar = command'.ExecuteScalarAsync(ct).ConfigureAwait(false)
                                     ids.Add(unbox<int> scalar)
-                                do! transaction.CommitAsync(ct)
+                                do! transaction.CommitAsync(ct).ConfigureAwait(false)
                                 return Ok (List.ofSeq ids)
                             with ex ->
                                 logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                                do! transaction.RollbackAsync(ct)
+                                do! transaction.RollbackAsync(ct).ConfigureAwait(false)
                                 return Error ex.Message
                         else
-                            do! transaction.RollbackAsync(ct)
+                            do! transaction.RollbackAsync(ct).ConfigureAwait(false)
                             return Error "EventId is not the last one"
                     with ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)

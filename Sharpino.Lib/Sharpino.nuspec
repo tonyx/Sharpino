@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>4.5.0</version>
+    <version>4.5.1</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
