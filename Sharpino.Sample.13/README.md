@@ -1,23 +1,30 @@
-In this example I suggest a way to solve a problem of concurrency
+# Reservation pattern for user registration (Sharpino.Sample.13)
 
-An in progress example of reservation pattern
+This sample explores a concurrency-safe approach to user registration using a short-lived reservation (claim) pattern.
 
-The problem is the following:
-A user try to register 
-If the user already exists, the registration should fail
-If the user doesn't exist then add a "claim" for it that will fail if a claim with same nickname exists
-run the initialization and for claim command
-in exiting the claims should be freed
+## Problem
+- A user tries to register.
+- If the user already exists, registration must fail.
+- If the user does not exist, add a claim for the chosen nickname.
+- The claim operation must fail if another claim for the same nickname already exists.
+- Run the initialization and the claim command together; on exit, claims should be freed.
 
-This may solve potential duplicated nicknames because:
-if a user with the same nickname already existed, then no try to initialize the new user occurs
-if a user with the same nickname doesn't then:
-    claim that username (claim with fail if a claim of the same username exists)
-    run the initialization and for claim command
-    in exiting the claims should be freed
+## Why this helps
+- If a user with the same nickname already exists, no initialization is attempted.
+- If a user with the same nickname does not exist:
+  - Claim the username (fails if a claim already exists for that nickname).
+  - Run user initialization along with the claim command.
+  - On exit, free the claim.
 
-The Reservation will contain a short-lived list of claims
+## Reservation aggregate
+- The Reservation aggregate holds a short‑lived list of claims (nickname reservations).
 
-Tests: In a test I try to register a user 10 times in parallel with the same nickname and check that only one registration succeeds
+## Tests
+- Includes a test that attempts to register the same nickname 10 times in parallel and verifies that only one registration succeeds.
 
-Todo: add a timestamp so that an old claim will be wiped (clean any old claim any time a new claim is added)
+## Todo
+- Add a timestamp to each claim so old claims are wiped automatically (clean any old claim whenever a new claim is added).
+
+## Notes
+- Startup may suffer while fetching all users if they are not cached; a warmup cache usually mitigates this in production.
+- See this article for discussion: [The three read models of Event Sourcing (benchmarked in F#)](https://medium.com/@tonyx1/the-three-read-models-of-event-sourcing-benchmarked-in-f-e0f5e5815d89)
