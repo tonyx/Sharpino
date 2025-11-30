@@ -44,7 +44,7 @@ module UsersRegistrationManager =
                         
                     let! userShuldNotAlreadyExist =
                         ((users |>> snd) |> List.exists (fun u -> u.NickName = user.NickName) |> not)
-                        |> Result.ofBool (sprintf "User %s already claimed" user.NickName)
+                        |> Result.ofBool (sprintf "User %s already exists" user.NickName)
                         
                     let claim = user.Id, user.NickName
                     let addClaim = ReservationCommand.AddClaim claim
