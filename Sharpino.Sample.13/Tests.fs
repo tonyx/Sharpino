@@ -103,7 +103,7 @@ let tests =
             let errs = results |> Array.filter (function | Error _ -> true | _ -> false) |> Array.length
             
             Expect.equal oks 1 "exactly one registration should succeed"
-            Expect.equal errs 9 "exactly one registration should fail"
+            Expect.equal errs 9 "exactly nine registrations should fail"
             
             match StateView.getAllAggregateStates<User, UserEvent, string> pgEventStore with
             | Ok states ->
