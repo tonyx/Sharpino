@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Commons.fs" />
+    <Compile Include="Models/Users/User.fs" />
+    <Compile Include="Models/Users/Events.fs" />
+    <Compile Include="Models/Users/Commands.fs" />
+    <Compile Include="Models/Reservation/Reservation.fs" />
+    <Compile Include="Models/Reservation/Events.fs" />
+    <Compile Include="Models/Reservation/Commands.fs" />
+    <Compile Include="UsersRegistrationManager.fs" />
+    <Compile Include="Sample.fs" />
+    <Compile Include="Main.fs" />
+    <Content Include="README.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Expecto" Version="10.*" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
+    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Update="FSharp.Core" Version="10.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup>
+</Project>
