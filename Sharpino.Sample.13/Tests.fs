@@ -113,6 +113,47 @@ let tests =
             | Error e -> failtestf "unexpected error reading users: %s" e
         }
         
+        // todo: following is problematic: many false positives i.e. registration rejected when should be accepted
+        ptestCaseAsync "concurrent register many duplicated nicknames 5 times - only five succeeds" <| async {
+            setUp()
+            let random = System.Random(System.DateTime.Now.Millisecond)
+            let registrationManager =
+                UsersRegistrationManager
+                    (
+                        pgEventStore,
+                        pgStorageUsersViewer,
+                        pgStorageReservationsViewer,
+                        MessageSenders.NoSender
+                    )
+            let randomLimit1 = random.Next(3, 7)       
+            let test1 = [for i in 1 .. randomLimit1 -> User.MkUser "test1"]
+            let randomLimit2 = random.Next(3,7)
+            let test2 = [for i in 1 ..randomLimit2 -> User.MkUser "test2"]
+            let randomLmit3 = random.Next(3,7)
+            let test3 = [for i in 1 ..randomLmit3 -> User.MkUser "test3"]
+            let randomLimit4 = random.Next(3,7)
+            let test4 = [for i in 1 ..randomLimit4 -> User.MkUser "test4"]
+            let randomLimit5 = random.Next(3,7)
+            let test5 = [for i in 1 ..randomLimit5 -> User.MkUser "test5"]
+            
+            let tasks = test1 @ test2 @ test3 @ test4 @ test5 |> List.map (fun u -> async { return registrationManager.RegisterUser u }) |> List.toArray
+            
+            let! results = Async.Parallel tasks
+            
+            let oks = results |> Array.filter (function | Ok _ -> true | _ -> false) |> Array.length
+            let errs = results |> Array.filter (function | Error _ -> true | _ -> false) |> Array.length
+            Expect.equal oks 5 "exactly five registrations should succeed"
+            Expect.equal errs (randomLimit1 + randomLimit2 + randomLmit3 - 5) "exactly five registrations should fail"
+            
+            match StateView.getAllAggregateStates<User, UserEvent, string> pgEventStore with
+            | Ok states ->
+                let users = states |> List.map snd
+                Expect.equal users.Length 5 "only five users should be stored"
+                Expect.equal users.Head.NickName "test" "stored user has expected nickname"
+            | Error e -> failtestf "unexpected error reading users: %s" e
+        }
+        
+        
     ]
     |> testSequenced
     

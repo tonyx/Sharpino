@@ -41,14 +41,14 @@ module UsersRegistrationManager =
                 {
                     let! users =
                         StateView.getAllAggregateStates<User, UserEvent, string> eventStore
-                        
+                   
                     let! userShuldNotAlreadyExist =
-                        ((users |>> snd) |> List.exists (fun u -> u.NickName = user.NickName) |> not)
+                        ((users.Length = 0) || ((users |>> snd) |> List.exists (fun u -> u.NickName = user.NickName) |> not))
                         |> Result.ofBool (sprintf "User %s already exists" user.NickName)
                         
                     let claim = user.Id, user.NickName
                     let addClaim = ReservationCommand.AddClaim claim
-                    //
+                   
                     let! claimAdded =
                         runAggregateCommand<ReservationForNickNames, ReservationEvent, string>
                             reservationGuid
@@ -64,7 +64,6 @@ module UsersRegistrationManager =
                             user
                             claimCommand
                 }
-
 
         member _.GetUser (id: Guid) =
             userViewer id |> Result.map snd
