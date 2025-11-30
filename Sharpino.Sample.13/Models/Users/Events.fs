@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._13
+namespace Sharpino.Sample._13.Models
 
 open System
 open Sharpino.Commons
@@ -8,7 +8,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Sharpino.Sample._13.Commons
 open Sharpino.Sample._13
-open Sharpino.Sample._13.User
+open Sharpino.Sample._13.Models.User
 
 module Events =
     type UserEvent =

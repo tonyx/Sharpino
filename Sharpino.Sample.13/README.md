@@ -18,4 +18,6 @@ if a user with the same nickname doesn't then:
 
 The Reservation will contain a short-lived list of claims
 
-issues: claims should be forced to be short-lived anyway (no matter if operation succeeds, so a timestamp to wipe old unresolved claims will be useful)
+Tests: In a test I try to register a user 10 times in parallel with the same nickname and check that only one registration succeeds
+
+Todo: add a timestamp so that an old claim will be wiped (clean any old claim any time a new claim is added)

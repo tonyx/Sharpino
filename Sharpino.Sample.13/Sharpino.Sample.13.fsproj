@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Commons.fs" />
     <Compile Include="Models/Users/User.fs" />
     <Compile Include="Models/Users/Events.fs" />
@@ -15,12 +16,14 @@
     <Compile Include="Models/Reservation/Events.fs" />
     <Compile Include="Models/Reservation/Commands.fs" />
     <Compile Include="UsersRegistrationManager.fs" />
-    <Compile Include="Sample.fs" />
+    <Compile Include="Tests.fs" />
     <Compile Include="Main.fs" />
     <Content Include="README.md" />
+    <Content Include=".env" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Expecto" Version="10.*" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.*" />

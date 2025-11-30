@@ -1,8 +1,8 @@
-namespace Sharpino.Sample._13
+namespace Sharpino.Sample._13.Models
 
 open Sharpino.Core
-open Sharpino.Sample._13.User
-open Sharpino.Sample._13.Events
+open Sharpino.Sample._13.Models.User
+open Sharpino.Sample._13.Models.Events
 
 module Commands =
     type UserCommand =

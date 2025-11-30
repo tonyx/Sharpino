@@ -9,9 +9,9 @@ open Sharpino.EventBroker
 
 open Sharpino.Sample._13.Commons
 open Sharpino.Sample._13.Models
+open Sharpino.Sample._13.Models.Events
 open Sharpino.Sample._13.Models.ReservationCommands
-open Sharpino.Sample._13.User
-open Sharpino.Sample._13.Events
+open Sharpino.Sample._13.Models.User
 open Sharpino.Sample._13.Models.Reservation
 open Sharpino.Sample._13.Models.ReservationEvents
 open Sharpino.Storage

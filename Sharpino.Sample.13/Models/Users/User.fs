@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._13
+namespace Sharpino.Sample._13.Models
 open System
 open System.Text.Json
 open Sharpino.Commons
