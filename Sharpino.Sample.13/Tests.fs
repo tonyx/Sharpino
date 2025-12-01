@@ -84,6 +84,7 @@ let tests =
             | Error e -> failtestf "unexpected error reading users: %s" e
         }
         
+        // random failures only because optimistic lock may block some writes anyway
         testCaseAsync "concurrent register same nicknames 10 times - only one succeeds" <| async {
             setUp()
             let registrationManager =
