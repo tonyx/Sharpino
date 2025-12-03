@@ -24,5 +24,38 @@ module CourseCommands =
                     course.UnenrollStudent id
                     |> Result.map (fun i -> (i, [ StudentUnenrolled id]))
             member this.Undoer =
-                None
+                match this with
+                | EnrollStudent id ->
+                    Some
+                        (
+                            fun (course: Course) (viewer: AggregateViewer<Course>) ->
+                                result {
+                                    return 
+                                        fun () ->
+                                            result {
+                                                let! (_, state) = viewer course.Id
+                                                let result =
+                                                    state.UnenrollStudent id
+                                                    |> Result.map (fun s -> s, [ StudentUnenrolled id])
+                                                return! result
+                                            }
+                                }    
+                        )
+                | UnenrollStudent id ->
+                    Some
+                        (
+                            fun (course: Course) (viewer: AggregateViewer<Course>) ->
+                                result {
+                                    return 
+                                        fun () ->
+                                            result {
+                                                let! (_, state) = viewer course.Id
+                                                let result =
+                                                    state.EnrollStudent id 
+                                                    |> Result.map (fun s -> s, [StudentEnrolled id])
+                                                return! result
+                                            }
+                                } 
+                        )
+                
                     

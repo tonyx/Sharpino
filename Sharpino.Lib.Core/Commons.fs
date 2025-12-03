@@ -1,8 +1,7 @@
 ﻿namespace Sharpino.Lib.Core
 open System
 
-// this should disappear
+// pseudo-Repository based on list. It is barely used. Probably will be dismissed
 module Commons =
-    [<Fable.Core.Mangle>]
     type Entity =
         abstract member Id: Guid

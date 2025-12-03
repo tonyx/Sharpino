@@ -30,7 +30,7 @@
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Fable.Core" Version="4.5.0" />
+<!--    <PackageReference Include="Fable.Core" Version="4.5.0" />-->
     <PackageReference Include="Farmer" Version="1.9.25" />
     <PackageReference Include="FSharpPlus" Version="1.8.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
@@ -42,7 +42,7 @@
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Fable.Core" Version="4.5.0" />
+<!--    <PackageReference Include="Fable.Core" Version="4.5.0" />-->
     <PackageReference Include="Farmer" Version="1.9.25" />
     <PackageReference Include="FSharpPlus" Version="1.8.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
@@ -54,7 +54,7 @@
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Fable.Core" Version="4.5.0" />
+<!--    <PackageReference Include="Fable.Core" Version="4.5.0" />-->
     <PackageReference Include="Farmer" Version="1.9.25" />
     <PackageReference Include="FSharpPlus" Version="1.8.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />

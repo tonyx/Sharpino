@@ -43,7 +43,7 @@ type RowCommands =
                                         |> Result.ofBool "concurrency error"
                                     let result =
                                         state.FreeBooking (bookingId, numSeats)
-                                        |> Result.map (fun _ -> [RowEvents.BookingFreed (bookingId, numSeats)])
+                                        |> Result.map (fun s -> s, [RowEvents.BookingFreed (bookingId, numSeats)])
                                     return! result    
                                 }
                         }
@@ -61,7 +61,7 @@ type RowCommands =
                                         |> Result.ofBool "concurrency error"
                                     let result =
                                         state.AddBookings numSeats
-                                        |> Result.map (fun _ -> [RowEvents.BookingAdded (bookingId, numSeats)])
+                                        |> Result.map (fun s -> s, [RowEvents.BookingAdded (bookingId, numSeats)])
                                     return! result    
                                 }
                         }
@@ -79,7 +79,7 @@ type RowCommands =
                                         |> Result.ofBool "concurrency error"
                                     let result =
                                         state.RemoveSeats n
-                                        |> Result.map (fun _ -> [RowEvents.SeatsRemoved n])
+                                        |> Result.map (fun s -> s, [RowEvents.SeatsRemoved n])
                                     return! result    
                                 }
                         }
@@ -97,7 +97,7 @@ type RowCommands =
                                         |> Result.ofBool "concurrency error"
                                     let result =
                                         state.AddSeats n
-                                        |> Result.map (fun _ -> [RowEvents.SeatsAdded n])
+                                        |> Result.map (fun s -> s, [RowEvents.SeatsAdded n])
                                     return! result    
                                 }
                         }

@@ -40,7 +40,7 @@ type BookingCommands =
                                             |> Result.ofBool "concurrency error"
                                         let result =
                                             state.UnAssign ()
-                                            |> Result.map (fun _ -> [UnAssigned])
+                                            |> Result.map (fun s -> s, [UnAssigned])
                                         return! result    
                                     }
                             }
@@ -63,7 +63,7 @@ type BookingCommands =
                                             |> Result.ofBool "concurrency error"
                                         let result =
                                             state.Assign rowId
-                                            |> Result.map (fun _ -> [Assigned rowId])
+                                            |> Result.map (fun s -> s, [Assigned rowId])
                                         return! result    
                                     }
                             }

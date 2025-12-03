@@ -41,7 +41,7 @@ module GoodCommands =
                                                     |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
                                                 let result =
                                                     state.SetPrice oldPrice 
-                                                    |> Result.map (fun _ -> [PriceChanged oldPrice])
+                                                    |> Result.map (fun s -> s, [PriceChanged oldPrice])
                                                 return! result
                                             }
                                     }
@@ -60,7 +60,7 @@ module GoodCommands =
                                                     |> Result.ofBool (sprintf "execution undo command state '%d' must be after the undo command state '%d'" j i)
                                                 let result =
                                                     state.RemoveQuantity x
-                                                    |> Result.map (fun _ -> [QuantityRemoved x])
+                                                    |> Result.map (fun s -> s, [QuantityRemoved x])
                                                 return! result
                                             }
                                     }
@@ -80,7 +80,7 @@ module GoodCommands =
                                                     |> Result.ofBool (sprintf "execution undo command state '%d' must be after the undo command state '%d'" j i)
                                                 let result =
                                                     state.AddQuantity x
-                                                    |> Result.map (fun _ -> [QuantityAdded x])
+                                                    |> Result.map (fun s -> s, [QuantityAdded x])
                                                 return! result
                                             }
                                     }

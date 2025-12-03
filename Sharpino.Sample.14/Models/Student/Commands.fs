@@ -33,7 +33,7 @@ module StudentCommands =
                                                 let! (_, state) = viewer student.Id
                                                 let result =
                                                     state.UnenrollCourse id
-                                                    |> Result.map (fun _ -> ([ UnenrolledCourse id]))
+                                                    |> Result.map (fun s -> s, [ UnenrolledCourse id])
                                                 return! result
                                             }
                                 }    
@@ -49,7 +49,7 @@ module StudentCommands =
                                                 let! (_, state) = viewer student.Id
                                                 let result =
                                                     state.EnrollCourse id
-                                                    |> Result.map (fun _ -> ([ EnrolledCourse id]))
+                                                    |> Result.map (fun s -> s, [ EnrolledCourse id])
                                                 return! result
                                             }
                                 }    

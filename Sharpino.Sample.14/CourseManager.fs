@@ -81,18 +81,6 @@ module CourseManager =
                     return (students |>> snd)
                 }
             
-            
-            // result
-            //     {
-            //         let! students =
-            //             StateView.getFilteredAggregateStatesInATimeInterval2<Student, StudentEvents, string>
-            //                 eventStore
-            //                 DateTime.MinValue
-            //                 DateTime.MaxValue
-            //                 (fun _ -> true)
-            //         return (students |>> snd)
-            //     }
-        
         member this.AddCourse (course: Course) =
             result
                 {
@@ -121,12 +109,49 @@ module CourseManager =
                     return courses
                 }        
         
-        member this.EnrolleStudentToCourse (studentId: Guid) (courseId: Guid) =
+        member this.EnrollStudentToCourse (studentId: Guid) (courseId: Guid) =
             result
                 {
-                    let addCourseToStudent = StudentCommands.Enroll courseId
-                    let addStudentToCourse = CourseCommands.EnrollStudent studentId
+                    let addCourseToStudentEnrollments = StudentCommands.Enroll courseId
+                    let addStudentToCourseEnrollments = CourseCommands.EnrollStudent studentId
                     return!
-                        runTwoAggregateCommands studentId courseId eventStore messageSenders addCourseToStudent addStudentToCourse
+                        runTwoAggregateCommands
+                            studentId
+                            courseId
+                            eventStore
+                            messageSenders
+                            addCourseToStudentEnrollments
+                            addStudentToCourseEnrollments
                 }
+        
+        
                 
+        // member this.EnrollStudentToCourseCompensationVersion (studentId: Guid) (courseId: Guid) =
+        //     result
+        //         {
+        //             let addCourseToStudent: AggregateCommand<Student, StudentEvents> = StudentCommands.Enroll courseId
+        //             let addStudentToCourse: AggregateCommand<Course, CourseEvents> = CourseCommands.EnrollStudent studentId
+        //             let rollBackAddCourseToStudent =
+        //                 addCourseToStudent.Undoer
+        //                 |> Option.get
+        //                 
+        //             let! tryAddCourseToStudent =
+        //                 runAggregateCommand
+        //                     studentId
+        //                     eventStore
+        //                     messageSenders
+        //                     addCourseToStudent
+        //            
+        //             let! tryAddStudentToCourse =
+        //                 runAggregateCommand
+        //                     courseId
+        //                     eventStore
+        //                     messageSenders
+        //                     addStudentToCourse
+        //            
+        //             let result = 
+        //                 match tryAddStudentToCourse with
+        //                 | Ok _ -> Ok ()
+        //                 | Error e ->
+        //                     
+        //         }

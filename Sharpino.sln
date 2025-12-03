@@ -49,6 +49,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.12", "Sharp
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.13", "Sharpino.Sample.13\Sharpino.Sample.13.fsproj", "{01322B08-6793-41C7-A2AB-2B0670DB92F3}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.14", "Sharpino.Sample.14\Sharpino.Sample.14.fsproj", "{91D852ED-F3C0-4F97-8F1A-89DB33015758}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -299,6 +301,18 @@ Global
 		{01322B08-6793-41C7-A2AB-2B0670DB92F3}.Release|x64.Build.0 = Release|Any CPU
 		{01322B08-6793-41C7-A2AB-2B0670DB92F3}.Release|x86.ActiveCfg = Release|Any CPU
 		{01322B08-6793-41C7-A2AB-2B0670DB92F3}.Release|x86.Build.0 = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|x64.Build.0 = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Debug|x86.Build.0 = Debug|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|x64.ActiveCfg = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|x64.Build.0 = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|x86.ActiveCfg = Release|Any CPU
+		{91D852ED-F3C0-4F97-8F1A-89DB33015758}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
