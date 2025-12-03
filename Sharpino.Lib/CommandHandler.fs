@@ -1643,68 +1643,6 @@ module CommandHandler =
             logger.Value.LogDebug "runNAggregateCommands"
             runNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore messageSenders Metadata.Empty commands
    
-    let inline runTwoAggregateCommandsVersionWithUndoers<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
-        and 'A1 : (static member StorageName: string)
-        and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
-        and 'E2 :> Event<'A2>
-        and 'E2 : (member Serialize: 'F)
-        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
-        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
-        and 'A2 : (static member StorageName: string)
-        and 'A2 : (static member Version: string)
-        >
-        (aggregateId1: Guid)
-        (aggregateId2: Guid)
-        (eventStore: IEventStore<'F>)
-        (messageSenders: MessageSenders)     
-        (md: Metadata)
-        (command1: AggregateCommand<'A1, 'E1>)
-        (command2: AggregateCommand<'A2, 'E2>)
-        =
-            logger.Value.LogDebug "runTwoAggregateCommandsVersionWithUndoers"
-            result
-                {
-                    let! command1Undoer =
-                        command1.Undoer
-                        |> Result.ofOption "not undoer specified for command 1"
-                   
-                    let! eventId1, stateA1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
-                    let! eventId2, stateA2 = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
-                    
-                    let! newStateA1, eventsA1 =
-                        stateA1
-                        |> unbox
-                        |> command1.Execute
-                   
-                    let! newStateA2, eventsA2 =
-                        stateA2
-                        |> unbox
-                        |> command2.Execute
-                    
-                    let serializedEventsA1 =
-                        eventsA1
-                        |>> _.Serialize
-                        
-                    let serializedEventsA2 =
-                        eventsA2
-                        |>> _.Serialize
-                    
-                    let! storeEventsA1 =
-                        eventStore.AddAggregateEventsMd eventId1 'A1.Version 'A1.StorageName aggregateId1 md serializedEventsA1
-                    
-                    let storeEventsA2 =
-                        eventStore.AddAggregateEventsMd eventId2 'A2.Version 'A2.StorageName aggregateId2 md serializedEventsA2
-                   
-                    return ()
-                }
     
     let inline runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 :> Aggregate<'F>

@@ -168,6 +168,7 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+- Version 4.5.2: changed the definition of "undoer" in core (returning new state not only compensation events). Cleaned core a little. It may break existing code ("undoers" may need an update).
 - Version 4.5.1 fix async issues
 - Version 4.5.0 (deprecated): First step of introducing more async task based methods (with optional cancellationToken) on EventStore
 - Version 4.4.9: Replaced ConcurrentDictionary based cache with MemoryCache

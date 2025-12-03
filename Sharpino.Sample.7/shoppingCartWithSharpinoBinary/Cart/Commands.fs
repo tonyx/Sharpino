@@ -36,7 +36,7 @@ module CartCommands =
                                                 |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
                                             let result =
                                                 state.RemoveGood goodRef
-                                                |> Result.map (fun _ -> [GoodRemoved goodRef])
+                                                |> Result.map (fun s -> s, [GoodRemoved goodRef])
                                             return! result
                                         }
                                 }
@@ -57,7 +57,7 @@ module CartCommands =
                                                 |> Result.ofBool (sprintf "execution undo state '%d' must be after the undo command state '%d'" j i)
                                             let result =
                                                 state.AddGood (goodRef, goodQuantity)
-                                                |> Result.map (fun _ -> [GoodAdded (goodRef, goodQuantity)])
+                                                |> Result.map (fun s -> s, [GoodAdded (goodRef, goodQuantity)])
                                             return! result
                                         }
                                 }

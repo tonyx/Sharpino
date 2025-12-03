@@ -38,7 +38,7 @@ module AppVersions =
     jsonSerSettings.TypeNameHandling <- TypeNameHandling.Objects
     jsonSerSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
 
-    let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
+    // let jsonSerializer = Utils.JsonSerializer(jsonSerSettings) :> ISerializer
 
     let pgStorage = PgStorage.PgEventStore(connection)
 

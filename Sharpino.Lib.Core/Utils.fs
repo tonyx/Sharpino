@@ -1,7 +1,6 @@
 
 namespace Sharpino
 open FSharp.Core
-open Newtonsoft.Json
 open Expecto
 open System
 
@@ -16,44 +15,14 @@ module Definitions =
     type AggregateStateId = Guid
     type ContextStateId = Guid
 
-// not needed
-module ApplicationInstance =
-    type ApplicationInstance() =
-        let mutable ApplicationGuid = Guid.NewGuid()
-        static let instance = ApplicationInstance()
-        static member Instance = instance
-
-        member this.GetGuid() =
-            ApplicationGuid
-        member this.ResetGuid() =
-            ApplicationGuid <- Guid.NewGuid()
 
 module Utils =
     open Definitions
-    let serSettings = JsonSerializerSettings()
-    serSettings.TypeNameHandling <- TypeNameHandling.Objects
-    serSettings.ReferenceLoopHandling <- ReferenceLoopHandling.Ignore
-
-    // can't stand the warning. Just use pickler one
-    // [<Obsolete("ISerializer is deprecated, please use Pickle based Serialization in the Sharpino.lib instead")>]     
     type ISerializer =
         abstract member Deserialize<'A> : Json -> Result<'A, string>
         abstract member Serialize<'A> : 'A -> Json
-        
-    // can't stand the warning    
-    // [<Obsolete("Newtonsoft serialization is deprecated, please use Pickle based Serialization instead.")>]     
-    type JsonSerializer (serSettings: JsonSerializerSettings) =
-        interface ISerializer with
-            member this.Deserialize<'A> (json: string): Result<'A, string> =
-                try
-                    JsonConvert.DeserializeObject<'A>(json, serSettings) |> Ok
-                with
-                | ex  ->
-                    Error (ex.ToString())
-            member this.Serialize<'A> (x: 'A): string =
-                JsonConvert.SerializeObject(x, serSettings)
                 
-    // obsolete: use List.traverseResultM instead            
+    [<Obsolete("Use List.traverseResultM instead")>]
     let catchErrors f l =
         l
         |> List.fold (fun acc x ->

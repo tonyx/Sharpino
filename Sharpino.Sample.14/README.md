@@ -1,6 +1,6 @@
 ## A copy of Sharpino Example 11 using "undoers"/copensator feature
 
-work in progress...
+In this particular example the "undoers" features will be explored
 
 
 

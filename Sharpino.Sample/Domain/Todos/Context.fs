@@ -110,7 +110,6 @@ module TodosContext =
     [<UpgradedVersion>]
 
     type TodosContextUpgraded(todos: Todos) =
-        let serializer = JsonSerializer(serSettings):> ISerializer
         let stateId = Guid.NewGuid()
         member this.StateId = stateId
         member this.todos = todos

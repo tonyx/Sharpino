@@ -516,7 +516,7 @@ let tests =
             let undoerEventsResult = undoerEvents' () 
             Expect.isOk undoerEventsResult "should be ok"
             let result = undoerEventsResult |> Result.get
-            Expect.equal result.Length 1 "should be the same quantity"
+            Expect.equal (result |> snd).Length 1 "should be the same quantity"
 
         multipleTestCase "can't apply the undoer of a command before the related command has actually been applied - Error" marketInstances <| fun (supermarket, _, setup, goodsViewer, _, messageSender, delay) ->
             setup ()
