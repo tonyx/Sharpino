@@ -4,5 +4,5 @@
   "CacheAggregateSize": 100000,
   "PgSqlJsonFormat":{"Case":"PlainText"},
   "MailBoxCommandProcessorsSize": 100,
-  "EventStoreTimeout": 10000000
+  "EventStoreTimeout": 100000
 }

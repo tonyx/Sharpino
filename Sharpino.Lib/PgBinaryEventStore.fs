@@ -28,20 +28,25 @@ module PgBinaryStore =
         member this.Reset version name = 
             if (Conf.isTestEnv) then
                 try
-                    // additional precautions to avoid deleting data in non dev/test env 
-                    // is configuring the db user rights in prod accordingly (only read and write/append)
                     let res1 =
-                        connection
-                        |> Sql.connect
-                        |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                        |> Sql.executeNonQuery
+                        Async.RunSynchronously
+                            (connection
+                            |> Sql.connect
+                            |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
+                            |> Sql.executeNonQueryAsync
+                            |> Async.AwaitTask
+                            ,  
+                            evenStoreTimeout)
                     let res2 =
-                        connection
+                        Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
-                        |> Sql.executeNonQuery
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
                     ()
-                    
                 with 
                     | _ as e -> failwith (e.ToString())
             else
@@ -49,16 +54,27 @@ module PgBinaryStore =
         member this.ResetAggregateStream version name =
             if (Conf.isTestEnv) then
                 try
-                    let res1 =
-                        connection
+                    
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
-                        |> Sql.executeNonQuery
-                    let res2 =
-                        connection
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
+                        |> ignore
+                    
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                        |> Sql.executeNonQuery
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
+                        |> ignore    
+                    
                     ()    
                 with
                     | _ as e -> failwith (e.ToString())
@@ -404,9 +420,6 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
-                    
-            member this.AddEvents eventId version name events =
-                (this :> IEventStore<byte[]>).AddEventsMd eventId version name "" events
 
             member this.AddEventsMd eventId version name metadata events  =
                 logger.Value.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
@@ -457,8 +470,8 @@ module PgBinaryStore =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                     
-            member this.MultiAddEvents (arg: List<EventId * List<byte array> * Version * Name>) =
-                (this :> IEventStore<byte[]>).MultiAddEventsMd "" arg
+            // member this.MultiAddEvents (arg: List<EventId * List<byte array> * Version * Name>) =
+            //     (this :> IEventStore<byte[]>).MultiAddEventsMd "" arg
                 
             member this.MultiAddEventsMd md (arg: List<EventId * List<byte[]> * Version * Name>) =
                 logger.Value.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
@@ -678,9 +691,6 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename initSnapshot contextVersion contextName events =
-                (this :> IEventStore<byte[]>).SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename initSnapshot contextVersion contextName "" events
 
             member this.SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename initInstance contextVersion contextName md events =
                 logger.Value.LogDebug "entered in setInitialAggregateStateAndAddEvents"
@@ -751,9 +761,6 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-              
-            member this.SetInitialAggregateStateAndAddAggregateEvents eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName events =
-                (this :> IEventStore<byte[]>).SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName "" events
                 
             member this.SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName md events =
                 logger.Value.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
@@ -829,10 +836,6 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            member this.SetInitialAggregateStateAndMultiAddAggregateEvents aggregateId version name jsonSnapthot events =
-                (this :> IEventStore<byte[]>).SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId version name jsonSnapthot "" events
-                
                 
             member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd  aggregateId version name jsonSnapshot md events =
                 logger.Value.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
@@ -1340,15 +1343,9 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
-            
-            member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (events: List<byte array>): Result<List<int>,string> =
-                (this :> IEventStore<byte[]>).AddAggregateEventsMd eventId version name aggregateId "" events
 
             member this.AddAggregateEventsMd (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (md: Metadata) (events: List<byte[]>) : Result<List<int>,string> =
                 (this :> IEventStore<byte[]>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
-                    
-            member this.MultiAddAggregateEvents (arg: List<EventId * List<byte array> * Version * Name * System.Guid>) =
-                (this :> IEventStore<byte[]>).MultiAddAggregateEventsMd "" arg
                     
             member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<byte array> * Version * Name * System.Guid>) =
                 logger.Value.LogDebug (sprintf "MultiAddAggregateEvents %A %s" arg md)
@@ -1429,37 +1426,6 @@ module PgBinaryStore =
                     }
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
-                
-                
-                // let result =
-                //     fun _ ->
-                //         Async.RunSynchronously
-                //             (async {
-                //                 return
-                //                     try
-                //                         connection
-                //                         |> Sql.connect
-                //                         |> Sql.query query
-                //                         |> Sql.parameters ["id", Sql.int id; "aggregateId", Sql.uuid aggregateId]
-                //                         |> Sql.execute ( fun read ->
-                //                             (
-                //                                 read.int "id",
-                //                                 readAsBinary read "event"
-                //                             )
-                //                         )
-                //                         |> Seq.toList
-                //                         |> Ok
-                //                     with
-                //                     | _ as ex -> 
-                //                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                //                         ex.Message |> Error
-                //                 }, evenStoreTimeout)
-                // try
-                //     result ()
-                // with
-                // | _ as ex ->
-                //     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                //     Error ex.Message
                                 
             member this.GetAggregateEvents version name aggregateId: Result<List<EventId * byte array>, string> = 
                 logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)

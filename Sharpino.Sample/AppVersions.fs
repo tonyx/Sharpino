@@ -94,7 +94,7 @@ module AppVersions =
                                      resetDb pgStorage
             _addEvents =         fun (eventId: EventId, vers: Version, e: List<string>, name, contextStateId ) -> 
                                       let deser = e
-                                      (pgStorage :> IEventStore<string>).AddEvents eventId vers name deser |> ignore
+                                      (pgStorage :> IEventStore<string>).AddEventsMd eventId vers name "" deser |> ignore
             _pingTodo =           currentPgApp.PingTodo
             _pingCategories =     currentPgApp.PingCategory
             _pingTags =           currentPgApp.PingTag
@@ -119,7 +119,7 @@ module AppVersions =
                                     resetDb pgStorage
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (pgStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
+                                    (pgStorage :> IEventStore<string>).AddEventsMd eventId version name ""deser |> ignore
             _pingTodo =         upgradedPgApp.PingTodo
             _pingCategories =   upgradedPgApp.PingCategory
             _pingTags =         upgradedPgApp.PingTag
@@ -145,7 +145,7 @@ module AppVersions =
                                     resetDb memoryStorage
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e
-                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEventsMd eventId version name "" deser |> ignore
             _pingTodo =         currentMemApp.PingTodo
             _pingCategories =   currentMemApp.PingCategory
             _pingTags =         currentMemApp.PingTag
@@ -170,7 +170,7 @@ module AppVersions =
                                     resetDb memoryStorage
             _addEvents =        fun (eventId, version, e: List<string>, name, contextStateId ) -> 
                                     let deser = e 
-                                    (memoryStorage :> IEventStore<string>).AddEvents eventId version name deser |> ignore
+                                    (memoryStorage :> IEventStore<string>).AddEventsMd eventId version name "" deser |> ignore
             _pingTodo =         upgradedMemApp.PingTodo
             _pingCategories =   upgradedMemApp.PingCategory
             _pingTags =         upgradedMemApp.PingTag    

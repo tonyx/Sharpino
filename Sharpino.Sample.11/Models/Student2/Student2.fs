@@ -1,5 +1,4 @@
 namespace Sharpino.Sample._11
-
 open System
 open Sharpino.Commons
 open Sharpino
@@ -8,17 +7,18 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open Sharpino.Sample._11.Definitions
 
-module Student =
-    type Student = {
+module Student2 =
+    type Student2 = {
         Id: Guid
         Name: string
+        Annotations: List<string>
         Courses: List<Guid>
         MaxNumberOfCourses: int
     }
     with
-        static member MkStudent (name: string, maxNumberOfCourses: int) =
-            { Id = Guid.NewGuid(); Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
-   
+        static member MkStudent2 (name: string, maxNumberOfCourses: int) =
+            { Id = Guid.NewGuid(); Name = name; Annotations = []; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
+            
         member this.EnrollCourse (courseId: Guid) =
             result
                 {
@@ -50,18 +50,28 @@ module Student =
                                 
                         }
                 }
+        member this.AddAnnotations (note: string) =
+            result
+                {
+                    return
+                        {
+                            this
+                                with
+                                    Annotations = this.Annotations @ [note]
+                        }
+                }
             
         static member Version = "_01"
-        static member StorageName = "_person"
-        static member SnapshotsInterval = 15
-         
+        static member StorageName = "_student2"
+        static member SnapshotsInterval = 100 
+        
         static member Deserialize(x: string) =
             try
-                JsonSerializer.Deserialize<Student> (x, jsonOptions) |> Ok
+                JsonSerializer.Deserialize<Student2> (x, jsonOptions) |> Ok
             with
             | ex ->
                 Error (ex.Message)
-            
+                
         member this.Serialize =
             JsonSerializer.Serialize (this, jsonOptions)
             
@@ -69,5 +79,3 @@ module Student =
             member this.Id = this.Id
             member this.Serialize  =
                 this.Serialize
-        
-

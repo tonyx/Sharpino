@@ -30,7 +30,7 @@ let hackingEventInStorageTest =
             let seatOneBooking = { id = 1; seats = [1] }
             let bookingEvent = Row1Events.SeatsBooked seatOneBooking
             let serializedEvent = bookingEvent.Serialize
-            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [ serializedEvent]  |> ignore
+            (storage :> IEventStore<string>).AddEventsMd 0 Row1Context.Row1.Version Row1Context.Row1.StorageName "Md" [ serializedEvent]  |> ignore
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
             Expect.equal availableSeats.Length 9 "should be equal"
         
@@ -52,7 +52,7 @@ let hackingEventInStorageTest =
             
 // this shows that after adding events directly to the eventsrotre, justified for testing, then you need to reinvalidate the cache to force
 // reading those events (end user application don't do that stuff as they needs only command handler)
-            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [serializedEvent] |> ignore
+            (storage :> IEventStore<string>).AddEventsMd 0 Row1Context.Row1.Version Row1Context.Row1.StorageName "metadata" [serializedEvent] |> ignore
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -77,7 +77,7 @@ let hackingEventInStorageTest =
             let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstTwoSeats).Serialize
             let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
-            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [booking1; booking2] |> ignore
+            (storage :> IEventStore<string>).AddEventsMd 0 Row1Context.Row1.Version Row1Context.Row1.StorageName "md" [booking1; booking2] |> ignore
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 
@@ -100,7 +100,7 @@ let hackingEventInStorageTest =
             let booking1 = (Row1Events.SeatsBooked firstBookingOfFirstSeats).Serialize 
             let booking2 = (Row1Events.SeatsBooked secondBookingOfLastTwoSeats).Serialize
             
-            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName  [booking1; booking2] |> ignore
+            (storage :> IEventStore<string>).AddEventsMd 0 Row1Context.Row1.Version Row1Context.Row1.StorageName "md" [booking1; booking2] |> ignore
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
             let availableSeats = app.GetAllAvailableSeats() |> Result.get
@@ -121,7 +121,7 @@ let hackingEventInStorageTest =
             let bookingEvent1 = (Row1Events.SeatsBooked firstBooking).Serialize
             let bookingEvent2 = (Row1Events.SeatsBooked secondBooking).Serialize
             let bookingEvent3 = (Row1Events.SeatsBooked thirdBooking).Serialize
-            (storage :> IEventStore<string>).AddEvents 0 Row1Context.Row1.Version Row1Context.Row1.StorageName [bookingEvent1; bookingEvent2; bookingEvent3] |> ignore
+            (storage :> IEventStore<string>).AddEventsMd 0 Row1Context.Row1.Version Row1Context.Row1.StorageName "md" [bookingEvent1; bookingEvent2; bookingEvent3] |> ignore
             StateCache2<Row1>.Instance.Invalidate()
             StateCache2<Row2Context.Row2>.Instance.Invalidate()
 

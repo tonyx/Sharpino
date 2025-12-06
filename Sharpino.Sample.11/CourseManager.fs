@@ -81,18 +81,6 @@ module CourseManager =
                     return (students |>> snd)
                 }
             
-            
-            // result
-            //     {
-            //         let! students =
-            //             StateView.getFilteredAggregateStatesInATimeInterval2<Student, StudentEvents, string>
-            //                 eventStore
-            //                 DateTime.MinValue
-            //                 DateTime.MaxValue
-            //                 (fun _ -> true)
-            //         return (students |>> snd)
-            //     }
-        
         member this.AddCourse (course: Course) =
             result
                 {
@@ -121,7 +109,7 @@ module CourseManager =
                     return courses
                 }        
         
-        member this.EnrolleStudentToCourse (studentId: Guid) (courseId: Guid) =
+        member this.EnrollStudentToCourse (studentId: Guid) (courseId: Guid) =
             result
                 {
                     let addCourseToStudent = StudentCommands.Enroll courseId

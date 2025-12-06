@@ -17,7 +17,6 @@ open Sharpino.Sample._11.CourseConsumer
 open Sharpino.Sample._11.CourseEvents
 open Sharpino.Sample._11.CourseManager
 
-
 open DotNetEnv
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
@@ -30,7 +29,7 @@ Env.Load() |> ignore
 let password = Environment.GetEnvironmentVariable("password")
 let connection =
     "Server=127.0.0.1;"+
-    "Database=sharpino_item;" +
+    "Database=sharpino_sample14;" +
     "User Id=safe;"+
     $"Password={password}"
 

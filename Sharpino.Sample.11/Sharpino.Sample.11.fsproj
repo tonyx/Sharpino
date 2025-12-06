@@ -18,8 +18,14 @@
     <Compile Include="Models/Student/Events.fs" />  
     <Compile Include="Models/Student/Commands.fs" />
     <Compile Include="Models/Student/Consumer.fs" />
+    <Compile Include="Models/Student2/Student2.fs" />
+    <Compile Include="Models/Student2/Events.fs" />
+    <Compile Include="Models/Student2/Commands.fs" />
+    <Compile Include="Models/Student2/Consumer.fs" />
     <Compile Include="CourseManager.fs" />
+    <Compile Include="StudentsManager.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="Test2.fs" />
     <Compile Include="BulkLoadTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
@@ -35,6 +41,7 @@
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Expecto" Version="10.*" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
+<!--    <PackageReference Include="Sharpino" Version="4.5.1" />-->
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
     <PackageReference Update="FSharp.Core" Version="10.*" />

@@ -116,7 +116,7 @@ let tests =
             // Assert
             Expect.isOk result "should be ok"
             let rows = result.OkValue
-            Expect.equal 0 rows.Length "should be 0"
+            Expect.equal rows.Length 0 "should be 0"
             
         multipleTestCase "retrieve an unexisting row - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange

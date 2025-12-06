@@ -82,19 +82,13 @@ module Storage =
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
-        abstract member AddEvents: EventId -> Version -> Name ->  List<'F> -> Result<List<int>, string>
         abstract member AddEventsMd: EventId -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
         abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
         abstract member SetInitialAggregateStates: Version -> Name -> (AggregateId * 'F)[] ->  Result<unit, string>
-        abstract member SetInitialAggregateStateAndAddEvents: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
         abstract member SetInitialAggregateStateAndAddEventsMd: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
-        abstract member SetInitialAggregateStateAndMultiAddAggregateEvents: AggregateId -> Version -> Name -> 'F -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
-        
         abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd: AggregateId -> Version -> Name -> 'F -> Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
-        
-        abstract member SetInitialAggregateStateAndAddAggregateEvents: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> List<'F> -> Result<List<int>, string>
         
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
@@ -103,13 +97,10 @@ module Storage =
         abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
         abstract member SnapshotAndMarkDeletedAsync: Version * Name * EventId * AggregateId * 'F * ?ct:CancellationToken -> Task<Result<unit, string>>
 
-        abstract member AddAggregateEvents: EventId -> Version -> Name -> AggregateId ->  List<'F> -> Result<List<EventId>, string>
         abstract member AddAggregateEventsMd: EventId -> Version -> Name -> AggregateId ->  Metadata -> List<'F> -> Result<List<EventId>, string>
         abstract member AddAggregateEventsMdAsync: EventId * Version * Name * System.Guid * Metadata * List<'F> * ?ct:CancellationToken -> Task<Result<List<int>, string>> 
 
-        abstract member MultiAddEvents:  List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
         abstract member MultiAddEventsMd:  Metadata -> List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
-        abstract member MultiAddAggregateEvents: List<EventId * List<'F> * Version * Name * AggregateId>  -> Result<List<List<EventId>>, string>
         abstract member MultiAddAggregateEventsMd: Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
         
         abstract member MultiAddAggregateEventsMdAsync: List<EventId * List<'F> * Version * Name * AggregateId> * Metadata * ?ct:CancellationToken -> Task<Result<List<List<EventId>>, string>>

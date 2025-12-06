@@ -36,46 +36,61 @@ module PgStorage =
     let setLogger (newLogger: ILogger) =
         logger := newLogger
     
-    // enable for quick debugging
-    // log4net.Config.BasicConfigurator.Configure() |> ignore
     type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
         new (connection: string) =
             PgEventStore(connection, readAsText)
 
-        member this.Reset version name = 
+        member this.Reset version name =
             if (Conf.isTestEnv) then
                 try
-                    // additional precautions to avoid deleting data in non dev/test env 
-                    // is configuring the db user rights in prod accordingly (only read and write/append)
-                    let res1 =
-                        connection
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                        |> Sql.executeNonQuery
-                    let res2 =
-                        connection
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,  
+                        evenStoreTimeout)
+                        |> ignore
+                            
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
-                        |> Sql.executeNonQuery
-                    ()
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
                     
                 with 
                     | _ as e -> failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
+                
         member this.ResetAggregateStream version name =
             if (Conf.isTestEnv) then
                 try
-                    let res1 =
-                        connection
+                    
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
-                        |> Sql.executeNonQuery
-                    let res2 =
-                        connection
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
+                        |> ignore
+                    
+                    Async.RunSynchronously
+                        (connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
-                        |> Sql.executeNonQuery
+                        |> Sql.executeNonQueryAsync
+                        |> Async.AwaitTask
+                        ,
+                        evenStoreTimeout)
+                        |> ignore 
+                    
                     ()    
                 with
                     | _ as e -> failwith (e.ToString())
@@ -272,7 +287,7 @@ module PgStorage =
          
             // only test db should be resettable (erasable)
             member this.Reset(version: Version) (name: Name): unit =
-                this.Reset version name
+                this.Reset version name |> ignore
             member this.ResetAggregateStream(version: Version) (name: Name): unit =
                 this.ResetAggregateStream version name    
             member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<string>, ?ct: CancellationToken) =
@@ -414,9 +429,6 @@ module PgStorage =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     None     
                     
-            member this.AddEvents eventId version name events =
-                (this :> IEventStore<string>).AddEventsMd eventId version name "" events
-                    
             member this.AddEventsMd eventId version name metadata events =
                 logger.Value.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
@@ -465,9 +477,6 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            member this.MultiAddEvents (arg: List<EventId * List<Json> * Version * Name>) =
-                (this :> IEventStore<string>).MultiAddEventsMd "" arg
                     
             member this.MultiAddEventsMd md (arg: List<EventId * List<Json> * Version * Name>) =
                 logger.Value.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
@@ -685,10 +694,6 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                 
-            
-            member this.SetInitialAggregateStateAndAddEvents eventId aggregateId aggregateVersion aggregatename json contextVersion contextName events =
-                (this:> IEventStore<string>).SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename json contextVersion contextName "" events
 
             member this.SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename initInstance contextVersion contextName md events =
                 logger.Value.LogDebug "entered in setInitialAggregateStateAndAddEvents"
@@ -758,9 +763,6 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-             
-            member this.SetInitialAggregateStateAndAddAggregateEvents eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName events =
-                (this :> IEventStore<string>).SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName "" events
               
             member this.SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName md events =
                 logger.Value.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
@@ -836,9 +838,6 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            member this.SetInitialAggregateStateAndMultiAddAggregateEvents aggregateId version name jsonSnapshot events =
-                (this :> IEventStore<string>).SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId version name jsonSnapshot "" events
                             
             member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd  aggregateId version name jsonSnapshot md events =
                 logger.Value.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
@@ -1298,15 +1297,8 @@ module PgStorage =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
                     
-            member this.AddAggregateEvents (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (events: List<Json>): Result<List<int>,string> =
-                (this :> IEventStore<string>).AddAggregateEventsMd eventId version name aggregateId "" events
-                    
             member this.AddAggregateEventsMd (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (md: Metadata) (events: List<string>): Result<List<int>,string> =
-                // temporary wrapper
                 this.AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
-
-            member this.MultiAddAggregateEvents (arg: List<EventId * List<Json> * Version * Name * AggregateId>) =
-                (this :> IEventStore<string>).MultiAddAggregateEventsMd "" arg
                     
             member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<Json> * Version * Name *  AggregateId>) =
                 logger.Value.LogDebug (sprintf "MultiAddAggregateEventsMd %A %s" arg md)

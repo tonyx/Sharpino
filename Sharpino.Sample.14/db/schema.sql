@@ -1,4 +1,4 @@
-\restrict G9kybRJ2cr3jrDVM9n8CvSbYIQ8mKGPgNyjLV2qLyTNhNNzGSYZrz8fIf5NNtju
+\restrict UydNYXuCbMAxjXvdcDsheSirgTnR0Gnoee1Ob7z416Vl2hTvN0EwAuoPJMeK8tm
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -60,19 +60,19 @@ $$;
 
 
 --
--- Name: insert_01_student_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_person_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_student_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_person_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_01_student_event_and_return_id(event_in, aggregate_id);
+    event_id := insert_01_person_event_and_return_id(event_in, aggregate_id);
 
-INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
+INSERT INTO aggregate_events_01_person(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
@@ -80,16 +80,16 @@ $$;
 
 
 --
--- Name: insert_01_student_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_person_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_student_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+CREATE FUNCTION public.insert_01_person_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_student(event, aggregate_id, timestamp)
+INSERT INTO events_01_person(event, aggregate_id, timestamp)
 VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
@@ -134,19 +134,19 @@ $$;
 
 
 --
--- Name: insert_md_01_student_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_person_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_person_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_md_01_student_event_and_return_id(event_in, aggregate_id, md);
+    event_id := insert_md_01_person_event_and_return_id(event_in, aggregate_id, md);
 
-INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
+INSERT INTO aggregate_events_01_person(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
@@ -154,16 +154,16 @@ $$;
 
 
 --
--- Name: insert_md_01_student_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_person_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_person_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_student(event, aggregate_id, timestamp, md)
+INSERT INTO events_01_person(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
@@ -198,10 +198,10 @@ CREATE TABLE public.aggregate_events_01_course (
 
 
 --
--- Name: aggregate_events_01_student_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: aggregate_events_01_person_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.aggregate_events_01_student_id_seq
+CREATE SEQUENCE public.aggregate_events_01_person_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -210,11 +210,11 @@ CREATE SEQUENCE public.aggregate_events_01_student_id_seq
 
 
 --
--- Name: aggregate_events_01_student; Type: TABLE; Schema: public; Owner: -
+-- Name: aggregate_events_01_person; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.aggregate_events_01_student (
-    id integer DEFAULT nextval('public.aggregate_events_01_student_id_seq'::regclass) NOT NULL,
+CREATE TABLE public.aggregate_events_01_person (
+    id integer DEFAULT nextval('public.aggregate_events_01_person_id_seq'::regclass) NOT NULL,
     aggregate_id uuid NOT NULL,
     event_id integer
 );
@@ -249,10 +249,10 @@ ALTER TABLE public.events_01_course ALTER COLUMN id ADD GENERATED ALWAYS AS IDEN
 
 
 --
--- Name: events_01_student; Type: TABLE; Schema: public; Owner: -
+-- Name: events_01_person; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.events_01_student (
+CREATE TABLE public.events_01_person (
     id integer NOT NULL,
     aggregate_id uuid NOT NULL,
     event text NOT NULL,
@@ -263,11 +263,11 @@ CREATE TABLE public.events_01_student (
 
 
 --
--- Name: events_01_student_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: events_01_person_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER TABLE public.events_01_student ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME public.events_01_student_id_seq
+ALTER TABLE public.events_01_person ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.events_01_person_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -312,10 +312,10 @@ CREATE TABLE public.snapshots_01_course (
 
 
 --
--- Name: snapshots_01_student_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: snapshots_01_person_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.snapshots_01_student_id_seq
+CREATE SEQUENCE public.snapshots_01_person_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -324,11 +324,11 @@ CREATE SEQUENCE public.snapshots_01_student_id_seq
 
 
 --
--- Name: snapshots_01_student; Type: TABLE; Schema: public; Owner: -
+-- Name: snapshots_01_person; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.snapshots_01_student (
-    id integer DEFAULT nextval('public.snapshots_01_student_id_seq'::regclass) NOT NULL,
+CREATE TABLE public.snapshots_01_person (
+    id integer DEFAULT nextval('public.snapshots_01_person_id_seq'::regclass) NOT NULL,
     snapshot text NOT NULL,
     event_id integer,
     aggregate_id uuid NOT NULL,
@@ -346,11 +346,11 @@ ALTER TABLE ONLY public.aggregate_events_01_course
 
 
 --
--- Name: aggregate_events_01_student aggregate_events_01_student_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregate_events_01_person aggregate_events_01_person_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.aggregate_events_01_student
-    ADD CONSTRAINT aggregate_events_01_student_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.aggregate_events_01_person
+    ADD CONSTRAINT aggregate_events_01_person_pkey PRIMARY KEY (id);
 
 
 --
@@ -362,11 +362,11 @@ ALTER TABLE ONLY public.events_01_course
 
 
 --
--- Name: events_01_student events_student_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: events_01_person events_person_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.events_01_student
-    ADD CONSTRAINT events_student_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.events_01_person
+    ADD CONSTRAINT events_person_pkey PRIMARY KEY (id);
 
 
 --
@@ -386,11 +386,11 @@ ALTER TABLE ONLY public.snapshots_01_course
 
 
 --
--- Name: snapshots_01_student snapshots_student_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: snapshots_01_person snapshots_person_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.snapshots_01_student
-    ADD CONSTRAINT snapshots_student_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.snapshots_01_person
+    ADD CONSTRAINT snapshots_person_pkey PRIMARY KEY (id);
 
 
 --
@@ -401,10 +401,10 @@ CREATE INDEX ix_01_aggregate_events_course_id ON public.aggregate_events_01_cour
 
 
 --
--- Name: ix_01_aggregate_events_student_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_01_aggregate_events_person_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_01_aggregate_events_student_id ON public.aggregate_events_01_student USING btree (aggregate_id);
+CREATE INDEX ix_01_aggregate_events_person_id ON public.aggregate_events_01_person USING btree (aggregate_id);
 
 
 --
@@ -422,17 +422,17 @@ CREATE INDEX ix_01_events_course_timestamp ON public.events_01_course USING btre
 
 
 --
--- Name: ix_01_events_student_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_01_events_person_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_01_events_student_id ON public.events_01_student USING btree (aggregate_id);
+CREATE INDEX ix_01_events_person_id ON public.events_01_person USING btree (aggregate_id);
 
 
 --
--- Name: ix_01_events_student_timestamp; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_01_events_person_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_01_events_student_timestamp ON public.events_01_student USING btree ("timestamp");
+CREATE INDEX ix_01_events_person_timestamp ON public.events_01_person USING btree ("timestamp");
 
 
 --
@@ -443,10 +443,10 @@ CREATE INDEX ix_01_snapshot_course_id ON public.snapshots_01_course USING btree 
 
 
 --
--- Name: ix_01_snapshot_student_id; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_01_snapshot_person_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_01_snapshot_student_id ON public.snapshots_01_student USING btree (aggregate_id);
+CREATE INDEX ix_01_snapshot_person_id ON public.snapshots_01_person USING btree (aggregate_id);
 
 
 --
@@ -457,10 +457,10 @@ CREATE INDEX ix_01_snapshots_course_timestamp ON public.snapshots_01_course USIN
 
 
 --
--- Name: ix_01_snapshots_student_timestamp; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_01_snapshots_person_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_01_snapshots_student_timestamp ON public.snapshots_01_student USING btree ("timestamp");
+CREATE INDEX ix_01_snapshots_person_timestamp ON public.snapshots_01_person USING btree ("timestamp");
 
 
 --
@@ -472,11 +472,11 @@ ALTER TABLE ONLY public.aggregate_events_01_course
 
 
 --
--- Name: aggregate_events_01_student aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: aggregate_events_01_person aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.aggregate_events_01_student
-    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_student(id) MATCH FULL ON DELETE CASCADE;
+ALTER TABLE ONLY public.aggregate_events_01_person
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_person(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -488,18 +488,18 @@ ALTER TABLE ONLY public.snapshots_01_course
 
 
 --
--- Name: snapshots_01_student event_01_student_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: snapshots_01_person event_01_person_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.snapshots_01_student
-    ADD CONSTRAINT event_01_student_fk FOREIGN KEY (event_id) REFERENCES public.events_01_student(id) MATCH FULL ON DELETE CASCADE;
+ALTER TABLE ONLY public.snapshots_01_person
+    ADD CONSTRAINT event_01_person_fk FOREIGN KEY (event_id) REFERENCES public.events_01_person(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict G9kybRJ2cr3jrDVM9n8CvSbYIQ8mKGPgNyjLV2qLyTNhNNzGSYZrz8fIf5NNtju
+\unrestrict UydNYXuCbMAxjXvdcDsheSirgTnR0Gnoee1Ob7z416Vl2hTvN0EwAuoPJMeK8tm
 
 
 --
