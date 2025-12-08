@@ -10,16 +10,16 @@ open Sharpino.Sample._11.Definitions
 
 module Student =
     type Student = {
-        Id: Guid
+        Id: StudentId
         Name: string
-        Courses: List<Guid>
+        Courses: List<CourseId>
         MaxNumberOfCourses: int
     }
     with
         static member MkStudent (name: string, maxNumberOfCourses: int) =
-            { Id = Guid.NewGuid(); Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
+            { Id = StudentId.New; Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
    
-        member this.EnrollCourse (courseId: Guid) =
+        member this.EnrollCourse (courseId: CourseId) =
             result
                 {
                     do! 
@@ -34,7 +34,7 @@ module Student =
                         }
                 }
             
-        member this.UnenrollCourse (courseId: Guid) =
+        member this.UnenrollCourse (courseId: CourseId) =
             result
                 {
                     let! courseExists =
@@ -66,7 +66,8 @@ module Student =
             JsonSerializer.Serialize (this, jsonOptions)
             
         interface Aggregate<string> with
-            member this.Id = this.Id
+            member this.Id =
+                this.Id.Id
             member this.Serialize  =
                 this.Serialize
         

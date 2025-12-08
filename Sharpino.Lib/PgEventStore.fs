@@ -1510,7 +1510,6 @@ module PgStorage =
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
-                
             
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
                 logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)

@@ -10,6 +10,7 @@ open Sharpino.EventBroker
 open Sharpino.Sample._11.Course
 open Sharpino.Sample._11.CourseEvents
 open Sharpino.Sample._11.CourseCommands
+open Sharpino.Sample._11.Definitions
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
 open Sharpino.Sample._11.StudentCommands
@@ -57,10 +58,10 @@ module CourseManager =
                         courses
                 }        
         
-        member this.GetStudent (id: Guid)  =
+        member this.GetStudent (id: StudentId)  =
             result
                 {
-                    let! _, student = studentViewer id
+                    let! _, student = studentViewer id.Id
                     return student
                 }
         
@@ -91,14 +92,14 @@ module CourseManager =
                         course
                 }
         
-        member this.GetCourse (id: Guid) =
+        member this.GetCourse (id: CourseId) =
             result
                 {
-                    let! _, course = courseViewer id
+                    let! _, course = courseViewer id.Id
                     return course
                 }
         
-        member this.GetCourses (ids: Guid[]) =
+        member this.GetCourses (ids: CourseId[]) =
             result
                 {
                     let!
@@ -109,15 +110,15 @@ module CourseManager =
                     return courses
                 }        
         
-        member this.EnrollStudentToCourse (studentId: Guid) (courseId: Guid) =
+        member this.EnrollStudentToCourse (studentId: StudentId) (courseId: CourseId) =
             result
                 {
                     let addCourseToStudentEnrollments = StudentCommands.Enroll courseId
                     let addStudentToCourseEnrollments = CourseCommands.EnrollStudent studentId
                     return!
                         runTwoAggregateCommands
-                            studentId
-                            courseId
+                            studentId.Id
+                            courseId.Id
                             eventStore
                             messageSenders
                             addCourseToStudentEnrollments
@@ -126,32 +127,3 @@ module CourseManager =
         
         
                 
-        // member this.EnrollStudentToCourseCompensationVersion (studentId: Guid) (courseId: Guid) =
-        //     result
-        //         {
-        //             let addCourseToStudent: AggregateCommand<Student, StudentEvents> = StudentCommands.Enroll courseId
-        //             let addStudentToCourse: AggregateCommand<Course, CourseEvents> = CourseCommands.EnrollStudent studentId
-        //             let rollBackAddCourseToStudent =
-        //                 addCourseToStudent.Undoer
-        //                 |> Option.get
-        //                 
-        //             let! tryAddCourseToStudent =
-        //                 runAggregateCommand
-        //                     studentId
-        //                     eventStore
-        //                     messageSenders
-        //                     addCourseToStudent
-        //            
-        //             let! tryAddStudentToCourse =
-        //                 runAggregateCommand
-        //                     courseId
-        //                     eventStore
-        //                     messageSenders
-        //                     addStudentToCourse
-        //            
-        //             let result = 
-        //                 match tryAddStudentToCourse with
-        //                 | Ok _ -> Ok ()
-        //                 | Error e ->
-        //                     
-        //         }

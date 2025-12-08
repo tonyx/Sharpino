@@ -70,7 +70,7 @@ let tests =
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
           
-       ftestCase "a student can enroll to only two courses, and they tries to enroll to the third one and it will be rejected - Ok" <| fun _ ->
+       testCase "a student can enroll to only two courses, and they tries to enroll to the third one and it will be rejected - Ok" <| fun _ ->
           setUp ()
           let math = Course.MkCourse ("math", 10)
           let english = Course.MkCourse ("english", 10)
@@ -100,35 +100,6 @@ let tests =
           let retrieveStudent = courseManager.GetStudent student.Id |> Result.get
           Expect.equal retrieveStudent.Courses.Length 2 "should be two"
           
-       // ftestCase "a student can enroll to only two courses, and they tries to enroll to the third one and it will be rejected. Version using compensation events - Ok" <| fun _ ->
-       //    setUp ()
-       //    let math = Course.MkCourse ("math", 10)
-       //    let english = Course.MkCourse ("english", 10)
-       //    let physics = Course.MkCourse ("physics", 10)
-       //    let courseAdded = courseManager.AddMultipleCourses [|math; english; physics|]
-       //    Expect.isOk courseAdded "Courses not created"
-       //    let student = Student.MkStudent ("Jack", 2)
-       //    let addStudent = courseManager.AddStudent student
-       //    Expect.isOk addStudent "Student not created"
-       //    
-       //    // when
-       //    let enrollStudentToMath = courseManager.EnrollStudentToCourseCompensationVersion student.Id math.Id
-       //    Expect.isOk enrollStudentToMath "Student not enrolled to math"
-       //    let enrollStudentToEnglish = courseManager.EnrollStudentToCourseCompensationVersion student.Id english.Id
-       //    Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
-       //    let enrollStudentToPhysics = courseManager.EnrollStudentToCourseCompensationVersion student.Id physics.Id
-       //    Expect.isError enrollStudentToPhysics "Student enrolled to physics"
-       //    
-       //    // then
-       //    let retrieveMath = courseManager.GetCourse math.Id |> Result.get
-       //    Expect.equal retrieveMath.Students.Length 1 "should be one"
-       //    
-       //    let retrieveEnglish = courseManager.GetCourse english.Id |> Result.get
-       //    Expect.equal retrieveEnglish.Students.Length 1 "should be one"
-       //    let retrievePhysics = courseManager.GetCourse physics.Id |> Result.get
-       //    Expect.equal retrievePhysics.Students.Length 0 "should be zero"
-       //    let retrieveStudent = courseManager.GetStudent student.Id |> Result.get
-       //    Expect.equal retrieveStudent.Courses.Length 2 "should be two"
           
     ]
     |> testSequenced
