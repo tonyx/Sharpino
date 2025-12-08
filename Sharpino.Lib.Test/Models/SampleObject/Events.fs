@@ -1,6 +1,5 @@
 module Sharpino.Lib.Test.Models.SampleObject.Events
 
-
 open Sharpino
 open Sharpino.Core
 open Sharpino.Commons

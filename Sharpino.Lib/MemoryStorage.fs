@@ -540,6 +540,25 @@ module MemoryStorage =
                     |>> (fun (id, event) -> id, event)
                     |> Ok
 
+            member this.GetEventsInATimeIntervalAsync (version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                let _ = defaultArg ct CancellationToken.None
+                task {
+                    try
+                        if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                            return [] |> Ok
+                        else
+                            return events_dic.[version].[name]
+                                   |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                                   |>> (fun x -> x.Id, x.JsonEvent)
+                                   |>> (fun (id, event) -> id, event)
+                                   |> Ok
+                    with ex ->
+                        logger.Value.LogError (sprintf "An error occurred in GetEventsInATimeIntervalAsync: %A" ex.Message)
+                        return Error ex.Message
+                }
+
+            
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
@@ -775,6 +794,13 @@ module MemoryStorage =
                     return result    
                 }
 
+            member this.GetAggregateEventsAsync(version, name, aggregateId, ?ct) =
+                taskResult {
+                    let! result =
+                        (this :> IEventStore<string>).GetAggregateEvents version name aggregateId
+                    return result
+                }
+
             member this.GetAggregateEventsInATimeIntervalAsync(version, name, aggregateId, dateFrom, dateTo, ct) =
                 logger.Value.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 taskResult
@@ -783,4 +809,9 @@ module MemoryStorage =
                             (this :> IEventStore<string>).GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo
                         return result    
                     }
-                
+
+            member this.GetMultipleAggregateEventsInATimeIntervalAsync(version, name, aggregateIds, dateFrom, dateTo, ct) =
+                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
+                task {
+                    return (this :> IEventStore<string>).GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo
+                }

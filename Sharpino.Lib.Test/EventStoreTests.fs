@@ -11,7 +11,10 @@ open Sharpino.PgStorage
 open Sharpino.CommandHandler
 open Sharpino.StateView
 open Sharpino.Storage
+open Sharpino.Lib.Test.Models.ContextObject.Events
+open Sharpino.Lib.Test.Models.ContextObject.SampleContext
 open Sharpino.Lib.Test.Models.SampleObject.SampleObject
+
 open Sharpino.TestUtils
 
 [<Tests>]
@@ -30,6 +33,7 @@ let tests =
     
     let pgReset () =
         pgEventStore.Reset SampleObject.Version SampleObject.StorageName
+        pgEventStore.Reset SampleContext.Version SampleContext.StorageName
         pgEventStore.ResetAggregateStream SampleObject.Version SampleObject.StorageName
         AggregateCache3.Instance.Clear()
     let memReset () =
@@ -49,6 +53,90 @@ let tests =
         ]
          
     testList "Sharpino Tests" [
+        multipleTestCase "async: create an initial instance, then store a new first low level event via AddAggregateEventsMdAsync - Ok" versions <| fun (eventStore, setUp)  ->
+            setUp ()
+            // Arrange
+            let sampleObjectId = Guid.NewGuid()
+            let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
+            let initialized =
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
+            Expect.isOk initialized "should be ok"
+            // Act
+            let lowLevelEvent = SampleObjectRenamed "new name async"
+            let storeLowLevelEventTask = eventStore.AddAggregateEventsMdAsync(0, SampleObject.Version, SampleObject.StorageName, sampleObjectId, Metadata.Empty, [lowLevelEvent.Serialize])
+            let storeLowLevelEvent = storeLowLevelEventTask.Result
+            Expect.isOk storeLowLevelEvent "should be ok"
+            // Assert
+            AggregateCache3.Instance.Clear ()
+            let retrieved = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId eventStore
+            Expect.isOk retrieved "should be ok"
+            let (eventId, okRetrieved) = retrieved.OkValue
+            let retrievedWithCast = okRetrieved :?> SampleObject
+            Expect.equal retrievedWithCast.Name "new name async" "should be equal"
+            Expect.notEqual eventId 0 "should be non zero"
+
+        multipleTestCase "async: mismatched expected event id should fail in AddAggregateEventsMdAsync - Error" versions <| fun (eventStore, setUp)  ->
+            setUp ()
+            // Arrange
+            let sampleObjectId = Guid.NewGuid()
+            let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
+            let initialized =
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
+            Expect.isOk initialized "should be ok"
+            // Act: pass a non-zero expected id when there are no aggregate events yet
+            let lowLevelEvent = SampleObjectRenamed "bad id async"
+            let res = eventStore.AddAggregateEventsMdAsync(999, SampleObject.Version, SampleObject.StorageName, sampleObjectId, Metadata.Empty, [lowLevelEvent.Serialize]).Result
+            // Assert
+            Expect.isError res "should be error for wrong expected event id"
+
+        multipleTestCase "async: GetAggregateEventsAsync returns empty list after init - Ok" versions <| fun (eventStore, setUp) ->
+            setUp ()
+            // Arrange
+            let sampleObjectId = Guid.NewGuid()
+            let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
+            let initialized =
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
+            Expect.isOk initialized "should be ok"
+            // Act
+            let retrievedEventsTask = eventStore.GetAggregateEventsAsync(SampleObject.Version, SampleObject.StorageName, sampleObjectId)
+            let retrievedEvents = retrievedEventsTask.Result
+            // Assert
+            Expect.isOk retrievedEvents "should be ok"
+            let events = retrievedEvents.OkValue |> List.map snd
+            Expect.equal events.Length 0 "no events expected"
+
+        multipleTestCase "async: AddAggregateEventsMdAsync twice, then GetAggregateEventsAsync returns both events in order - Ok" versions <| fun (eventStore, setUp) ->
+            setUp ()
+            // Arrange
+            let sampleObjectId = Guid.NewGuid()
+            let sampleObject = SampleObject.MkSampleObject(sampleObjectId, "sample object")
+            let initialized =
+                runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject
+            Expect.isOk initialized "should be ok"
+            // Act
+            let e1 = SampleObjectRenamed "n1"
+            let r1 = eventStore.AddAggregateEventsMdAsync(0, SampleObject.Version, SampleObject.StorageName, sampleObjectId, Metadata.Empty, [e1.Serialize]).Result
+            Expect.isOk r1 "first append should be ok"
+            let lastId1 = (eventStore.TryGetLastAggregateEventId SampleObject.Version SampleObject.StorageName sampleObjectId).Value
+            let e2 = SampleObjectRenamed "n2"
+            let r2 = eventStore.AddAggregateEventsMdAsync(lastId1, SampleObject.Version, SampleObject.StorageName, sampleObjectId, Metadata.Empty, [e2.Serialize]).Result
+            Expect.isOk r2 "second append should be ok"
+            // Retrieve
+            let retrievedEventsTask = eventStore.GetAggregateEventsAsync(SampleObject.Version, SampleObject.StorageName, sampleObjectId)
+            let retrievedEvents = retrievedEventsTask.Result
+            Expect.isOk retrievedEvents "should be ok"
+            let events = retrievedEvents.OkValue
+            Expect.equal events.Length 2 "two events expected"
+            let ev1 = events.[0] |> snd |> SampleObjectEvents.Deserialize
+            let ev2 = events.[1] |> snd |> SampleObjectEvents.Deserialize
+            Expect.isOk ev1 "should be ok"
+            Expect.isOk ev2 "should be ok"
+            let ev1Value = ev1.OkValue
+            let ev2Value = ev2.OkValue
+            Expect.equal ev1Value (SampleObjectRenamed "n1") "first name"
+            Expect.equal ev2Value (SampleObjectRenamed "n2") "second name"
+            
+            
         multipleTestCase "create an initial instance and retrieve it. There are no events so eventId is 0 - Ok" versions <| fun (eventStore, setUp)  ->
             setUp ()
             // Arrange
@@ -90,6 +178,25 @@ let tests =
             let retrievedWithCast = okRetrieved :?> SampleObject
             Expect.equal retrievedWithCast.Name "new name" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
+       
+        multipleTestCase "async: GetEventsInATimeIntervalAsync returns events within time range - Ok" versions <| fun (eventStore, setUp) ->
+            
+            setUp ()
+            // Arrange
+           
+            let musicTagEvent = SampleContextTagAdded Music 
+           
+            let musicTagStored = eventStore.AddEventsMd 0 SampleContext.Version SampleContext.StorageName "" [musicTagEvent.Serialize]
+            Expect.isOk musicTagStored "should be ok"
+            
+            let eventsRetrieved = eventStore.GetEventsInATimeIntervalAsync (SampleContext.Version, SampleContext.StorageName, DateTime.MinValue, DateTime.MaxValue)
+            let result = eventsRetrieved.Result
+            Expect.isOk result "should be ok"
+            let eventRetrieved = result.OkValue |> List.head |> snd
+            let eventDeserialized = SampleContextEvents.Deserialize eventRetrieved
+            Expect.isOk eventDeserialized "should be ok"
+            let eventDeserializedValue = eventDeserialized.OkValue
+            Expect.equal eventDeserializedValue musicTagEvent "should be equal"
         
         multipleTestCase "create two objects, store an event related to the first one, then store an event related to the second one. Retrieve the object with the new state  - Ok" versions <| fun (eventStore, setUp)  ->
             setUp ()
@@ -257,6 +364,64 @@ let tests =
                     )
             )
             |> ignore
+            
+        multipleTestCase "async: GetMultipleAggregateEventsInATimeIntervalAsync returns events for multiple aggregates - Ok" versions <| fun (eventStore, setUp) ->
+            setUp ()
+            // Arrange - create two sample objects
+            let sampleObjectId1 = Guid.NewGuid()
+            let sampleObject1 = SampleObject.MkSampleObject(sampleObjectId1, "sample object 1")
+            let sampleObjectId2 = Guid.NewGuid()
+            let sampleObject2 = SampleObject.MkSampleObject(sampleObjectId2, "sample object 2")
+            
+            // Initialize both objects
+            let initialized1 = runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject1
+            let initialized2 = runInit<SampleObject, SampleObjectEvents, string> eventStore MessageSenders.NoSender sampleObject2
+            
+            Expect.isOk initialized1 "First object initialization should succeed"
+            Expect.isOk initialized2 "Second object initialization should succeed"
+            
+            // Add events to both objects with a small delay to ensure different timestamps
+            let event1 = SampleObjectRenamed "renamed object 1"
+            let event2 = SampleObjectRenamed "renamed object 2"
+            
+            let storeEvent1 =
+                eventStore.AddAggregateEventsMdAsync(0, SampleObject.Version, SampleObject.StorageName, sampleObjectId1, Metadata.Empty, [event1.Serialize])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                
+            let storeEvent2 =
+                eventStore.AddAggregateEventsMdAsync(0, SampleObject.Version, SampleObject.StorageName, sampleObjectId2, Metadata.Empty, [event2.Serialize])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            
+            Expect.isOk storeEvent1 "First event storage should succeed"
+            Expect.isOk storeEvent2 "Second event storage should succeed"
+            
+            // Get the timestamp just before and after our test events
+            // note: here I have to use the Now and not the UtcNow (otherwise the test fails), but there is room to investigate about
+            let now = System.DateTime.Now
+            let beforeEvents = now.AddSeconds(-10)
+            let afterEvents = now.AddSeconds(10)
+            
+            // Act - get events for both aggregates
+            let result =
+                eventStore.GetMultipleAggregateEventsInATimeIntervalAsync(SampleObject.Version, SampleObject.StorageName, [sampleObjectId1; sampleObjectId2], beforeEvents, afterEvents)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            
+            // Assert
+            Expect.isOk result "Should successfully retrieve events"
+            let events = result.OkValue
+            
+            // Verify we got both events
+            Expect.equal events.Length 2 "Should return exactly two events"
+            
+            // Verify the events contain the expected data
+            let event1Found = events |> List.exists (fun (_, id, json) -> id = sampleObjectId1 && json = event1.Serialize)
+            let event2Found = events |> List.exists (fun (_, id, json) -> id = sampleObjectId2 && json = event2.Serialize)
+            
+            Expect.isTrue event1Found "Should find first event"
+            Expect.isTrue event2Found "Should find second event"
     ]
     |> testSequenced
         

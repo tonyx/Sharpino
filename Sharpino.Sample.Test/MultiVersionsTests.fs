@@ -518,64 +518,6 @@ let multiVersionsTests =
             let result = ap.getAllTodos().OkValue 
             Expect.equal (result |> List.head).TagIds [tagId2] "should be equal"
 
-
-
-        // focus
-        // move somewhere else as the generalization of test parameterized won't work here
-        // multipleTestCase "add two todos and then retrieve the report/projection - Ok" currentTestConfs <| fun (ap, upgd, migrator, _, todoAdded) ->
-        //     let _ = ap._reset()
-        //     let now = System.DateTime.UtcNow
-        //     printf "now! %A" now
-        //     let todo1 = mkTodo (Guid.NewGuid()) "test" [] []
-        //     let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
-        //     let added1 = ap.addTodo todo1
-        //     let added2 = ap.addTodo todo2
-        //     let result = ap.todoReport now System.DateTime.UtcNow
-        //     let actualEvents = result.OkValue.TodoEvents |> Set.ofList
-        //     let expcted = 
-        //         [
-        //             todoAdded todo1
-        //             todoAdded todo2
-        //             // TodoEvent.TodoAdded todo1
-        //             // TodoEvent.TodoAdded todo2
-        //         ]
-        //         |> Set.ofList
-        //     Expect.equal actualEvents expcted "should be equal"
-
-        // multipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only one event - Ok " currentTestConfs <| fun (ap, upgd, migrator, _, todoAdded ) ->
-        //     let _ = ap._reset()
-        //     let todo1 = mkTodo (Guid.NewGuid()) "test one" [] []
-        //     let added1 = ap.addTodo todo1
-        //     let timeBeforeAddingSecondTodo = System.DateTime.UtcNow // - System.TimeSpan.FromHours(1.0)
-        //     let todo2 = mkTodo (Guid.NewGuid()) "test two" [] []
-        //     let added2 = ap.addTodo todo2
-        //     let result = ap.todoReport timeBeforeAddingSecondTodo System.DateTime.UtcNow // + System.TimeSpan.FromHours(0.2))
-        //     let actualEvents = result.OkValue.TodoEvents |> Set.ofList
-        //     let expcted = 
-        //         [
-        //             todoAdded todo2
-        //             // TodoEvent.TodoAdded todo2
-        //         ]
-        //         |> Set.ofList
-        //     Expect.equal actualEvents  expcted "should be equal"
-
-        // pmultipleTestCase "add two todos and retrieve a patial report projection using a timeframe including only the first event - Ok " currentTestConfs <| fun (ap, _, _, _, todoAdded) ->
-        //     let _ = ap._reset()
-        //     let todo1 = mkTodo (Guid.NewGuid()) "test one" [] []
-        //     let beforeAddingFirst = System.DateTime.Now
-        //     let added1 = ap.addTodo todo1
-        //     let beforeAddingSecond = System.DateTime.Now
-        //     let todo2 = mkTodo (Guid.NewGuid()) "test2" [] []
-        //     let added2 = ap.addTodo todo2
-        //     let result = ap.todoReport beforeAddingFirst beforeAddingSecond 
-        //     let actualEvents = result.OkValue.TodoEvents |> Set.ofList
-        //     let expcted = 
-        //         [
-        //             todoAdded todo2
-        //             // TodoEvent.TodoAdded todo1 //(mkTodo todo1.Id todo1.Description todo1.CategoryIds todo1.TagIds)
-        //         ]
-        //         |> Set.ofList
-        //     Expect.equal actualEvents expcted "should be equal"
     ] 
     |> testSequenced
 

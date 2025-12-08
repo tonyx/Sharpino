@@ -31,11 +31,7 @@ CREATE TABLE public.snapshots_01_sampleObject (
                                                   event_id integer, -- the initial snapshot has no event_id associated so it can be null
                                                   aggregate_id uuid NOT NULL,
                                                   "timestamp" timestamp without time zone NOT NULL,
-<<<<<<< HEAD
-                                                  "is_deleted" bool DEFAULT false
-=======
-                                                  "is_deleted" bool NOT NULL DEFAULT false   
->>>>>>> main
+                                                  "is_deleted" bool NOT NULL DEFAULT false
 );
 
 ALTER TABLE ONLY public.events_01_sampleObject
@@ -144,4 +140,3 @@ END;
 $$;
 
 -- migrate:down
-

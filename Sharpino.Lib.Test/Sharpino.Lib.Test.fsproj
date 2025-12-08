@@ -12,6 +12,9 @@
     <Compile Include="Models/SampleObject/SampleObject.fs" />
     <Compile Include="Models/SampleObject/Events.fs" />
     <Compile Include="Models/SampleObject/Commands.fs" />
+    <Compile Include="Models/ContextObject/SampleContext.fs" />
+    <Compile Include="Models/ContextObject/Events.fs" />
+    <Compile Include="Models/ContextObject/Commands.fs" />
     <Compile Include="EventStoreTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />

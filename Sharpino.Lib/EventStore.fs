@@ -110,12 +110,15 @@ module Storage =
         abstract member GetAggregateEventsAfterId: Version ->  Name -> AggregateId -> EventId-> Result< List< EventId * 'F >, string >
         abstract member GetAggregateEventsAfterIdAsync: Version * Name * AggregateId * EventId * ?ct:CancellationToken -> Task<Result< List< EventId * 'F >, string >>
         abstract member GetAggregateEvents: Version ->  Name -> AggregateId -> Result< List< EventId * 'F >, string >
+        abstract member GetAggregateEventsAsync: Version *  Name * AggregateId * ?ct:CancellationToken -> Task<Result< List< EventId * 'F >, string >>
 
         abstract member GetEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
+        abstract member GetEventsInATimeIntervalAsync: Version * Name * DateTime * DateTime * ?ct:CancellationToken -> Task<Result<List<EventId * 'F >, string>>
         
         abstract member GetAggregateEventsInATimeInterval: Version -> Name -> Guid -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         abstract member GetAggregateEventsInATimeIntervalAsync: Version * Name * Guid * DateTime * DateTime * ?ct:CancellationToken -> Task<Result<List<EventId * 'F >, string>>
         abstract member GetMultipleAggregateEventsInATimeInterval: Version -> Name -> List<AggregateId> -> DateTime -> DateTime -> Result<List<EventId * AggregateId * 'F >, string>
+        abstract member GetMultipleAggregateEventsInATimeIntervalAsync: Version * Name * List<AggregateId> * DateTime * DateTime * ?ct:CancellationToken -> Task<Result<List<EventId * AggregateId * 'F >, string>>
         abstract member GetAllAggregateEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
         
         [<Obsolete("Use GetAllAggregateIds or GetAllAggregateIdsInATimeInterval")>]

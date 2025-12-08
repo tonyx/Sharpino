@@ -81,8 +81,38 @@ module PgBinaryStore =
             else
                 failwith "operation allowed only in test db"
         
-        
         interface IEventStore<byte []> with
+            member this.GetEventsInATimeIntervalAsync(version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"  version name
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                        command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                        use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+                        let rec loop () = task {
+                            let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                            if hasRow then
+                                let eventId = reader.GetInt32(0)
+                                let eventBytes = reader.GetFieldValue<byte[]>(1)
+                                results.Add(eventId, eventBytes)
+                                return! loop ()
+                            else
+                                return ()
+                        }
+                        do! loop ()
+                        return results |> Seq.toList |> Ok
+                    with ex ->
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
+                
             member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and date >= @dateFrom and date <= @dateTo ORDER BY id"  version name
@@ -1095,7 +1125,45 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                      
+                     
+                    
+            member this.GetMultipleAggregateEventsInATimeIntervalAsync (version, name, aggregateIds, dateFrom, dateTo, ?ct) =
+                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                
+                let aggregateIdsArray = aggregateIds |> Array.ofList
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                task
+                    {
+                        try
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(ct).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                            command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
+                            use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                                if hasRow then
+                                    let eventId = reader.GetInt32(0)
+                                    let aggregateId = reader.GetGuid(1)
+                                    let eventJson = reader.GetFieldValue<byte[]>(2)
+                                    results.Add(eventId, aggregateId, eventJson)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList |> Ok
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return Error ex.Message    
+                    }
+                    
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, aggregate_id, timestamp FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -1459,6 +1527,36 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
+            
+            member this.GetAggregateEventsAsync (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken): Task<Result<List<EventId * byte array>, string>> =
+                logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+                        let rec loop () = task {
+                            let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                            if hasRow then
+                                let eventId = reader.GetInt32(0)
+                                let eventBytes = reader.GetFieldValue<byte[]>(1)
+                                results.Add(eventId, eventBytes)
+                                return! loop ()
+                            else
+                                return ()
+                        }
+                        do! loop ()
+                        return results |> Seq.toList |> Ok
+                    with ex ->
+                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
                     
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
                 logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
