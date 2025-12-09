@@ -59,7 +59,7 @@ let randomText (size: int) =
 
 [<Tests>]
 let test =
-    testList "student examples" [
+    ptestList "student examples" [
        testCase "insert 10000 students in batch and retrieve them - Ok" <| fun _ ->
           setUp ()
           let students =
