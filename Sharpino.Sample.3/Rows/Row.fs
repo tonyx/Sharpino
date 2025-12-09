@@ -62,13 +62,12 @@ module rec SeatRow =
             InvariantContainer pickled
 
     type SeatsRow private (seats: List<Seat>, id: Guid, invariants: List<InvariantContainer>) =
-        new (id: Guid) =
-            SeatsRow ([], id, [])
+        new () =
+            SeatsRow ([], Guid.NewGuid(), [])
 
         member this.Seats = seats
         member this.Invariants = invariants
         member this.Id = id
-
 
         member this.IsAvailable (seatId: Id) =
             this.Seats

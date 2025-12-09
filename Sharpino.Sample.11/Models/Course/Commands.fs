@@ -12,17 +12,17 @@ open Sharpino.Sample._11.Definitions
 
 module CourseCommands =
     type CourseCommands =
-        | EnrollStudent of StudentId
-        | UnenrollStudent of StudentId
+        | Enroll of StudentId
+        | Unenroll of StudentId
         interface AggregateCommand<Course, CourseEvents> with
             member this.Execute (course: Course) =
                 match this with
-                | EnrollStudent id ->
-                    course.EnrollStudent id
-                    |> Result.map (fun i -> (i, [ StudentEnrolled id]))
-                | UnenrollStudent id ->
-                    course.UnenrollStudent id
-                    |> Result.map (fun i -> (i, [ StudentUnenrolled id]))
+                | Enroll id ->
+                    course.Enroll id
+                    |> Result.map (fun i -> (i, [ Enrolled id]))
+                | Unenroll id ->
+                    course.Unenroll id
+                    |> Result.map (fun i -> (i, [ Unenrolled id]))
             member this.Undoer =
                 None
                     

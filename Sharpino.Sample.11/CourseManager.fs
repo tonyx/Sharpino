@@ -114,7 +114,7 @@ module CourseManager =
             result
                 {
                     let addCourseToStudent = StudentCommands.Enroll courseId
-                    let addStudentToCourse = CourseCommands.EnrollStudent studentId
+                    let addStudentToCourse = CourseCommands.Enroll studentId
                     return!
                         runTwoAggregateCommands studentId.Id courseId.Id eventStore messageSenders addCourseToStudent addStudentToCourse
                 }

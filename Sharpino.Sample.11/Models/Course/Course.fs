@@ -13,8 +13,8 @@ module  Course =
     let maximumNumberOfTeachers = 3
     type Course =
         {
-            Name: string
             Id: CourseId
+            Name: string
             Students: List<StudentId>
             MaxNumberOfStudents: int
         }
@@ -23,7 +23,7 @@ module  Course =
             static member MkCourse (name: string, maxNumberOfStudents: int) =
                 { Id = CourseId.New; Name = name; Students = List.empty; MaxNumberOfStudents = maxNumberOfStudents }
                     
-            member this.EnrollStudent (studentId: StudentId) =
+            member this.Enroll (studentId: StudentId) =
                 result
                     {
                         do! 
@@ -38,7 +38,7 @@ module  Course =
                             }
                     }
                 
-            member this.UnenrollStudent (studentId: StudentId) =
+            member this.Unenroll (studentId: StudentId) =
                 result
                     {
                         do! 

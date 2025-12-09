@@ -33,24 +33,19 @@ module StorageStadiumBookingSystem =
                 ValueTask.CompletedTask
 
     type StadiumBookingSystem
-        // (eventStore: IEventStore<string>, eventBroker: IEventBroker<string>, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
         (eventStore: IEventStore<string>, messageSenders: MessageSenders, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
         new (eventStore: IEventStore<string>) =
             StadiumBookingSystem(eventStore, MessageSenders.NoSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
         new (eventStore: IEventStore<string>, messageSenders: MessageSenders) =
             StadiumBookingSystem(eventStore, messageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
-            
-        member this.AddRow (rowId: Guid)  =
-            ResultCE.result {
-                let seatsRow = SeatsRow rowId
-                let addRowReference = StadiumCommand.AddRowReference rowId
-                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore messageSenders seatsRow addRowReference
+        
+        member this.AddRow (row: SeatsRow) =
+             result {
+                let addRowReference = StadiumCommand.AddRowReference row.Id
+                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore messageSenders row addRowReference
                 return result
             }
-            
-        member this.AddRow () =
-            this.AddRow (Guid.NewGuid())
 
         member this.BookSeats (rowId: Guid) (booking: Booking) =
             result {

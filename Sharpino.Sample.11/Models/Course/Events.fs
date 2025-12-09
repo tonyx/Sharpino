@@ -10,13 +10,13 @@ open Sharpino.Sample._11.Definitions
 
 module CourseEvents =
     type CourseEvents =
-        | StudentEnrolled of StudentId
-        | StudentUnenrolled of StudentId
+        | Enrolled of StudentId
+        | Unenrolled of StudentId
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
-                | StudentEnrolled id -> course.EnrollStudent id
-                | StudentUnenrolled id -> course.UnenrollStudent id
+                | Enrolled id -> course.Enroll id
+                | Unenrolled id -> course.Unenroll id
        
         static member Deserialize (x: string): Result<CourseEvents, string> =
             try

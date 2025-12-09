@@ -135,8 +135,9 @@ let tests =
             let service = stadiumSystem
             
             // Act
-            let rowId = Guid.NewGuid()
-            let addRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addRow = service.AddRow row
             Expect.isOk addRow "should be ok"
             
             let seat = { Id = 1; State = Free; RowId = None }
@@ -156,8 +157,9 @@ let tests =
             let service = stadiumSystem
             
             // Act
-            let rowId = Guid.NewGuid()
-            let addRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addRow = service.AddRow row
             Expect.isOk addRow "should be ok"
             let seat = { Id = 1; State = Free; RowId = None }
             let addSeat = service.AddSeat rowId seat
@@ -174,8 +176,9 @@ let tests =
             // Arrange
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addRow = service.AddRow row
             Expect.isOk addRow "should be ok"
             
             let seat = { Id = 1; State = Free; RowId = None }
@@ -195,9 +198,10 @@ let tests =
         multipleTestCase "add a row reference and five seats to it one by one. Retrieve the seat - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp ()
+            let row = SeatsRow ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addRow = service.AddRow rowId
+            let rowId = row.Id
+            let addRow = service.AddRow row
             Expect.isOk addRow "should be ok"
             
             // Act
@@ -228,8 +232,9 @@ let tests =
             // Arrange
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             // act
@@ -255,8 +260,9 @@ let tests =
         multipleTestCase "add a row then, an a single seat then another seat " stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seat = { Id = 1; State = Free; RowId = None }
@@ -270,8 +276,9 @@ let tests =
         multipleTestCase "add a row then, a single seat (as a list of one element), then another seat (as a list of one element) - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [{ Id = 1; State = Free; RowId = None }]
@@ -285,8 +292,9 @@ let tests =
         multipleTestCase "add a row, then attach a list of a single seat and then a list of two seats - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [{ Id = 1; State = Free; RowId = None }]
@@ -310,8 +318,9 @@ let tests =
         multipleTestCase "add a row, then attach a list of two seats and then a list of two seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [
@@ -338,8 +347,9 @@ let tests =
         multipleTestCase "add a row, then attach a list of three seats and then a list of three seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [
@@ -366,8 +376,9 @@ let tests =
         multipleTestCase "add a row, then attach a list of fours seats and then a list of fours seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [
@@ -396,8 +407,9 @@ let tests =
         multipleTestCase "add a row, then attach a list of five seats and then a list of five seats again - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
             
             let seats = [
@@ -428,11 +440,13 @@ let tests =
         multipleTestCase "add a two rows and then add separately a seat for each row - Ok" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
-            let rowId2 = Guid.NewGuid()
-            let addedRow2 = service.AddRow rowId2
+            let row2 = SeatsRow ()
+            let rowId2 = row2.Id
+            let addedRow2 = service.AddRow row2
             Expect.isOk addedRow2 "should be ok"
             let seatAdded = service.AddSeat rowId { Id = 1; State = Free; RowId = None }
             Expect.isOk seatAdded "should be ok"
@@ -453,12 +467,15 @@ let tests =
             // Arrange
             setUp ()
             let service = stadiumSystem
-            let rowId = Guid.NewGuid()
-            let addedRow = service.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            
+            let addedRow = service.AddRow row
             Expect.isOk addedRow "should be ok"
 
-            let rowId2 = Guid.NewGuid()
-            let addedRow2 = service.AddRow rowId2
+            let row2 = SeatsRow ()
+            let rowId2 = row2.Id
+            let addedRow2 = service.AddRow row2
             Expect.isOk addedRow2 "should be ok"
 
             // Act
@@ -498,8 +515,9 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             // when
             let seat =  { Id = 1; State = Free; RowId = None }
@@ -528,10 +546,11 @@ let tests =
         multipleTestCase "add a booking on an existing row and unexisting seat - Error" stadiumInstances <| fun (stadiumSystem, setUp, delay) ->
             // Arrange
             setUp()
-            let rowId = Guid.NewGuid()
+            let row = SeatsRow ()
+            let rowId = row.Id
 
             // Act
-            let addedRow = stadiumSystem.AddRow rowId
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             let booking = { Id = 1; SeatIds = [1]}
 
@@ -546,8 +565,9 @@ let tests =
             // Arrange
             setUp ()
 
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
 
             // Act
@@ -565,8 +585,9 @@ let tests =
             setUp ()
 
             // Act
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             let seat = { Id = 1; State = Free; RowId = None }
             let seatAdded = stadiumSystem.AddSeat rowId seat
@@ -588,8 +609,9 @@ let tests =
             setUp()
 
             // Act
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
@@ -609,7 +631,8 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId = Guid.NewGuid()
+            let row = SeatsRow ()
+            let rowId = row.Id
             let invariantId = Guid.NewGuid()
             let middleSeatInvariant: Invariant<SeatsRow>  =
                 {
@@ -630,7 +653,7 @@ let tests =
                         @>
                 }
             let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
-            let addedRow = stadiumSystem.AddRow rowId
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
 
             let addedRule = stadiumSystem.AddInvariant rowId middleSeatInvariantContainer
@@ -660,7 +683,8 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId = Guid.NewGuid()
+            let row = SeatsRow ()
+            let rowId = row.Id
             let invariantId = Guid.NewGuid()
             let middleSeatInvariant: Invariant<SeatsRow>  =
                 {
@@ -681,7 +705,7 @@ let tests =
                         @>
                 }
             let middleSeatInvariantContainer = InvariantContainer.Build middleSeatInvariant
-            let addedRow = stadiumSystem.AddRow rowId
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
 
             Thread.Sleep delay
@@ -714,8 +738,9 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
@@ -741,8 +766,10 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId1 = Guid.NewGuid()
-            let rowId2 = Guid.NewGuid()
+            let row1 = SeatsRow ()
+            let row2 = SeatsRow ()
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
             let invariantId = Guid.NewGuid()
             let middleSeatNotFreeRule: Invariant<SeatsRow> =
                 {
@@ -765,14 +792,14 @@ let tests =
             let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
             Thread.Sleep delay
-            let addedRow1 = stadiumSystem.AddRow rowId1
+            let addedRow1 = stadiumSystem.AddRow row1
             Expect.isOk addedRow1 "should be ok"
 
             let addInvariantToRow1 = stadiumSystem.AddInvariant rowId1 invariantContainer
             Expect.isOk addInvariantToRow1 "should be ok"
 
             Thread.Sleep delay
-            let addedRow2 = stadiumSystem.AddRow rowId2
+            let addedRow2 = stadiumSystem.AddRow row2
             Expect.isOk addedRow2 "should be ok"
 
             Thread.Sleep delay
@@ -816,8 +843,9 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId = Guid.NewGuid()
-            let addedRow = stadiumSystem.AddRow rowId
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addedRow = stadiumSystem.AddRow row
             Expect.isOk addedRow "should be ok"
             let seats = [
                 { Id = 1; State = Free; RowId = None }
@@ -841,8 +869,10 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId1 = Guid.NewGuid()
-            let rowId2 = Guid.NewGuid()
+            let row1 = SeatsRow ()
+            let row2 = SeatsRow ()
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
             let invariantId = Guid.NewGuid()
             let middleSeatNotFreeRule: Invariant<SeatsRow> =
                 {
@@ -865,14 +895,14 @@ let tests =
             let invariantContainer = InvariantContainer.Build middleSeatNotFreeRule
 
             Thread.Sleep delay
-            let addedRow1 = stadiumSystem.AddRow rowId1
+            let addedRow1 = stadiumSystem.AddRow row1
             Expect.isOk addedRow1 "should be ok"
 
             let addInvariantToRow1 = stadiumSystem.AddInvariant rowId1 invariantContainer
             Expect.isOk addInvariantToRow1 "should be ok"
 
             Thread.Sleep delay
-            let addedRow2 = stadiumSystem.AddRow rowId2
+            let addedRow2 = stadiumSystem.AddRow row2
             Expect.isOk addedRow2 "should be ok"
 
             let addInvariantToRow2 = stadiumSystem.AddInvariant rowId2 invariantContainer
@@ -916,15 +946,17 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId1 = Guid.NewGuid()
-            let rowId2 = Guid.NewGuid()
+            let row1 = SeatsRow ()
+            let row2 = SeatsRow ()
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
 
             Thread.Sleep delay
-            let addedRow1 = stadiumSystem.AddRow rowId1
+            let addedRow1 = stadiumSystem.AddRow row1
             Expect.isOk addedRow1 "should be ok"
 
             Thread.Sleep delay
-            let addedRow2 = stadiumSystem.AddRow rowId2
+            let addedRow2 = stadiumSystem.AddRow row2
             Expect.isOk addedRow2 "should be ok"
 
             let seat1 = { Id = 1; State = Free; RowId = None }
@@ -954,15 +986,18 @@ let tests =
             // Arrange
             setUp()
 
-            let rowId1 = Guid.NewGuid()
-            let rowId2 = Guid.NewGuid()
-            let rowId3 = Guid.NewGuid()
+            let row1 = SeatsRow ()
+            let row2 = SeatsRow ()
+            let row3 = SeatsRow ()
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let rowId3 = row3.Id
 
-            let addedRow1 = stadiumSystem.AddRow rowId1
+            let addedRow1 = stadiumSystem.AddRow row1
             Expect.isOk addedRow1 "should be ok"
-            let addedRow2 = stadiumSystem.AddRow rowId2
+            let addedRow2 = stadiumSystem.AddRow row2
             Expect.isOk addedRow2 "should be ok"
-            let addRow3 = stadiumSystem.AddRow rowId3
+            let addRow3 = stadiumSystem.AddRow row3
             Expect.isOk addRow3 "should be ok"
             let seats1 = [
                 { Id = 1; State = Free; RowId = None }

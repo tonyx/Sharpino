@@ -73,6 +73,7 @@ Test data is generated programmatically within each test case to ensure isolatio
 
 ## Debugging Tests
 
+warning: configuring vsCode or other Ide is problematic in many environments
 To debug tests in VS Code:
 
 1. Set breakpoints in the test file

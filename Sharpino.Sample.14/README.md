@@ -32,5 +32,4 @@ Now the model and the events and commands are able to use the wrapper type:
             { Id = StudentId.New; Name = name; Courses = List.empty; MaxNumberOfCourses = maxNumberOfCourses }
 ```
 
-
 Note: the undoers are defined so that for the future an example of classic undoers to emit compensation events can be explored
