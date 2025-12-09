@@ -12,8 +12,8 @@ open System.Text.Json.Serialization
 
 module StudentEvents =
     type StudentEvents =
-        | EnrolledCourse of Guid
-        | UnenrolledCourse of Guid
+        | EnrolledCourse of CourseId
+        | UnenrolledCourse of CourseId
         interface Event<Student> with
             member this.Process (student: Student) =
                 match this with

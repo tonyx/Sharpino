@@ -10,6 +10,7 @@ open Sharpino.EventBroker
 open Sharpino.Sample._11.Course
 open Sharpino.Sample._11.CourseEvents
 open Sharpino.Sample._11.CourseCommands
+open Sharpino.Sample._11.Definitions
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
 open Sharpino.Sample._11.StudentCommands
@@ -57,20 +58,20 @@ module CourseManager =
                         courses
                 }        
         
-        member this.GetStudent (id: Guid)  =
+        member this.GetStudent (id: StudentId)  =
             result
                 {
-                    let! _, student = studentViewer id
+                    let! _, student = studentViewer id.Id
                     return student
                 }
         
-        member this.GetStudents (ids: List<Guid>) =
+        member this.GetStudents (ids: List<StudentId>) =
             result
                 {
                     let!
                         students =
                             ids
-                            |> List.traverseResultM (fun id -> studentViewer id |> Result.map snd)
+                            |> List.traverseResultM (fun id -> studentViewer id.Id |> Result.map snd)
                     return students
                 }
         
@@ -91,14 +92,14 @@ module CourseManager =
                         course
                 }
         
-        member this.GetCourse (id: Guid) =
+        member this.GetCourse (id: CourseId) =
             result
                 {
-                    let! _, course = courseViewer id
+                    let! _, course = courseViewer id.Id
                     return course
                 }
         
-        member this.GetCourses (ids: Guid[]) =
+        member this.GetCourses (ids: CourseId[]) =
             result
                 {
                     let!
@@ -109,12 +110,12 @@ module CourseManager =
                     return courses
                 }        
         
-        member this.EnrollStudentToCourse (studentId: Guid) (courseId: Guid) =
+        member this.EnrollStudentToCourse (studentId: StudentId) (courseId: CourseId) =
             result
                 {
                     let addCourseToStudent = StudentCommands.Enroll courseId
                     let addStudentToCourse = CourseCommands.EnrollStudent studentId
                     return!
-                        runTwoAggregateCommands studentId courseId eventStore messageSenders addCourseToStudent addStudentToCourse
+                        runTwoAggregateCommands studentId.Id courseId.Id eventStore messageSenders addCourseToStudent addStudentToCourse
                 }
                 

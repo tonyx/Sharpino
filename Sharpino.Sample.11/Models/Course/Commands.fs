@@ -12,8 +12,8 @@ open Sharpino.Sample._11.Definitions
 
 module CourseCommands =
     type CourseCommands =
-        | EnrollStudent of Guid
-        | UnenrollStudent of Guid
+        | EnrollStudent of StudentId
+        | UnenrollStudent of StudentId
         interface AggregateCommand<Course, CourseEvents> with
             member this.Execute (course: Course) =
                 match this with

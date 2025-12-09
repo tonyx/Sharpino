@@ -14,16 +14,16 @@ module  Course =
     type Course =
         {
             Name: string
-            Id: Guid
-            Students: List<Guid>
+            Id: CourseId
+            Students: List<StudentId>
             MaxNumberOfStudents: int
         }
         
         with
             static member MkCourse (name: string, maxNumberOfStudents: int) =
-                { Id = Guid.NewGuid(); Name = name; Students = List.empty; MaxNumberOfStudents = maxNumberOfStudents }
+                { Id = CourseId.New; Name = name; Students = List.empty; MaxNumberOfStudents = maxNumberOfStudents }
                     
-            member this.EnrollStudent (studentId: Guid) =
+            member this.EnrollStudent (studentId: StudentId) =
                 result
                     {
                         do! 
@@ -38,7 +38,7 @@ module  Course =
                             }
                     }
                 
-            member this.UnenrollStudent (studentId: Guid) =
+            member this.UnenrollStudent (studentId: StudentId) =
                 result
                     {
                         do! 
@@ -70,7 +70,7 @@ module  Course =
             
             interface Aggregate<string> with
                 member this.Id =
-                    this.Id
+                    this.Id.Id
                 member this.Serialize =
                     this.Serialize
    

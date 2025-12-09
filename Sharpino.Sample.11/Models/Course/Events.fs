@@ -10,8 +10,8 @@ open Sharpino.Sample._11.Definitions
 
 module CourseEvents =
     type CourseEvents =
-        | StudentEnrolled of Guid
-        | StudentUnenrolled of Guid
+        | StudentEnrolled of StudentId
+        | StudentUnenrolled of StudentId
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with

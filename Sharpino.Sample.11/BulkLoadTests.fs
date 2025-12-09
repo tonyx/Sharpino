@@ -82,7 +82,7 @@ let tests =
            let course = Course.MkCourse ("course", 10)
            let added = courseManager.AddCourse course
            let removeCache = AggregateCache3.Instance.Clear ()
-           let retrieved = Sharpino.StateView.getLastAggregateSnapshot<Course, string> course.Id Course.Version Course.StorageName pgEventStore
+           let retrieved = Sharpino.StateView.getLastAggregateSnapshot<Course, string> course.Id.Id Course.Version Course.StorageName pgEventStore
            Expect.isOk retrieved "should be ok"
            let retrievedOkValue = retrieved.OkValue
            Expect.isSome retrievedOkValue "should be some"
