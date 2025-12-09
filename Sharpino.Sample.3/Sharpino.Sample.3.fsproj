@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Commons.fs" />
     <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Stadium/Stadium.fs" />
     <Compile Include="Stadium/Events.fs" />

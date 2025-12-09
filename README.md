@@ -168,6 +168,9 @@ Other configuration, using PgJson for instance and JSON or JSONB fields and diff
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
+Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for the Id type. It would be wise to do the same in any other example.
+The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
+
 - Version 4.5.4: few more versions of eventstore functions handling task/cancellationToken
 - Version 4.5.3: removed some dupication in eventstore
 - Version 4.5.2: changed the definition of "undoer" in core (returning new state not only compensation events). Cleaned core a little. It may break existing code ("undoers" may need an update).

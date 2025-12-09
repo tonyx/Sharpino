@@ -22,7 +22,7 @@ The test suite verifies the following aspects of the Stadium Seat Booking System
    - State consistency checks
    - Concurrent booking scenarios
 
-4. **Persistence**
+4. **Persistence**[Row.fs](../Sharpino.Sample.3/Rows/Row.fs)
    - In-memory storage tests
    - PostgreSQL integration tests
    - State restoration from event stream
