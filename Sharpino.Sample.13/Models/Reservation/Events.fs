@@ -8,9 +8,9 @@ open Sharpino.Sample._13.Models.Reservation
 
 module ReservationEvents =
     type ReservationEvent =
-        | ClaimAdded of Guid * string
-        | ClaimRemoved of Guid * string
-        | Claimed of Guid * string
+        | ClaimAdded of UserId * string
+        | ClaimRemoved of UserId * string
+        | Claimed of UserId * string
         interface Event<Reservation.ReservationForNickNames> with
             member this.Process (x: Reservation.ReservationForNickNames) =
                 match this with

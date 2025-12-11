@@ -13,13 +13,13 @@ module User =
         | Books
 
     type User = {
-        Id: Guid
+        Id: UserId
         NickName: string
         Preferences: List<Preference>
     }
     with 
         static member MkUser (nickName: string) = {
-            Id = Guid.NewGuid()
+            Id = UserId.New
             NickName = nickName
             Preferences = []
         }
@@ -58,6 +58,6 @@ module User =
         
         interface Aggregate<string> with
             member this.Id =
-                this.Id
+                this.Id.Id
             member this.Serialize =
                 this.Serialize

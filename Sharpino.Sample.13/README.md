@@ -1,8 +1,7 @@
 # Reservation pattern for user registration (Sharpino.Sample.13)
 
 ## warning: 
-This is ongoing and some tests are suspeded. Some confliciting writes will not happen because of the optimistic lock, independently
-of the reservation pattern.
+the reservation pattern could be too much as the optimistic lock is enough.
 
 This sample explores a concurrency-safe approach to user registration using a short-lived reservation (claim) pattern.
 

@@ -50,7 +50,7 @@ let tests =
             let user = User.MkUser "test"
             let result = registrationManager.RegisterUser user
             Expect.isOk result "should be ok"
-            let retrievedUser = registrationManager.GetUser user.Id
+            let retrievedUser = registrationManager.GetUser user.Id.Id
             Expect.isOk retrievedUser "should be ok"
 
         testCaseAsync "concurrent register same nickname - only one succeeds" <| async {
@@ -153,8 +153,6 @@ let tests =
                 Expect.equal users.Head.NickName "test" "stored user has expected nickname"
             | Error e -> failtestf "unexpected error reading users: %s" e
         }
-        
-        
     ]
     |> testSequenced
     

@@ -1,14 +1,15 @@
 namespace Sharpino.Sample._13.Models
 
 open Sharpino.Core
+open Sharpino.Sample._13.Commons
 open Sharpino.Sample._13.Models.Reservation
 open Sharpino.Sample._13.Models.ReservationEvents
 
 module ReservationCommands =
     type ReservationCommand =
-        | AddClaim of System.Guid * string
-        | RemoveClaim of System.Guid * string
-        | Claim of System.Guid * string
+        | AddClaim of UserId * string
+        | RemoveClaim of UserId * string
+        | Claim of UserId * string
         interface AggregateCommand<Reservation.ReservationForNickNames, ReservationEvent> with
             member this.Execute (x: Reservation.ReservationForNickNames) =
                 match this with

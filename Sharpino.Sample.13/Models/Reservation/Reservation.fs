@@ -11,14 +11,14 @@ open FsToolkit.ErrorHandling
 module Reservation =
     type ReservationForNickNames = {
         Id: Guid
-        Claims: List<Guid * string>
+        Claims: List<UserId * string>
     }
     with
         static member MkReservationForNickNames () = {
             Id = Guid.NewGuid()
             Claims = []
         }
-        member this.AddClaim (reservation: Guid * string) =
+        member this.AddClaim (reservation: UserId * string) =
             result
                 {
                     do!
@@ -32,7 +32,7 @@ module Reservation =
                                 Claims = this.Claims @ [reservation]
                         }
                 } 
-        member this.RemoveClaim (reservation: Guid * string) =
+        member this.RemoveClaim (reservation: UserId * string) =
             result
                 {
                     return
@@ -42,7 +42,7 @@ module Reservation =
                         }
                 }
                 
-        member this.Claim (reservation: Guid * string) =
+        member this.Claim (reservation: UserId * string) =
             if this.Claims |> List.exists (fun r -> r = reservation) then
                 this.RemoveClaim reservation
             else
