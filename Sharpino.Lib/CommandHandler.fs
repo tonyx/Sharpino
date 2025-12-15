@@ -1361,9 +1361,7 @@ module CommandHandler =
                     |> command.Execute
             
                 let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders md command
-                // printf "XXXX: storing events\n"
                 let! ids = storeEvents storage messageSenders executedCommand
-                // printf "XXXX: stored events\n"
                 
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
                 
