@@ -42,6 +42,7 @@ let setUp () =
     pgEventStore.Reset Course.Version Course.StorageName
     pgEventStore.ResetAggregateStream Course.Version Course.StorageName
     AggregateCache3.Instance.Clear()
+    DetailsCache.Instance.Clear()
     
 let courseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
 let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
@@ -152,7 +153,7 @@ let tests =
           
           // then
           
-          let studentDetailsRefreshed = studentDetailsValue.Refresh ()
+          let studentDetailsRefreshed = courseManager.GetStudentDetails student.Id
           Expect.isOk studentDetailsRefreshed "Student details not refreshed"
           Expect.equal studentDetailsRefreshed.OkValue.Student.Name "Jack" "Student name not refreshed"
           Expect.equal studentDetailsRefreshed.OkValue.Courses.Length 1 "Student courses not refreshed"
@@ -180,15 +181,12 @@ let tests =
           let renameStudent = courseManager.RenameStudent (student.Id, "John")
           Expect.isOk renameStudent "Student not renamed"
           
-          // refresh should not be done at this level
-          let doCacheRefresh = DetailsCache.Instance.Refresh<StudentDetails> (DetailsCacheKey (typeof<StudentDetails>, student.Id.Id))
-          
           // then
           let retrieveDetailsAgain = courseManager.GetStudentDetails student.Id
           let studentDetailsValueAgain: StudentDetails = retrieveDetailsAgain.OkValue
           Expect.equal studentDetailsValueAgain.Student.Name "John" "Student name not retrieved"
        
-       ftestCase "enroll a student to a course, then retrieve the details, then change the course name etc... - Ok" <| fun _ ->
+       testCase "enroll a student to a course, then retrieve the details, then change the course name etc... - Ok" <| fun _ ->
           setUp ()
           let math = Course.MkCourse ("math", 10)
           let english = Course.MkCourse ("english", 10)
@@ -217,6 +215,51 @@ let tests =
           Expect.equal studentDetailsValueAgain.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValueAgain.Courses.Length 1 "Student courses not retrieved"
           Expect.equal studentDetailsValueAgain.Courses.Head.Name "mathematics" "Course name not retrieved"
+      
+       testCase "create a course, get its details, rename the course and the details are refreshed - Ok" <| fun _ ->
+          // given
+          setUp ()
+          let course = Course.MkCourse ("Math", 10)
+          let courseAdded = courseManager.AddCourse course
+          let (Ok courseDetail) = courseManager.GetCourseDetails course.Id
+          
+          Expect.equal courseDetail.Course.Name "Math" "should be ok"
+          
+          // when
+          let renameCourse = courseManager.RenameCourse (course.Id, "Mathematics")
+          Expect.isOk renameCourse "course not renamed"
+          
+          // then
+          let (Ok courseDetailsRetrieved) = courseManager.GetCourseDetails course.Id
+          Expect.equal courseDetailsRetrieved.Course.Name "Mathematics" "should be equal"
+          
+       testCase "create two courses, create a student, subscribe the student to both the courses, then
+                 rename both the courses and verify that the student details update both the course names " <| fun _ ->
+         // given
+         setUp ()
+         let math = Course.MkCourse ("Math", 10)
+         let english = Course.MkCourse ("English", 10)
+         let john = Student.MkStudent ("John", 3)
+         let courseAdded = courseManager.AddMultipleCourses [|math; english|]
+         let studentAdded = courseManager.AddStudent john
+         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+         Expect.isOk enrollStudentToMath "Student not enrolled to math"
+         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
+         Expect.isOk enrollStudentToEnglish "Student not enrolled to english"
+         let studentDetails = courseManager.GetStudentDetails john.Id
+         let coursesNames = studentDetails.OkValue.Courses |> List.map (fun c -> c.Name)
+         Expect.equal coursesNames ["Math"; "English"] "should be equal"
+         
+         // when
+         let renameMath = courseManager.RenameCourse (math.Id, "Mathematics")
+         let renameEnglish = courseManager.RenameCourse (english.Id, "English reading")
+        
+         // then 
+         let studentDetailsAgain = courseManager.GetStudentDetails john.Id
+         let coursesNamesAgain = studentDetailsAgain.OkValue.Courses |> List.map (fun c -> c.Name)
+         Expect.equal coursesNamesAgain ["Mathematics"; "English reading"] "should be equal"
+       
+         
           
     ]
     |> testSequenced

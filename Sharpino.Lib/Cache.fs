@@ -43,9 +43,27 @@ module Cache =
         let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
         
         let objectDetailsAssociations = ConcurrentDictionary<AggregateId, List<DetailsCacheKey>>()
+        let objectDetailsAssociationsCache = new MemoryCache(MemoryCacheOptions())
         
         static let instance = DetailsCache ()
         static member Instance = instance
+                
+        member this.UpdateSingleAggregateIdAssociation (aggregateId: AggregateId) (key: DetailsCacheKey) =
+            objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
+      
+        member this.UpdateSingleAggregateIdAssociationRef (aggregateId: AggregateId) (key: DetailsCacheKey) =
+            objectDetailsAssociationsCache.Set<obj>(aggregateId, key, entryOptions) |> ignore
+             
+        member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
+            
+            for aggregateId in aggregateIds do
+                objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
+            ()
+            
+        member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
+            for aggregateId in aggregateIds do
+                objectDetailsAssociationsCache.Set<obj>(aggregateId, key, entryOptions) |> ignore
+            ()
                 
         member this.Refresh<'A when 'A :> Refreshable<'A>> (key: DetailsCacheKey) =
             let v = statesDetails.Get<obj>(key.Value)
@@ -61,6 +79,66 @@ module Cache =
             else
                 Error "not found"
         
+        member this.UnconstrainedRefresh (key: DetailsCacheKey) =
+            let v = statesDetails.Get<obj>(key.Value)
+            let interfaces = v.GetType().GetInterfaces()
+            let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<Refreshable<_>>)
+            
+            if not (obj.ReferenceEquals(v, null)) then
+                match refreshableInterface with
+                | Some _ ->
+                    let refreshMethod = v.GetType().GetMethod("Refresh")
+                    let refreshed = refreshMethod.Invoke(v, [||])
+                    let resultType = refreshableInterface.Value.GetGenericArguments().[0]
+                    let result = 
+                        try
+                            // Create a Result<obj, string> from the refreshed object
+                            let resultType = typedefof<Result<_, _>>.MakeGenericType([| resultType; typeof<string> |])
+                            let okValue = resultType.GetProperty("IsOk").GetValue(refreshed)
+                            if unbox<bool> okValue then
+                                let value = resultType.GetProperty("ResultValue").GetValue(refreshed)
+                                Ok value
+                            else
+                                let error = resultType.GetProperty("ErrorValue").GetValue(refreshed) :?> string
+                                Error error
+                        with ex ->
+                            Error (sprintf "Error processing refresh result: %s" ex.Message)
+                    
+                    match result with
+                    | Ok resultObj ->
+                        // Update the cache directly without going through TryCache
+                        try
+                            statesDetails.Set<obj>(key.Value, resultObj, entryOptions) |> ignore
+                            Ok resultObj
+                        with :? _ as e ->
+                            logger.Value.LogError (sprintf "error: cache update failed. %A\n" e)
+                            statesDetails.Compact(1.0)
+                            Error "Failed to update cache"
+                    | Error e -> Error e
+                | _ -> Error "Object does not implement Refreshable interface"
+            else
+                Error "not found"
+        member this.RefreshDependentDetails (aggregateId: AggregateId) =
+            let exists, keys = objectDetailsAssociations.TryGetValue aggregateId
+            if exists then
+                // printf "XXXX key found\n"
+                for key in keys do
+                    // printf "XXXXX key %A" key
+                    let refreshed =
+                        this.UnconstrainedRefresh key
+                    // printfn "XXXXX refeshed: %A" refreshed
+                    ()
+            ()
+        
+        member this.RefreshDependentDetailsRef (aggregateId: AggregateId) =
+            let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+            if not (obj.ReferenceEquals(keys, null)) then
+                for key in keys do
+                    let refreshed =
+                        this.UnconstrainedRefresh key
+                    ()    
+            () 
+        
         member private this.TryCache (key: string, value: Refreshable<_>) =
             try
                 statesDetails.Set<obj>(key, value, entryOptions) |> ignore
@@ -69,18 +147,28 @@ module Cache =
                 statesDetails.Compact(1.0)
                 ()
                     
-        member this.Memoize (f: unit -> Result<Refreshable<_>, string>) (key: DetailsCacheKey) =
+        member this.Memoize (f: unit -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
+            // printfn "XXXX: entered in memoize ref"
             let v = statesDetails.Get<obj>(key.Value)
             if not (obj.ReferenceEquals(v, null)) then
                 v |> Ok
             else
                 let res = f()
                 match res with
-                | Ok result ->
+                | Ok (result, dependandIds) ->
                     this.TryCache (key.Value, result)
+                    
+                    this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
+                    
+                    // this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key
+                    
                     Ok (result |> unbox)
                 | Error e ->
                     Error e
+        
+        member this.Clear () =
+            statesDetails.Compact(1.0)
+            objectDetailsAssociations.Clear()
     
     type AggregateCache3 private () =
         let statePerAggregate = new MemoryCache(MemoryCacheOptions())
