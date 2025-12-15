@@ -48,38 +48,55 @@ module Cache =
         static let instance = DetailsCache ()
         static member Instance = instance
                 
-        member this.UpdateSingleAggregateIdAssociation (aggregateId: AggregateId) (key: DetailsCacheKey) =
-            objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
+        // member this.UpdateSingleAggregateIdAssociation (aggregateId: AggregateId) (key: DetailsCacheKey) =
+        //     objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
       
-        member this.UpdateSingleAggregateIdAssociationRef (aggregateId: AggregateId) (key: DetailsCacheKey) =
-            objectDetailsAssociationsCache.Set<obj>(aggregateId, key, entryOptions) |> ignore
+        
+        // member this.UpdateSingleAggregateIdAssociationRef (aggregateId: AggregateId) (key: DetailsCacheKey) =
+        //     objectDetailsAssociationsCache.Set<obj>(aggregateId, [key], entryOptions) |> ignore
              
+        // member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
+        //     for aggregateId in aggregateIds do
+        //         objectDetailsAssociations.AddOrUpdate(
+        //             aggregateId, 
+        //             [key], 
+        //             (fun _ existingKeys -> 
+        //                 if not (List.contains key existingKeys) then
+        //                     key :: existingKeys
+        //                 else
+        //                     existingKeys
+        //             )
+        //         ) |> ignore
+        //     ()
+            
         member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
-            
             for aggregateId in aggregateIds do
-                objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
-            ()
-            
-        member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
-            for aggregateId in aggregateIds do
-                objectDetailsAssociationsCache.Set<obj>(aggregateId, key, entryOptions) |> ignore
+                let existingKeys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+                let updatedKeys = 
+                    if isNull (box existingKeys) then
+                        [key]
+                    elif not (List.contains key existingKeys) then
+                        key :: existingKeys
+                    else
+                        existingKeys
+                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, entryOptions) |> ignore
             ()
                 
-        member this.Refresh<'A when 'A :> Refreshable<'A>> (key: DetailsCacheKey) =
-            let v = statesDetails.Get<obj>(key.Value)
-            if not (obj.ReferenceEquals(v, null)) then
-                let refreshable = (v :?> 'A)
-                let refreshed = refreshable.Refresh()
-                match refreshed with
-                | Ok result ->
-                    this.TryCache (key.Value, result)
-                    Ok (result |> unbox)
-                | Error e ->
-                    Error e
-            else
-                Error "not found"
+        // member this.Refresh<'A when 'A :> Refreshable<'A>> (key: DetailsCacheKey) =
+        //     let v = statesDetails.Get<obj>(key.Value)
+        //     if not (obj.ReferenceEquals(v, null)) then
+        //         let refreshable = (v :?> 'A)
+        //         let refreshed = refreshable.Refresh()
+        //         match refreshed with
+        //         | Ok result ->
+        //             this.TryCache (key.Value, result)
+        //             Ok (result |> unbox)
+        //         | Error e ->
+        //             Error e
+        //     else
+        //         Error "not found"
         
-        member this.UnconstrainedRefresh (key: DetailsCacheKey) =
+        member this.Refresh (key: DetailsCacheKey) =
             let v = statesDetails.Get<obj>(key.Value)
             let interfaces = v.GetType().GetInterfaces()
             let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<Refreshable<_>>)
@@ -118,24 +135,22 @@ module Cache =
                 | _ -> Error "Object does not implement Refreshable interface"
             else
                 Error "not found"
-        member this.RefreshDependentDetails (aggregateId: AggregateId) =
-            let exists, keys = objectDetailsAssociations.TryGetValue aggregateId
-            if exists then
-                // printf "XXXX key found\n"
-                for key in keys do
-                    // printf "XXXXX key %A" key
-                    let refreshed =
-                        this.UnconstrainedRefresh key
-                    // printfn "XXXXX refeshed: %A" refreshed
-                    ()
-            ()
+                
+        // member this.RefreshDependentDetails (aggregateId: AggregateId) =
+        //     let exists, keys = objectDetailsAssociations.TryGetValue aggregateId
+        //     if exists then
+        //         for key in keys do
+        //             let refreshed =
+        //                 this.UnconstrainedRefresh key
+        //             ()
+        //     ()
         
-        member this.RefreshDependentDetailsRef (aggregateId: AggregateId) =
+        member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
                     let refreshed =
-                        this.UnconstrainedRefresh key
+                        this.Refresh key
                     ()    
             () 
         
@@ -158,9 +173,10 @@ module Cache =
                 | Ok (result, dependandIds) ->
                     this.TryCache (key.Value, result)
                     
-                    this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
+                    // this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
+                    // focus intruder refactoring in progress:
                     
-                    // this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key
+                    this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
                     
                     Ok (result |> unbox)
                 | Error e ->

@@ -189,6 +189,7 @@ module CourseManager =
                     }
             match r with
             | Ok x ->
+                // DetailsCache.Instance.RefreshDependentDetails id.Id
                 DetailsCache.Instance.RefreshDependentDetails id.Id
                 Ok x
             | Error e -> Error e
@@ -208,6 +209,7 @@ module CourseManager =
                     }
             match r with
             | Ok x ->
+                // DetailsCache.Instance.RefreshDependentDetails id.Id 
                 DetailsCache.Instance.RefreshDependentDetails id.Id 
                 Ok x
             | Error e -> Error e
@@ -229,6 +231,7 @@ module CourseManager =
                     }
             match r with
             | Ok x ->
+                // DetailsCache.Instance.RefreshDependentDetails studentId.Id
                 DetailsCache.Instance.RefreshDependentDetails studentId.Id
                 Ok x
             | Error e -> Error e    

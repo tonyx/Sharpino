@@ -258,7 +258,47 @@ let tests =
          let studentDetailsAgain = courseManager.GetStudentDetails john.Id
          let coursesNamesAgain = studentDetailsAgain.OkValue.Courses |> List.map (fun c -> c.Name)
          Expect.equal coursesNamesAgain ["Mathematics"; "English reading"] "should be equal"
+     
+       testCase "create two courses, two students, subscribe both the students to both the courses, then
+                 retrieve both the students details, and at the end rename both the courses and
+                 finally retrieve again the student details varifying that for both the renaming of
+                 the courses actuall happen" <| fun _ ->
+         setUp ()
+         let math = Course.MkCourse ("Math", 10)
+         let english = Course.MkCourse ("English", 10)
+         let john = Student.MkStudent ("John", 3)
+         let jack = Student.MkStudent ("Jack", 3)
+         
+         let addJohn = courseManager.AddStudent john
+         let addJack = courseManager.AddStudent jack
+         let addMath = courseManager.AddCourse math
+         let addEnglish = courseManager.AddCourse english
+         
+         let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+         let enrollJohnToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
+         let enrollJackToMath = courseManager.EnrollStudentToCourse jack.Id math.Id
+         let enrollJackToEnglish = courseManager.EnrollStudentToCourse jack.Id english.Id
+         
+         let (Ok johnDetails) = courseManager.GetStudentDetails john.Id
+         let (Ok jackDetails) = courseManager.GetStudentDetails jack.Id
+         
+         let johnCourses = johnDetails.Courses |> List.map (fun c -> c.Name)
+         Expect.equal johnCourses ["Math"; "English"] "should be equal"
+         
+         let jackCourses = jackDetails.Courses |> List.map (fun c -> c.Name)
+         Expect.equal jackCourses ["Math"; "English"] "should be equal"
        
+         let renameMath = courseManager.RenameCourse (math.Id, "Mathematics")
+         let renameEnglish = courseManager.RenameCourse (english.Id, "English reading")
+         
+         let (Ok johnDetails2) = courseManager.GetStudentDetails john.Id
+         let (Ok jackDetails2) = courseManager.GetStudentDetails jack.Id
+         
+         let johnCourses2 = johnDetails2.Courses |> List.map (fun c -> c.Name)
+         Expect.equal johnCourses2 ["Mathematics"; "English reading"] "should be equal"
+         
+         let jackCourses2 = jackDetails2.Courses |> List.map (fun c -> c.Name)
+         Expect.equal jackCourses2 ["Mathematics"; "English reading"] "should be equal"
          
           
     ]
