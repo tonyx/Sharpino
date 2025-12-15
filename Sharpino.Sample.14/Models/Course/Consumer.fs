@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._11
+namespace Sharpino.Sample._14
 
 open System
 open System.Text
@@ -13,8 +13,8 @@ open Sharpino.EventBroker
 open Sharpino.Core
 
 open Sharpino.RabbitMq
-open Sharpino.Sample._11.Course
-open Sharpino.Sample._11.CourseEvents
+open Sharpino.Sample._14.Course
+open Sharpino.Sample._14.CourseEvents
 
 module CourseConsumer =
     type CourseConsumer(sp: IServiceProvider, logger: ILogger<CourseConsumer>, rb: RabbitMqReceiver2) =

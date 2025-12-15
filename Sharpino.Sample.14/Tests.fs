@@ -6,20 +6,21 @@ open System.Threading
 open Expecto
 open Microsoft.Extensions.Logging
 open RabbitMQ.Client
-open Shaprino.Sample._11.StudentConsumer
+open Shaprino.Sample._14.StudentConsumer
 open Sharpino
 open Sharpino.Cache
 open Sharpino.CommandHandler
 open Sharpino.EventBroker
 open Sharpino.RabbitMq
-open Sharpino.Sample._11.Course
-open Sharpino.Sample._11.CourseConsumer
-open Sharpino.Sample._11.CourseEvents
-open Sharpino.Sample._11.CourseManager
+open Sharpino.Sample._14.Course
+open Sharpino.Sample._14.CourseConsumer
+open Sharpino.Sample._14.CourseEvents
+open Sharpino.Sample._14.CourseManager
 
 open DotNetEnv
-open Sharpino.Sample._11.Student
-open Sharpino.Sample._11.StudentEvents
+open Sharpino.Sample._14.Details.Details
+open Sharpino.Sample._14.Student
+open Sharpino.Sample._14.StudentEvents
 open Sharpino.Storage
 
 open Microsoft.Extensions.DependencyInjection
@@ -99,7 +100,123 @@ let tests =
           Expect.equal retrievePhysics.Students.Length 0 "should be zero"
           let retrieveStudent = courseManager.GetStudent student.Id |> Result.get
           Expect.equal retrieveStudent.Courses.Length 2 "should be two"
+    
+       testCase "enroll a student in some courses and retrieve the details of the student - Ok" <| fun _ ->
+          // given
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+          let courseAdded = courseManager.AddMultipleCourses [|math; english; physics|]
+          Expect.isOk courseAdded "Courses not created"
+          let student = Student.MkStudent ("Jack", 3)
+          let addStudent = courseManager.AddStudent student
+          Expect.isOk addStudent "Student not created"
           
+          // when
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          Expect.isOk enrollStudentToMath "Student not enrolled to math"
+          let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.Id english.Id
+          Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
+          let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.Id physics.Id
+          Expect.isOk enrollStudentToPhysics "Student not enrolled to physics"
+          
+          // then
+          let studentDetails = courseManager.GetStudentDetails student.Id
+          Expect.isOk studentDetails "Student details not retrieved"
+          let studentDetailsValue: StudentDetails = studentDetails.OkValue
+          Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValue.Courses.Length 3 "Student courses not retrieved"
+      
+       testCase "enroll a student in a course, then retrieve the details, then enroll it in another course and finally refresh the details using warmup ()" <| fun _ ->
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+          let courseAdded = courseManager.AddMultipleCourses [|math; english; physics|]
+          Expect.isOk courseAdded "Courses not created"
+          let student = Student.MkStudent ("Jack", 3)
+          let addStudent = courseManager.AddStudent student
+          Expect.isOk addStudent "Student not created"
+          
+          // when
+          let studentDetails = courseManager.GetStudentDetails student.Id
+          Expect.isOk studentDetails "Student details not retrieved"
+          let studentDetailsValue: StudentDetails = studentDetails.OkValue
+          Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValue.Courses.Length 0 "Student courses not retrieved"
+          
+          // when
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          Expect.isOk enrollStudentToMath "Student not enrolled to math"
+          
+          // then
+          
+          let studentDetailsRefreshed = studentDetailsValue.Refresh ()
+          Expect.isOk studentDetailsRefreshed "Student details not refreshed"
+          Expect.equal studentDetailsRefreshed.OkValue.Student.Name "Jack" "Student name not refreshed"
+          Expect.equal studentDetailsRefreshed.OkValue.Courses.Length 1 "Student courses not refreshed"
+      
+       testCase "enroll a student to a course,
+                 then retrieve the details,
+                 then change the student name and the existing instance retrieved from the cache is updated - Ok" <| fun _ ->
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+          let courseAdded = courseManager.AddMultipleCourses [|math; english; physics|]
+          Expect.isOk courseAdded "Courses not created"
+          let student = Student.MkStudent ("Jack", 3)
+          let addStudent = courseManager.AddStudent student
+          Expect.isOk addStudent "Student not created"
+          
+          // when
+          let studentDetails = courseManager.GetStudentDetails student.Id
+          Expect.isOk studentDetails "Student details not retrieved"
+          let studentDetailsValue: StudentDetails = studentDetails.OkValue
+          Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValue.Courses.Length 0 "Student courses not retrieved"
+          
+          let renameStudent = courseManager.RenameStudent (student.Id, "John")
+          Expect.isOk renameStudent "Student not renamed"
+          
+          // refresh should not be done at this level
+          let doCacheRefresh = DetailsCache.Instance.Refresh<StudentDetails> (DetailsCacheKey (typeof<StudentDetails>, student.Id.Id))
+          
+          // then
+          let retrieveDetailsAgain = courseManager.GetStudentDetails student.Id
+          let studentDetailsValueAgain: StudentDetails = retrieveDetailsAgain.OkValue
+          Expect.equal studentDetailsValueAgain.Student.Name "John" "Student name not retrieved"
+       
+       ftestCase "enroll a student to a course, then retrieve the details, then change the course name etc... - Ok" <| fun _ ->
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+          let courseAdded = courseManager.AddMultipleCourses [|math; english; physics|]
+          Expect.isOk courseAdded "Courses not created"
+          let student = Student.MkStudent ("Jack", 3)
+          let addStudent = courseManager.AddStudent student
+          Expect.isOk addStudent "Student not created"
+          
+          // when
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          Expect.isOk enrollStudentToMath "Student not enrolled to math"
+          
+          let studentDetails = courseManager.GetStudentDetails student.Id
+          Expect.isOk studentDetails "Student details not retrieved"
+          let studentDetailsValue: StudentDetails = studentDetails.OkValue
+          Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValue.Courses.Length 1 "Student courses not retrieved"
+          
+          let renameCourse = courseManager.RenameCourse (math.Id, "mathematics")
+          Expect.isOk renameCourse "Course not renamed"
+          
+          let studentDetailsAgain = courseManager.GetStudentDetails student.Id
+          let studentDetailsValueAgain: StudentDetails = studentDetailsAgain.OkValue
+          Expect.equal studentDetailsValueAgain.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValueAgain.Courses.Length 1 "Student courses not retrieved"
+          Expect.equal studentDetailsValueAgain.Courses.Head.Name "mathematics" "Course name not retrieved"
           
     ]
     |> testSequenced

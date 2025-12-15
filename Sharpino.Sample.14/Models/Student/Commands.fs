@@ -1,8 +1,8 @@
-namespace Sharpino.Sample._11
+namespace Sharpino.Sample._14
 
-open Sharpino.Sample._11.Definitions
-open Sharpino.Sample._11.Student
-open Sharpino.Sample._11.StudentEvents
+open Sharpino.Sample._14.Definitions
+open Sharpino.Sample._14.Student
+open Sharpino.Sample._14.StudentEvents
 
 open System
 open Sharpino.Core
@@ -12,6 +12,7 @@ module StudentCommands =
     type StudentCommands =
         | Enroll of CourseId
         | Unenroll of CourseId
+        | Rename of string
         interface AggregateCommand<Student, StudentEvents> with
             member this.Execute (student: Student) =
                 match this with
@@ -21,6 +22,9 @@ module StudentCommands =
                 | Unenroll courseId ->
                     student.UnenrollCourse courseId
                     |> Result.map (fun s -> ( s, [ UnenrolledCourse courseId ]))
+                | Rename name ->
+                    student.Rename name
+                    |> Result.map (fun s -> ( s, [ Renamed name ]))    
             member this.Undoer =
                 match this with
                 | Enroll courseId -> 

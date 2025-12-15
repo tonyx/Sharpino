@@ -18,6 +18,7 @@
     <Compile Include="Models/Student/Events.fs" />  
     <Compile Include="Models/Student/Commands.fs" />
     <Compile Include="Models/Student/Consumer.fs" />
+    <Compile Include="Details.fs" />
     <Compile Include="CourseManager.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="TestUtils.fs" />

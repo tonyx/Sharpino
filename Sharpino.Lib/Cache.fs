@@ -28,14 +28,68 @@ module Cache =
             printf "sharpinoSettings.json file not found using default!!! %A\n" ex
             Conf.defaultConf
    
-    type AggregateCache3 private ()  =
+    type Refreshable<'A> =
+        abstract member Refresh: unit -> Result<'A, string>
+   
+    type DetailsCacheKey =
+        | DetailsCacheKey of Type * Guid
+        with
+            member this.Value =
+                match this with
+                | DetailsCacheKey (t, id) -> sprintf "%s:%A" t.Name id
+        
+    type DetailsCache private () =
+        let statesDetails = new MemoryCache(MemoryCacheOptions())
+        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+        
+        let objectDetailsAssociations = ConcurrentDictionary<AggregateId, List<DetailsCacheKey>>()
+        
+        static let instance = DetailsCache ()
+        static member Instance = instance
+                
+        member this.Refresh<'A when 'A :> Refreshable<'A>> (key: DetailsCacheKey) =
+            let v = statesDetails.Get<obj>(key.Value)
+            if not (obj.ReferenceEquals(v, null)) then
+                let refreshable = (v :?> 'A)
+                let refreshed = refreshable.Refresh()
+                match refreshed with
+                | Ok result ->
+                    this.TryCache (key.Value, result)
+                    Ok (result |> unbox)
+                | Error e ->
+                    Error e
+            else
+                Error "not found"
+        
+        member private this.TryCache (key: string, value: Refreshable<_>) =
+            try
+                statesDetails.Set<obj>(key, value, entryOptions) |> ignore
+            with :? _ as e ->
+                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                statesDetails.Compact(1.0)
+                ()
+                    
+        member this.Memoize (f: unit -> Result<Refreshable<_>, string>) (key: DetailsCacheKey) =
+            let v = statesDetails.Get<obj>(key.Value)
+            if not (obj.ReferenceEquals(v, null)) then
+                v |> Ok
+            else
+                let res = f()
+                match res with
+                | Ok result ->
+                    this.TryCache (key.Value, result)
+                    Ok (result |> unbox)
+                | Error e ->
+                    Error e
+    
+    type AggregateCache3 private () =
         let statePerAggregate = new MemoryCache(MemoryCacheOptions())
+        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
         static let instance = AggregateCache3()
         static member Instance = instance
         
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
-                let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
                 statePerAggregate.Set<(EventId * obj)>(aggregateId, (eventId, resultState), entryOptions) |> ignore
                 ()
                 
