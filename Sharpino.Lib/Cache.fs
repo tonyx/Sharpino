@@ -42,7 +42,8 @@ module Cache =
         let statesDetails = new MemoryCache(MemoryCacheOptions())
         let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
         
-        let objectDetailsAssociations = ConcurrentDictionary<AggregateId, List<DetailsCacheKey>>()
+        // let objectDetailsAssociations = ConcurrentDictionary<AggregateId, List<DetailsCacheKey>>()
+        
         let objectDetailsAssociationsCache = new MemoryCache(MemoryCacheOptions())
         
         static let instance = DetailsCache ()
@@ -184,7 +185,8 @@ module Cache =
         
         member this.Clear () =
             statesDetails.Compact(1.0)
-            objectDetailsAssociations.Clear()
+            // objectDetailsAssociations.Clear()
+            objectDetailsAssociationsCache.Compact(1.0)
     
     type AggregateCache3 private () =
         let statePerAggregate = new MemoryCache(MemoryCacheOptions())

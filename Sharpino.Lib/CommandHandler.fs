@@ -1361,16 +1361,17 @@ module CommandHandler =
                     |> command.Execute
             
                 let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders md command
-                // printf "XXXX: storing events\n"
                 let! ids = storeEvents storage messageSenders executedCommand
-                // printf "XXXX: stored events\n"
                 
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
                 
                 let _ =
+                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                let _ =
                     mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
                 let _ =
                     optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    
                 return ()
             }
     
@@ -1695,6 +1696,11 @@ module CommandHandler =
                 
                 let queueNameA1 = 'A1.Version + 'A1.StorageName
                 let queueNameA2 = 'A2.Version + 'A2.StorageName
+                
+                let _ =
+                    DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                let _ =
+                    DetailsCache.Instance.RefreshDependentDetails aggregateId2
                 
                 let _ = mkAggregateSnapshotIfIntervalPassed3<'F>
                                 eventStore

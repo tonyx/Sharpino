@@ -322,7 +322,6 @@ module StateView =
         (eventStore: IEventStore<'F>)
         =
             logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
-            // getLastAggregateSnapshot 
             let computeNewStateAndLatestEventId =
                 fun () ->
                     result {
@@ -349,6 +348,15 @@ module StateView =
                 logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
 
+    let inline getRefreshableDetails<'A>
+        (refreshableDetails: unit -> Result<Refreshable<'A> * List<Guid>, string>)
+        (key: DetailsCacheKey) =
+        
+        let result = DetailsCache.Instance.Memoize refreshableDetails key
+        match result with
+        | Error e -> Error e
+        | Ok res -> Ok (res :?> 'A)
+    
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)

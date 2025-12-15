@@ -68,7 +68,7 @@ module CourseManager =
                 }
         
         member this.GetCourseDetails (id: CourseId) =
-            let result =
+            let detailsBuilder =
                 fun () ->
                     let refresher =
                         fun () ->
@@ -87,18 +87,14 @@ module CourseManager =
                                     Refresher = refresher
                                 } :> Refreshable<_>
                                 ,
-                                id.Id:: (students |> List.map (fun x -> x.Id.Id))
+                                id.Id:: (students |> List.map _.Id.Id)
                             )
                     }
             let key = DetailsCacheKey (typeof<CourseDetails>, id.Id)
-            let result = DetailsCache.Instance.Memoize result key
-            
-            match result with
-            | Error e -> Error e
-            | Ok res -> Ok (res :?> CourseDetails)
+            StateView.getRefreshableDetails<CourseDetails> detailsBuilder key
         
         member this.GetStudentDetails (id: StudentId) =
-            let result =
+            let detailsBuilder =
                 fun () ->
                     let refresher =
                         fun () ->
@@ -118,15 +114,11 @@ module CourseManager =
                                     Refresher = refresher
                                 } :> Refreshable<_>
                                 ,
-                                id.Id:: (courses |> List.map (fun x -> x.Id.Id))
+                                id.Id:: (courses |> List.map _.Id.Id)
                             )
                         }
             let key = DetailsCacheKey (typeof<StudentDetails>, id.Id)
-            let result = DetailsCache.Instance.Memoize result key
-            
-            match result with
-            | Error e -> Error e
-            | Ok res -> Ok (res :?> StudentDetails)
+            StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
             
         member this.GetStudents (ids: List<StudentId>) =
             result
@@ -174,67 +166,47 @@ module CourseManager =
                 }
         
         member this.RenameStudent (id: StudentId, newName: string) =
-            let r =
-                result
-                    {
-                        let renameCommand = StudentCommands.Rename newName
-                        let! result =
-                            runAggregateCommand<Student, StudentEvents, string>
-                                id.Id
-                                eventStore
-                                messageSenders
-                                renameCommand
-                        
-                        return result        
-                    }
-            match r with
-            | Ok x ->
-                // DetailsCache.Instance.RefreshDependentDetails id.Id
-                DetailsCache.Instance.RefreshDependentDetails id.Id
-                Ok x
-            | Error e -> Error e
+            result
+                {
+                    let renameCommand = StudentCommands.Rename newName
+                    let! result =
+                        runAggregateCommand<Student, StudentEvents, string>
+                            id.Id
+                            eventStore
+                            messageSenders
+                            renameCommand
+                    
+                    return result        
+                }
+            
         
         member this.RenameCourse (id: CourseId, newName: string) =
-            let r =
-                result
-                    {
-                        let renameCommand = CourseCommands.Rename newName
-                        let! result =
-                            runAggregateCommand<Course, CourseEvents, string>
-                                id.Id
-                                eventStore
-                                messageSenders
-                                renameCommand
-                        return result       
-                    }
-            match r with
-            | Ok x ->
-                // DetailsCache.Instance.RefreshDependentDetails id.Id 
-                DetailsCache.Instance.RefreshDependentDetails id.Id 
-                Ok x
-            | Error e -> Error e
+            result
+                {
+                    let renameCommand = CourseCommands.Rename newName
+                    let! result =
+                        runAggregateCommand<Course, CourseEvents, string>
+                            id.Id
+                            eventStore
+                            messageSenders
+                            renameCommand
+                    return result       
+                }
             
         member this.EnrollStudentToCourse (studentId: StudentId) (courseId: CourseId) =
-            let r =
-                result
-                    {
-                        let addCourseToStudentEnrollments = StudentCommands.Enroll courseId
-                        let addStudentToCourseEnrollments = CourseCommands.EnrollStudent studentId
-                        return!
-                            runTwoAggregateCommands
-                                studentId.Id
-                                courseId.Id
-                                eventStore
-                                messageSenders
-                                addCourseToStudentEnrollments
-                                addStudentToCourseEnrollments
-                    }
-            match r with
-            | Ok x ->
-                // DetailsCache.Instance.RefreshDependentDetails studentId.Id
-                DetailsCache.Instance.RefreshDependentDetails studentId.Id
-                Ok x
-            | Error e -> Error e    
+            result
+                {
+                    let addCourseToStudentEnrollments = StudentCommands.Enroll courseId
+                    let addStudentToCourseEnrollments = CourseCommands.EnrollStudent studentId
+                    return!
+                        runTwoAggregateCommands
+                            studentId.Id
+                            courseId.Id
+                            eventStore
+                            messageSenders
+                            addCourseToStudentEnrollments
+                            addStudentToCourseEnrollments
+                }
         
         
                 
