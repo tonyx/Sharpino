@@ -1,8 +1,16 @@
-namespace Sharpino.Sample._11
+namespace Sharpino.Sample._14
 open System
 open System.Text.Json.Serialization
 
 module Definitions =
+    
+    // type Observer<'A,'B>  =
+    //     abstract member Update: 'A -> 'B
+    // type Observable =
+    //     abstract member Attach: Observer<'A,'B> -> unit
+    //     abstract member Detach: Observer<'A,'B> -> unit
+    //     abstract member Notify: 'A -> unit
+        
     type CourseId =
         CourseId of Guid
         with

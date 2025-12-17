@@ -1,4 +1,4 @@
-namespace Shaprino.Sample._11
+namespace Shaprino.Sample._14
 
 open System
 open System.Collections.Concurrent
@@ -15,11 +15,11 @@ open Sharpino.EventBroker
 open Sharpino.Core
 
 open Sharpino.RabbitMq
-open Sharpino.Sample._11
-open Sharpino.Sample._11.Course
-open Sharpino.Sample._11.CourseEvents
-open Sharpino.Sample._11.Student
-open Sharpino.Sample._11.StudentEvents
+open Sharpino.Sample._14
+open Sharpino.Sample._14.Course
+open Sharpino.Sample._14.CourseEvents
+open Sharpino.Sample._14.Student
+open Sharpino.Sample._14.StudentEvents
 
 module StudentConsumer =
     type StudentConsumer(sp: IServiceProvider, logger: ILogger<StudentConsumer>, rb: RabbitMqReceiver2) =

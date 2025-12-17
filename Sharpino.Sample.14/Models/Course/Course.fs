@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._11
+namespace Sharpino.Sample._14
 
 open System
 open Sharpino.Commons
@@ -6,9 +6,9 @@ open Sharpino.Core
 open Sharpino
 open FsToolkit.ErrorHandling
 open System.Text.Json
-open Sharpino.Sample._11.Definitions
+open Sharpino.Sample._14.Definitions
 
-module  Course =
+module Course =
 
     let maximumNumberOfTeachers = 3
     type Course =
@@ -52,6 +52,14 @@ module  Course =
                                             this.Students |> List.filter (fun x -> x <> studentId)
                             }
                     }
+            
+            member this.Rename (name: string) =
+                result {
+                    do! 
+                        (name <> this.Name)
+                        |> Result.ofBool "course name is the same"
+                    return { this with Name = name }
+                }
             
             static member Version = "_01"
             static member StorageName = "_course"

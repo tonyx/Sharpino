@@ -1,4 +1,4 @@
-namespace Sharpino.Sample._11
+namespace Sharpino.Sample._14
 
 open System
 open Sharpino.Commons
@@ -6,7 +6,7 @@ open Sharpino
 open Sharpino.Core
 open System.Text.Json
 open System.Text.Json.Serialization
-open Sharpino.Sample._11.Definitions
+open Sharpino.Sample._14.Definitions
 
 module Student =
     type Student = {
@@ -48,6 +48,20 @@ module Student =
                                     Courses =
                                         this.Courses |> List.filter (fun x -> x <> courseId)
                                 
+                        }
+                }
+                
+        member this.Rename (name: string) =
+            result
+                {
+                    let! _ = 
+                        (this.Name <> name && name <> "")
+                        |> Result.ofBool "Name cannot be empty or equal to the existing one"
+                    return
+                        {
+                            this
+                                with
+                                    Name = name
                         }
                 }
             

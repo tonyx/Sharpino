@@ -14,12 +14,9 @@ open System
 
 open Sharpino.Lib.Core.Commons
 type Dish(id: Guid, name: String, ingredients: List<Guid>) =
-    let stateId = Guid.NewGuid()
-    let ingredients = ingredients
-
-    member this.StateId = stateId
     member this.Id = id
     member this.Name = name
+    member this.Ingredients = ingredients   
     member this.AddIngredient (id: Guid) =
         result {
             let! notAlreadyExists =
@@ -41,7 +38,6 @@ type Dish(id: Guid, name: String, ingredients: List<Guid>) =
             return Dish(this.Id, this.Name, newIgredients)
         }
 
-    member this.Ingredients = ingredients   
 
     static member StorageName =
         "_dish"
