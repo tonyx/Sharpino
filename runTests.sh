@@ -26,6 +26,12 @@ cd ../..
 cd Sharpino.Sample.9
 dotnet run
 cd ..
+cd Sharpino.Sample.10
+dotnet run
+cd ..
+cd Sharpino.Sample.14
+dotnet run
+cd ..
 cd Sharpino.Lib.Test
 dotnet run
 cd ..
