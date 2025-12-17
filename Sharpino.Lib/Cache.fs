@@ -128,19 +128,9 @@ module Cache =
                 else
                     Error "not found"
                 
-        // member this.RefreshDependentDetails (aggregateId: AggregateId) =
-        //     let exists, keys = objectDetailsAssociations.TryGetValue aggregateId
-        //     if exists then
-        //         for key in keys do
-        //             let refreshed =
-        //                 this.UnconstrainedRefresh key
-        //             ()
-        //     ()
         
         member this.Evict (key: DetailsCacheKey)  =
-            // printf "XXXXX evicting key 100%A\n" key.Value
             statesDetails.Remove key.Value
-            // printf "XXXXX evicted key 200%A\n" key.Value
         
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
@@ -152,9 +142,7 @@ module Cache =
             ()
         
         member this.evictDependentDetails (aggregateId: AggregateId) =
-            // printf "XXXXX getting keys 100\n"
             let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
-            // printf "XXXXX getting keys 200\n"
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
                     this.Evict key
@@ -177,8 +165,6 @@ module Cache =
                 match res with
                 | Ok (result, dependandIds) ->
                     this.TryCache (key.Value, result)
-                    //this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
-                    //this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key (TimeSpan.FromMinutes(15.0) |> Some)
                     this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key (defaultExpiration |> Some)
                     Ok (result |> unbox)
                 | Error e ->
@@ -223,7 +209,6 @@ module Cache =
         
         member this.Clean (aggregateId: AggregateId)  =
             statePerAggregate.Remove aggregateId
-            //DetailsCache.Instance.evictDependentDetails aggregateId
         
         member this.Clear () =
             statePerAggregate.Compact(1.0)
