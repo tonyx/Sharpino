@@ -16,11 +16,12 @@
     <Compile Include="Dishes/Dish.fs" />
     <Compile Include="Dishes/Events.fs" />
     <Compile Include="Dishes/Commands.fs" />
-    <Compile Include="Dishes\Consumer.fs" />
+    <Compile Include="Dishes/Consumer.fs" />
     <Compile Include="Suppliers/Supplier.fs" />
     <Compile Include="Suppliers/Events.fs" />
     <Compile Include="Suppliers/Command.fs" />
-    <Compile Include="Suppliers\Consumer.fs" />
+    <Compile Include="Suppliers/Consumer.fs" />
+    <Compile Include="Details.fs" />
     <Compile Include="PubSystem.fs" />
   </ItemGroup> 
   <ItemGroup>

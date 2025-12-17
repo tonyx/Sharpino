@@ -74,7 +74,7 @@ module CourseManager =
                         fun () ->
                             result {
                                 let! course = this.GetCourse id
-                                let! students = this.GetStudents (course.Students)
+                                let! students = this.GetStudents course.Students
                                 return course, students
                             }
                     result {
@@ -178,7 +178,28 @@ module CourseManager =
                     
                     return result        
                 }
-            
+                
+        member this.DeleteStudent (studentId: StudentId) =
+            result
+                {
+                    let! student = this.GetStudent studentId
+                    let courseSubscribed = student.Courses
+                    let unsubscriptionCommands: List<AggregateCommand<Course, CourseEvents>> =
+                        courseSubscribed
+                        |> List.map (fun _ -> CourseCommands.UnenrollStudent studentId)
+                   
+                    let! result =
+                        runDeleteAndNAggregateCommandsMd<Student, StudentEvents, Course, CourseEvents, string>
+                            eventStore
+                            messageSenders
+                            ""
+                            studentId.Id
+                            (courseSubscribed |>> _.Id)
+                            unsubscriptionCommands
+                            (fun _ -> true)
+                    
+                    return result 
+                }
         
         member this.RenameCourse (id: CourseId, newName: string) =
             result

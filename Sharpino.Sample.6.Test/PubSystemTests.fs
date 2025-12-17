@@ -104,7 +104,8 @@ let tests =
         pgEventStore.ResetAggregateStream Ingredient.Version Ingredient.StorageName
         pgEventStore.ResetAggregateStream Dish.Version Dish.StorageName
         pgEventStore.ResetAggregateStream Supplier.Version Supplier.StorageName
-        AggregateCache3.Instance.Clear()
+        AggregateCache3.Instance.Clear ()
+        DetailsCache.Instance.Clear ()
         
     let emptyMessageSender =
         fun queueName ->
@@ -204,6 +205,16 @@ let tests =
             Expect.isOk suppliers "should be ok"
             let suppliers' = suppliers.OkValue
             Expect.equal suppliers'.Length 1 "should be equal"
+            
+        multipleTestCase "add a dish and retrieve the dishDetails - Ok" storages <| fun (pubSystem, eventStore, _, delay, _) ->
+            setUp ()
+            let dish = Dish(Guid.NewGuid(), "spaghetti pomodoro", [])
+            let addDish = pubSystem.AddDish dish
+            Expect.isOk addDish "dish not added"
+            Thread.Sleep delay
+            let dishDetails = pubSystem.GetDishDetails dish.Id
+            Expect.isOk dishDetails "dish details not retrieved"
+            
     ]
     |> testSequenced
         

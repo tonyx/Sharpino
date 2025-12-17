@@ -42,33 +42,19 @@ module Cache =
         let statesDetails = new MemoryCache(MemoryCacheOptions())
         let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
         
-        // let objectDetailsAssociations = ConcurrentDictionary<AggregateId, List<DetailsCacheKey>>()
+        // move the value into the appsettings.json (not anymore sharpinoConfig.json that needs to go away)
+        let defaultExpiration = TimeSpan.FromMinutes(60.0)
+        let createCacheEntryOptions (expiration: TimeSpan option) =
+            let options =
+                MemoryCacheEntryOptions().
+                    SetSize(1L).
+                    SetSlidingExpiration(expiration |> Option.defaultValue defaultExpiration)
+            options
         
         let objectDetailsAssociationsCache = new MemoryCache(MemoryCacheOptions())
         
         static let instance = DetailsCache ()
         static member Instance = instance
-                
-        // member this.UpdateSingleAggregateIdAssociation (aggregateId: AggregateId) (key: DetailsCacheKey) =
-        //     objectDetailsAssociations.AddOrUpdate(aggregateId, [key], (fun _ _ -> [key])) |> ignore
-      
-        
-        // member this.UpdateSingleAggregateIdAssociationRef (aggregateId: AggregateId) (key: DetailsCacheKey) =
-        //     objectDetailsAssociationsCache.Set<obj>(aggregateId, [key], entryOptions) |> ignore
-             
-        // member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
-        //     for aggregateId in aggregateIds do
-        //         objectDetailsAssociations.AddOrUpdate(
-        //             aggregateId, 
-        //             [key], 
-        //             (fun _ existingKeys -> 
-        //                 if not (List.contains key existingKeys) then
-        //                     key :: existingKeys
-        //                 else
-        //                     existingKeys
-        //             )
-        //         ) |> ignore
-        //     ()
             
         member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
             for aggregateId in aggregateIds do
@@ -82,60 +68,65 @@ module Cache =
                         existingKeys
                 objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, entryOptions) |> ignore
             ()
-                
-        // member this.Refresh<'A when 'A :> Refreshable<'A>> (key: DetailsCacheKey) =
-        //     let v = statesDetails.Get<obj>(key.Value)
-        //     if not (obj.ReferenceEquals(v, null)) then
-        //         let refreshable = (v :?> 'A)
-        //         let refreshed = refreshable.Refresh()
-        //         match refreshed with
-        //         | Ok result ->
-        //             this.TryCache (key.Value, result)
-        //             Ok (result |> unbox)
-        //         | Error e ->
-        //             Error e
-        //     else
-        //         Error "not found"
+            
+        member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) (expiration: TimeSpan option)=
+            let entryOptions = createCacheEntryOptions expiration
+            for aggregateId in aggregateIds do
+                let existingKeys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+                let updatedKeys = 
+                    if isNull (box existingKeys) then
+                        [key]
+                    elif not (List.contains key existingKeys) then
+                        key :: existingKeys
+                    else
+                        existingKeys
+                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, entryOptions) |> ignore
+            ()
         
         member this.Refresh (key: DetailsCacheKey) =
             let v = statesDetails.Get<obj>(key.Value)
-            let interfaces = v.GetType().GetInterfaces()
-            let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<Refreshable<_>>)
-            
-            if not (obj.ReferenceEquals(v, null)) then
-                match refreshableInterface with
-                | Some _ ->
-                    let refreshMethod = v.GetType().GetMethod("Refresh")
-                    let refreshed = refreshMethod.Invoke(v, [||])
-                    let resultType = refreshableInterface.Value.GetGenericArguments().[0]
-                    let result = 
-                        try
-                            // Create a Result<obj, string> from the refreshed object
-                            let resultType = typedefof<Result<_, _>>.MakeGenericType([| resultType; typeof<string> |])
-                            let okValue = resultType.GetProperty("IsOk").GetValue(refreshed)
-                            if unbox<bool> okValue then
-                                let value = resultType.GetProperty("ResultValue").GetValue(refreshed)
-                                Ok value
-                            else
-                                let error = resultType.GetProperty("ErrorValue").GetValue(refreshed) :?> string
-                                Error error
-                        with ex ->
-                            Error (sprintf "Error processing refresh result: %s" ex.Message)
-                    
-                    match result with
-                    | Ok resultObj ->
-                        // Update the cache directly without going through TryCache
-                        try
-                            statesDetails.Set<obj>(key.Value, resultObj, entryOptions) |> ignore
-                            Ok resultObj
-                        with :? _ as e ->
-                            logger.Value.LogError (sprintf "error: cache update failed. %A\n" e)
-                            statesDetails.Compact(1.0)
-                            Error "Failed to update cache"
-                    | Error e -> Error e
-                | _ -> Error "Object does not implement Refreshable interface"
-            else
+            if (obj.ReferenceEquals(v, null)) then
                 Error "not found"
+            else 
+                let interfaces = v.GetType().GetInterfaces()
+                let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<Refreshable<_>>)
+                
+                if not (obj.ReferenceEquals(v, null)) then
+                    match refreshableInterface with
+                    | Some _ ->
+                        let refreshMethod = v.GetType().GetMethod("Refresh")
+                        let refreshed = refreshMethod.Invoke(v, [||])
+                        let resultType = refreshableInterface.Value.GetGenericArguments().[0]
+                        let result = 
+                            try
+                                // Create a Result<obj, string> from the refreshed object
+                                let resultType = typedefof<Result<_, _>>.MakeGenericType([| resultType; typeof<string> |])
+                                let okValue = resultType.GetProperty("IsOk").GetValue(refreshed)
+                                if unbox<bool> okValue then
+                                    let value = resultType.GetProperty("ResultValue").GetValue(refreshed)
+                                    Ok value
+                                else
+                                    // I assume that if an element is not refreshable anymore it means that it should be evicted
+                                    this.Evict key
+                                    let error = resultType.GetProperty("ErrorValue").GetValue(refreshed) :?> string
+                                    Error error
+                            with ex ->
+                                Error (sprintf "Error processing refresh result: %s" ex.Message)
+                        
+                        match result with
+                        | Ok resultObj ->
+                            // Update the cache directly without going through TryCache
+                            try
+                                statesDetails.Set<obj>(key.Value, resultObj, entryOptions) |> ignore
+                                Ok resultObj
+                            with :? _ as e ->
+                                logger.Value.LogError (sprintf "error: cache update failed. %A\n" e)
+                                statesDetails.Compact(1.0)
+                                Error "Failed to update cache"
+                        | Error e -> Error e
+                    | _ -> Error "Object does not implement Refreshable interface"
+                else
+                    Error "not found"
                 
         // member this.RefreshDependentDetails (aggregateId: AggregateId) =
         //     let exists, keys = objectDetailsAssociations.TryGetValue aggregateId
@@ -146,6 +137,11 @@ module Cache =
         //             ()
         //     ()
         
+        member this.Evict (key: DetailsCacheKey)  =
+            // printf "XXXXX evicting key 100%A\n" key.Value
+            statesDetails.Remove key.Value
+            // printf "XXXXX evicted key 200%A\n" key.Value
+        
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
             if not (obj.ReferenceEquals(keys, null)) then
@@ -153,7 +149,16 @@ module Cache =
                     let refreshed =
                         this.Refresh key
                     ()    
-            () 
+            ()
+        
+        member this.evictDependentDetails (aggregateId: AggregateId) =
+            // printf "XXXXX getting keys 100\n"
+            let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+            // printf "XXXXX getting keys 200\n"
+            if not (obj.ReferenceEquals(keys, null)) then
+                for key in keys do
+                    this.Evict key
+                ()
         
         member private this.TryCache (key: string, value: Refreshable<_>) =
             try
@@ -164,7 +169,6 @@ module Cache =
                 ()
                     
         member this.Memoize (f: unit -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
-            // printfn "XXXX: entered in memoize ref"
             let v = statesDetails.Get<obj>(key.Value)
             if not (obj.ReferenceEquals(v, null)) then
                 v |> Ok
@@ -173,19 +177,15 @@ module Cache =
                 match res with
                 | Ok (result, dependandIds) ->
                     this.TryCache (key.Value, result)
-                    
-                    // this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
-                    // focus intruder refactoring in progress:
-                    
-                    this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
-                    
+                    //this.UpdateMultipleAggregateIdAssociation (dependandIds |> List.toArray) key
+                    //this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key (TimeSpan.FromMinutes(15.0) |> Some)
+                    this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key (defaultExpiration |> Some)
                     Ok (result |> unbox)
                 | Error e ->
                     Error e
         
         member this.Clear () =
             statesDetails.Compact(1.0)
-            // objectDetailsAssociations.Clear()
             objectDetailsAssociationsCache.Compact(1.0)
     
     type AggregateCache3 private () =
@@ -223,6 +223,7 @@ module Cache =
         
         member this.Clean (aggregateId: AggregateId)  =
             statePerAggregate.Remove aggregateId
+            //DetailsCache.Instance.evictDependentDetails aggregateId
         
         member this.Clear () =
             statePerAggregate.Compact(1.0)

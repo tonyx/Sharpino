@@ -300,6 +300,65 @@ let tests =
          let jackCourses2 = jackDetails2.Courses |> List.map (fun c -> c.Name)
          Expect.equal jackCourses2 ["Mathematics"; "English reading"] "should be equal"
          
+       testCase "add and remove a student, verify it cannot be retrieved anymore - Ok" <| fun _ ->
+          setUp ()
+          // given
+          let john = Student.MkStudent ("John", 3)
+          let addJohn = courseManager.AddStudent john
+          Expect.isOk addJohn "john not added"
+          
+          // when
+          let removeJohn = courseManager.DeleteStudent john.Id
+          
+          // then
+          let retrieveJohn = courseManager.GetStudent john.Id
+          Expect.isError retrieveJohn "john should not be retrieved"
+          
+       testCase "add a student, materialize a details of it, then remove the student, verify the details are not retrieved anymore - Ok"   <| fun _ ->
+          setUp ()
+          let john = Student.MkStudent ("John", 3)
+          let addJohn = courseManager.AddStudent john
+          let (Ok johnDetails) = courseManager.GetStudentDetails john.Id
+          let removeJohn = courseManager.DeleteStudent john.Id
+          let retrieveJohnDetails = courseManager.GetStudentDetails john.Id
+          Expect.isError retrieveJohnDetails "john details should not be retrieved"
+       
+       testCase "when a student is deleted then they are unsubscribed from any course where they are enrolled - Ok " <| fun _ ->
+          setUp ()
+          let john = Student.MkStudent ("John", 3)
+          let addJohn = courseManager.AddStudent john
+          let math = Course.MkCourse ("Math", 10)
+          let addMath = courseManager.AddCourse math
+          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+          
+          let removeJohn = courseManager.DeleteStudent john.Id
+          let retrieveJohnDetails = courseManager.GetStudentDetails john.Id
+          Expect.isError retrieveJohnDetails "john details should not be retrieved"
+          
+          let retrieveCourse = courseManager.GetCourse math.Id
+          let courseDetails = retrieveCourse.OkValue
+          let students = courseDetails.Students
+          Expect.equal students [] "students should be empty"
+          
+       testCase "when a student is enrolled then the courseDetails should include that student, when the student is removed it will disappear - Ok " <| fun _ ->
+          setUp ()
+          let john = Student.MkStudent ("John", 3)
+          let addJohn = courseManager.AddStudent john
+          let math = Course.MkCourse ("Math", 10)
+          let addMath = courseManager.AddCourse math
+          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+          
+          let (Ok courseDetails) = courseManager.GetCourseDetails math.Id
+          
+          let students = courseDetails.Students
+          Expect.equal students.Length 1 "students enrolled should be len 1"
+          
+          let removeJohn = courseManager.DeleteStudent john.Id
+          Expect.isOk removeJohn "john should be removed"
+          
+          let (Ok courseDetails2) = courseManager.GetCourse math.Id
+          Expect.equal courseDetails2.Students.Length 0 "students enrolled should be len 0"
+        
           
     ]
     |> testSequenced
