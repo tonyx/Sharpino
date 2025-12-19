@@ -1,5 +1,56 @@
 # CACHING\_DETAILS\_VIEW
 
+## Background
+the "aggregates" (event sourced objects) are in general cached.
+Any application mainly needs composed views of multiple objects. Usually those composed objects are called
+_details_. 
+Even though the details benefits from the fact that the single objects are cached, they can be benefits from 
+being cached as well.
+This is a reason for it:
+
+Let's say that the StudentDetails expand the view of the Student object (which is event sourced):
+
+```fsharp
+    type Student =
+        {
+            Id: StudentId
+            Name: string
+            Courses: List<CourseId>
+            MaxNumberOfCourses: int
+        }
+
+```
+
+To be able to expand the dependencies so that the Course is fully expanded the StudentDetails will need to include the list of Courses
+
+```fsharp
+    type StudentDetails =
+        {
+            Student: Student
+            Courses: List<Course>
+        }
+
+```
+
+The code to generate the detailsView can be like
+
+```fsharp
+    let getStudentDetails =
+        result {
+            let! student = this.GetStudent id
+            let! courses = this.GetCourses student.Courses
+            return { Student = student; Courses = courses }
+        }
+
+```
+The computation is repeated each time the detailsView is retrieved whereas it is logical to assume 
+that as long as the course itself and any related course are not changed the detailsView should not be changed.
+
+Because of this principle the detailsView can be cached implementing the Refreshable interface to take care of
+updating the detailsView when the related objects are changed.
+
+
+
 ## Purpose
 Caching of detailsView and make it possible that the related objects can trigger ther refresh of any details which contains that object.
 
