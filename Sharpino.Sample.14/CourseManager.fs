@@ -58,23 +58,7 @@ module CourseManager =
                         eventStore
                         messageSenders
                         courses
-                
-                    return!
-                        runMultipleInit<Student, StudentEvents, string>
-                        eventStore
-                        messageSenders
-                        students
-                }
-        
-        member this.AddMultipleCourses (courses: Course[]) =
-            result
-                {
-                    return!
-                        runMultipleInit<Course, CourseEvents, string>
-                        eventStore
-                        messageSenders
-                        courses
-}        
+        }        
         
         member this.GetStudent (id: StudentId)  =
             result
