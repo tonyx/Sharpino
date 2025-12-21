@@ -170,6 +170,10 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 
 Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for the Id type. It would be wise to do the same in any other example.
 The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
+
+Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
+ 
+- Version 4.5.6: fix an update of refreshable/cachable details.
 - Version 4.5.5: added cachable details/view: a detailed view can be Refreshable and cachable, so that it refreshes when any of its object is updated (i.e. a related event is stored): [CACHING_DETAILS_VIEW.md](CACHING_DETAILS_VIEW.md)
 - Version 4.5.4: few more versions of eventstore functions handling task/cancellationToken
 - Version 4.5.3: removed some dupication in eventstore

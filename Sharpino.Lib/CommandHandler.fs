@@ -1928,6 +1928,9 @@ module CommandHandler =
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
                 AggregateCache3.Instance.Memoize2 (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].NewState |> box) preExecutedAggregateCommands.[i].AggregateId
                 
+            for i in 0 .. (preExecutedAggregateCommands.Length - 1) do
+                DetailsCache.Instance.RefreshDependentDetails preExecutedAggregateCommands.[i].AggregateId
+            
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
                 mkAggregateSnapshotIfIntervalPassed3<'F>
                     eventStore
