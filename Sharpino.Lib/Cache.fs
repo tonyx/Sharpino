@@ -188,6 +188,8 @@ module Cache =
             with :? _ as e -> 
                 logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statePerAggregate.Compact(1.0)
+                // if an object failed to be cached then clear the details cache as well (otherwise dependencies could be out of sync)
+                DetailsCache.Instance.Clear()
                 () 
    
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =

@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.5.6</Version>
+    <Version>4.5.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -63,7 +63,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.1" />
 
-        <PackageReference Include="Sharpino.Core" Version="2.3.5" />
+        <PackageReference Include="Sharpino.Core" Version="2.3.6" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -74,7 +74,7 @@
         <PackageReference Include="FSharp.Data" Version="6.6.0" />
         <PackageReference Include="FSharpPlus" Version="1.8.0" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="Npgsql" Version="10.0.0" />
+        <PackageReference Include="Npgsql" Version="10.0.1" />
         <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -89,15 +89,15 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
 
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.11" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.3.5" />
+    <PackageReference Include="Sharpino.Core" Version="2.3.6" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -132,7 +132,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.3.5" />
+    <PackageReference Include="Sharpino.Core" Version="2.3.6" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -153,11 +153,9 @@
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-    
- <!-- 
-  <ItemGroup>
-   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
-  </ItemGroup>
-  -->
+<!--    -->
+<!--  <ItemGroup>-->
+<!--   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
+<!--  </ItemGroup>-->
 
 </Project>

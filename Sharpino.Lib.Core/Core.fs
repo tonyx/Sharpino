@@ -1,18 +1,32 @@
 namespace Sharpino
+
 open Microsoft.Extensions.Logging
-open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.Extensions.Logging.Console
 open FSharp.Core
 open Sharpino.Definitions
 
 module Core =
-    let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
+    // need to use a proper d.i. based logger, but not now
+    let factory = LoggerFactory.Create(fun (builder: ILoggingBuilder) ->
+        builder
+            .AddFilter("Microsoft", LogLevel.Warning)
+            .AddFilter("System", LogLevel.Warning)
+            .AddFilter("Sharpino", LogLevel.Debug)
+            .AddSimpleConsole(fun options ->
+                options.IncludeScopes <- true
+                options.SingleLine <- true
+                options.TimestampFormat <- "[HH:mm:ss] "
+                options.ColorBehavior <- LoggerColorBehavior.Enabled
+            )
+            |> ignore
+    )
+    let logger: Microsoft.Extensions.Logging.ILogger ref = ref (factory.CreateLogger("Sharpino"))
+
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         logger := newLogger
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
    
-    // future improvement 
-    // type BulkAggregateViewer<'A> = AggregateId[] -> Result<EventId * 'A[],string>
    
     type Aggregate<'F> =
         abstract member Id: AggregateId 
@@ -53,12 +67,12 @@ module Core =
         // if the accumulator is an error then skip it, and use the guard instead which was the 
         // latest valid value of the accumulator
         | Error err, _::es ->
-            logger.Value.LogInformation (sprintf "Skipping error: %s" err)
+            logger.Value.LogCritical (sprintf "Skipping error: %s" err)
             evolveSkippingErrors (guard |> Ok) es guard
         // if the accumulator is error and the list is empty then we are at the end, and so we just
         // get the guard as the latest valid value of the accumulator
         | Error err, [] -> 
-            logger.Value.LogInformation (sprintf "Skipping error: %s" err)
+            logger.Value.LogCritical (sprintf "Skipping error: %s" err)
             guard |> Ok
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
@@ -66,7 +80,7 @@ module Core =
             let newGuard = state |> (e :> Event<'A>).Process
             match newGuard with
             | Error err -> 
-                logger.Value.LogInformation (sprintf "Skipping error: %s" err)
+                logger.Value.LogCritical (sprintf "Skipping error: %s" err)
                 evolveSkippingErrors (guard |> Ok) es guard
             | Ok h' ->
                 evolveSkippingErrors (h' |> Ok) es h'
