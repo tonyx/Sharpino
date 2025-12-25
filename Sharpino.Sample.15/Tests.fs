@@ -156,7 +156,7 @@ let tests =
             Expect.equal details.OkValue.EnrolledInCourses.Length 1 "Expected one course"
             Expect.equal details2.OkValue.EnrolledInCourses.Length 2 "Expected two courses"
         
-        ftestCase "enroll a student in a course and then get the studentDetails
+        testCase "enroll a student in a course and then get the studentDetails
                 then enroll the student in another course and rename that course and get the student
                 details again. Verify that the course name is updated" <| fun _ ->
             setUp ()
