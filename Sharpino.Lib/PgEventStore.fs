@@ -187,6 +187,7 @@ module PgStorage =
                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                            return Error ex.Message
                     }
+            
             member this.SnapshotAndMarkDeletedAsync (version: Version, name: Name, eventId: EventId, aggregateId: System.Guid, napshot: string, ?ct: CancellationToken) =
                 let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)

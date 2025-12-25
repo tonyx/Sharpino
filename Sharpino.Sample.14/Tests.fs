@@ -232,7 +232,33 @@ let tests =
           // then
           let (Ok courseDetailsRetrieved) = courseManager.GetCourseDetails course.Id
           Expect.equal courseDetailsRetrieved.Course.Name "Mathematics" "should be equal"
-          
+       
+       testCase "create two courses,
+                  create a student subscribe the student to one course, then retrieve
+                  the student details and then subscribe to the second course. The details should
+                  be updated"  <| fun _ ->
+            
+         setUp ()
+         let math = Course.MkCourse ("Math", 10)
+         let english = Course.MkCourse ("English", 10)
+         let john = Student.MkStudent ("John", 3)
+         let courseAdded = courseManager.AddMultipleCourses [|math; english|]
+         let studentAdded = courseManager.AddStudent john
+         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+         Expect.isOk enrollStudentToMath "Student not enrolled to math"
+         let studentDetails = courseManager.GetStudentDetails john.Id
+         Expect.isOk studentDetails "Student details not retrieved"
+         let studentDetailsValue: StudentDetails = studentDetails.OkValue
+         Expect.equal studentDetailsValue.Student.Name "John" "Student name not retrieved"
+         Expect.equal studentDetailsValue.Courses.Length 1 "Student courses not retrieved"
+         
+         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
+         Expect.isOk enrollStudentToEnglish "Student not enrolled to english"
+         let studentDetailsAgain = courseManager.GetStudentDetails john.Id
+         let studentDetailsValueAgain: StudentDetails = studentDetailsAgain.OkValue
+         Expect.equal studentDetailsValueAgain.Student.Name "John" "Student name not retrieved"
+         Expect.equal studentDetailsValueAgain.Courses.Length 2 "Student courses not retrieved"
+         
        testCase "create two courses, create a student, subscribe the student to both the courses, then
                  rename both the courses and verify that the student details update both the course names " <| fun _ ->
          // given
@@ -300,7 +326,7 @@ let tests =
          let jackCourses2 = jackDetails2.Courses |> List.map (fun c -> c.Name)
          Expect.equal jackCourses2 ["Mathematics"; "English reading"] "should be equal"
          
-       testCase "add and remove a student, verify it cannot be retrieved anymore - Ok" <| fun _ ->
+       testCase "add and remove a student using details, verify that it is not available in the detailcache anymore - Ok" <| fun _ ->
           setUp ()
           // given
           let john = Student.MkStudent ("John", 3)
