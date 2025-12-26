@@ -1,5 +1,6 @@
 namespace Sharpino.Sample._15
 
+open System.Threading
 open FsToolkit.ErrorHandling
 open Sharpino
 open Sharpino.Cache
@@ -39,6 +40,38 @@ module CourseManager =
                         messageSenders
                         course
                 }
+        member this.AddCourseAsync (course: Course, ?ct: CancellationToken) =
+            let ct = defaultArg ct CancellationToken.None
+            taskResult
+                {
+                    return!
+                        runInitAsync<Course, CourseEvents, string>
+                        eventStore
+                        messageSenders
+                        course
+                        (Some ct)
+                }
+        member this.AddCourses (courses: Course[]) =
+            result
+                {
+                    return!
+                        runMultipleInit<Course, CourseEvents, string>
+                        eventStore
+                        messageSenders
+                        courses
+                }
+       
+        member this.AddCoursesAsync (courses: Course[], ?ct: CancellationToken) =
+            let ct = defaultArg ct CancellationToken.None
+            taskResult
+                {
+                    return!
+                        runMultipleInitAsync<Course, CourseEvents, string>
+                        eventStore
+                        messageSenders
+                        courses
+                        (Some ct)
+                }
 
         member this.AddStudent (student: Student) =
             result
@@ -48,6 +81,17 @@ module CourseManager =
                         eventStore
                         messageSenders
                         student
+                }
+        member this.AddStudentAsync (student: Student, ?ct: CancellationToken) =
+            let ct = defaultArg ct CancellationToken.None
+            taskResult
+                {
+                    return!
+                        runInitAsync<Student, StudentEvents, string>
+                        eventStore
+                        messageSenders
+                        student
+                        (Some ct)
                 }
         
         member this.RenameCourse (id: CourseId) (newName: String) =

@@ -16,6 +16,7 @@ open Sharpino.Storage
 open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.EventBroker
+open Sharpino.Conf
 
 open FsToolkit.ErrorHandling
 
@@ -108,6 +109,8 @@ module CommandHandler =
             printf "appSettings.json file not found using defult!!! %A\n" ex
             Conf.defaultConf
 
+    let eventStoreTimeout = config.EventStoreTimeout
+    // let evenStoreTimeout = config.EventStoreTimeout
     // using variuos versions of mkSnapshotIfIntervalPassed instead. Leaving it to allow use from any app if needed
     let inline mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
@@ -420,6 +423,58 @@ module CommandHandler =
                     initialInstances
                     |> Array.iter (fun x -> optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders x.Id x |> ignore)
                 return ()
+            }
+
+    let inline runMultipleInitAsync<'A1, 'E, 'F
+        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (initialInstances: 'A1[])
+        (ct: Option<CancellationToken>) =
+            let ct' =
+                ct |> Option.map (fun x -> x) |> Option.defaultValue (new CancellationTokenSource(eventStoreTimeout)).Token
+            taskResult {
+                let idWithserializedAggregates =
+                    initialInstances
+                    |>> (fun x -> x.Id, x.Serialize)
+                let! res = eventStore.SetInitialAggregateStatesAsync('A1.Version, 'A1.StorageName, idWithserializedAggregates, ct')
+                let _ =
+                    initialInstances
+                    |> Array.iter (fun x -> AggregateCache3.Instance.Memoize2 (0, x |> box) x.Id)
+                let _ =
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    initialInstances
+                    |> Array.iter (fun x -> optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders x.Id x |> ignore)
+                return res
+            }
+
+    let inline runInitAsync<'A1, 'E, 'F
+        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (initialInstance: 'A1)
+        (ct: Option<CancellationToken>) =
+            let ct' =
+                ct |> Option.map (fun x -> x) |> Option.defaultValue (new CancellationTokenSource(eventStoreTimeout)).Token
+            taskResult {
+                let! res = eventStore.SetInitialAggregateStateAsync(initialInstance.Id, 'A1.Version, 'A1.StorageName, initialInstance.Serialize, ct')
+                let _ = AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
+                let _ =
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    optionallySendInitialInstanceAsync<'A1, 'E> queueName messageSenders initialInstance.Id initialInstance
+                return res
             }
             
     // delete is a command which doesn't result in any event (not necessarily). It just flags the object as deleted

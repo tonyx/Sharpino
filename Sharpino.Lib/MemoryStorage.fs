@@ -383,7 +383,17 @@ module MemoryStorage =
                 snapshots.Add(aggregateId, [initialState])
                 addAggregateSnapshots version name aggregateId initialState
                 () |> Ok
-           
+          
+            member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct: CancellationToken) =
+                task {
+                    return (this :> IEventStore<string>).SetInitialAggregateState aggregateId version name json
+                }
+            
+            member this.SetInitialAggregateStatesAsync (version, name, idsAndSnapshots, ?ct: CancellationToken) =
+                task {
+                    return (this :> IEventStore<string>).SetInitialAggregateStates version name idsAndSnapshots
+                }    
+             
             member this.SetInitialAggregateStates version name idsAndSnapshots =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s" version name)
                 idsAndSnapshots

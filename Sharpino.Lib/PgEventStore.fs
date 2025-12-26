@@ -609,6 +609,36 @@ module PgStorage =
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
 
+            member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "SetInitialAggregateStateAsync %A %s %s" aggregateId version name)
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+                task
+                    {
+                        use conn= new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        let! transaction = conn.BeginTransactionAsync (ct)
+                        try
+                            use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn)
+                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
+                            
+                            use firstEmptyAggregateEvent' = new NpgsqlCommand(firstEmptyAggregateEvent, conn)
+                            firstEmptyAggregateEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            
+                            let! _ = insertSnapshot'.ExecuteScalarAsync(ct).ConfigureAwait(false)
+                            let! _ = firstEmptyAggregateEvent'.ExecuteScalarAsync(ct).ConfigureAwait(false)
+                            return Ok ()
+                        with
+                            | _ as e ->
+                                let! _ = transaction.RollbackAsync (ct)
+                                return Error e.Message
+                    }
+            
             member this.SetInitialAggregateState aggregateId version name json =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
@@ -652,6 +682,37 @@ module PgStorage =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
+
+            member this.SetInitialAggregateStatesAsync(version: Version, name: Name, idsAndSnapshots: (AggregateId * string)[], ?ct: CancellationToken) =
+                logger.Value.LogDebug (sprintf "SetInitialAggregateStatesAsync %s %s" version name)
+                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                let insertSnapshotCmd = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let firstEmptyEventCmd = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
+                task {
+                    use conn = new NpgsqlConnection(connection)
+                    do! conn.OpenAsync(ct).ConfigureAwait(false)
+                    let! transaction = conn.BeginTransactionAsync(ct)
+                    try
+                        for (aggregateId, json) in idsAndSnapshots do
+                            use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn)
+                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
+                            do! insertSnapshot'.ExecuteNonQueryAsync(ct) |> Async.AwaitTask |> Async.Ignore
+
+                            use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn)
+                            firstEmptyEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            do! firstEmptyEvent'.ExecuteNonQueryAsync(ct) |> Async.AwaitTask |> Async.Ignore
+
+                        do! transaction.CommitAsync(ct)
+                        return Ok ()
+                    with e ->
+                        do! transaction.RollbackAsync(ct)
+                        return Error e.Message
+                }
            
             member this.SetInitialAggregateStates version name idsAndSnapshots =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)

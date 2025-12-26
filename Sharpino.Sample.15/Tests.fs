@@ -197,6 +197,87 @@ let tests =
             Expect.contains coursesList course1 "Student should be enrolled in Math"
             Expect.contains coursesList course2 "Student should be enrolled in Science"
         }
+        
+        testCase "get courses for a student, async version" <| fun _ ->
+            setUp()
+            let course1 = Course.MkCourse "Math" 10
+            let course2 = Course.MkCourse "Science" 10
+            let student = Student.MkStudent "John" 3
+            let _ =
+                courseManager.AddCourseAsync course1
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            let _ =
+                courseManager.AddCourseAsync course2
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            let _ =
+                courseManager.AddStudentAsync student
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
+            let _ = courseManager.CreateEnrollment student.Id course1.Id
+            let _ = courseManager.CreateEnrollment student.Id course2.Id
+
+            let courses = courseManager.GetCoursesForStudent student.Id
+            Expect.isOk courses "Could not get courses for student"
+
+            let coursesList = courses.OkValue
+            Expect.hasLength coursesList 2 "Expected two courses"
+            Expect.contains coursesList course1 "Student should be enrolled in Math"
+            Expect.contains coursesList course2 "Student should be enrolled in Science"
+        
+        testCaseAsync "get courses for a student, async version 2" <| async {
+            setUp()
+            let course1 = Course.MkCourse "Math" 10
+            let course2 = Course.MkCourse "Science" 10
+            let student = Student.MkStudent "John" 3
+            let! _ =
+                courseManager.AddCourseAsync course1
+                |> Async.AwaitTask
+            let! _ =
+                courseManager.AddCourseAsync course2
+                |> Async.AwaitTask
+            let! _ =
+                courseManager.AddStudentAsync student
+                |> Async.AwaitTask
+
+            let _ = courseManager.CreateEnrollment student.Id course1.Id
+            let _ = courseManager.CreateEnrollment student.Id course2.Id
+
+            let courses = courseManager.GetCoursesForStudent student.Id
+            Expect.isOk courses "Could not get courses for student"
+
+            let coursesList = courses.OkValue
+            Expect.hasLength coursesList 2 "Expected two courses"
+            Expect.contains coursesList course1 "Student should be enrolled in Math"
+            Expect.contains coursesList course2 "Student should be enrolled in Science"
+        }
+        
+        testCaseAsync "get courses for a student, async version 3" <| async {
+            setUp()
+            let course1 = Course.MkCourse "Math" 10
+            let course2 = Course.MkCourse "Science" 10
+            let student = Student.MkStudent "John" 3
+            let _ =
+                courseManager.AddCoursesAsync [|course1; course2|]
+                |> Async.AwaitTask
+                
+            let! _ =
+                courseManager.AddStudentAsync student
+                |> Async.AwaitTask
+
+            let _ = courseManager.CreateEnrollment student.Id course1.Id
+            let _ = courseManager.CreateEnrollment student.Id course2.Id
+
+            let courses = courseManager.GetCoursesForStudent student.Id
+            Expect.isOk courses "Could not get courses for student"
+
+            let coursesList = courses.OkValue
+            Expect.hasLength coursesList 2 "Expected two courses"
+            Expect.contains coursesList course1 "Student should be enrolled in Math"
+            Expect.contains coursesList course2 "Student should be enrolled in Science"
+        }
 
         testCaseAsync "get students enrolled in a course" <| async {
             setUp()
