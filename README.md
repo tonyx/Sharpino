@@ -173,6 +173,7 @@ The benefit of wrapping the Id in a non primitive type is the ability to typeche
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
 
+- Version 4.5.8: added runInitAsync and runMultipleInitAsync to CommandHanldler and related db functions with optional CancellationToken.
 - Version 4.5.7: using console logging by default on Core.fs, update dependencies
 - Version 4.5.6: fix an update of refreshable/cachable details.
 - Version 4.5.5: added cachable details/view: a detailed view can be Refreshable and cachable, so that it refreshes when any of its object is updated (i.e. a related event is stored): [CACHING_DETAILS_VIEW.md](CACHING_DETAILS_VIEW.md)
