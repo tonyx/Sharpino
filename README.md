@@ -139,6 +139,7 @@ __Faq__ and __trivia__:
     - More complex projections (i.e. "materialized views") may need some work to be efficient in the same way the aggregates are.
 - Why caring about cross streams transactions and cross aggregates invariants (instead of just ruling them out)?
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
+- Other questions? Just opened a discord channel: https://discord.com/channels/1274092774643339315/
 
 ## Acknowledgements
 
