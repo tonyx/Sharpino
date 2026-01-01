@@ -339,7 +339,7 @@ let tests =
         }
 
         testCase "enroll a student to a course" <| fun _ ->
-            setUp()
+            setUp ()
             let course = Course.MkCourse "Math" 10
             let student = Student.MkStudent"John" 3
             let courseCreated = courseManager.AddCourse course
@@ -359,5 +359,60 @@ let tests =
             let recordedEnrollment = List.head enrollmentsList
             Expect.equal recordedEnrollment.StudentId student.Id "Student ID does not match"
             Expect.equal recordedEnrollment.CourseId course.Id "Course ID does not match"
+        
+        testCase "enroll a student to a course and retrieve the related enrollment events" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let student = Student.MkStudent"John" 3
+            let courseCreated = courseManager.AddCourse course
+            let studentCreated = courseManager.AddStudent student
+            
+            Expect.isOk courseCreated "Course creation failed"
+            Expect.isOk studentCreated "Student creation failed"
+
+            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            
+            let events =
+                courseManager.GetAllEnrollmentEvents()
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            
+            Expect.isOk events "Could not get enrollment events"
+            
+            let eventsList = events.OkValue
+            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+            
+            let actualEvent = List.head eventsList
+            let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
+            Expect.equal item.StudentId student.Id "Student ID does not match"
+            Expect.equal item.CourseId course.Id "Course ID does not match"
+            
+        testCase "enroll a student to a course and retrieve the related enrollment events 2" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let student = Student.MkStudent"John" 3
+            let courseCreated = courseManager.AddCourse course
+            let studentCreated = courseManager.AddStudent student
+            
+            Expect.isOk courseCreated "Course creation failed"
+            Expect.isOk studentCreated "Student creation failed"
+
+            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            
+            let events =
+                courseManager.GetAllEnrollmentEvents2()
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            
+            Expect.isOk events "Could not get enrollment events"
+            
+            let eventsList = events.OkValue
+            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+            
+            let actualEvent = List.head eventsList
+            let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
+            Expect.equal item.StudentId student.Id "Student ID does not match"
+            Expect.equal item.CourseId course.Id "Course ID does not match"
+            
     ]
     |> testSequenced

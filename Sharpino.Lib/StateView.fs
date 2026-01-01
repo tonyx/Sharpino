@@ -1,5 +1,6 @@
 namespace Sharpino
 
+open System.Threading
 open FSharp.Core
 open FSharpPlus
 
@@ -444,6 +445,37 @@ module StateView =
                         |> List.filter predicate
                     return filteredEvents
                 }
+                
+    let inline getFilteredAggregateEventsInATimeIntervalAsync<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        (ct: Option<CancellationToken>)
+        =
+            logger.Value.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    let! allEventsInTimeInterval =
+                        match ct with
+                        | Some ct -> eventStore.GetAggregateEventsInATimeIntervalAsync ('A.Version, 'A.StorageName, id, start, end_, ct)
+                        | None -> eventStore.GetAggregateEventsInATimeIntervalAsync ('A.Version, 'A.StorageName, id, start, end_)
+                    let! deserEvents =
+                        allEventsInTimeInterval
+                        |>> snd 
+                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                    let filteredEvents = 
+                        deserEvents
+                        |> List.filter predicate
+                    return filteredEvents
+                }
     
     let inline getFilteredMultipleAggregateEventsInATimeInterval<'A, 'E, 'F            
         when 'A :> Aggregate<'F> and 'E :> Event<'A>
@@ -462,6 +494,39 @@ module StateView =
             result
                 {
                     let! allEventsInAtimeInterval = eventStore.GetMultipleAggregateEventsInATimeInterval 'A.Version 'A.StorageName ids start end_
+                    let! deserEvents =
+                        allEventsInAtimeInterval
+                        |>> (fun (_, aggregateId, e) -> (aggregateId, e))
+                        |> List.traverseResultM (fun (id, x) -> 'E.Deserialize x |> Result.map (fun x -> (id, x)))
+                    let aggregatesIdsAndEvents =
+                        deserEvents
+                        |> List.filter (fun (_, y) -> predicate y)
+                    return aggregatesIdsAndEvents    
+                }
+                
+    let inline getFilteredMultipleAggregateEventsInATimeIntervalAsync<'A, 'E, 'F            
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (ids: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (predicate: 'E -> bool)
+        (ct: Option<CancellationToken>)
+        =
+            logger.Value.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    let! allEventsInAtimeInterval =
+                        match ct with
+                        | Some ct ->
+                            eventStore.GetMultipleAggregateEventsInATimeIntervalAsync ('A.Version, 'A.StorageName, ids, start, end_, ct)
+                        | None ->
+                            eventStore.GetMultipleAggregateEventsInATimeIntervalAsync ('A.Version, 'A.StorageName, ids, start, end_)    
                     let! deserEvents =
                         allEventsInAtimeInterval
                         |>> (fun (_, aggregateId, e) -> (aggregateId, e))

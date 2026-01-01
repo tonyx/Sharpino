@@ -135,24 +135,36 @@ module PgStorage =
             
         interface IEventStore<string> with
             member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                // todo handle ct
                 logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and date >= @dateFrom and date <= @dateTo ORDER BY id"  version name
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and timestamp >= @dateFrom and timestamp <= @dateTo ORDER BY id"  version name
                 let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 task
                     {
-                        let! result =
-                            connection
-                            |> Sql.connect
-                            |> Sql.query query
-                            |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                            |> Sql.executeAsync (fun read ->
-                                (
-                                    read.int "id",
-                                    read.string "event"
-                                )
-                            )
-                        return result |> Ok
+                        try
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(ct).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                            use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                                if hasRow then
+                                    let eventId = reader.GetInt32(0)
+                                    let event = reader.GetFieldValue<string>(1)
+                                    results.Add(eventId, event)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList |> Ok
+                        with ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return Error ex.Message
                     }
                 
             member this.GetAggregateEventsAfterIdAsync(version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken) =

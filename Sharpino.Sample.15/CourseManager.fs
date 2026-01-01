@@ -226,3 +226,14 @@ module CourseManager =
                         command
                 return result
             }
+            
+        member this.GetAllEnrollmentEvents () =
+            taskResult {
+                let! enrollmentEvents = StateView.getFilteredAggregateEventsInATimeIntervalAsync<Enrollments, EnrollmentEvents, string> Enrollment.enrollmentId.Id eventStore DateTime.MinValue DateTime.MaxValue (fun _ -> true) None
+                return enrollmentEvents
+            }    
+        member this.GetAllEnrollmentEvents2 () =
+            taskResult {
+                let! enrollmentEvents = StateView.getFilteredMultipleAggregateEventsInATimeIntervalAsync<Enrollments, EnrollmentEvents, string> [Enrollment.enrollmentId.Id] eventStore DateTime.MinValue DateTime.MaxValue (fun _ -> true) None
+                return enrollmentEvents
+            }    
