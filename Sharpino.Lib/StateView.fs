@@ -166,7 +166,7 @@ module StateView =
         (storageName: string)
         (storage: IEventStore<'F>) 
         =
-            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.Value.LogDebug (sprintf "getLastHistoryAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
