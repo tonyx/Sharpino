@@ -1,5 +1,6 @@
 namespace Sharpino
 
+open System.Text
 open System.Threading
 open FSharp.Core
 open FSharpPlus
@@ -7,6 +8,7 @@ open FSharpPlus
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Core
+open Sharpino.Definitions
 open Sharpino.Storage
 open Sharpino.Cache
 
@@ -562,6 +564,47 @@ module StateView =
                         |> List.filter predicate
                     return filteredEvents
                 }
+   
+    let inline GetAllAggregateEventsInATimeIntervalAsync<'A, 'E, 'F
+        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (ct: Option<CancellationToken>)
+        = 
+        logger.Value.LogDebug (sprintf "getAllAggregateEventsInATimeIntervalAsync %A - %s " 'A.Version 'A.StorageName)
+        taskResult
+            {
+                let! allEventsInTimeInterval =
+                    match ct with
+                    | Some ct -> eventStore.GetAllAggregateEventsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, ct)
+                    | None -> eventStore.GetAllAggregateEventsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_)
+                let result = ResizeArray<EventId * AggregateId * 'E>()
+                if (allEventsInTimeInterval.Count = 0)
+                then return result
+                else
+                    let errors = StringBuilder()
+                    let _ =
+                        [ 0 .. allEventsInTimeInterval.Count  - 1 ]
+                        |> List.iter (fun i ->
+                            let (eventId, aggregateId, deserEvent) = (allEventsInTimeInterval.Item i)
+                            match 'E.Deserialize deserEvent with
+                            | Ok desEvent ->
+                                result.Add(eventId, aggregateId, desEvent)
+                            | Error err ->
+                                errors.AppendLine(err) |> ignore
+                        )
+                    if errors.Length > 0
+                    then
+                        return! Error (errors.ToString())
+                    else    
+                        return result
+            }
     
     [<Obsolete "getFilteredAggregateStatesInATimeInterval2 instead ">]
     let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
@@ -575,7 +618,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'A -> bool)
         =
-            logger.Value.LogDebug (sprintf "getfilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.Value.LogDebug (sprintf "getFilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allSnapshotsInTimeInterval = eventStore.GetAggregateSnapshotsInATimeInterval 'A.Version 'A.StorageName start end_

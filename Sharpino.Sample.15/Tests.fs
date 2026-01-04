@@ -413,6 +413,45 @@ let tests =
             let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
             Expect.equal item.StudentId student.Id "Student ID does not match"
             Expect.equal item.CourseId course.Id "Course ID does not match"
+        
+        testCase "enroll a student to a course and retrieve the related enrollment events 3" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let student = Student.MkStudent"John" 3
+            let courseCreated = courseManager.AddCourse course
+            let studentCreated = courseManager.AddStudent student
+            
+            Expect.isOk courseCreated "Course creation failed"
+            Expect.isOk studentCreated "Student creation failed"
+            
+            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            
+            let events =
+                courseManager.GetAllEnrollmentEvents3()
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+        
+            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            Expect.isOk events "Could not get enrollment events"
+            
+            let eventsList = events.OkValue
+            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+             
+            let (_, _, actualEvent) = eventsList.Item 0
+            let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
+            Expect.equal item.StudentId student.Id "Student ID does not match"
+            Expect.equal item.CourseId course.Id "Course ID does not match"
+        
+        testCase "create a course and then retrieve the related snapshot by means of eventStore direct access"  <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let courseCreated = courseManager.AddCourse course
+           
+            let snapshot =
+                pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.Id.Id)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            Expect.isOk snapshot "Could not get snapshot"    
             
     ]
     |> testSequenced

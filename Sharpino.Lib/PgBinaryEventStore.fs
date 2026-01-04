@@ -16,6 +16,7 @@ open Sharpino.PgStorage
 open Sharpino.Definitions
 
 module PgBinaryStore =
+    let cancellationTokenSourceExpiration = 10000
 
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
@@ -85,19 +86,21 @@ module PgBinaryStore =
             member this.GetEventsInATimeIntervalAsync(version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"  version name
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 task {
                     try
+                        use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
-                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                        use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
                         let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
                             if hasRow then
                                 let eventId = reader.GetInt32(0)
                                 let eventBytes = reader.GetFieldValue<byte[]>(1)
@@ -116,22 +119,23 @@ module PgBinaryStore =
             member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and timestamp >= @dateFrom and timestamp <= @dateTo ORDER BY id"  version name
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
-                
                 task
                     {
                         try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(ct).ConfigureAwait(false)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
                             command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                            use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
                             let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
                                 if hasRow then
                                     let eventId = reader.GetInt32(0)
                                     let event = reader.GetFieldValue<byte[]>(1)
@@ -149,20 +153,22 @@ module PgBinaryStore =
             member this.GetAggregateEventsAfterIdAsync(version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 task
                     {
                        try
+                           use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                           cts.CancelAfter(cancellationTokenSourceExpiration)
                            use conn = new NpgsqlConnection(connection)
-                           do! conn.OpenAsync(ct).ConfigureAwait(false)
+                           do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                            command.Parameters.AddWithValue("id", id) |> ignore
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                           use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                           use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                            let results = ResizeArray<_>()
                            let rec loop () = task {
-                               let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                               let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
                                if hasRow then
                                    let eventId = reader.GetInt32(0)
                                    let eventJson = reader.GetFieldValue<byte[]>(1)
@@ -178,13 +184,15 @@ module PgBinaryStore =
                            return Error ex.Message
                     }
             member this.SnapshotAndMarkDeletedAsync (version: Version, name: Name, eventId: EventId, aggregateId: System.Guid, napshot: byte[], ?ct: CancellationToken) =
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                     use conn = new NpgsqlConnection(connection)
-                    do! conn.OpenAsync(ct).ConfigureAwait(false)
+                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                         try
                             use command' = new NpgsqlCommand(command, conn)
@@ -193,7 +201,7 @@ module PgBinaryStore =
                             command'.Parameters.AddWithValue("snapshot", napshot) |> ignore
                             command'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             command'.Parameters.AddWithValue("is_deleted", true) |> ignore
-                            let! result = command'.ExecuteScalarAsync(ct).ConfigureAwait(false)
+                            let! result = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                             return Ok ()
                         with
                             | _ as e ->
@@ -207,14 +215,16 @@ module PgBinaryStore =
             member this.ResetAggregateStream(version: Version) (name: Name): unit =
                 this.ResetAggregateStream version name    
             member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<byte[]>, ?ct: CancellationToken) =
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
+                logger.Value.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
+                let stream_name = version + name
+                let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                 task {
-                    logger.Value.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
-                    let stream_name = version + name
-                    let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                     use conn = new NpgsqlConnection(connection)
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
-                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
@@ -226,16 +236,16 @@ module PgBinaryStore =
                                     command'.Parameters.AddWithValue("event", x) |> ignore
                                     command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
                                     command'.Parameters.AddWithValue("md", md) |> ignore
-                                    let! scalar = command'.ExecuteScalarAsync(ct).ConfigureAwait(false)
+                                    let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                     ids.Add(unbox<int> scalar)
-                                do! transaction.CommitAsync(ct).ConfigureAwait(false)
+                                do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
                                 return Ok (List.ofSeq ids)
                             with ex ->
                                 logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
-                                do! transaction.RollbackAsync(ct).ConfigureAwait(false)
+                                do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                                 return Error ex.Message
                         else
-                            do! transaction.RollbackAsync(ct).ConfigureAwait(false)
+                            do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                             return Error "EventId is not the last one"
                     with ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -243,12 +253,14 @@ module PgBinaryStore =
                 }
                 
             member this.MultiAddAggregateEventsMdAsync (arg: List<EventId * List<byte[]> * Version * Name * AggregateId>, md: Metadata, ?ct: CancellationToken) =
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 logger.Value.LogDebug (sprintf "MultiAddAggregateEventsMd %A" arg )
                 task {
                     use conn = new NpgsqlConnection(connection)
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
-                        do! conn.OpenAsync(ct)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let transaction = conn.BeginTransaction() 
                         let lastEventIds =
                             arg 
@@ -499,9 +511,6 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            // member this.MultiAddEvents (arg: List<EventId * List<byte array> * Version * Name>) =
-            //     (this :> IEventStore<byte[]>).MultiAddEventsMd "" arg
                 
             member this.MultiAddEventsMd md (arg: List<EventId * List<byte[]> * Version * Name>) =
                 logger.Value.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
@@ -681,14 +690,16 @@ module PgBinaryStore =
 
             member this.SetInitialAggregateStatesAsync(version: Version, name: Name, idsAndSnapshots: (AggregateId * byte[])[], ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateStatesAsync %s %s" version name)
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 let insertSnapshotCmd = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                 let firstEmptyEventCmd = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
 
                 task {
                     use conn = new NpgsqlConnection(connection)
-                    do! conn.OpenAsync(ct).ConfigureAwait(false)
-                    let! transaction = conn.BeginTransactionAsync(ct)
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                    let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
                         for (aggregateId, json) in idsAndSnapshots do
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn)
@@ -696,30 +707,32 @@ module PgBinaryStore =
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
-                            do! insertSnapshot'.ExecuteNonQueryAsync(ct) |> Async.AwaitTask |> Async.Ignore
+                            do! insertSnapshot'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
                             use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn)
                             firstEmptyEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                             firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
-                            do! firstEmptyEvent'.ExecuteNonQueryAsync(ct) |> Async.AwaitTask |> Async.Ignore
+                            do! firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
-                        do! transaction.CommitAsync(ct)
+                        do! transaction.CommitAsync(cts.Token)
                         return Ok ()
                     with e ->
-                        do! transaction.RollbackAsync(ct)
+                        do! transaction.RollbackAsync(cts.Token)
                         return Error e.Message
                 }
                    
             member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct: CancellationToken) =
                 logger.Value.LogDebug (sprintf "SetInitialAggregateStateAsync %A %s %s" aggregateId version name)
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                 let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 task
                     {
                         use conn= new NpgsqlConnection(connection)
-                        do! conn.OpenAsync(ct).ConfigureAwait(false)
-                        let! transaction = conn.BeginTransactionAsync (ct)
+                        use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        let! transaction = conn.BeginTransactionAsync (cts.Token)
                         try
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn)
                             insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
@@ -731,13 +744,13 @@ module PgBinaryStore =
                             firstEmptyAggregateEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                             firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             
-                            let! _ = insertSnapshot'.ExecuteScalarAsync(ct).ConfigureAwait(false)
-                            let! _ = firstEmptyAggregateEvent'.ExecuteScalarAsync(ct).ConfigureAwait(false)
-                            let! _ = transaction.CommitAsync(ct)
+                            let! _ = insertSnapshot'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
+                            let! _ = firstEmptyAggregateEvent'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
+                            let! _ = transaction.CommitAsync(cts.Token)
                             return Ok ()
                         with
                             | _ as e ->
-                                let! _ = transaction.RollbackAsync (ct)
+                                let! _ = transaction.RollbackAsync (cts.Token)
                                 return Error e.Message
                     }
             member this.SetInitialAggregateStates version name idsAndSnapshots =
@@ -860,7 +873,6 @@ module PgBinaryStore =
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
                 let insertEvents = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" (contextVersion + contextName)
                 
-               
                 let result =
                     fun _ ->
                         let conn = new NpgsqlConnection(connection)
@@ -1160,6 +1172,38 @@ module PgBinaryStore =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
            
+            member this.GetAllAggregateEventsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct:CancellationToken) =
+                logger.Value.LogDebug (sprintf "GetAllAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                task
+                    {
+                        use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                        command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                        command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+                        let rec loop () = task {
+                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                            if hasRow then
+                                let eventId = reader.GetInt32(0)
+                                let aggregateId = reader.GetGuid(1)
+                                let eventJson = reader.GetFieldValue<byte[]>(2)
+                                results.Add(eventId, aggregateId, eventJson)
+                                return! loop ()
+                            else
+                                return ()
+                        }
+                        do! loop ()
+                        return results |> Ok
+                    }
+                    
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
                 let aggregateIdsArray = aggregateIds |> Array.ofList
                 logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
@@ -1192,22 +1236,24 @@ module PgBinaryStore =
                 logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 
                 let aggregateIdsArray = aggregateIds |> Array.ofList
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 task
                     {
                         try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(ct).ConfigureAwait(false)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
                             command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
-                            use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
                             let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
                                 if hasRow then
                                     let eventId = reader.GetInt32(0)
                                     let aggregateId = reader.GetGuid(1)
@@ -1407,6 +1453,37 @@ module PgBinaryStore =
                     logger.Value.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
                     Error (sprintf "error occurred %A" ex.Message)
                     
+            member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct) =
+                logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
+                let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                task
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                            if hasRow then
+                                let eventIdOpt = if reader.IsDBNull(0) then None else Some (reader.GetInt32(0))
+                                let isDeleted = reader.GetBoolean(1)
+                                let snapshotBin = reader.GetFieldValue<byte[]>(2)
+                                if isDeleted then
+                                    return Error (sprintf "object %A type %s%s is deleted" aggregateId version name)
+                                else
+                                    return Ok (eventIdOpt, snapshotBin)
+                            else
+                                return Error (sprintf "object %A type %s%s not existing" aggregateId version name)
+                        with ex ->
+                            logger.Value.LogError (sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
+                            return Error ex.Message
+                    }
+                    
             member this.TryGetAggregateSnapshotById version name aggregateId id =
                 logger.Value.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
@@ -1592,18 +1669,20 @@ module PgBinaryStore =
             member this.GetAggregateEventsAsync (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken): Task<Result<List<EventId * byte array>, string>> =
                 logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
-                let ct = defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token
                 task {
                     try
+                        use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
-                        do! conn.OpenAsync(ct).ConfigureAwait(false)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                        use! reader = command.ExecuteReaderAsync(ct).ConfigureAwait(false)
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
                         let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(ct).ConfigureAwait(false)
+                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
                             if hasRow then
                                 let eventId = reader.GetInt32(0)
                                 let eventBytes = reader.GetFieldValue<byte[]>(1)

@@ -74,10 +74,14 @@ module Storage =
         abstract member TryGetFirstSnapshot: Version -> Name -> AggregateId -> Result<SnapId * 'F, string>
         
         abstract member TryGetLastAggregateSnapshot: Version -> Name -> AggregateId -> Result<Option<EventId> * 'F, string>
+        abstract member TryGetLastAggregateSnapshotAsync: Version * Name * AggregateId * ?ct:CancellationToken -> Task<Result<Option<EventId> * 'F, string>>
 
+        
+        [<Obsolete("")>]
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * 'F>
         abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * 'F>
 
+        [<Obsolete("")>]
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StoragePgEvent<'F>>
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
@@ -126,6 +130,7 @@ module Storage =
         abstract member GetMultipleAggregateEventsInATimeInterval: Version -> Name -> List<AggregateId> -> DateTime -> DateTime -> Result<List<EventId * AggregateId * 'F >, string>
         abstract member GetMultipleAggregateEventsInATimeIntervalAsync: Version * Name * List<AggregateId> * DateTime * DateTime * ?ct:CancellationToken -> Task<Result<List<EventId * AggregateId * 'F >, string>>
         abstract member GetAllAggregateEventsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F >, string>
+        abstract member GetAllAggregateEventsInATimeIntervalAsync: Version * Name * DateTime * DateTime * ?ct: CancellationToken ->  Task<Result<ResizeArray<EventId * AggregateId * 'F >, string>>
         
         [<Obsolete("Use GetAllAggregateIds or GetAllAggregateIdsInATimeInterval")>]
         abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * AggregateId * DateTime * 'F >, string>

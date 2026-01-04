@@ -473,7 +473,6 @@ module MemoryStorage =
                     |> List.tryLast
                     |>> (fun x -> x.EventId)
                     
-                    
             member this.TryGetLastAggregateSnapshot version name aggregateId =
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
                    (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
@@ -487,6 +486,11 @@ module MemoryStorage =
                     | None -> Error "not found"
                     | Some (_, _, true, _) -> Error "was deleted"
                     | Some (eventId, id, _, json) -> Ok (eventId, json)
+           
+            member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct: CancellationToken) =
+                task {
+                    return (this :> IEventStore<string>).TryGetLastAggregateSnapshot version name aggregateId
+                }
                     
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
@@ -637,6 +641,24 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
+                    
+            member this.GetAllAggregateEventsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct:CancellationToken) =
+                taskResult {
+                    let results = ResizeArray<EventId * AggregateId * string>()
+                    if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+                        return results
+                    else
+                        let res =
+                            aggregate_events_dic.[version].[name]
+                            |> Dictionary.keys
+                            |> Seq.toList
+                            |> List.map (fun x -> aggregate_events_dic.[version].[name].[x])
+                            |> List.collect (fun x -> x)
+                            |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                            |>> (fun x -> x.Id, x.AggregateId, x.JsonEvent)
+                        results.AddRange(res)    
+                        return results
+                }
            
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
                 logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
