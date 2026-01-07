@@ -36,7 +36,7 @@ Sharpino is a library to support Event-Sourcing in F# based on the following pri
 
 ## Overview and terms
 
-- Contexts: Event-sourced objects with no Id, so only one instance is around for each type.
+- Contexts: Event-sourced objects with no Id, so only one instance is around for each type. (Contexts are deprecated. Just use an aggregates with a constant Id)
 - Aggregates: Event-sourced objects with Id (Guid).
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 - Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
@@ -173,7 +173,7 @@ Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for 
 The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
-
+- Blogged [Event Sourcing in F#: From Cross-Stream Invariants to Refreshable Details](https://medium.com/@tonyx1/event-sourcing-in-f-from-cross-stream-invariants-to-refreshable-details-d5d6f7fd2dd8)
 - Version 4.6.1: handle CancellationToken "scope" (for implicit disposal) in pg(Binary)EventStore, added GetAllAggregateEventsInATimeIntervalAsync (ResizeArray based).
 - Version 4.6.0: added support for CancellationToken in StateView async functions and their related db functions
 - Version 4.5.8: added runInitAsync and runMultipleInitAsync to CommandHanldler and related db functions with optional CancellationToken.
@@ -188,7 +188,7 @@ Note about the recent change in caching policy. Each process will maintain its o
 - Version 4.4.9: Replaced ConcurrentDictionary based cache with MemoryCache
 - Version 4.4.7: fix a problem of indexes in aggregateCache that was unoticed and harmless (until 4.4.6).
 - Version 4.4.6 (DEPRECATED. need fix): avoid an unnecessary access to last snapshot event id to get last aggregateSnapshot
-- Added an article on mediumi[F# Domain Model with Event Sourcing vs C# with Entity Framework] (https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
+- Added an article on medium [F# Domain Model with Event Sourcing vs C# with Entity Framework](https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
 - Version 4.4.4: added bulk object initializations
 - Version 4.4.3: added support for net10.0
 - Version 4.4.2: mkAggregateSnapshot is reintroduced (was dropped in 4.4.1)
