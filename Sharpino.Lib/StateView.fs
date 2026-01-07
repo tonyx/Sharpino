@@ -352,10 +352,10 @@ module StateView =
                 Error e
 
     let inline getRefreshableDetails<'A>
-        (refreshableDetails: unit -> Result<Refreshable<'A> * List<Guid>, string>)
+        (refreshableDetailsBuilder: unit -> Result<Refreshable<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) =
         
-        let result = DetailsCache.Instance.Memoize refreshableDetails key
+        let result = DetailsCache.Instance.Memoize refreshableDetailsBuilder key
         match result with
         | Error e -> Error e
         | Ok res -> Ok (res :?> 'A)

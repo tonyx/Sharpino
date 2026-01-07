@@ -27,6 +27,7 @@ open FsToolkit.ErrorHandling
 // after all what we are going for is leaving only the md version and keep the
 // non-md only for backward compatibility
 module CommandHandler =
+    let cancellationTokenSourceExpiration = 10000
     type StramName = string
 
     // will play around D.I./host to make logging more flexible as something like follows
@@ -437,13 +438,15 @@ module CommandHandler =
         (messageSenders: MessageSenders)
         (initialInstances: 'A1[])
         (ct: Option<CancellationToken>) =
-            let ct' =
-                ct |> Option.map (fun x -> x) |> Option.defaultValue (new CancellationTokenSource(eventStoreTimeout)).Token
             taskResult {
+                use cts = CancellationTokenSource.CreateLinkedTokenSource
+                              (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                cts.CancelAfter(cancellationTokenSourceExpiration)
+                
                 let idWithserializedAggregates =
                     initialInstances
                     |>> (fun x -> x.Id, x.Serialize)
-                let! res = eventStore.SetInitialAggregateStatesAsync('A1.Version, 'A1.StorageName, idWithserializedAggregates, ct')
+                let! res = eventStore.SetInitialAggregateStatesAsync('A1.Version, 'A1.StorageName, idWithserializedAggregates, cts.Token)
                 let _ =
                     initialInstances
                     |> Array.iter (fun x -> AggregateCache3.Instance.Memoize2 (0, x |> box) x.Id)
@@ -466,10 +469,11 @@ module CommandHandler =
         (messageSenders: MessageSenders)
         (initialInstance: 'A1)
         (ct: Option<CancellationToken>) =
-            let ct' =
-                ct |> Option.map (fun x -> x) |> Option.defaultValue (new CancellationTokenSource(eventStoreTimeout)).Token
             taskResult {
-                let! res = eventStore.SetInitialAggregateStateAsync(initialInstance.Id, 'A1.Version, 'A1.StorageName, initialInstance.Serialize, ct')
+                use cts = CancellationTokenSource.CreateLinkedTokenSource
+                              (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                cts.CancelAfter(cancellationTokenSourceExpiration)
+                let! res = eventStore.SetInitialAggregateStateAsync(initialInstance.Id, 'A1.Version, 'A1.StorageName, initialInstance.Serialize, cts.Token)
                 let _ = AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                 let _ =
                     let queueName = 'A1.Version + 'A1.StorageName

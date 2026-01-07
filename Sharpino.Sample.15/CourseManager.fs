@@ -122,9 +122,9 @@ module CourseManager =
                     return newEnrollments
             }
 
-        member this.GetCoursesForStudent (studentId: StudentId) =
+        member this.GetCourses (studentId: StudentId) =
             result {
-                let! enrollments = this.GetEnrollmentsForStudent studentId
+                let! enrollments = this.GetEnrollments studentId
                 let! courses =
                     enrollments
                     |> List.map (fun e -> courseViewer e.CourseId.Id |> Result.map snd)
@@ -151,7 +151,7 @@ module CourseManager =
                 return courseEnrollments
             }
 
-        member this.GetEnrollmentsForStudent (studentId: StudentId) =
+        member this.GetEnrollments (studentId: StudentId) =
             result {
                 let! enrollments = this.GetOrCreateEnrollments()
                 let studentEnrollments =
@@ -166,19 +166,19 @@ module CourseManager =
                 return enrollments
             }
         
-        member this.GetNonRefreshableStudentDetails (studentId: StudentId) =
+        member this.GetEphemeralDetails (studentId: StudentId) =
             result {
                 let! (_, student) = studentViewer studentId.Id
-                let! courses = this.GetCoursesForStudent studentId
+                let! courses = this.GetCourses studentId
                 return { Student = student; EnrolledInCourses = courses }
             }
         
-        member this.GetRefreshableStudentDetails (studentId: StudentId) =
+        member this.GetRefreshableDetails (studentId: StudentId) =
             let detailsBuilder =
                 fun () ->
                     let refresher =
                         fun () ->
-                            this.GetNonRefreshableStudentDetails studentId
+                            this.GetEphemeralDetails studentId
                     result
                         {
                             let! studentDetails = refresher ()
@@ -193,9 +193,9 @@ module CourseManager =
             let key = DetailsCacheKey (typeof<RefreshableStudentDetails>, studentId.Id)
             StateView.getRefreshableDetails<RefreshableStudentDetails> detailsBuilder key
 
-        member this.GetStudentDetails (studentId: StudentId) =
+        member this.GetDetails (studentId: StudentId) =
             result {
-                let! details = this.GetRefreshableStudentDetails studentId
+                let! details = this.GetRefreshableDetails studentId
                 return details.StudentDetails
             }
             

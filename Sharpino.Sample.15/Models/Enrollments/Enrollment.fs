@@ -10,7 +10,7 @@ open Sharpino.Sample._15.Commons.Definitions
 
 module Enrollment =
     let enrollmentId = EnrollmentId (Guid.Parse("5b0bf9f7-2fe0-485e-88b5-94c978f4b399"))
-    type EnrollmentItem =
+    type Enrollment =
         { 
           CourseId: CourseId
           StudentId: StudentId
@@ -18,7 +18,7 @@ module Enrollment =
         }
     type Enrollments =
         { Id: EnrollmentId
-          Enrollments: List<EnrollmentItem>}
+          Enrollments: List<Enrollment>}
     with    
         member this.AddEnrollment enrollment =
             result

@@ -79,6 +79,7 @@ module Storage =
         
         [<Obsolete("")>]
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * 'F>
+        [<Obsolete("")>]
         abstract member TryGetAggregateSnapshotById: Version -> Name -> AggregateId -> EventId ->Option<Option<EventId> * 'F>
 
         [<Obsolete("")>]
@@ -90,7 +91,6 @@ module Storage =
 
         abstract member SetInitialAggregateState: AggregateId ->  Version -> Name -> 'F ->  Result<unit, string>
         
-        // todo: implement
         abstract member SetInitialAggregateStateAsync: AggregateId * Version * Name * 'F * ?ct:CancellationToken ->  Task<Result<unit, string>>
         
         abstract member SetInitialAggregateStates: Version -> Name -> (AggregateId * 'F)[] ->  Result<unit, string>

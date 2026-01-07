@@ -13,7 +13,8 @@ open Sharpino.Sample._15.EnrollmentEvents
 
 module EnrollmentCommands =
     type EnrollmentCommands =
-        | AddEnrollment of EnrollmentItem
+        | AddEnrollment of Enrollment
+
         interface AggregateCommand<Enrollments,EnrollmentEvents> with
             member this.Execute (enrollments: Enrollments) =
                 match this with

@@ -12,7 +12,8 @@ open Sharpino.Sample._15.Commons.Definitions
 
 module EnrollmentEvents =
     type EnrollmentEvents =
-        | EnrollmentAdded of EnrollmentItem
+        | EnrollmentAdded of Enrollment
+
         interface Event<Enrollments> with
             member this.Process (enrollments: Enrollments) =
                 match this with

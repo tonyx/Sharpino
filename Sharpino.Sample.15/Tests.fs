@@ -94,7 +94,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let details = courseManager.GetNonRefreshableStudentDetails student.Id
+            let details = courseManager.GetEphemeralDetails student.Id
             Expect.isOk details "Could not get student details"
 
             let studentDetails = details.OkValue
@@ -116,7 +116,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let details = courseManager.GetStudentDetails student.Id
+            let details = courseManager.GetDetails student.Id
             Expect.isOk details "Could not get student details"
 
             let studentDetails = details.OkValue
@@ -133,9 +133,9 @@ let tests =
             let _ = courseManager.AddCourse course1
             let _ = courseManager.AddStudent student
             let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetStudentDetails student.Id
+            let details = courseManager.GetDetails student.Id
             let _ = courseManager.RenameCourse course1.Id "Mathematics"
-            let details2 = courseManager.GetStudentDetails student.Id
+            let details2 = courseManager.GetDetails student.Id
             Expect.isOk details "Could not get student details"
             Expect.isOk details2 "Could not get student details"
             
@@ -150,9 +150,9 @@ let tests =
             let _ = courseManager.AddStudent student
             
             let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetStudentDetails student.Id
+            let details = courseManager.GetDetails student.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
-            let details2 = courseManager.GetStudentDetails student.Id
+            let details2 = courseManager.GetDetails student.Id
             Expect.equal details.OkValue.EnrolledInCourses.Length 1 "Expected one course"
             Expect.equal details2.OkValue.EnrolledInCourses.Length 2 "Expected two courses"
         
@@ -167,11 +167,11 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
             let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetStudentDetails student.Id
+            let details = courseManager.GetDetails student.Id
             Expect.isOk details "Could not get student details"
             let _ = courseManager.CreateEnrollment student.Id course2.Id
             let _ = courseManager.RenameCourse course2.Id "Mathematics"
-            let details2 = courseManager.GetStudentDetails student.Id
+            let details2 = courseManager.GetDetails student.Id
             
             Expect.equal details.OkValue.EnrolledInCourses.Length 1 "Expected one course"
             Expect.equal details2.OkValue.EnrolledInCourses.Length 2 "Expected two courses"
@@ -189,7 +189,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let courses = courseManager.GetCoursesForStudent student.Id
+            let courses = courseManager.GetCourses student.Id
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -219,7 +219,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let courses = courseManager.GetCoursesForStudent student.Id
+            let courses = courseManager.GetCourses student.Id
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -245,7 +245,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let courses = courseManager.GetCoursesForStudent student.Id
+            let courses = courseManager.GetCourses student.Id
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -270,7 +270,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let courses = courseManager.GetCoursesForStudent student.Id
+            let courses = courseManager.GetCourses student.Id
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -331,7 +331,7 @@ let tests =
             let _ = courseManager.CreateEnrollment student.Id course1.Id
             let _ = courseManager.CreateEnrollment student.Id course2.Id
 
-            let enrollments = courseManager.GetEnrollmentsForStudent student.Id
+            let enrollments = courseManager.GetEnrollments student.Id
             Expect.isOk enrollments "Could not get enrollments for student"
 
             let enrollmentsList = enrollments.OkValue
