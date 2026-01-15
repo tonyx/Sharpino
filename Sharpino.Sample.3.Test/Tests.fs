@@ -45,6 +45,7 @@ let pgEventStore = PgEventStore(connection)
 let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, MessageSenders.NoSender)
 let stadiumSystem = StadiumBookingSystem(pgEventStore, MessageSenders.NoSender)
 
+#if RABBITMQ
 let hostBuilder =
     Host.CreateDefaultBuilder()
         .ConfigureServices(fun (services: IServiceCollection) ->
@@ -79,6 +80,7 @@ let rabbitMQMessageSender =
 
 let rMessageSender =
     MessageSenders.MessageSender rabbitMQMessageSender
+#endif
         
 let pgReset () =
     pgEventStore.Reset Stadium.Version Stadium.StorageName

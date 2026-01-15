@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>4.6.1</version>
+    <version>4.6.2</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -19,15 +19,15 @@
             <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
             <dependency id="FsPickler" version="5.3.2" />
             <dependency id="FsPickler.Json" version="5.3.2" />
-            <dependency id="Microsoft.Extensions.Configuration" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Hosting" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Logging" version="10.0.1" />
-            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.1" />
+            <dependency id="Microsoft.Extensions.Configuration" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Hosting" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Logging" version="10.0.2" />
+            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.2" />
             
-            <dependency id="Sharpino.Core" version="2.3.6" />
+            <dependency id="Sharpino.Core" version="2.3.7" />
 
             <dependency id="System.Data.Common" version="4.3.0" />
             <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
@@ -36,7 +36,7 @@
             <dependency id="Farmer" version="1.9.26" />
             <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
             <dependency id="FSharp.Data" version="6.6.0" />
-            <dependency id="FSharpPlus" version="1.8.0" />
+            <dependency id="FSharpPlus" version="1.9.1" />
             <dependency id="Newtonsoft.Json" version="13.0.4" />
             <dependency id="Npgsql" version="10.0.1" />
             <dependency id="Npgsql.FSharp" version="8.0.0" />
@@ -60,7 +60,7 @@
         <dependency id="Microsoft.Extensions.Logging" version="9.0.11" />
         <dependency id="Microsoft.Extensions.Caching.Memory" version="9.0.11" />
           
-        <dependency id="Sharpino.Core" version="2.3.6" />
+        <dependency id="Sharpino.Core" version="2.3.7" />
 
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
@@ -69,7 +69,7 @@
         <dependency id="Farmer" version="1.9.26" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.6.0" />
-        <dependency id="FSharpPlus" version="1.8.0" />
+        <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="Newtonsoft.Json" version="13.0.4" />
         <dependency id="Npgsql" version="9.0.4" />
         <dependency id="Npgsql.FSharp" version="8.0.0" />
@@ -93,7 +93,7 @@
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Caching.Memory" version="8.0.1" />
           
-        <dependency id="Sharpino.Core" version="2.3.5" />
+        <dependency id="Sharpino.Core" version="2.3.7" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
@@ -102,7 +102,7 @@
         <dependency id="Farmer" version="1.9.26" />
         <dependency id="FSharp.Control.AsyncSeq" version="3.2.1" />
         <dependency id="FSharp.Data" version="6.6.0" />
-        <dependency id="FSharpPlus" version="1.8.0" />
+        <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="Newtonsoft.Json" version="13.0.4" />
         <dependency id="Npgsql" version="8.0.7" />
         <dependency id="Npgsql.FSharp" version="8.0.0" />

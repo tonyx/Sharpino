@@ -16,7 +16,7 @@ open Sharpino.PgStorage
 open Sharpino.Definitions
 
 module PgBinaryStore =
-    let cancellationTokenSourceExpiration = 10000
+    let cancellationTokenSourceExpiration = 100000
 
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
@@ -1345,7 +1345,70 @@ module PgBinaryStore =
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message        
+            member this.GetAggregateIdsAsync (version, name, ?ct) =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
+                taskResult
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                                if hasRow then
+                                    let aggregateId = reader.GetGuid(0)
+                                    results.Add(aggregateId)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error ex.Message
+                    }
              
+            member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
+                taskResult
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                                if hasRow then
+                                    let aggregateId = reader.GetGuid(0)
+                                    results.Add(aggregateId)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error ex.Message
+                    }
+                    
             member this.TryGetLastSnapshotId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 // log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)

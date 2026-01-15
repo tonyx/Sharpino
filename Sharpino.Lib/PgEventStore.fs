@@ -17,7 +17,7 @@ open Sharpino.Storage
 open Sharpino.Definitions
 
 module PgStorage =
-    let cancellationTokenSourceExpiration = 10000
+    let cancellationTokenSourceExpiration = 100000
     open Conf
 
     let config = Conf.config ()
@@ -1742,6 +1742,39 @@ module PgStorage =
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
 
+            member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
+                taskResult
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                                if hasRow then
+                                    let aggregateId = reader.GetGuid(0)
+                                    results.Add(aggregateId)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error ex.Message
+                    }         
+            
             member this.GetAggregateIds version name = 
                 logger.Value.LogDebug (sprintf "GetAggregateIds %A %A" version name)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
@@ -1763,7 +1796,52 @@ module PgStorage =
                 with
                 | _ as ex ->
                     logger.Value.LogDebug (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message 
+                    Error ex.Message
+             
+            member this.GetAggregateIdsAsync (version, name, ?ct) =
+                logger.Value.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
+                taskResult
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                                if hasRow then
+                                    let aggregateId = reader.GetGuid(0)
+                                    results.Add(aggregateId)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList
+                        with
+                        | _ as ex ->
+                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error ex.Message
+                    }         
+                
+                // take note: should implement something like following where executeAsync will use the token
+                // taskResult
+                //     {
+                //         return!
+                //             connection
+                //             |> Sql.connect
+                //             |> Sql.query query
+                //             |> Sql.executeAsyncWithToken ( fun read ->
+                //                 (
+                //                     read.uuid "aggregate_id"
+                //                 )
+                //             )
+                //     }
           
             member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)

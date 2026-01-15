@@ -612,6 +612,18 @@ module MemoryStorage =
                     |> Seq.toList
                     |> Ok        
             
+            member this.GetAggregateIdsAsync (version, name, ?ct) =
+                task
+                    {
+                        return (this:>IEventStore<string>).GetAggregateIds version name
+                    }
+           
+            member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
+                task
+                    {
+                        return (this :> IEventStore<string>).GetAggregateIdsInATimeInterval version name dateFrom dateTo
+                    }
+             
             member this.GetAggregateEventsInATimeInterval (version: Version) (name: Name) (aggregateId: AggregateId) (dateFrom: DateTime) (dateTo: DateTime) =
                 logger.Value.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 if

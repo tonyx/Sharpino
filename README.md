@@ -173,6 +173,7 @@ Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for 
 The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
+- Version 4.6.2: handle task/CancellationToken in few more eventstore/stateview functions
 - Blogged [Event Sourcing in F#: From Cross-Stream Invariants to Refreshable Details](https://medium.com/@tonyx1/event-sourcing-in-f-from-cross-stream-invariants-to-refreshable-details-d5d6f7fd2dd8)
 - Version 4.6.1: handle CancellationToken "scope" (for implicit disposal) in pg(Binary)EventStore, added GetAllAggregateEventsInATimeIntervalAsync (ResizeArray based).
 - Version 4.6.0: added support for CancellationToken in StateView async functions and their related db functions

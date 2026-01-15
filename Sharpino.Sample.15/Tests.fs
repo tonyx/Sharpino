@@ -1,6 +1,7 @@
 module Tests
 
 open System
+open System.Linq
 open Expecto
 open DotNetEnv
 open Sharpino
@@ -451,7 +452,65 @@ let tests =
                 pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.Id.Id)
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
-            Expect.isOk snapshot "Could not get snapshot"    
+            Expect.isOk snapshot "Could not get snapshot"
+       
+        testCase "create a course and get the relate aggregateId from the EventStore" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let addCourse = courseManager.AddCourse course
             
+            let ids = pgEventStore.GetAggregateIds Course.Version Course.StorageName |> Result.get
+            Expect.equal ids [course.Id.Id] "should be equal"
+        
+        testCase "create a course and get the related aggregateid from the EventStore Async" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let addCourse = courseManager.AddCourse course
+            let ids =
+                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName) 
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Result.get
+            Expect.equal ids [course.Id.Id] "should be equal"
+            
+        testCase "create two courses and get the related aggregateIds from the EventStore Async" <| fun _ ->
+            setUp ()
+            let math = Course.MkCourse "Math" 10
+            let english = Course.MkCourse "English" 10
+            let addCourses = courseManager.AddCourses [|math; english|]
+            let ids =
+                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Result.get
+            Expect.equal ids.Length 2 "should be true"
+            Expect.isTrue (ids.Contains math.Id.Id) "should be true"
+            Expect.isTrue (ids.Contains english.Id.Id) "should be true"
+            
+        testCase "there are no courses and therefore the aggregateIds returned is empty" <| fun _ ->
+            setUp ()
+            let ids =
+                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Result.get
+            Expect.isEmpty ids "should be empty"    
+            
+        testCase "create a course and get the related aggregateid from StateView Async" <| fun _ ->
+            setUp ()
+            let course = Course.MkCourse "Math" 10
+            let addCourse = courseManager.AddCourse course
+            let states =
+                StateView.getAggregateStatesInATimeIntervalAsync<Course, CourseEvents, string> 
+                    pgEventStore
+                    DateTime.MinValue
+                    DateTime.MaxValue
+                    None
+                |>
+                Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Result.get
+                
+            Expect.equal states.Length 1 "should be 1"
     ]
     |> testSequenced

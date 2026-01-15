@@ -135,7 +135,9 @@ module Storage =
         [<Obsolete("Use GetAllAggregateIds or GetAllAggregateIdsInATimeInterval")>]
         abstract member GetAggregateSnapshotsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<int * AggregateId * DateTime * 'F >, string>
         abstract member GetAggregateIdsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
-        abstract member GetAggregateIds : Version -> Name -> Result<List<AggregateId>, string>
+        abstract member GetAggregateIdsInATimeIntervalAsync: Version * Name * DateTime * DateTime * ?ct: CancellationToken -> Task<Result<List<AggregateId>, string>>
+        abstract member GetAggregateIds: Version -> Name -> Result<List<AggregateId>, string>
+        abstract member GetAggregateIdsAsync: Version * Name * ?ct:CancellationToken -> Task<Result<List<AggregateId>, string>>
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         

@@ -16,6 +16,7 @@ open FsToolkit.ErrorHandling
 open System
 
 module StateView =
+    let cancellationTokenSourceExpiration = 100000
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger
@@ -728,6 +729,34 @@ module StateView =
                         |> List.traverseResultM (fun x -> x)
                 }
                 
+    let inline getAggregateStatesInATimeIntervalAsync<'A, 'E, 'F
+        when 'A :> Aggregate<'F>
+        and 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (start: DateTime)
+        (end_: DateTime)
+        (ct: Option<CancellationToken>)
+        =
+            logger.Value.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
+                    cts.CancelAfter cancellationTokenSourceExpiration
+                    let! ids =
+                        eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, cts.Token)
+                    let allStates =
+                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    return! 
+                        allStates
+                        |> List.traverseResultM (fun x -> x)
+                }
+                
     let inline getAllAggregateStates<'A, 'E, 'F
         when 'A :> Aggregate<'F>
         and 'E :> Event<'A>
@@ -754,7 +783,6 @@ module StateView =
                         result
                         |> List.map (fun (id, x) -> (id, x :?> 'A ))
                     return result'
-                    
                 }
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
