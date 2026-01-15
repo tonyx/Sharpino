@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino.Core</id>
-    <version>2.3.7</version>
+    <version>2.3.8</version>
     <title>Sharpino.Core</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event Sourcing Library (Core)</description>
@@ -28,7 +28,7 @@
         <dependency id="FsPickler" version="5.3.2" />
         <dependency id="FsPickler.Json" version="5.3.2" />
         <dependency id="Farmer" version="1.9.26" />
-        <dependency id="FSharpPlus" version="1.8.0" />
+        <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="FsToolkit.ErrorHandling" version="5.1.0" />
         <dependency id="Microsoft.Extensions.Logging" version="9.0.11" />
         <dependency id="Microsoft.Extensions.Hosting" version="9.0.11" />
@@ -39,7 +39,7 @@
         <dependency id="FsPickler" version="5.3.2" />
         <dependency id="FsPickler.Json" version="5.3.2" />
         <dependency id="Farmer" version="1.9.26" />
-        <dependency id="FSharpPlus" version="1.8.0" />
+        <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="FsToolkit.ErrorHandling" version="5.1.0" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Hosting" version="8.0.1" />

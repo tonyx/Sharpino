@@ -45,5 +45,4 @@
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
   </ItemGroup>
 
-
 </Project>
