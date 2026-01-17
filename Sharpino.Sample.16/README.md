@@ -1,11 +1,11 @@
 # Sharpino Sample - Event Sourcing with Command Coordination
 
-Note: this is a work in progress meant to explore alternatives to Saga/Process manager in event-sourced systems.
+Note: emulating Saga/Process manager
 
-This project investigates an alternative approach to process management in event-sourced systems where events cannot directly fire new commands. 
-Instead, commands that generate events are executed together with other commands responsible for handling those events.
+Events cannot directly fire new commands (yet)
+Alternative is that commands are executed together with other commands responsible for handling those events.
 
-## Architecture Overview
+## Overview
 
 ### Key Concept: Command Coordination
 Unlike traditional event sourcing where events can trigger new commands, this implementation uses a coordinated command approach:
@@ -73,14 +73,6 @@ dotnet run
 ```bash
 dotnet test
 ```
-
-## Key points
-
-1. **Atomic Operations**: Related commands execute together, ensuring consistency
-2. **Predictable Flow**: No cascading command triggers from events
-3. **Easier Testing**: Command outcomes are deterministic
-4. **Better Debugging**: Clear command execution chain
-5. **Event Integrity**: Events remain pure facts, not command triggers
 
 ## Domain Rules
 
