@@ -752,9 +752,12 @@ module StateView =
                         eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, cts.Token)
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
-                    return! 
+                    let! result =    
                         allStates
                         |> List.traverseResultM (fun x -> x)
+                    return    
+                        result
+                        |> List.map (fun (x, y) -> x, y:?> 'A)
                 }
                 
     let inline getAllAggregateStates<'A, 'E, 'F

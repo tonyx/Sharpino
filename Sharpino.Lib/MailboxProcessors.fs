@@ -46,7 +46,6 @@ module MailBoxProcessors =
                     processors.Remove removed |> ignore
                 with :? _ as e ->
                     logger.Value.LogError(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                    // log.Error(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)    
                 
             let processor = this.createProcessor ()
             processors.Add(name, processor)

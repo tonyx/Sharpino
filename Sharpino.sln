@@ -53,6 +53,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.14", "Sharp
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.15", "Sharpino.Sample.15\Sharpino.Sample.15.fsproj", "{6B199198-DD02-48D8-9D82-42FC737C7505}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.16", "Sharpino.Sample.16", "{A2529508-8D30-DDF8-7A0A-35ADBC47E969}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoTemplate", "Sharpino.Sample.16\sharpinoTemplate.fsproj", "{19CCA717-64CD-4B0A-8868-732C3AF098F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -327,8 +331,23 @@ Global
 		{6B199198-DD02-48D8-9D82-42FC737C7505}.Release|x64.Build.0 = Release|Any CPU
 		{6B199198-DD02-48D8-9D82-42FC737C7505}.Release|x86.ActiveCfg = Release|Any CPU
 		{6B199198-DD02-48D8-9D82-42FC737C7505}.Release|x86.Build.0 = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|x64.Build.0 = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Debug|x86.Build.0 = Debug|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|x64.ActiveCfg = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|x64.Build.0 = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|x86.ActiveCfg = Release|Any CPU
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{19CCA717-64CD-4B0A-8868-732C3AF098F1} = {A2529508-8D30-DDF8-7A0A-35ADBC47E969}
 	EndGlobalSection
 EndGlobal
