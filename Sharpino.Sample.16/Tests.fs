@@ -183,6 +183,169 @@ let tests =
             Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
             Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
             
+        testCase "when the material is partially insufficient then the work order is not added and any quantity stays the same" <| fun _ ->
+            let pistacchio =
+                Material.New "Pistacchio" (Quantity.New 1).OkValue
+            let cream =
+                Material.New "Cream" (Quantity.New 2).OkValue
+            let addPistacchio = materialManager.AddMaterial pistacchio
+            let addCream = materialManager.AddMaterial cream
             
+            let twoFlavoursIceCream =
+                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+            let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
+            Expect.isOk addTwoFlavoursIceCream "error in adding product"
+            
+            let workOrder =
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                |> Result.get
+            
+            let addWorkorder = materialManager.AddWorkOrder workOrder
+            Expect.isError addWorkorder "should be ok"
+            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let retrieveCream = materialManager.GetMaterial cream.Id
+            
+            Expect.equal retrievePistacchio.OkValue.Availability.Value 1 "should be 0"
+            Expect.equal retrieveCream.OkValue.Availability.Value 2 "should be 0"
+            
+        testCase "When no workingItem has started yet, then the workOrder state is initialized" <| fun _ ->
+            setUp ()
+            let pistacchio =
+                Material.New "Pistacchio" (Quantity.New 2).OkValue
+            let cream =
+                Material.New "Cream" (Quantity.New 2).OkValue
+            let addPistacchio = materialManager.AddMaterial pistacchio
+            let addCream = materialManager.AddMaterial cream
+            
+            let twoFlavoursIceCream =
+                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+            let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
+            Expect.isOk addTwoFlavoursIceCream "error in adding product"    
+                
+            let workOrder =
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                |> Result.get
+            
+            let addWorkorder = materialManager.AddWorkOrder workOrder
+            Expect.isOk addWorkorder "should be ok"
+            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let retrieveCream = materialManager.GetMaterial cream.Id
+            
+            Expect.isOk retrievePistacchio "should be ok"
+            Expect.isOk retrieveCream "should be ok"
+            
+            Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
+            Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
+            
+            let retrievedWorkOrder =
+                materialManager.GetWorkOrder workOrder.Id
+            Expect.isOk retrievedWorkOrder "should be ok"
+            Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.Initialized "should be equal"
+            
+        testCase "when one workingItem has started, then the workOrder state is InProgress" <| fun _ ->
+            setUp ()
+            let pistacchio =
+                Material.New "Pistacchio" (Quantity.New 2).OkValue
+            let cream =
+                Material.New "Cream" (Quantity.New 2).OkValue
+            let addPistacchio = materialManager.AddMaterial pistacchio
+            let addCream = materialManager.AddMaterial cream
+            
+            let twoFlavoursIceCream =
+                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+            let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
+            Expect.isOk addTwoFlavoursIceCream "error in adding product"    
+                
+            let workOrder =
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                |> Result.get
+            
+            let addWorkorder = materialManager.AddWorkOrder workOrder
+            Expect.isOk addWorkorder "should be ok"
+            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let retrieveCream = materialManager.GetMaterial cream.Id
+            
+            Expect.isOk retrievePistacchio "should be ok"
+            Expect.isOk retrieveCream "should be ok"
+            
+            Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
+            Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
+            
+            let startWorkingItem = materialManager.StartWorkingItem workOrder.Id twoFlavoursIceCream.Id
+            
+            let retrievedWorkOrder =
+                materialManager.GetWorkOrder workOrder.Id
+            Expect.isOk retrievedWorkOrder "should be ok"
+            Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.InProgress "should be equal"
+            
+        testCase "if all workingitem are started and then completed, then the whole order is fullyCompleted" <| fun _ ->
+            setUp ()
+            let pistacchio =
+                Material.New "Pistacchio" (Quantity.New 2).OkValue
+            let cream =
+                Material.New "Cream" (Quantity.New 2).OkValue
+            let addPistacchio = materialManager.AddMaterial pistacchio
+            let addCream = materialManager.AddMaterial cream
+            
+            let twoFlavoursIceCream =
+                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+            let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
+            Expect.isOk addTwoFlavoursIceCream "error in adding product"    
+                
+            let workOrder =
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                |> Result.get
+            
+            let addWorkorder = materialManager.AddWorkOrder workOrder
+            Expect.isOk addWorkorder "should be ok"
+            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let retrieveCream = materialManager.GetMaterial cream.Id
+            
+            Expect.isOk retrievePistacchio "should be ok"
+            Expect.isOk retrieveCream "should be ok"
+            
+            Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
+            Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
+            
+            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.Id twoFlavoursIceCream.Id
+            let completeWorkingItem1 = materialManager.CompleteWorkingItem workOrder.Id twoFlavoursIceCream.Id
+            
+            let retrievedWorkOrder =
+                materialManager.GetWorkOrder workOrder.Id
+            Expect.isOk retrievedWorkOrder "should be ok"
+            Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.FullyCompleted "should be equal"
+            
+        testCase "a workOrder with a single workingitem starts and then it fails, the related material quantities are restored" <| fun _ ->
+            setUp ()
+            let pistacchio =
+                Material.New "Pistacchio" (Quantity.New 1).OkValue
+            let addPistacchio = materialManager.AddMaterial pistacchio
+            let iceCream = Product.New "Ice Cream" [(pistacchio.Id, (Quantity.New 1).OkValue)]
+            let addIceCream = materialManager.AddProduct iceCream
+            
+            let workOrder =
+                WorkOrder.New "workOrder" [WorkingItem.New iceCream.Id (Quantity.New 1).OkValue]
+                |> Result.get
+            let addWorkorder = materialManager.AddWorkOrder workOrder
+            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.Id iceCream.Id
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            Expect.isOk retrievePistacchio "should be ok"
+            Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
+            
+            let failWorkingItem1 = materialManager.FailWorkingItem workOrder.Id iceCream.Id (Quantity.New 1).OkValue
+            Expect.isOk failWorkingItem1 "should be ok"
+            let retrievedWorkOrder = materialManager.GetWorkOrder workOrder.Id |> Result.get
+            Expect.isTrue retrievedWorkOrder.WorkOrderState.IsSomeFailed "should be true"
+            let (SomeFailed productsQuantities) = retrievedWorkOrder.WorkOrderState
+            Expect.equal productsQuantities [iceCream.Id, (Quantity.New 1).OkValue] "should be equal"
+            
+            let material = materialManager.GetMaterial pistacchio.Id
+            Expect.isOk material "should be ok"
+            Expect.equal material.OkValue.Availability.Value 1 "should be 1"
+             
     ] 
     |> testSequenced

@@ -81,45 +81,84 @@ type MaterialManager (messageSenders: MessageSenders, eventStore: IEventStore<st
     member this.AddWorkOrder (workOrder: WorkOrder) =
         result
             {
-                let productIds = workOrder.WorkingItems |> List.map (fun x -> x.ProductId)
                 let! products =
-                    productIds
+                    workOrder.WorkingItems |> List.map _.ProductId
                     |> List.traverseResultM (fun id -> productsViewer id.Value |> Result.map snd)
-                    
-                let materialsWithQuantities =
-                    products |> List.map _.Materials
-                    |> List.concat
                
-                let materialIdsWithConsumingCommands =
+                let materialIdsWithConsumeCommands =
+                    let materialsWithQuantities =
+                        products
+                        |>> fun x ->
+                            x.Materials
+                            |>> 
+                                fun (id, q) ->
+                                    id, (Quantity.New (q.Value * workOrder.GetQuantityPerProduct x.Id )).OkValue
+                        |> List.concat
+                    
                     materialsWithQuantities
                     |> List.groupBy fst
                     |> List.map
-                           (fun (id, quantities) ->
-                                (id, List.sumBy
-                                         (fun x -> x |> snd|> fun (x: Quantity) -> x.Value) quantities))
-                    |>> (fun (id, quantity) -> (id, Quantity.New quantity |> Result.get))
-                    |>> (fun (id, quantity) -> (id.Value, Consume quantity))
+                       (fun (id, quantities) ->
+                            id, List.sumBy
+                                (fun x -> x |> snd|> fun (x: Quantity) -> x.Value) quantities)
+                    |>> fun (id, quantity) -> (id.Value, Consume (Quantity.New quantity |> Result.get))
                     
-                let materialIds = materialIdsWithConsumingCommands |> List.map fst
-                let consumingCommands: List<AggregateCommand<Material, MaterialEvents>> =
-                    materialIdsWithConsumingCommands
+                let materialIds = materialIdsWithConsumeCommands |>> fst
+                let consumeCommands: List<AggregateCommand<Material, MaterialEvents>> =
+                    materialIdsWithConsumeCommands
                     |>> (snd >> fun x -> x :> AggregateCommand<Material, MaterialEvents>)
                 
-                let! result =
+                return!
                     CommandHandler.runInitAndNAggregateCommandsMd<Material, MaterialEvents, WorkOrder, string>
                         materialIds
                         eventStore
                         messageSenders
                         workOrder
                         ""
-                        consumingCommands
-                return result        
+                        consumeCommands
             }
-            
-    member this.GetWorkOrder (id: WorkOrderId) =
+    
+    member this.StartWorkingItem (workOrderId: WorkOrderId) (productId: ProductId) =
+        WorkOrderCommands.Start productId
+        |> runAggregateCommand<WorkOrder, WorkOrderEvents, string> workOrderId.Value eventStore messageSenders
+    
+    member this.FailWorkingItem (workOrderId: WorkOrderId) (productId: ProductId) (quantity: Quantity) =
         result
             {
-                let! _, result = workOrdersViewer id.Value
-                return result
+                let! _, product =
+                    productsViewer productId.Value
+               
+                let! materialsReadds =
+                    product.Materials
+                    |> List.map (fun (id, q) -> (id, Add q))
+                    |> List.traverseResultM (fun (id, cmd) ->
+                        preExecuteAggregateCommandMd<Material, MaterialEvents, string>
+                            id.Value
+                            eventStore
+                            MessageSenders.NoSender
+                            ""
+                            cmd 
+                        )
+                    
+                let! workOrderFail =
+                    preExecuteAggregateCommandMd<WorkOrder, WorkOrderEvents, string>
+                        workOrderId.Value
+                        eventStore
+                        MessageSenders.NoSender
+                        ""
+                        (WorkOrderCommands.Fail (productId, quantity))
+            
+                return!    
+                    runPreExecutedAggregateCommands
+                        (workOrderFail :: materialsReadds)
+                        eventStore
+                        MessageSenders.NoSender
             }
+    
+    member this.CompleteWorkingItem (workOrderId: WorkOrderId) (productId: ProductId) =
+        WorkOrderCommands.Complete productId
+        |> runAggregateCommand<WorkOrder, WorkOrderEvents, string> workOrderId.Value eventStore messageSenders 
+            
+    member this.GetWorkOrder (id: WorkOrderId) =
+        workOrdersViewer id.Value |> Result.map snd
     

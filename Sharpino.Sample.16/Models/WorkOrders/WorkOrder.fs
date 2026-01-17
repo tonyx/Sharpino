@@ -65,6 +65,19 @@ open FsToolkit.ErrorHandling
                         WorkingItems = workingItems
                     }
                 }
+        member
+            this.QuantityPerProduct =
+                this.WorkingItems
+                |> List.map (fun x -> (x.ProductId, x.Quantity))
+                |> List.groupBy fst
+                |> List.map
+                    (fun (id, quantities) ->
+                        (id, List.sumBy (fun x -> x |> snd|> fun (x: Quantity) -> x.Value) quantities)
+                    )
+                |> Map.ofList    
+        
+        member this.GetQuantityPerProduct productId=
+            this.QuantityPerProduct[productId]
                 
         member
             this.Start productId =
@@ -82,10 +95,10 @@ open FsToolkit.ErrorHandling
                             WorkingItems =
                                 this.WorkingItems
                                 |>>
-                                   (fun x ->
+                                   fun x ->
                                         if x.ProductId = productId then
                                             { x with State = Started }
-                                        else x)
+                                        else x
                     }    
                 }
         member    
@@ -104,10 +117,10 @@ open FsToolkit.ErrorHandling
                             WorkingItems =
                                 this.WorkingItems
                                 |>>
-                                   (fun x ->
+                                   fun x ->
                                         if x.ProductId = productId then
                                             { x with State = Completed }
-                                        else x)
+                                        else x
                     }    
                 }
         member     
@@ -126,10 +139,10 @@ open FsToolkit.ErrorHandling
                             WorkingItems =
                                 this.WorkingItems
                                 |>>
-                                   (fun x ->
+                                   fun x ->
                                         if x.ProductId = productId then
                                             { x with State = Failed quantity }
-                                        else x)
+                                        else x
                                 }
                 }
                 

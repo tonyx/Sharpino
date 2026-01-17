@@ -1,6 +1,134 @@
-# To run the application, use the following commands:
-docker compose up
-dotnet run
+# Sharpino Sample - Event Sourcing with Command Coordination
 
-# Notes:
-To change the configuration edit the .env file
+Note: this is a work in progress meant to explore alternatives to Saga/Process manager in event-sourced systems.
+
+This project investigates an alternative approach to process management in event-sourced systems where events cannot directly fire new commands. 
+Instead, commands that generate events are executed together with other commands responsible for handling those events.
+
+## Architecture Overview
+
+### Key Concept: Command Coordination
+Unlike traditional event sourcing where events can trigger new commands, this implementation uses a coordinated command approach:
+- **Commands** are the primary drivers of state changes
+- **Events** represent the results of command execution
+- **Command coordination** ensures atomic execution of related operations
+
+### Core Components
+
+#### 1. Domain Models
+- **Material**: Raw materials with quantity tracking
+- **Product**: Finished goods requiring materials
+- **WorkOrder**: Production orders managing multiple products
+
+#### 2. Command/Event Pattern
+- **Commands**: Intent to change state (e.g., `Consume`, `Add`, `Start`, `Complete`)
+- **Events**: Immutable facts about what happened (e.g., `Consumed`, `Added`, `Started`, `Completed`)
+- **No Event → Command**: Events cannot trigger new commands directly
+
+#### 3. Command Coordination Examples
+
+**Material Consumption on WorkOrder Creation:**
+```fsharp
+// When creating a work order, multiple commands/initialization execute atomically:
+let consumingCommands = [
+    Consume pistacchioQuantity
+    Consume creamQuantity
+    Initialize workOrder // which is not properly a command
+]
+// All succeed or all fail together
+```
+
+**WorkOrder Failure with Material Restoration:**
+```fsharp
+// When a work order fails, restore materials atomically:
+let restorationCommands = [
+    FailWorkOrder productId quantity
+    AddMaterial pistacchioQuantity
+    AddMaterial creamQuantity
+]
+// Ensures material quantities are properly restored
+```
+
+## Getting Started
+
+### Prerequisites
+- Docker and Docker Compose
+- .NET 10.0 SDK
+
+### Setup Database
+```bash
+docker compose up -d
+```
+This starts PostgreSQL and automatically runs migration scripts in order:
+- Schema creation
+- Table setup for Materials, Products, WorkOrders
+- User permissions configuration
+
+### Run Application
+```bash
+dotnet run
+```
+
+### Run Tests
+```bash
+dotnet test
+```
+
+## Key points
+
+1. **Atomic Operations**: Related commands execute together, ensuring consistency
+2. **Predictable Flow**: No cascading command triggers from events
+3. **Easier Testing**: Command outcomes are deterministic
+4. **Better Debugging**: Clear command execution chain
+5. **Event Integrity**: Events remain pure facts, not command triggers
+
+## Domain Rules
+
+### Quantity Validation
+- All quantities must be positive (> 0)
+- Private constructors prevent invalid quantity creation
+- Safe creation through `Quantity.New` function
+
+### Material Management
+- Materials can be consumed and added
+- Inventory tracking ensures no negative quantities
+- Material consumption is atomic with work order creation
+
+### Work Order Lifecycle
+1. **Initialized**: Work order created, materials consumed
+2. **InProgress**: At least one working item started
+3. **FullyCompleted**: All working items completed
+4. **SomeFailed**: Some items failed with material restoration
+
+## Configuration
+
+Edit `.env` file to modify:
+- Database connection strings
+- PostgreSQL credentials
+- Application settings
+
+## Project Structure
+
+```
+├── Models/
+│   ├── Materials/     # Material domain
+│   ├── Products/      # Product domain  
+│   └── WorkOrders/    # Work order domain
+├── db/
+│   ├── schema.sql     # Database schema
+│   └── migrations/   # Versioned migrations
+├── MaterialManager.fs # Command coordination logic
+├── Tests.fs         # Comprehensive test suite
+└── docker-compose.yml # Database setup
+```
+
+## Testing Strategy
+
+The test suite demonstrates:
+- Safe quantity creation and validation
+- Atomic material consumption
+- Work order state transitions
+- Material restoration on failures
+- Command coordination scenarios
+
+All tests verify that commands execute atomically and maintain system consistency.

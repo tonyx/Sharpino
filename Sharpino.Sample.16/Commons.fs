@@ -5,30 +5,35 @@ open System.Text.Json.Serialization
 
 module Commons =
     type TodoId =
+        private
         | TodoId of Guid
         with
             static member New = TodoId (Guid.NewGuid())
             member this.Value = match this with TodoId id -> id
     
     type MaterialId =
+        private
         | MaterialId of Guid
         with
             static member New = MaterialId (Guid.NewGuid())
             member this.Value = match this with MaterialId id -> id
     
     type ProductId =
+        private
         | ProductId of Guid
         with
             static member New = ProductId (Guid.NewGuid())
             member this.Value = match this with ProductId id -> id        
 
     type WorkOrderId =
+        private
         | WorkOrderId of Guid
         with
             static member New = WorkOrderId (Guid.NewGuid())
             member this.Value = match this with WorkOrderId id -> id
-    
+   
     type Quantity =
+        private
         | Quantity of int
         with
             static member New (quantity: int) =

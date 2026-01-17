@@ -16,6 +16,7 @@ open FsToolkit.ErrorHandling
         static member New (name: string) (materialsWithQuantities: List<MaterialId * Quantity>) =
             { Id = ProductId.New; Name = name; Materials = materialsWithQuantities }
 
+        
         // ---
         static member SnapshotsInterval = 50
         static member StorageName = "_Products"
