@@ -13,13 +13,13 @@ module User =
         | Books
 
     type User = {
-        Id: UserId
+        UserId: UserId
         NickName: string
         Preferences: List<Preference>
     }
     with 
         static member MkUser (nickName: string) = {
-            Id = UserId.New
+            UserId = UserId.New
             NickName = nickName
             Preferences = []
         }
@@ -42,6 +42,7 @@ module User =
                         }
                 }
         
+        member this.Id = this.UserId.Id
         static member Version = "_01"
         static member StorageName = "_User"
         static member SnapshotsInterval = 15
@@ -56,8 +57,3 @@ module User =
         member this.Serialize =
             JsonSerializer.Serialize(this, jsonOptions)
         
-        interface Aggregate<string> with
-            member this.Id =
-                this.Id.Id
-            member this.Serialize =
-                this.Serialize

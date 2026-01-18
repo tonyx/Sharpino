@@ -55,11 +55,6 @@ module Reservation =
         static member Deserialize x =
             jsonPSerializer.Deserialize<Reservation> x
         
-        interface Aggregate<string> with
-            member this.Id =
-                this.Id
-            member this.Serialize  =
-                this.Serialize
         
         
             

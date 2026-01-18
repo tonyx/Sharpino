@@ -61,8 +61,3 @@ module Item =
         static member Deserialize (json: string) =
             jsonPSerializer.Deserialize<Item> json    
        
-        interface Aggregate<string> with 
-            member this.Id =
-                this.Id
-            member this.Serialize =
-                this.Serialize    

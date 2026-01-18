@@ -65,9 +65,5 @@ module Student =
         member this.Serialize =
             binarySerializer.Serialize this
             
-        interface Aggregate<byte[]> with
-            member this.Id = this.Id
-            member this.Serialize  =
-                this.Serialize
         
 

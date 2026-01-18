@@ -22,7 +22,7 @@ module StateView =
         logger := newLogger
 
     let inline private tryGetAggregateSnapshot<'A, 'F
-        when 'A :> Aggregate<'F> and
+        when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)
@@ -98,7 +98,7 @@ module StateView =
                             
 
     let inline  getLastAggregateSnapshot<'A, 'F 
-        when 'A :> Aggregate<'F> and
+        when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)
@@ -125,8 +125,9 @@ module StateView =
                         }
                 }, Commons.generalAsyncTimeOut)
                 
+    // todo: can safely remove
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
-        when 'A :> Aggregate<'F> and
+        when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)
@@ -159,7 +160,7 @@ module StateView =
                 }, Commons.generalAsyncTimeOut)
                 
     let inline private getLastHistoryAggregateSnapshotOrStateCache<'A, 'F 
-        when 'A :> Aggregate<'F> and
+        when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)
@@ -216,7 +217,7 @@ module StateView =
             }, Commons.generalAsyncTimeOut)
 
     let inline snapAggregateEventIdStateAndEvents<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A> and
+        when 'E :> Event<'A> and
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)>
@@ -247,7 +248,7 @@ module StateView =
         |> Async.RunSynchronously
     
     let inline snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A> and
+        when 'E :> Event<'A> and
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
         'A: (static member StorageName: string) and
         'A: (static member Version: string)>
@@ -316,7 +317,9 @@ module StateView =
                 }, Commons.generalAsyncTimeOut)
 
     let inline getAggregateFreshState<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
+        // and 'A: (member Id: Guid)
+        // and 'A: (member Serialize: 'F)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -362,7 +365,7 @@ module StateView =
         | Ok res -> Ok (res :?> 'A)
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -423,7 +426,7 @@ module StateView =
                 }
      
     let inline getFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -450,7 +453,7 @@ module StateView =
                 }
                 
     let inline getFilteredAggregateEventsInATimeIntervalAsync<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -481,7 +484,7 @@ module StateView =
                 }
     
     let inline getFilteredMultipleAggregateEventsInATimeInterval<'A, 'E, 'F            
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -508,7 +511,7 @@ module StateView =
                 }
                 
     let inline getFilteredMultipleAggregateEventsInATimeIntervalAsync<'A, 'E, 'F            
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -541,7 +544,7 @@ module StateView =
                 }
                 
     let inline getAllFilteredAggregateEventsInATimeInterval<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -567,7 +570,7 @@ module StateView =
                 }
    
     let inline GetAllAggregateEventsInATimeIntervalAsync<'A, 'E, 'F
-        when 'A :> Aggregate<'F> and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -609,8 +612,7 @@ module StateView =
     
     [<Obsolete "getFilteredAggregateStatesInATimeInterval2 instead ">]
     let inline getFilteredAggregateSnapshotsInATimeInterval<'A, 'F
-        when 'A :> Aggregate<'F>
-        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        when 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >
@@ -635,8 +637,8 @@ module StateView =
     
     [<Obsolete "use getFilteredAggregateStatesInATimeInterval2">]
     let inline getFilteredAggregateStatesInATimeInterval<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
+        and 'A: (member Id: Guid)
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
@@ -671,8 +673,8 @@ module StateView =
                 }
                 
     let inline getFilteredAggregateStatesInATimeInterval2<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
+        when 
+        'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
@@ -706,8 +708,7 @@ module StateView =
                 }
     
     let inline getAggregateStatesInATimeInterval<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
@@ -730,8 +731,7 @@ module StateView =
                 }
                 
     let inline getAggregateStatesInATimeIntervalAsync<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
@@ -761,8 +761,7 @@ module StateView =
                 }
                 
     let inline getAllAggregateStates<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
@@ -790,8 +789,7 @@ module StateView =
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
     let inline getInitialAggregateSnapshot<'A, 'F
-        when 'A :> Aggregate<'F>
-        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        when 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         >

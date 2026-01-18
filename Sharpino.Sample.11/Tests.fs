@@ -141,7 +141,7 @@ let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, Mes
 [<Tests>]
 let tests =
     testList "samples" [
-       ftestCase "add a course and a student" <| fun _ ->
+       testCase "add a course and a student" <| fun _ ->
           setUp ()
           let course = Course.MkCourse ("math", 10)
           let student = Student.MkStudent ("Jack", 3)
@@ -149,8 +149,8 @@ let tests =
           let studentCreated = courseManager.AddStudent student
           Expect.isTrue courseCreated.IsOk "Course not created"
           Expect.isTrue studentCreated.IsOk "student not created"
-          let courseRetrieved = courseManager.GetCourse course.Id
-          let studentRetrieved = courseManager.GetStudent student.Id
+          let courseRetrieved = courseManager.GetCourse course.CourseId
+          let studentRetrieved = courseManager.GetStudent student.StudentId
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
           
@@ -226,7 +226,7 @@ let tests =
           let students =
              Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           stopwatch.Start()
           let retrieved = courseManager.GetStudents ids
@@ -242,7 +242,7 @@ let tests =
           let students =
              Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           stopwatch.Start()
           let retrieved = courseManager.GetStudents ids
@@ -258,7 +258,7 @@ let tests =
           let students =
              Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           stopwatch.Start()
           let retrieved = courseManager.GetStudents ids
@@ -275,7 +275,7 @@ let tests =
           let students =
              Array.init 100000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           stopwatch.Start()
           let retrieved = courseManager.GetStudents ids
@@ -291,7 +291,7 @@ let tests =
           let students =
              Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let _ =
              AggregateCache3.Instance.Clear ()
           let stopwatch = Stopwatch()
@@ -311,7 +311,7 @@ let tests =
           let students =
              Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           let _ =
              AggregateCache3.Instance.Clear ()
@@ -331,7 +331,7 @@ let tests =
           let students =
              Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           let _ =
              AggregateCache3.Instance.Clear ()
@@ -351,7 +351,7 @@ let tests =
           let students =
              Array.init 100000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
           let added = courseManager.AddMultipleStudents students
-          let ids = students |> Array.map (fun (x: Student) -> x.Id) |> List.ofArray
+          let ids = students |> Array.map (fun (x: Student) -> x.StudentId) |> List.ofArray
           let stopwatch = Stopwatch()
           let _ =
              AggregateCache3.Instance.Clear ()

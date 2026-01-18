@@ -114,7 +114,7 @@ module CourseManager =
                 | Ok (_, enrollments) ->
                     return enrollments
                 | Error _ ->
-                    let newEnrollments = { Id = enrollmentId; Enrollments = [] }
+                    let newEnrollments = { EnrollmentId = enrollmentId; Enrollments = [] }
                     do! runInit<Enrollments, EnrollmentEvents, string>
                             eventStore
                             messageSenders
@@ -188,7 +188,7 @@ module CourseManager =
                                     Refresher =  refresher
                                 } :> Refreshable<_>
                                 ,
-                                studentId.Id :: Enrollment.enrollmentId.Id ::  (studentDetails.EnrolledInCourses |> Array.toList |>> _.Id.Id)
+                                studentId.Id :: Enrollment.enrollmentId.Id ::  (studentDetails.EnrolledInCourses |> Array.toList |>> _.CourseId.Id)
                         }
             let key = DetailsCacheKey (typeof<RefreshableStudentDetails>, studentId.Id)
             StateView.getRefreshableDetails<RefreshableStudentDetails> detailsBuilder key

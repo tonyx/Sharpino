@@ -1,5 +1,6 @@
 namespace Sharpino
 
+open System
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Console
 open FSharp.Core
@@ -28,6 +29,7 @@ module Core =
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
    
    
+    [<Obsolete("the member can be defined on the class without implementing the interface")>]
     type Aggregate<'F> =
         abstract member Id: AggregateId 
         abstract member Serialize: 'F

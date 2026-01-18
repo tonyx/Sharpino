@@ -4,9 +4,10 @@ open Sharpino.Utils
 open Sharpino
 open Sharpino.Core
 open System
-open Tonyx.SeatsBooking.SeatRow
+open Tonyx.SeatsBooking
 open Entities
 open Tonyx.SeatsBooking.RowAggregateEvent
+open Tonyx.SeatsBooking.SeatRow
 
 module RowAggregateCommand =
     type RowAggregateCommand =

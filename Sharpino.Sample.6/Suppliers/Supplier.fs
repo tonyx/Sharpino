@@ -30,16 +30,9 @@ module Supplier =
             "_supplier"
         static member Version =
             "_01"
-        member this.Serialize (serializer: ISerializer): Json =
+        member this.Serialize = 
             serializer.Serialize this    
         
-        interface Aggregate<string> with
-            member this.Id = this.Id
-            member this.Serialize =
-                serializer.Serialize this
-        
-        interface Entity with
-            member this.Id = this.Id
             
         
             

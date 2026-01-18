@@ -142,6 +142,7 @@ module Storage =
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         
     
+    // this must be deleted
     type IEventBroker<'F> =
         {
             notify: Option<Version -> Name -> List<EventId * 'F> -> List<Result<string, 'F>>>

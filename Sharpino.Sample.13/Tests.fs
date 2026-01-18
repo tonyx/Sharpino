@@ -50,7 +50,7 @@ let tests =
             let user = User.MkUser "test"
             let result = registrationManager.RegisterUser user
             Expect.isOk result "should be ok"
-            let retrievedUser = registrationManager.GetUser user.Id.Id
+            let retrievedUser = registrationManager.GetUser user.UserId.Id
             Expect.isOk retrievedUser "should be ok"
 
         testCaseAsync "concurrent register same nickname - only one succeeds" <| async {

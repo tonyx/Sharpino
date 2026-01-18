@@ -13,7 +13,7 @@ module  Course =
     let maximumNumberOfTeachers = 3
     type Course =
         {
-            Id: CourseId
+            CourseId: CourseId
             Name: string
             Students: List<StudentId>
             MaxNumberOfStudents: int
@@ -21,7 +21,7 @@ module  Course =
         
         with
             static member MkCourse (name: string, maxNumberOfStudents: int) =
-                { Id = CourseId.New; Name = name; Students = List.empty; MaxNumberOfStudents = maxNumberOfStudents }
+                { CourseId = CourseId.New; Name = name; Students = List.empty; MaxNumberOfStudents = maxNumberOfStudents }
                     
             member this.Enroll (studentId: StudentId) =
                 result
@@ -54,6 +54,7 @@ module  Course =
                             }
                     }
             
+            member this.Id = this.CourseId.Id
             static member Version = "_01"
             static member StorageName = "_course"
             static member SnapshotsInterval = 15
@@ -68,9 +69,4 @@ module  Course =
             member this.Serialize =
                 JsonSerializer.Serialize(this, jsonOptions)
             
-            interface Aggregate<string> with
-                member this.Id =
-                    this.Id.Id
-                member this.Serialize =
-                    this.Serialize
    

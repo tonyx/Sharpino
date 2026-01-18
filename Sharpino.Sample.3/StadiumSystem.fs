@@ -1,5 +1,6 @@
 namespace Tonyx.SeatsBooking
 open System.Threading.Tasks
+open Sharpino.Commons
 open Sharpino.EventBroker
 open Sharpino.PgStorage
 open Tonyx.SeatsBooking.SeatRow
@@ -8,6 +9,7 @@ open Tonyx.SeatsBooking.StadiumEvents
 open Tonyx.SeatsBooking.StadiumCommands
 open Tonyx.SeatsBooking.RowAggregateEvent
 open Tonyx.SeatsBooking.RowAggregateCommand
+
 open Tonyx.SeatsBooking
 open Entities
 open Sharpino
@@ -149,6 +151,7 @@ module StorageStadiumBookingSystem =
                 let! (_, stadiumState) = stadiumStateViewer ()
                 return stadiumState.GetRowReferences ()
             }
+        
 
         member this.AddInvariant (rowId: Guid) (invariant: InvariantContainer) =
             let addInvariant = RowAggregateCommand.AddInvariant invariant

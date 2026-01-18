@@ -50,8 +50,3 @@ module Teacher =
             this
             |> jsonPSerializer.Serialize
        
-        interface Aggregate<string> with
-            member this.Id =
-                this.Id
-            member this.Serialize =
-                this.Serialize 

@@ -76,10 +76,10 @@ let tests =
             Expect.isOk courseCreated "Course creation failed"
             Expect.isOk studentCreated "Student creation failed"
 
-            let firstEnrollment = courseManager.CreateEnrollment student.Id course.Id
+            let firstEnrollment = courseManager.CreateEnrollment student.StudentId course.CourseId
             Expect.isOk firstEnrollment "First enrollment failed"
 
-            let secondEnrollment = courseManager.CreateEnrollment student.Id course.Id
+            let secondEnrollment = courseManager.CreateEnrollment student.StudentId course.CourseId
             Expect.isError secondEnrollment "Second enrollment should have failed"
         }
 
@@ -92,10 +92,10 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let details = courseManager.GetEphemeralDetails student.Id
+            let details = courseManager.GetEphemeralDetails student.StudentId
             Expect.isOk details "Could not get student details"
 
             let studentDetails = details.OkValue
@@ -114,10 +114,10 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let details = courseManager.GetDetails student.Id
+            let details = courseManager.GetDetails student.StudentId
             Expect.isOk details "Could not get student details"
 
             let studentDetails = details.OkValue
@@ -133,10 +133,10 @@ let tests =
             let student = Student.MkStudent "Science" 10
             let _ = courseManager.AddCourse course1
             let _ = courseManager.AddStudent student
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetDetails student.Id
-            let _ = courseManager.RenameCourse course1.Id "Mathematics"
-            let details2 = courseManager.GetDetails student.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let details = courseManager.GetDetails student.StudentId
+            let _ = courseManager.RenameCourse course1.CourseId "Mathematics"
+            let details2 = courseManager.GetDetails student.StudentId
             Expect.isOk details "Could not get student details"
             Expect.isOk details2 "Could not get student details"
             
@@ -150,10 +150,10 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
             
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetDetails student.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
-            let details2 = courseManager.GetDetails student.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let details = courseManager.GetDetails student.StudentId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
+            let details2 = courseManager.GetDetails student.StudentId
             Expect.equal details.OkValue.EnrolledInCourses.Length 1 "Expected one course"
             Expect.equal details2.OkValue.EnrolledInCourses.Length 2 "Expected two courses"
         
@@ -167,16 +167,16 @@ let tests =
             let _ = courseManager.AddCourse course1
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let details = courseManager.GetDetails student.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let details = courseManager.GetDetails student.StudentId
             Expect.isOk details "Could not get student details"
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
-            let _ = courseManager.RenameCourse course2.Id "Mathematics"
-            let details2 = courseManager.GetDetails student.Id
-            
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
+            let _ = courseManager.RenameCourse course2.CourseId "Mathematics"
+            let details2 = courseManager.GetDetails student.StudentId
+
             Expect.equal details.OkValue.EnrolledInCourses.Length 1 "Expected one course"
             Expect.equal details2.OkValue.EnrolledInCourses.Length 2 "Expected two courses"
-            Expect.equal (details2.OkValue.EnrolledInCourses |> Array.tryFind (fun c -> c.Id = course2.Id)).Value.Name "Mathematics" "Expected course name to be updated"
+            Expect.equal (details2.OkValue.EnrolledInCourses |> Array.tryFind (fun c -> c.CourseId = course2.CourseId)).Value.Name "Mathematics" "Expected course name to be updated"
 
         testCaseAsync "get courses for a student" <| async {
             setUp()
@@ -187,10 +187,10 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.Id
+            let courses = courseManager.GetCourses student.StudentId
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -217,10 +217,10 @@ let tests =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.Id
+            let courses = courseManager.GetCourses student.StudentId
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -243,10 +243,10 @@ let tests =
                 courseManager.AddStudentAsync student
                 |> Async.AwaitTask
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.Id
+            let courses = courseManager.GetCourses student.StudentId
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -268,10 +268,10 @@ let tests =
                 courseManager.AddStudentAsync student
                 |> Async.AwaitTask
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.Id
+            let courses = courseManager.GetCourses student.StudentId
             Expect.isOk courses "Could not get courses for student"
 
             let coursesList = courses.OkValue
@@ -289,10 +289,10 @@ let tests =
             let _ = courseManager.AddStudent student1
             let _ = courseManager.AddStudent student2
 
-            let _ = courseManager.CreateEnrollment student1.Id course.Id
-            let _ = courseManager.CreateEnrollment student2.Id course.Id
+            let _ = courseManager.CreateEnrollment student1.StudentId course.CourseId
+            let _ = courseManager.CreateEnrollment student2.StudentId course.CourseId
 
-            let students = courseManager.GetStudentsEnrolledInACourse course.Id
+            let students = courseManager.GetStudentsEnrolledInACourse course.CourseId
             Expect.isOk students "Could not get students for course"
 
             let studentsList = students.OkValue
@@ -310,10 +310,10 @@ let tests =
             let _ = courseManager.AddStudent student1
             let _ = courseManager.AddStudent student2
 
-            let _ = courseManager.CreateEnrollment student1.Id course.Id
-            let _ = courseManager.CreateEnrollment student2.Id course.Id
+            let _ = courseManager.CreateEnrollment student1.StudentId course.CourseId
+            let _ = courseManager.CreateEnrollment student2.StudentId course.CourseId
 
-            let enrollments = courseManager.GetEnrollmentsForCourse course.Id
+            let enrollments = courseManager.GetEnrollmentsForCourse course.CourseId
             Expect.isOk enrollments "Could not get enrollments for course"
 
             let enrollmentsList = enrollments.OkValue
@@ -329,10 +329,10 @@ let tests =
             let _ = courseManager.AddCourse course2
             let _ = courseManager.AddStudent student
 
-            let _ = courseManager.CreateEnrollment student.Id course1.Id
-            let _ = courseManager.CreateEnrollment student.Id course2.Id
+            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let enrollments = courseManager.GetEnrollments student.Id
+            let enrollments = courseManager.GetEnrollments student.StudentId
             Expect.isOk enrollments "Could not get enrollments for student"
 
             let enrollmentsList = enrollments.OkValue
@@ -349,7 +349,7 @@ let tests =
             Expect.isOk courseCreated "Course creation failed"
             Expect.isOk studentCreated "Student creation failed"
 
-            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
             Expect.isOk enrollmentResult "Enrollment failed"
 
             let enrollments = courseManager.GetEnrollments()
@@ -358,8 +358,8 @@ let tests =
             let enrollmentsList = enrollments.OkValue.Enrollments
             Expect.hasLength enrollmentsList 1 "Enrollment was not recorded"
             let recordedEnrollment = List.head enrollmentsList
-            Expect.equal recordedEnrollment.StudentId student.Id "Student ID does not match"
-            Expect.equal recordedEnrollment.CourseId course.Id "Course ID does not match"
+            Expect.equal recordedEnrollment.StudentId student.StudentId "Student ID does not match"
+            Expect.equal recordedEnrollment.CourseId course.CourseId "Course ID does not match"
         
         testCase "enroll a student to a course and retrieve the related enrollment events" <| fun _ ->
             setUp ()
@@ -371,8 +371,8 @@ let tests =
             Expect.isOk courseCreated "Course creation failed"
             Expect.isOk studentCreated "Student creation failed"
 
-            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
-            
+            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+
             let events =
                 courseManager.GetAllEnrollmentEvents()
                 |> Async.AwaitTask
@@ -385,8 +385,8 @@ let tests =
             
             let actualEvent = List.head eventsList
             let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.Id "Student ID does not match"
-            Expect.equal item.CourseId course.Id "Course ID does not match"
+            Expect.equal item.StudentId student.StudentId "Student ID does not match"
+            Expect.equal item.CourseId course.CourseId "Course ID does not match"
             
         testCase "enroll a student to a course and retrieve the related enrollment events 2" <| fun _ ->
             setUp ()
@@ -398,8 +398,8 @@ let tests =
             Expect.isOk courseCreated "Course creation failed"
             Expect.isOk studentCreated "Student creation failed"
 
-            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
-            
+            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+
             let events =
                 courseManager.GetAllEnrollmentEvents2()
                 |> Async.AwaitTask
@@ -412,8 +412,8 @@ let tests =
             
             let actualEvent = List.head eventsList
             let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.Id "Student ID does not match"
-            Expect.equal item.CourseId course.Id "Course ID does not match"
+            Expect.equal item.StudentId student.StudentId "Student ID does not match"
+            Expect.equal item.CourseId course.CourseId "Course ID does not match"
         
         testCase "enroll a student to a course and retrieve the related enrollment events 3" <| fun _ ->
             setUp ()
@@ -425,14 +425,14 @@ let tests =
             Expect.isOk courseCreated "Course creation failed"
             Expect.isOk studentCreated "Student creation failed"
             
-            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
-            
+            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+
             let events =
                 courseManager.GetAllEnrollmentEvents3()
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
         
-            let enrollmentResult = courseManager.CreateEnrollment student.Id course.Id
+            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
             Expect.isOk events "Could not get enrollment events"
             
             let eventsList = events.OkValue
@@ -440,8 +440,8 @@ let tests =
              
             let (_, _, actualEvent) = eventsList.Item 0
             let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.Id "Student ID does not match"
-            Expect.equal item.CourseId course.Id "Course ID does not match"
+            Expect.equal item.StudentId student.StudentId "Student ID does not match"
+            Expect.equal item.CourseId course.CourseId "Course ID does not match"
         
         testCase "create a course and then retrieve the related snapshot by means of eventStore direct access"  <| fun _ ->
             setUp ()
@@ -449,7 +449,7 @@ let tests =
             let courseCreated = courseManager.AddCourse course
            
             let snapshot =
-                pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.Id.Id)
+                pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.CourseId.Id)
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
             Expect.isOk snapshot "Could not get snapshot"
@@ -460,7 +460,7 @@ let tests =
             let addCourse = courseManager.AddCourse course
             
             let ids = pgEventStore.GetAggregateIds Course.Version Course.StorageName |> Result.get
-            Expect.equal ids [course.Id.Id] "should be equal"
+            Expect.equal ids [course.CourseId.Id] "should be equal"
         
         testCase "create a course and get the related aggregateid from the EventStore Async" <| fun _ ->
             setUp ()
@@ -471,7 +471,7 @@ let tests =
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Result.get
-            Expect.equal ids [course.Id.Id] "should be equal"
+            Expect.equal ids [course.CourseId.Id] "should be equal"
             
         testCase "create two courses and get the related aggregateIds from the EventStore Async" <| fun _ ->
             setUp ()
@@ -484,8 +484,8 @@ let tests =
                 |> Async.RunSynchronously
                 |> Result.get
             Expect.equal ids.Length 2 "should be true"
-            Expect.isTrue (ids.Contains math.Id.Id) "should be true"
-            Expect.isTrue (ids.Contains english.Id.Id) "should be true"
+            Expect.isTrue (ids.Contains math.CourseId.Id) "should be true"
+            Expect.isTrue (ids.Contains english.CourseId.Id) "should be true"
             
         testCase "there are no courses and therefore the aggregateIds returned is empty" <| fun _ ->
             setUp ()

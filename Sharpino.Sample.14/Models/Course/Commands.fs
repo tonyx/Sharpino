@@ -37,7 +37,7 @@ module CourseCommands =
                                 return 
                                     fun () ->
                                         result {
-                                            let! _, state = viewer course.Id.Id
+                                            let! _, state = viewer course.CourseId.Id
                                             let result =
                                                 state.UnenrollStudent studentId
                                                 |> Result.map (fun s -> s, [ StudentUnenrolled studentId])
@@ -53,7 +53,7 @@ module CourseCommands =
                                 return 
                                     fun () ->
                                         result {
-                                            let! _, state = viewer course.Id.Id
+                                            let! _, state = viewer course.CourseId.Id
                                             let result =
                                                 state.EnrollStudent studentId 
                                                 |> Result.map (fun s -> s, [StudentEnrolled studentId])

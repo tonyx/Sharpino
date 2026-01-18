@@ -63,7 +63,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.2" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.2" />
 
-        <PackageReference Include="Sharpino.Core" Version="2.3.8" />
+<!--        <PackageReference Include="Sharpino.Core" Version="2.3.8" />-->
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -97,7 +97,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.11" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.11" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.3.8" />
+<!--    <PackageReference Include="Sharpino.Core" Version="2.3.8" />-->
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -132,7 +132,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
     
-    <PackageReference Include="Sharpino.Core" Version="2.3.8" />
+<!--    <PackageReference Include="Sharpino.Core" Version="2.3.8" />-->
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
@@ -154,8 +154,8 @@
 
   <!-- needed if you are developing the core: -->
 <!--    -->
-<!--  <ItemGroup>-->
-<!--   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />-->
-<!--  </ItemGroup>-->
+  <ItemGroup>
+   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+  </ItemGroup>
 
 </Project>

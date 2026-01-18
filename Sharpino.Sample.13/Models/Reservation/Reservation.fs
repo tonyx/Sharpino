@@ -61,9 +61,4 @@ module Reservation =
         member this.Serialize =
             JsonSerializer.Serialize(this, jsonOptions)
         
-        interface Aggregate<string> with
-            member this.Id =
-                this.Id
-            member this.Serialize =
-                this.Serialize
 

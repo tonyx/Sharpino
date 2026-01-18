@@ -51,7 +51,8 @@ module Common =
         AggregateCache3.Instance.Clear()
 
     let inline getHistoryAggregateStorageFreshStateViewer<'A, 'E, 'F
-        when 'A :> Aggregate<'F> 
+        when 'A : (member Serialize: 'F)
+        and 'A : (member Id: Guid)
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 

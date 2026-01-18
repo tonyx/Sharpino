@@ -178,19 +178,13 @@ module rec SeatRow =
         member this.Serialize =
             this
             |> jsonPSerializer.Serialize
-
+        
         static member Deserialize (json: string) =
             jsonPSerializer.Deserialize<SeatsRow> json
-
+        
         static member Version = "_01"
+        
         static member StorageName = "_seatrow"
         static member SnapshotsInterval = 6
 
-        interface Aggregate<string> with
-            member this.Id = this.Id
-            member this.Serialize  =
-                this.Serialize
-
-        interface Entity with
-            member this.Id = this.Id
 

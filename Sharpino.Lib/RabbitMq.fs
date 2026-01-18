@@ -160,8 +160,10 @@ module RabbitMq =
                     ()
         
         member this.BuildReceiver<'A, 'E, 'F
-            when 'E :> Event<'A> and
-            'A :> Aggregate<'F>>
+            when 'E :> Event<'A>
+            >
+            // and
+            // 'A :> Aggregate<'F>>
             (statesPerAggregate: ConcurrentDictionary<AggregateId, (EventId * 'A)>)
             (optAggregateStateViewer: Option<AggregateViewer<'A>>)
             (ea: BasicDeliverEventArgs) =
@@ -219,8 +221,8 @@ module RabbitMq =
                     ()
         
         member this.BuildReceiver<'A, 'E, 'F
-            when 'E :> Event<'A> and
-            'A :> Aggregate<'F>>
+            when 'E :> Event<'A> 
+            >
             (statesPerAggregate: MemoryCache)
             (optAggregateStateViewer: Option<AggregateViewer<'A>>)
             (ea: BasicDeliverEventArgs) =

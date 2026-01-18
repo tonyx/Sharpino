@@ -10,13 +10,13 @@ open Sharpino.Sample._15.Commons.Definitions
 
 module Course =
     type Course =
-        { Id: CourseId
+        { CourseId: CourseId
           Name: string
           MaxStudents: int }
     
     with
         static member MkCourse name maxStudents =
-            { Id = CourseId.New
+            { CourseId = CourseId.New
               Name = name
               MaxStudents = maxStudents }
     
@@ -24,9 +24,12 @@ module Course =
             { this with Name = newName } |> Ok
         
         //////
+         
+        member this.Id = this.CourseId.Id
         static member Version = "_01"
         static member StorageName = "_Course"
         static member SnapshotsInterval = 15
+        
         
         static member Deserialize (x: string): Result<Course, string> =
             try
@@ -38,7 +41,4 @@ module Course =
         member this.Serialize =
             JsonSerializer.Serialize (this, jsonOptions)
         
-        interface Aggregate<string> with
-            member this.Id = this.Id.Id
-            member this.Serialize = this.Serialize
             

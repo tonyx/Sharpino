@@ -16,6 +16,7 @@ open System.Text
 
 open Sharpino.RabbitMq
 open Tonyx.SeatsBooking.SeatRow
+open Tonyx.SeatsBooking
 open Tonyx.SeatsBooking.RowAggregateEvent
 
 module RowConsumer =

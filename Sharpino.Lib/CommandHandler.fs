@@ -84,8 +84,7 @@ module CommandHandler =
 
     // a stateviewer of aggregates, based on the eventStore/storage will need this
     let inline getAggregateStorageFreshStateViewer<'A, 'E, 'F
-        when 'A :> Aggregate<'F> 
-        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        when 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
         and 'E :> Event<'A>
@@ -139,8 +138,8 @@ module CommandHandler =
                 }, Commons.generalAsyncTimeOut)
     
     let inline mkAggregateSnapshot<'A, 'E, 'F
-        when 'A :> Aggregate<'F> 
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
+        and 'A : (member Serialize : 'F)
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string) 
@@ -198,8 +197,8 @@ module CommandHandler =
                 }, Commons.generalAsyncTimeOut)    
    
     let inline mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F
-        when 'A :> Aggregate<'F> 
-        and 'E :> Event<'A>
+        when 'E :> Event<'A>
+        and 'A : (member Serialize : 'F)
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string)
         and 'A : (static member SnapshotsInterval : int)
@@ -330,7 +329,8 @@ module CommandHandler =
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
-        and 'A1:> Aggregate<'F>
+        and 'A1 : (member Serialize: 'F)
+        and 'A1 : (member Id: Guid)
         and 'A1 : (static member StorageName: string) 
         and 'A1 : (static member Version: string)
         >
@@ -372,7 +372,9 @@ module CommandHandler =
     
     // just make a new aggregate instance and set it's initial state
     let inline runInit<'A1, 'E, 'F
-        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
@@ -396,7 +398,9 @@ module CommandHandler =
             }
             
     let inline runMultipleInit<'A1, 'E, 'F
-        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
@@ -427,7 +431,9 @@ module CommandHandler =
             }
 
     let inline runMultipleInitAsync<'A1, 'E, 'F
-        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
@@ -458,7 +464,9 @@ module CommandHandler =
             }
 
     let inline runInitAsync<'A1, 'E, 'F
-        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
@@ -483,7 +491,10 @@ module CommandHandler =
             
     // delete is a command which doesn't result in any event (not necessarily). It just flags the object as deleted
     let inline runDelete<'A1, 'E, 'F
-        when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        // when 'A1 :> Aggregate<'F> and 'E :> Event<'A1>
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
@@ -523,7 +534,8 @@ module CommandHandler =
     // (but there is a way out, see the combination of preExecuteAggregateCommand and storeEvents which
     // are able to detach type dependencies by casting to object)
     let inline runDeleteAndAggregateCommandMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -534,7 +546,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
@@ -589,21 +602,24 @@ module CommandHandler =
             }
     
     let inline runDeleteAndTwoAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)         
         and 'E :> Event<'A>
         and 'E : (member Serialize: 'F)
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A1 :> Aggregate<'F>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
@@ -683,14 +699,16 @@ module CommandHandler =
             List.fold folder (Ok (initialState, [])) commands
   
     let inline runDeleteAndNAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize : 'F)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)         
         and 'E :> Event<'A>
         and 'E : (member Serialize: 'F)
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A1 :> Aggregate<'F>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize : 'F)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
@@ -820,14 +838,16 @@ module CommandHandler =
                 }
     
     let inline runDeleteAndTwoNAggregateCommandsMd<'A, 'E, 'A1, 'E1, 'A2, 'E2, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize : 'F)
         and 'A: (static member StorageName: string)
         and 'A: (static member Version: string)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)         
         and 'E :> Event<'A>
         and 'E : (member Serialize: 'F)
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-        and 'A1 :> Aggregate<'F>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize : 'F)
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
@@ -835,7 +855,8 @@ module CommandHandler =
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize : 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
@@ -1053,7 +1074,8 @@ module CommandHandler =
         and 'E :> Event<'A>
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'E: (member Serialize: 'F)
-        and 'A1:> Aggregate<'F>
+        and 'A1 : (member Serialize: 'F)
+        and 'A1 : (member Id: Guid)
         and 'A1 : (static member StorageName: string) 
         and 'A1 : (static member Version: string)
         >
@@ -1066,7 +1088,8 @@ module CommandHandler =
             runInitAndCommandMd<'A, 'E, 'A1, 'F> storage messageSenders initialInstance Metadata.Empty command
             
     let rec inline runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1074,7 +1097,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         >
@@ -1121,7 +1145,8 @@ module CommandHandler =
         #endif
     
     let inline runInitAndNAggregateCommandsMd<'A1, 'E1, 'A2, 'F
-        when 'A1:> Aggregate<'F>
+        when 'A1: (member Id: Guid)
+        and 'A1: (member Serialize: 'F)
         and 'E1:> Event<'A1>
         and 'E1: (member Serialize: 'F)
         and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1129,7 +1154,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2:> Aggregate<'F>
+        and 'A2: (member Id: Guid)
+        and 'A2: (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         >
@@ -1213,7 +1239,8 @@ module CommandHandler =
         #endif
     
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1221,7 +1248,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         >
@@ -1235,7 +1263,8 @@ module CommandHandler =
             runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F> aggregateId storage messageSenders initialInstance String.Empty command
             
     let inline runInitAndTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F, 'A3
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1:> Event<'A1>
         and 'E1: (member Serialize: 'F)
         and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1243,7 +1272,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2:> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2:> Event<'A2>
         and 'E2: (member Serialize: 'F)
         and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
@@ -1251,7 +1281,8 @@ module CommandHandler =
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A2: (static member SnapshotsInterval : int)
-        and 'A3:> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'A3: (static member StorageName: string)
         and 'A3: (static member Version: string)
         >
@@ -1313,7 +1344,8 @@ module CommandHandler =
         #endif
             
     let inline runInitAndTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F, 'A3
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1: (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1321,7 +1353,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2:> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2: (member Serialize: 'F)
         and 'E2:> Event<'A2>
         and 'E2: (member Serialize: 'F)
         and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
@@ -1329,7 +1362,8 @@ module CommandHandler =
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A2: (static member SnapshotsInterval : int)
-        and 'A3:> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3: (member Serialize: 'F)
         and 'A3: (static member StorageName: string)
         and 'A3: (static member Version: string)
         >
@@ -1345,7 +1379,8 @@ module CommandHandler =
             runInitAndTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F, 'A3> aggregateId1 aggregateId2 eventStore messageSenders initialInstance String.Empty command1 command2
     
     let inline runInitAndThreeAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
-        when 'A1:> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1:> Event<'A1>
         and 'E1: (member Serialize: 'F)
         and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1353,7 +1388,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2:> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2:> Event<'A2>
         and 'E2: (member Serialize: 'F)
         and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
@@ -1361,7 +1397,8 @@ module CommandHandler =
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A2: (static member SnapshotsInterval : int)
-        and 'A3:> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3:> Event<'A3>
         and 'E3: (member Serialize: 'F)
         and 'E3: (static member Deserialize: 'F -> Result<'E3, string>)
@@ -1369,7 +1406,8 @@ module CommandHandler =
         and 'A3: (static member Version: string)
         and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
         and 'A3: (static member SnapshotsInterval : int)
-        and 'A4:> Aggregate<'F>
+        and 'A4 : (member Id: Guid)
+        and 'A4: (member Serialize: 'F)
         and 'A4: (static member StorageName: string)
         and 'A4: (static member Version: string)
         >
@@ -1440,7 +1478,8 @@ module CommandHandler =
         #endif     
             
     let inline runInitAndThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
-        when 'A1:> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1: (member Serialize: 'F)
         and 'E1:> Event<'A1>
         and 'E1: (member Serialize: 'F)
         and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1448,7 +1487,8 @@ module CommandHandler =
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
         and 'A1: (static member SnapshotsInterval : int)
-        and 'A2:> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2: (member Serialize: 'F)
         and 'E2:> Event<'A2>
         and 'E2: (member Serialize: 'F)
         and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
@@ -1456,7 +1496,8 @@ module CommandHandler =
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
         and 'A2: (static member SnapshotsInterval : int)
-        and 'A3:> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3: (member Serialize: 'F)
         and 'E3:> Event<'A3>
         and 'E3: (member Serialize: 'F)
         and 'E3: (static member Deserialize: 'F -> Result<'E3, string>)
@@ -1464,7 +1505,8 @@ module CommandHandler =
         and 'A3: (static member Version: string)
         and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
         and 'A3: (static member SnapshotsInterval : int)
-        and 'A4:> Aggregate<'F>
+        and 'A4 : (member Id: Guid)
+        and 'A4: (member Serialize: 'F)
         and 'A4: (static member StorageName: string)
         and 'A4: (static member Version: string)
         >
@@ -1486,7 +1528,8 @@ module CommandHandler =
     // and then be able to execute them in a single transaction
     // the message sending part can't be part (must be handled at the application level)
     let inline preExecuteAggregateCommandMd<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
         and 'E :> Event<'A>
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
@@ -1559,7 +1602,8 @@ module CommandHandler =
         }
         
     let inline runAggregateCommandMd<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
         and 'E :> Event<'A>
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
@@ -1596,7 +1640,8 @@ module CommandHandler =
                     
                 return ()
             }
-    
+            
+    // I keep this one available to remind the 'old' way of doing it
     // [<Obsolete("use runAggregateCommandMd instead")>]
     // let inline runAggregateCommandMdBack<'A, 'E, 'F
     //     when 'A :> Aggregate<'F>
@@ -1639,7 +1684,8 @@ module CommandHandler =
     //     #endif    
             
     let inline runAggregateCommand<'A, 'E, 'F
-        when 'A :> Aggregate<'F>
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
         and 'E :> Event<'A>
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string) 
@@ -1661,7 +1707,8 @@ module CommandHandler =
     // Technically forceRun should be able to replace the companion run...Command
     
     let inline forceRunNAggregateCommandsMd<'A1, 'E1, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1770,7 +1817,8 @@ module CommandHandler =
         #endif
         
     let inline forceRunNAggregateCommands<'A1, 'E1, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1788,7 +1836,8 @@ module CommandHandler =
             forceRunNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore messageSenders Metadata.Empty commands
                 
     let inline runNAggregateCommandsMd<'A1, 'E1, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1880,7 +1929,8 @@ module CommandHandler =
         #endif    
                 
     let inline runNAggregateCommands<'A1, 'E1, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1899,7 +1949,8 @@ module CommandHandler =
    
     
     let inline runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -1907,7 +1958,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -1952,7 +2004,10 @@ module CommandHandler =
                     DetailsCache.Instance.RefreshDependentDetails aggregateId1
                 let _ =
                     DetailsCache.Instance.RefreshDependentDetails aggregateId2
+               
                 
+                let serializeProperty1 = firstExecutedCommand.NewState.GetType().GetProperty("Serialize")
+                let serialized1 = serializeProperty1.GetValue(firstExecutedCommand.NewState) :?> 'F
                 let _ = mkAggregateSnapshotIfIntervalPassed3<'F>
                                 eventStore
                                 aggregateId1
@@ -1960,8 +2015,10 @@ module CommandHandler =
                                 firstExecutedCommand.StorageName
                                 (ids.[0] |> List.last)
                                 firstExecutedCommand.SnapshotsInterval
-                                (firstExecutedCommand.NewState :?> Aggregate<'F>).Serialize
-                                 
+                                serialized1
+                                
+                let serializeProperty2 = firstExecutedCommand.NewState.GetType().GetProperty("Serialize")
+                let serialized2 = serializeProperty2.GetValue(firstExecutedCommand.NewState) :?> 'F
                 let _ = mkAggregateSnapshotIfIntervalPassed3<'F>
                                 eventStore
                                 aggregateId1
@@ -1969,7 +2026,7 @@ module CommandHandler =
                                 'A2.StorageName
                                 (ids.[1] |> List.last)
                                 secondExecutedCommand.SnapshotsInterval
-                                (secondExecutedCommand.NewState :?> Aggregate<'F>).Serialize
+                                serialized2
                
                 let _ = optionallySendAggregateEventsAsync<'A1, 'E1> queueNameA1 messageSenders aggregateId1 eventsA1 firstExecutedCommand.EventId (ids.[0] |> List.last)
                 let _ = optionallySendAggregateEventsAsync<'A2, 'E2> queueNameA2 messageSenders aggregateId2 eventsA2 secondExecutedCommand.EventId (ids.[1] |> List.last)   
@@ -1991,6 +2048,8 @@ module CommandHandler =
                 DetailsCache.Instance.RefreshDependentDetails preExecutedAggregateCommands.[i].AggregateId
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let serializeProperty = preExecutedAggregateCommands.[i].NewState.GetType().GetProperty("Serialize") 
+                let serialized = serializeProperty.GetValue(preExecutedAggregateCommands.[i].NewState) :?> 'F
                 mkAggregateSnapshotIfIntervalPassed3<'F>
                     eventStore
                     preExecutedAggregateCommands.[i].AggregateId
@@ -1998,14 +2057,18 @@ module CommandHandler =
                     preExecutedAggregateCommands.[i].StorageName
                     (storedIds.[i] |> List.last)
                     preExecutedAggregateCommands.[i].SnapshotsInterval
-                    (preExecutedAggregateCommands.[i].NewState :?> Aggregate<'F>).Serialize
+                    serialized
                 |> ignore
             
             return ()
         }
      
     // this one is the same as runPreExecutedAggregateCommands but it returns the stored ids.
-    let inline runPreExecutedAggregateCommands2<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) =
+    let inline runPreExecutedAggregateCommands2<'F> 
+            
+        (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
+        (eventStore: IEventStore<'F>)
+        (eventBroker: MessageSenders) =
         logger.Value.LogDebug "runPreExecutedCommands"
         result {
             let! storedIds =
@@ -2019,6 +2082,8 @@ module CommandHandler =
                 DetailsCache.Instance.RefreshDependentDetails preExecutedAggregateCommands.[i].AggregateId
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let serializeProperty = preExecutedAggregateCommands.[i].NewState.GetType().GetProperty("Serialize") 
+                let serialized = serializeProperty.GetValue(preExecutedAggregateCommands.[i].NewState) :?> 'F
                 mkAggregateSnapshotIfIntervalPassed3<'F>
                     eventStore
                     preExecutedAggregateCommands.[i].AggregateId
@@ -2026,7 +2091,7 @@ module CommandHandler =
                     preExecutedAggregateCommands.[i].StorageName
                     (storedIds.[i] |> List.last)
                     preExecutedAggregateCommands.[i].SnapshotsInterval
-                    (preExecutedAggregateCommands.[i].NewState :?> Aggregate<'F>).Serialize
+                    serialized
                 |> ignore
 
             let result =
@@ -2037,7 +2102,8 @@ module CommandHandler =
     // proof of concept: This is a possible way of extend the library to check cross-aggregates invariants (i.e. related to something different than 'A1 and 'A2)
     // note: the crossAggregateConstriant may contains environment related to any other aggregate state (see the example in the tests)
     let inline runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2045,7 +2111,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2110,7 +2177,8 @@ module CommandHandler =
         #endif    
             
     let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2118,7 +2186,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2138,7 +2207,8 @@ module CommandHandler =
    
     // any forceRunXX will relax the check on the uniqueness of the aggregateId passed
     let inline forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2146,7 +2216,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2333,7 +2404,8 @@ module CommandHandler =
         #endif    
             
     let inline forceRunTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2341,7 +2413,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2361,7 +2434,8 @@ module CommandHandler =
             forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore messageSenders String.Empty command1 command2
    
     let inline runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2369,7 +2443,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2508,7 +2583,8 @@ module CommandHandler =
         #endif
         
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2516,7 +2592,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2536,7 +2613,8 @@ module CommandHandler =
             runTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateIds1 aggregateIds2 eventStore messageSenders Metadata.Empty command1 command2
     
     let inline forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2544,7 +2622,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2552,7 +2631,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -2784,7 +2864,8 @@ module CommandHandler =
         #endif    
                 
     let inline forceRunThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2792,7 +2873,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2800,7 +2882,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -2822,7 +2905,8 @@ module CommandHandler =
             forceRunThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore messageSenders Metadata.Empty command1 command2 command3
 
     let inline runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -2830,7 +2914,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -2838,7 +2923,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -3017,7 +3103,8 @@ module CommandHandler =
                 commands ()
             #endif    
     let inline runThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -3025,7 +3112,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -3033,7 +3121,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -3055,7 +3144,8 @@ module CommandHandler =
             runThreeNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F> aggregateIds1 aggregateIds2 aggregateIds3 eventStore messageSenders Metadata.Empty command1 command2 command3
     
     let inline runThreeAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -3063,7 +3153,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -3071,7 +3162,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -3131,7 +3223,8 @@ module CommandHandler =
                 }
             
     let inline runThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
-        when 'A1 :> Aggregate<'F>
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -3139,7 +3232,8 @@ module CommandHandler =
         and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
-        and 'A2 :> Aggregate<'F>
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
         and 'E2 :> Event<'A2>
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
@@ -3147,7 +3241,8 @@ module CommandHandler =
         and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
-        and 'A3 :> Aggregate<'F>
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
         and 'E3 :> Event<'A3>
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
@@ -3383,7 +3478,8 @@ module CommandHandler =
             
     // this needs to be extended to snapshots flagged as 'deleted'        
     let inline GDPRResetSnapshotsAndEventsOfAnAggregate<'A, 'E, 'F
-        when 'A:> Aggregate<'F>
+        when 'A: (member Id: Guid)
+        and 'A: (member Serialize: 'F)
         and 'A: (static member StorageName: string)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'A: (static member SnapshotsInterval : int)

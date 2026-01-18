@@ -62,17 +62,17 @@ let tests =
                |> Array.ofList
            let added = courseManager.AddMultipleCourses courses
            Expect.isOk added "should be ok"
-           let coursesIds = courses |> Array.map (fun c -> c.Id)
+           let coursesIds = courses |> Array.map (fun c -> c.CourseId)
            let retrieved = courseManager.GetCourses coursesIds
            Expect.isOk retrieved "should be ok"
-           let retrievedCourses = retrieved.OkValue |> List.map (fun (x: Course) -> x.Id)
+           let retrievedCourses = retrieved.OkValue |> List.map (fun (x: Course) -> x.CourseId)
            Expect.equal (coursesIds |> Set.ofArray) (retrievedCourses |> Set.ofList) "should be equal"
            
        testCase "add a course and then get by getCourse" <| fun _ ->
            let course = Course.MkCourse ("course", 10)
            let added = courseManager.AddCourse course
            let removeCache = AggregateCache3.Instance.Clear ()
-           let retrieved = courseManager.GetCourse course.Id
+           let retrieved = courseManager.GetCourse course.CourseId
            Expect.isOk retrieved "should be ok"
            let retrievedCourse = retrieved.OkValue
            Expect.equal course retrievedCourse "should be equal"
@@ -82,14 +82,14 @@ let tests =
            let course = Course.MkCourse ("course", 10)
            let added = courseManager.AddCourse course
            let removeCache = AggregateCache3.Instance.Clear ()
-           let retrieved = Sharpino.StateView.getLastAggregateSnapshot<Course, string> course.Id.Id Course.Version Course.StorageName pgEventStore
+           let retrieved = Sharpino.StateView.getLastAggregateSnapshot<Course, string> course.CourseId.Id Course.Version Course.StorageName pgEventStore
            Expect.isOk retrieved "should be ok"
            let retrievedOkValue = retrieved.OkValue
            Expect.isSome retrievedOkValue "should be some"
            let retrievedOkValueValue = retrievedOkValue.Value
            let retrievedOkValueValueId = retrievedOkValueValue |> fst
            let retrievedOkValueValueState = retrievedOkValueValue |> snd
-           Expect.equal course.Id retrievedOkValueValueState.Id "should be equal"
+           Expect.equal course.CourseId retrievedOkValueValueState.CourseId "should be equal"
            
     ]
     |> testSequenced

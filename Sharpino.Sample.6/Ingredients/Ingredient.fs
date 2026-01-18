@@ -97,10 +97,3 @@ open System
             "_01"
 
         static member SnapshotsInterval =  15 
-
-        interface Aggregate<string> with
-            member this.Id = this.Id
-            member this.Serialize =
-                this.Serialize
-        interface Entity with
-            member this.Id = this.Id

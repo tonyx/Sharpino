@@ -35,7 +35,3 @@ module Account =
         static member Version = "_01"
         static member SnapshotsInterval = 15
         
-        interface Aggregate<byte[]> with
-            member this.Id = this.Id
-            member this.Serialize  =
-                this.Serialize

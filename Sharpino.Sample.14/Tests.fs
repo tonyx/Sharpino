@@ -67,8 +67,8 @@ let tests =
           let studentCreated = courseManager.AddStudent student
           Expect.isTrue courseCreated.IsOk "Course not created"
           Expect.isTrue studentCreated.IsOk "student not created"
-          let courseRetrieved = courseManager.GetCourse course.Id
-          let studentRetrieved = courseManager.GetStudent student.Id
+          let courseRetrieved = courseManager.GetCourse course.CourseId
+          let studentRetrieved = courseManager.GetStudent student.StudentId
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
           
@@ -84,22 +84,22 @@ let tests =
           Expect.isOk addStudent "Student not created"
           
           // when
-          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.StudentId math.CourseId
           Expect.isOk enrollStudentToMath "Student not enrolled to math"
-          let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.Id english.Id
+          let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.StudentId english.CourseId
           Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
-          let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.Id physics.Id
+          let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.StudentId physics.CourseId
           Expect.isError enrollStudentToPhysics "Student enrolled to physics"
           
           // then
-          let retrieveMath = courseManager.GetCourse math.Id |> Result.get
+          let retrieveMath = courseManager.GetCourse math.CourseId |> Result.get
           Expect.equal retrieveMath.Students.Length 1 "should be one"
           
-          let retrieveEnglish = courseManager.GetCourse english.Id |> Result.get
+          let retrieveEnglish = courseManager.GetCourse english.CourseId |> Result.get
           Expect.equal retrieveEnglish.Students.Length 1 "should be one"
-          let retrievePhysics = courseManager.GetCourse physics.Id |> Result.get
+          let retrievePhysics = courseManager.GetCourse physics.CourseId |> Result.get
           Expect.equal retrievePhysics.Students.Length 0 "should be zero"
-          let retrieveStudent = courseManager.GetStudent student.Id |> Result.get
+          let retrieveStudent = courseManager.GetStudent student.StudentId |> Result.get
           Expect.equal retrieveStudent.Courses.Length 2 "should be two"
     
        testCase "enroll a student in some courses and retrieve the details of the student - Ok" <| fun _ ->
@@ -115,15 +115,15 @@ let tests =
           Expect.isOk addStudent "Student not created"
           
           // when
-          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.StudentId math.CourseId
           Expect.isOk enrollStudentToMath "Student not enrolled to math"
-          let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.Id english.Id
+          let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.StudentId english.CourseId
           Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
-          let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.Id physics.Id
+          let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.StudentId physics.CourseId
           Expect.isOk enrollStudentToPhysics "Student not enrolled to physics"
           
           // then
-          let studentDetails = courseManager.GetStudentDetails student.Id
+          let studentDetails = courseManager.GetStudentDetails student.StudentId
           Expect.isOk studentDetails "Student details not retrieved"
           let studentDetailsValue: StudentDetails = studentDetails.OkValue
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
@@ -141,19 +141,19 @@ let tests =
           Expect.isOk addStudent "Student not created"
           
           // when
-          let studentDetails = courseManager.GetStudentDetails student.Id
+          let studentDetails = courseManager.GetStudentDetails student.StudentId
           Expect.isOk studentDetails "Student details not retrieved"
           let studentDetailsValue: StudentDetails = studentDetails.OkValue
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValue.Courses.Length 0 "Student courses not retrieved"
           
           // when
-          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.StudentId math.CourseId
           Expect.isOk enrollStudentToMath "Student not enrolled to math"
           
           // then
           
-          let studentDetailsRefreshed = courseManager.GetStudentDetails student.Id
+          let studentDetailsRefreshed = courseManager.GetStudentDetails student.StudentId
           Expect.isOk studentDetailsRefreshed "Student details not refreshed"
           Expect.equal studentDetailsRefreshed.OkValue.Student.Name "Jack" "Student name not refreshed"
           Expect.equal studentDetailsRefreshed.OkValue.Courses.Length 1 "Student courses not refreshed"
@@ -172,17 +172,17 @@ let tests =
           Expect.isOk addStudent "Student not created"
           
           // when
-          let studentDetails = courseManager.GetStudentDetails student.Id
+          let studentDetails = courseManager.GetStudentDetails student.StudentId
           Expect.isOk studentDetails "Student details not retrieved"
           let studentDetailsValue: StudentDetails = studentDetails.OkValue
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValue.Courses.Length 0 "Student courses not retrieved"
           
-          let renameStudent = courseManager.RenameStudent (student.Id, "John")
+          let renameStudent = courseManager.RenameStudent (student.StudentId, "John")
           Expect.isOk renameStudent "Student not renamed"
           
           // then
-          let retrieveDetailsAgain = courseManager.GetStudentDetails student.Id
+          let retrieveDetailsAgain = courseManager.GetStudentDetails student.StudentId
           let studentDetailsValueAgain: StudentDetails = retrieveDetailsAgain.OkValue
           Expect.equal studentDetailsValueAgain.Student.Name "John" "Student name not retrieved"
        
@@ -198,19 +198,19 @@ let tests =
           Expect.isOk addStudent "Student not created"
           
           // when
-          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.Id math.Id
+          let enrollStudentToMath = courseManager.EnrollStudentToCourse student.StudentId math.CourseId
           Expect.isOk enrollStudentToMath "Student not enrolled to math"
           
-          let studentDetails = courseManager.GetStudentDetails student.Id
+          let studentDetails = courseManager.GetStudentDetails student.StudentId
           Expect.isOk studentDetails "Student details not retrieved"
           let studentDetailsValue: StudentDetails = studentDetails.OkValue
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValue.Courses.Length 1 "Student courses not retrieved"
           
-          let renameCourse = courseManager.RenameCourse (math.Id, "mathematics")
+          let renameCourse = courseManager.RenameCourse (math.CourseId, "mathematics")
           Expect.isOk renameCourse "Course not renamed"
           
-          let studentDetailsAgain = courseManager.GetStudentDetails student.Id
+          let studentDetailsAgain = courseManager.GetStudentDetails student.StudentId
           let studentDetailsValueAgain: StudentDetails = studentDetailsAgain.OkValue
           Expect.equal studentDetailsValueAgain.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValueAgain.Courses.Length 1 "Student courses not retrieved"
@@ -221,16 +221,16 @@ let tests =
           setUp ()
           let course = Course.MkCourse ("Math", 10)
           let courseAdded = courseManager.AddCourse course
-          let (Ok courseDetail) = courseManager.GetCourseDetails course.Id
-          
+          let (Ok courseDetail) = courseManager.GetCourseDetails course.CourseId
+
           Expect.equal courseDetail.Course.Name "Math" "should be ok"
           
           // when
-          let renameCourse = courseManager.RenameCourse (course.Id, "Mathematics")
+          let renameCourse = courseManager.RenameCourse (course.CourseId, "Mathematics")
           Expect.isOk renameCourse "course not renamed"
           
           // then
-          let (Ok courseDetailsRetrieved) = courseManager.GetCourseDetails course.Id
+          let (Ok courseDetailsRetrieved) = courseManager.GetCourseDetails course.CourseId
           Expect.equal courseDetailsRetrieved.Course.Name "Mathematics" "should be equal"
        
        testCase "create two courses,
@@ -244,17 +244,17 @@ let tests =
          let john = Student.MkStudent ("John", 3)
          let courseAdded = courseManager.AddMultipleCourses [|math; english|]
          let studentAdded = courseManager.AddStudent john
-         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.StudentId math.CourseId
          Expect.isOk enrollStudentToMath "Student not enrolled to math"
-         let studentDetails = courseManager.GetStudentDetails john.Id
+         let studentDetails = courseManager.GetStudentDetails john.StudentId
          Expect.isOk studentDetails "Student details not retrieved"
          let studentDetailsValue: StudentDetails = studentDetails.OkValue
          Expect.equal studentDetailsValue.Student.Name "John" "Student name not retrieved"
          Expect.equal studentDetailsValue.Courses.Length 1 "Student courses not retrieved"
          
-         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
+         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.StudentId english.CourseId
          Expect.isOk enrollStudentToEnglish "Student not enrolled to english"
-         let studentDetailsAgain = courseManager.GetStudentDetails john.Id
+         let studentDetailsAgain = courseManager.GetStudentDetails john.StudentId
          let studentDetailsValueAgain: StudentDetails = studentDetailsAgain.OkValue
          Expect.equal studentDetailsValueAgain.Student.Name "John" "Student name not retrieved"
          Expect.equal studentDetailsValueAgain.Courses.Length 2 "Student courses not retrieved"
@@ -268,20 +268,20 @@ let tests =
          let john = Student.MkStudent ("John", 3)
          let courseAdded = courseManager.AddMultipleCourses [|math; english|]
          let studentAdded = courseManager.AddStudent john
-         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.Id math.Id
+         let enrollStudentToMath = courseManager.EnrollStudentToCourse john.StudentId math.CourseId
          Expect.isOk enrollStudentToMath "Student not enrolled to math"
-         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
+         let enrollStudentToEnglish = courseManager.EnrollStudentToCourse john.StudentId english.CourseId
          Expect.isOk enrollStudentToEnglish "Student not enrolled to english"
-         let studentDetails = courseManager.GetStudentDetails john.Id
+         let studentDetails = courseManager.GetStudentDetails john.StudentId
          let coursesNames = studentDetails.OkValue.Courses |> List.map (fun c -> c.Name)
          Expect.equal coursesNames ["Math"; "English"] "should be equal"
          
          // when
-         let renameMath = courseManager.RenameCourse (math.Id, "Mathematics")
-         let renameEnglish = courseManager.RenameCourse (english.Id, "English reading")
+         let renameMath = courseManager.RenameCourse (math.CourseId, "Mathematics")
+         let renameEnglish = courseManager.RenameCourse (english.CourseId, "English reading")
         
          // then 
-         let studentDetailsAgain = courseManager.GetStudentDetails john.Id
+         let studentDetailsAgain = courseManager.GetStudentDetails john.StudentId
          let coursesNamesAgain = studentDetailsAgain.OkValue.Courses |> List.map (fun c -> c.Name)
          Expect.equal coursesNamesAgain ["Mathematics"; "English reading"] "should be equal"
      
@@ -300,26 +300,26 @@ let tests =
          let addMath = courseManager.AddCourse math
          let addEnglish = courseManager.AddCourse english
          
-         let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
-         let enrollJohnToEnglish = courseManager.EnrollStudentToCourse john.Id english.Id
-         let enrollJackToMath = courseManager.EnrollStudentToCourse jack.Id math.Id
-         let enrollJackToEnglish = courseManager.EnrollStudentToCourse jack.Id english.Id
-         
-         let (Ok johnDetails) = courseManager.GetStudentDetails john.Id
-         let (Ok jackDetails) = courseManager.GetStudentDetails jack.Id
-         
+         let enrollJohnToMath = courseManager.EnrollStudentToCourse john.StudentId math.CourseId
+         let enrollJohnToEnglish = courseManager.EnrollStudentToCourse john.StudentId english.CourseId
+         let enrollJackToMath = courseManager.EnrollStudentToCourse jack.StudentId math.CourseId
+         let enrollJackToEnglish = courseManager.EnrollStudentToCourse jack.StudentId english.CourseId
+
+         let (Ok johnDetails) = courseManager.GetStudentDetails john.StudentId
+         let (Ok jackDetails) = courseManager.GetStudentDetails jack.StudentId
+
          let johnCourses = johnDetails.Courses |> List.map (fun c -> c.Name)
          Expect.equal johnCourses ["Math"; "English"] "should be equal"
          
          let jackCourses = jackDetails.Courses |> List.map (fun c -> c.Name)
          Expect.equal jackCourses ["Math"; "English"] "should be equal"
        
-         let renameMath = courseManager.RenameCourse (math.Id, "Mathematics")
-         let renameEnglish = courseManager.RenameCourse (english.Id, "English reading")
+         let renameMath = courseManager.RenameCourse (math.CourseId, "Mathematics")
+         let renameEnglish = courseManager.RenameCourse (english.CourseId, "English reading")
          
-         let (Ok johnDetails2) = courseManager.GetStudentDetails john.Id
-         let (Ok jackDetails2) = courseManager.GetStudentDetails jack.Id
-         
+         let (Ok johnDetails2) = courseManager.GetStudentDetails john.StudentId
+         let (Ok jackDetails2) = courseManager.GetStudentDetails jack.StudentId
+
          let johnCourses2 = johnDetails2.Courses |> List.map (fun c -> c.Name)
          Expect.equal johnCourses2 ["Mathematics"; "English reading"] "should be equal"
          
@@ -334,19 +334,19 @@ let tests =
           Expect.isOk addJohn "john not added"
           
           // when
-          let removeJohn = courseManager.DeleteStudent john.Id
-          
+          let removeJohn = courseManager.DeleteStudent john.StudentId
+
           // then
-          let retrieveJohn = courseManager.GetStudent john.Id
+          let retrieveJohn = courseManager.GetStudent john.StudentId
           Expect.isError retrieveJohn "john should not be retrieved"
           
        testCase "add a student, materialize a details of it, then remove the student, verify the details are not retrieved anymore - Ok"   <| fun _ ->
           setUp ()
           let john = Student.MkStudent ("John", 3)
           let addJohn = courseManager.AddStudent john
-          let (Ok johnDetails) = courseManager.GetStudentDetails john.Id
-          let removeJohn = courseManager.DeleteStudent john.Id
-          let retrieveJohnDetails = courseManager.GetStudentDetails john.Id
+          let (Ok johnDetails) = courseManager.GetStudentDetails john.StudentId
+          let removeJohn = courseManager.DeleteStudent john.StudentId
+          let retrieveJohnDetails = courseManager.GetStudentDetails john.StudentId
           Expect.isError retrieveJohnDetails "john details should not be retrieved"
        
        testCase "when a student is deleted then they are unsubscribed from any course where they are enrolled - Ok " <| fun _ ->
@@ -355,13 +355,13 @@ let tests =
           let addJohn = courseManager.AddStudent john
           let math = Course.MkCourse ("Math", 10)
           let addMath = courseManager.AddCourse math
-          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
-          
-          let removeJohn = courseManager.DeleteStudent john.Id
-          let retrieveJohnDetails = courseManager.GetStudentDetails john.Id
+          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.StudentId math.CourseId
+
+          let removeJohn = courseManager.DeleteStudent john.StudentId
+          let retrieveJohnDetails = courseManager.GetStudentDetails john.StudentId
           Expect.isError retrieveJohnDetails "john details should not be retrieved"
           
-          let retrieveCourse = courseManager.GetCourse math.Id
+          let retrieveCourse = courseManager.GetCourse math.CourseId
           let courseDetails = retrieveCourse.OkValue
           let students = courseDetails.Students
           Expect.equal students [] "students should be empty"
@@ -372,17 +372,17 @@ let tests =
           let addJohn = courseManager.AddStudent john
           let math = Course.MkCourse ("Math", 10)
           let addMath = courseManager.AddCourse math
-          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.Id math.Id
-          
-          let (Ok courseDetails) = courseManager.GetCourseDetails math.Id
-          
+          let enrollJohnToMath = courseManager.EnrollStudentToCourse john.StudentId math.CourseId
+
+          let (Ok courseDetails) = courseManager.GetCourseDetails math.CourseId
+
           let students = courseDetails.Students
           Expect.equal students.Length 1 "students enrolled should be len 1"
           
-          let removeJohn = courseManager.DeleteStudent john.Id
+          let removeJohn = courseManager.DeleteStudent john.StudentId
           Expect.isOk removeJohn "john should be removed"
           
-          let (Ok courseDetails2) = courseManager.GetCourse math.Id
+          let (Ok courseDetails2) = courseManager.GetCourse math.CourseId
           Expect.equal courseDetails2.Students.Length 0 "students enrolled should be len 0"
         
           

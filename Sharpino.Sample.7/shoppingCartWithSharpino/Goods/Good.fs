@@ -49,8 +49,5 @@ module Good =
             jsonPSerializer.Deserialize x
         member this.Serialize  =
             jsonPSerializer.Serialize this
-        interface Aggregate<string> with
-            member this.Id = this.Id
-            member this.Serialize  =
-                this.Serialize 
+            
 

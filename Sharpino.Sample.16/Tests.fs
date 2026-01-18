@@ -55,8 +55,8 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             Expect.isOk addPistacchio "error in adding material"
             Expect.isOk addCream "error in adding material"
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
             Expect.isOk retrievePistacchio "error in retrieving material"
             Expect.isOk retrieveCream "error in retrieving material"
             Expect.equal retrievePistacchio.OkValue.Availability.Value 10 "should be 10"
@@ -68,7 +68,7 @@ let tests =
             let addPistacchio = materialManager.AddMaterial pistacchio
             Expect.isOk addPistacchio "error in adding material"
             let pistacchioIceCream =
-                Product.New "Pistacchio Ice Cream" [pistacchio.Id, (Quantity.New 1).OkValue]
+                Product.New "Pistacchio Ice Cream" [pistacchio.MaterialId, (Quantity.New 1).OkValue]
             let addPistacchioIceCream = materialManager.AddProduct pistacchioIceCream
             Expect.isOk addPistacchioIceCream "error in adding product"
             
@@ -85,17 +85,17 @@ let tests =
             let addPistacchio = materialManager.AddMaterial pistacchio
             Expect.isOk addPistacchio "error in adding material"
             let pistacchioIceCream =
-                Product.New "Pistacchio Ice Cream" [pistacchio.Id, (Quantity.New 1).OkValue]
+                Product.New "Pistacchio Ice Cream" [pistacchio.MaterialId, (Quantity.New 1).OkValue]
             let addPistacchioIceCream = materialManager.AddProduct pistacchioIceCream
             Expect.isOk addPistacchioIceCream "error in adding product"
             // when
             let workOrder =
-                WorkOrder.New "Work Order" [WorkingItem.New pistacchioIceCream.Id (Quantity.New 1).OkValue]
+                WorkOrder.New "Work Order" [WorkingItem.New pistacchioIceCream.ProductId (Quantity.New 1).OkValue]
                 |> Result.get
             let addWorkOrder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkOrder "error in adding work order"
             // then
-            let workOrder = materialManager.GetWorkOrder workOrder.Id
+            let workOrder = materialManager.GetWorkOrder workOrder.WorkOrderId
             Expect.isOk workOrder "error in getting work order"
         
         testCase "a material is added, a product on that material is added, a work order is added, then the material results consumed" <| fun _ ->
@@ -104,22 +104,22 @@ let tests =
             let addPistacchio = materialManager.AddMaterial pistacchio
             Expect.isOk addPistacchio "error in adding material"
             let pistacchioIceCream =
-                Product.New "Pistacchio Ice Cream" [pistacchio.Id, (Quantity.New 1).OkValue]
+                Product.New "Pistacchio Ice Cream" [pistacchio.MaterialId, (Quantity.New 1).OkValue]
             let addPistacchioIceCream = materialManager.AddProduct pistacchioIceCream
             Expect.isOk addPistacchioIceCream "error in adding product"
             // when
             let workOrder =
-                WorkOrder.New "Work Order" [WorkingItem.New pistacchioIceCream.Id (Quantity.New 1).OkValue]
+                WorkOrder.New "Work Order" [WorkingItem.New pistacchioIceCream.ProductId (Quantity.New 1).OkValue]
                 |> Result.get
             let addWorkOrder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkOrder "error in adding work order"
             
             // then
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
             Expect.isOk retrievePistacchio "error in retrieving material"
             Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
             
-            let retrieveWorkOrder = materialManager.GetWorkOrder workOrder.Id
+            let retrieveWorkOrder = materialManager.GetWorkOrder workOrder.WorkOrderId
             Expect.isOk retrieveWorkOrder "error in retrieving work order"
           
         testCase "add two materials, a product on those materials and then a workOrder, verify both the materials are consumed" <| fun _ ->
@@ -132,21 +132,22 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
                 
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"
             
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 1).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 1).OkValue]
                 |> Result.get
             
             let addWorkOrder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkOrder "error in adding work order"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.isOk retrievePistacchio "error in retrieving material"
             Expect.isOk retrieveCream "error in retrieving material"
             
@@ -163,20 +164,21 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"    
                 
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 2).OkValue]
                 |> Result.get
             
             let addWorkorder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkorder "should be ok"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.isOk retrievePistacchio "should be ok"
             Expect.isOk retrieveCream "should be ok"
             
@@ -192,20 +194,21 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"
             
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 2).OkValue]
                 |> Result.get
             
             let addWorkorder = materialManager.AddWorkOrder workOrder
             Expect.isError addWorkorder "should be ok"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.equal retrievePistacchio.OkValue.Availability.Value 1 "should be 0"
             Expect.equal retrieveCream.OkValue.Availability.Value 2 "should be 0"
             
@@ -219,20 +222,21 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"    
                 
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 2).OkValue]
                 |> Result.get
             
             let addWorkorder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkorder "should be ok"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.isOk retrievePistacchio "should be ok"
             Expect.isOk retrieveCream "should be ok"
             
@@ -240,7 +244,8 @@ let tests =
             Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
             
             let retrievedWorkOrder =
-                materialManager.GetWorkOrder workOrder.Id
+                materialManager.GetWorkOrder workOrder.WorkOrderId
+
             Expect.isOk retrievedWorkOrder "should be ok"
             Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.Initialized "should be equal"
             
@@ -254,30 +259,32 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"    
                 
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 2).OkValue]
                 |> Result.get
             
             let addWorkorder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkorder "should be ok"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.isOk retrievePistacchio "should be ok"
             Expect.isOk retrieveCream "should be ok"
             
             Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
             Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
             
-            let startWorkingItem = materialManager.StartWorkingItem workOrder.Id twoFlavoursIceCream.Id
-            
+            let startWorkingItem = materialManager.StartWorkingItem workOrder.WorkOrderId twoFlavoursIceCream.ProductId
+
             let retrievedWorkOrder =
-                materialManager.GetWorkOrder workOrder.Id
+                materialManager.GetWorkOrder workOrder.WorkOrderId
+
             Expect.isOk retrievedWorkOrder "should be ok"
             Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.InProgress "should be equal"
             
@@ -291,31 +298,33 @@ let tests =
             let addCream = materialManager.AddMaterial cream
             
             let twoFlavoursIceCream =
-                Product.New "Pistacchio cream icecream" [(pistacchio.Id, (Quantity.New 1).OkValue); (cream.Id, (Quantity.New 1).OkValue)]
+                Product.New "Pistacchio cream icecream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue); (cream.
+                                                                                                                 MaterialId, (Quantity.New 1).OkValue)]
             let addTwoFlavoursIceCream = materialManager.AddProduct twoFlavoursIceCream
             Expect.isOk addTwoFlavoursIceCream "error in adding product"    
                 
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.Id (Quantity.New 2).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New twoFlavoursIceCream.ProductId (Quantity.New 2).OkValue]
                 |> Result.get
             
             let addWorkorder = materialManager.AddWorkOrder workOrder
             Expect.isOk addWorkorder "should be ok"
             
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
-            let retrieveCream = materialManager.GetMaterial cream.Id
-            
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+            let retrieveCream = materialManager.GetMaterial cream.MaterialId
+
             Expect.isOk retrievePistacchio "should be ok"
             Expect.isOk retrieveCream "should be ok"
             
             Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
             Expect.equal retrieveCream.OkValue.Availability.Value 0 "should be 0"
             
-            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.Id twoFlavoursIceCream.Id
-            let completeWorkingItem1 = materialManager.CompleteWorkingItem workOrder.Id twoFlavoursIceCream.Id
-            
+            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.WorkOrderId twoFlavoursIceCream.ProductId
+            let completeWorkingItem1 = materialManager.CompleteWorkingItem workOrder.WorkOrderId twoFlavoursIceCream.ProductId
+
             let retrievedWorkOrder =
-                materialManager.GetWorkOrder workOrder.Id
+                materialManager.GetWorkOrder workOrder.WorkOrderId
+
             Expect.isOk retrievedWorkOrder "should be ok"
             Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.FullyCompleted "should be equal"
             
@@ -324,26 +333,26 @@ let tests =
             let pistacchio =
                 Material.New "Pistacchio" (Quantity.New 1).OkValue
             let addPistacchio = materialManager.AddMaterial pistacchio
-            let iceCream = Product.New "Ice Cream" [(pistacchio.Id, (Quantity.New 1).OkValue)]
+            let iceCream = Product.New "Ice Cream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue)]
             let addIceCream = materialManager.AddProduct iceCream
             
             let workOrder =
-                WorkOrder.New "workOrder" [WorkingItem.New iceCream.Id (Quantity.New 1).OkValue]
+                WorkOrder.New "workOrder" [WorkingItem.New iceCream.ProductId (Quantity.New 1).OkValue]
                 |> Result.get
             let addWorkorder = materialManager.AddWorkOrder workOrder
-            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.Id iceCream.Id
-            let retrievePistacchio = materialManager.GetMaterial pistacchio.Id
+            let startWorkingItem1 = materialManager.StartWorkingItem workOrder.WorkOrderId iceCream.ProductId
+            let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
             Expect.isOk retrievePistacchio "should be ok"
             Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
             
-            let failWorkingItem1 = materialManager.FailWorkingItem workOrder.Id iceCream.Id (Quantity.New 1).OkValue
+            let failWorkingItem1 = materialManager.FailWorkingItem workOrder.WorkOrderId iceCream.ProductId (Quantity.New 1).OkValue
             Expect.isOk failWorkingItem1 "should be ok"
-            let retrievedWorkOrder = materialManager.GetWorkOrder workOrder.Id |> Result.get
+            let retrievedWorkOrder = materialManager.GetWorkOrder workOrder.WorkOrderId |> Result.get
             Expect.isTrue retrievedWorkOrder.WorkOrderState.IsSomeFailed "should be true"
             let (SomeFailed productsQuantities) = retrievedWorkOrder.WorkOrderState
-            Expect.equal productsQuantities [iceCream.Id, (Quantity.New 1).OkValue] "should be equal"
+            Expect.equal productsQuantities [iceCream.ProductId, (Quantity.New 1).OkValue] "should be equal"
             
-            let material = materialManager.GetMaterial pistacchio.Id
+            let material = materialManager.GetMaterial pistacchio.MaterialId
             Expect.isOk material "should be ok"
             Expect.equal material.OkValue.Availability.Value 1 "should be 1"
              

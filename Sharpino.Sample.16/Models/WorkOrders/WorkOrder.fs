@@ -34,7 +34,7 @@ open FsToolkit.ErrorHandling
         
     type WorkOrder =
         {
-            Id: WorkOrderId
+            WorkOrderId: WorkOrderId
             Name: string
             WorkingItems: List<WorkingItem>
         }
@@ -60,7 +60,7 @@ open FsToolkit.ErrorHandling
                         |> Result.ofBool "All working items must be pending"
                         
                     return {
-                        Id = WorkOrderId.New
+                        WorkOrderId = WorkOrderId.New
                         Name = name
                         WorkingItems = workingItems
                     }
@@ -160,6 +160,7 @@ open FsToolkit.ErrorHandling
                 | _ -> InProgress        
                  
             
+            member this.Id = this.WorkOrderId.Value
             static member SnapshotsInterval = 50
             static member StorageName = "_WorkOrders"
             static member Version = "_01"
@@ -174,8 +175,5 @@ open FsToolkit.ErrorHandling
                     with
                         | ex -> Error ex.Message
         
-            interface Aggregate<string> with 
-                member this.Id = this.Id.Value
-                member this.Serialize = this.Serialize
             
             

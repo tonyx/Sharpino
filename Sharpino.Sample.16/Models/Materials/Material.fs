@@ -9,13 +9,13 @@ open System
 
     type Material =
         {
-            Id: MaterialId
+            MaterialId: MaterialId
             Name: string
             Availability: Quantity
         }
         static member New (name: string) (quantity: Quantity) =
             {
-                Id = MaterialId.New
+                MaterialId = MaterialId.New
                 Name = name
                 Availability = quantity
             }
@@ -35,6 +35,7 @@ open System
                 
         // ----
         
+        member this.Id = this.MaterialId.Value
         static member SnapshotsInterval = 50
         static member StorageName = "_Materials"
         static member Version = "_01"
@@ -45,6 +46,3 @@ open System
         static member Deserialize (data: string) =
             JsonUtils.DeserializeJson<Material> data
         
-        interface Aggregate<string>  with
-            member this.Id = this.Id.Value
-            member this.Serialize = this.Serialize

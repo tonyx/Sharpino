@@ -38,7 +38,6 @@ type Dish(id: Guid, name: String, ingredients: List<Guid>) =
             return Dish(this.Id, this.Name, newIgredients)
         }
 
-
     static member StorageName =
         "_dish"
     static member Version =
@@ -50,12 +49,6 @@ type Dish(id: Guid, name: String, ingredients: List<Guid>) =
     static member Deserialize json =
         serializer.Deserialize<Dish> json
 
-    interface Aggregate<string> with
-        member this.Id = this.Id
-        member this.Serialize =
-            this.Serialize 
-    interface Entity with
-        member this.Id = this.Id
 
 
 

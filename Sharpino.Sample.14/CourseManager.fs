@@ -87,7 +87,7 @@ module CourseManager =
                                     Refresher = refresher
                                 } :> Refreshable<_>
                                 ,
-                                id.Id:: (students |> List.map _.Id.Id)
+                                id.Id:: (students |> List.map _.StudentId.Id)
                             )
                     }
             let key = DetailsCacheKey (typeof<CourseDetails>, id.Id)
@@ -114,7 +114,7 @@ module CourseManager =
                                     Refresher = refresher
                                 } :> Refreshable<_>
                                 ,
-                                id.Id:: (courses |> List.map _.Id.Id)
+                                id.Id:: (courses |> List.map _.CourseId.Id)
                             )
                         }
             let key = DetailsCacheKey (typeof<StudentDetails>, id.Id)

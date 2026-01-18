@@ -17,7 +17,7 @@ module Enrollment =
           EnrollmentDate: DateTime
         }
     type Enrollments =
-        { Id: EnrollmentId
+        { EnrollmentId: EnrollmentId
           Enrollments: List<Enrollment>}
     with    
         member this.AddEnrollment enrollment =
@@ -30,6 +30,7 @@ module Enrollment =
                         }
                 }
         
+        member this.Id = this.EnrollmentId.Id
         static member Version = "_01"
         static member StorageName = "_Enrollments"
         static member SnapshotsInterval = 15
@@ -44,9 +45,6 @@ module Enrollment =
         member this.Serialize =
             JsonSerializer.Serialize (this, jsonOptions)
         
-        interface Aggregate<string> with
-            member this.Id = this.Id.Id
-            member this.Serialize = this.Serialize    
         
             
             

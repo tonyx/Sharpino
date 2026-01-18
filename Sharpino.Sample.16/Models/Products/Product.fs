@@ -9,15 +9,16 @@ open FsToolkit.ErrorHandling
 
     type Product =
         {
-            Id: ProductId
+            ProductId: ProductId
             Name: string
             Materials: List<MaterialId * Quantity>
         }
         static member New (name: string) (materialsWithQuantities: List<MaterialId * Quantity>) =
-            { Id = ProductId.New; Name = name; Materials = materialsWithQuantities }
+            { ProductId = ProductId.New; Name = name; Materials = materialsWithQuantities }
 
         
         // ---
+        member this.Id = this.ProductId.Value
         static member SnapshotsInterval = 50
         static member StorageName = "_Products"
         static member Version = "_01"
@@ -28,7 +29,4 @@ open FsToolkit.ErrorHandling
         static member Deserialize (data: string) =
             JsonUtils.DeserializeJson<Product> data
                 
-        interface Aggregate<string> with
-            member this.Id = this.Id.Value
-            member this.Serialize = this.Serialize          
         

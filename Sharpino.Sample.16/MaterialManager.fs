@@ -92,7 +92,7 @@ type MaterialManager (messageSenders: MessageSenders, eventStore: IEventStore<st
                             x.Materials
                             |>> 
                                 fun (id, q) ->
-                                    id, (Quantity.New (q.Value * workOrder.GetQuantityPerProduct x.Id )).OkValue
+                                    id, (Quantity.New (q.Value * workOrder.GetQuantityPerProduct x.ProductId)).OkValue
                         |> List.concat
                     
                     materialsWithQuantities
