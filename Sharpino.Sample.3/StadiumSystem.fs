@@ -23,11 +23,6 @@ open Sharpino.Core
 open Sharpino.Utils
 
 module StorageStadiumBookingSystem =
-    let doNothingBroker: IEventBroker<string> =
-        {
-            notify = None
-            notifyAggregate = None
-        }
     
     let emptyMessageSender =
         fun queueName ->

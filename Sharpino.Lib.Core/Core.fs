@@ -29,7 +29,7 @@ module Core =
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
    
    
-    [<Obsolete("the member can be defined on the class without implementing the interface")>]
+    [<Obsolete("the members should be defined on the aggregates without implementing the interface")>]
     type Aggregate<'F> =
         abstract member Id: AggregateId 
         abstract member Serialize: 'F
