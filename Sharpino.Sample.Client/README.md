@@ -1,6 +1,6 @@
 # Sharpino sample client Template (derived from Feliz template)
 
-## Info: this contant is _not mantained_: the current development of front-end at the moment is on the direction of using blazor C# on the front-end (https://github.com/tonyx/sharpinoBlazor)
+## Info: this content is _not mantained_: the current development of front-end at the moment is on the direction of using blazor C# on the front-end (https://github.com/tonyx/sharpinoBlazor)
 ## This template may work as a proof of concept of possible elmish/fable integration for future reference
 
 This templates derives from feliz [Feliz](https://github.com/Zaid-Ajaj/Feliz) template and is modified to implement an elmish style interfacing with the sharpino sample app by using Fable Remoting.  [Fable](http://fable.io/)
