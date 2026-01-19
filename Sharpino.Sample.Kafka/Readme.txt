@@ -1,1 +1,0 @@
-temporary just in case we want to switch to Kafka or not (I think not)
