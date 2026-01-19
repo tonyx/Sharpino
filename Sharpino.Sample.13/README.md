@@ -1,8 +1,9 @@
 # Reservation pattern for user registration (Sharpino.Sample.13)
 
 ## warning: 
-the reservation pattern could be too much as the optimistic lock is enough.
-
+1. the reservation pattern could be too much as the optimistic lock is enough.
+2. There are random cases of false negatives
+ 
 This sample explores a concurrency-safe approach to user registration using a short-lived reservation (claim) pattern.
 
 ## Problem

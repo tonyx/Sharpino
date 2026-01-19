@@ -1,7 +1,6 @@
 ## A copy of Sharpino Example 11 using "undoers"/copensator feature
 
-In this example I will address a big issue in all the examples that deserve attention:
-Primitive obsession
+In this example I will address Primitive obsession
 
 It is worth targeting the Id disentangling from the actual Guid represenation using a wrapper for the id itself like follows:
 

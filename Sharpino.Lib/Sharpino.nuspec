@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>4.6.3</version>
+    <version>4.7.0</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>Simple F# Event-Sourcing Library</description>
@@ -27,7 +27,7 @@
             <dependency id="Microsoft.Extensions.Logging" version="10.0.2" />
             <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.2" />
             
-            <dependency id="Sharpino.Core" version="2.3.8" />
+            <dependency id="Sharpino.Core" version="4.7.0" />
 
             <dependency id="System.Data.Common" version="4.3.0" />
             <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
@@ -60,7 +60,7 @@
         <dependency id="Microsoft.Extensions.Logging" version="9.0.11" />
         <dependency id="Microsoft.Extensions.Caching.Memory" version="9.0.11" />
           
-        <dependency id="Sharpino.Core" version="2.3.8" />
+        <dependency id="Sharpino.Core" version="4.7.0" />
 
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
@@ -93,7 +93,7 @@
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Caching.Memory" version="8.0.1" />
           
-        <dependency id="Sharpino.Core" version="2.3.8" />
+        <dependency id="Sharpino.Core" version="4.7.0" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
