@@ -25,29 +25,6 @@ Unlike traditional event sourcing where events can trigger new commands, this im
 - **Events**: Immutable facts about what happened (e.g., `Consumed`, `Added`, `Started`, `Completed`)
 - **No Event → Command**: Events cannot trigger new commands directly
 
-#### 3. Command Coordination Examples
-
-**Material Consumption on WorkOrder Creation:**
-```fsharp
-// When creating a work order, multiple commands/initialization execute atomically:
-let consumingCommands = [
-    Consume pistacchioQuantity
-    Consume creamQuantity
-    Initialize workOrder // which is not properly a command
-]
-// All succeed or all fail together
-```
-
-**WorkOrder Failure with Material Restoration:**
-```fsharp
-// When a work order fails, restore materials atomically:
-let restorationCommands = [
-    FailWorkOrder productId quantity
-    AddMaterial pistacchioQuantity
-    AddMaterial creamQuantity
-]
-// Ensures material quantities are properly restored
-```
 
 ## Getting Started
 
