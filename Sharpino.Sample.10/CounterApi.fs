@@ -92,44 +92,8 @@ type CounterApi
                         preExecuteAggregateCommandMd<Account, AccountEvents, byte[]> id eventStore messageSenders "md" (AddAmount 1)
                     )
                 let totalPreExecutedAggregateCommands =
-                    preExecutedAggregateCommands @ preExecuteAggregateCommands2    
-                let! generatedIds =
+                    preExecutedAggregateCommands @ preExecuteAggregateCommands2
+                    
+                return!    
                     runPreExecutedAggregateCommands2<byte[]> totalPreExecutedAggregateCommands eventStore messageSenders
-                    
-                let counterGeneratedIds = generatedIds |> List.take counterIds.Length
-                let accountGeneratedIds = generatedIds |> List.skip counterIds.Length
-               
-                // at the moment the only suitable way to handle sending messages after being stored as "preExecutedCommands" is at app level and by deserializing the events back
-                match messageSenders with
-                | MessageSenders.MessageSender messageSender ->
-                    let! counterEvents =
-                        preExecutedAggregateCommands
-                        |> List.traverseResultM (fun preExecutedAggregateCommand -> preExecutedAggregateCommand.SerializedEvents |> List.traverseResultM (fun x -> CounterEvents.Deserialize x) )
-                    let! accountEvents =
-                        preExecuteAggregateCommands2
-                        |> List.traverseResultM (fun preExecutedAggregateCommand -> preExecutedAggregateCommand.SerializedEvents |> List.traverseResultM (fun x -> AccountEvents.Deserialize x) )
-                   
-                    // todo: Move this logic in a separate util
-                    let aggregateIdInitEventIdEndEventIdAndEventsCounter =
-                        let initEventIdEndEventIdAndEventsCounter =
-                            List.zip3 (preExecutedAggregateCommands |>> _.EventId) counterGeneratedIds counterEvents
-                        List.zip counterIds initEventIdEndEventIdAndEventsCounter
-                        |>> fun (id, (initEventId, endEventId, events)) -> (id, initEventId, endEventId, events)
-                   
-                    let aggregateIdInitEventIdEndEventIdAndEventsAccount =
-                        let initEventIdEndEventIdAndEventsAccount =
-                            List.zip3 (preExecuteAggregateCommands2 |>> _.EventId) accountGeneratedIds accountEvents
-                        List.zip accountIds initEventIdEndEventIdAndEventsAccount
-                        |>> fun (id, (initEventId, endEventId, events)) -> (id, initEventId, endEventId, events)
-                    let _ =
-                        optionallySendMultipleAggregateEventsAsync<Counter, CounterEvents>
-                            (Counter.Version + Counter.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventsCounter      
-                    let _ =
-                        optionallySendMultipleAggregateEventsAsync<Account, AccountEvents>
-                            (Account.Version + Account.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventsAccount
-                    ()
-                | MessageSenders.NoSender ->
-                    ()
-                    
-                return ()    
             }

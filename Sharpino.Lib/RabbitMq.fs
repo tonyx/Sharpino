@@ -90,6 +90,34 @@ module RabbitMq =
             sender aggregateMessage
         | _ ->
             ValueTask.CompletedTask
+            
+    let optionallySendTypelessAggregateEventsAsync
+        (queueName: StreamName)
+        (messageSenders: MessageSenders)
+        (aggregateId: AggregateId)
+        (events: List<'E>)
+        (initEventId: EventId)
+        (endEventId: EventId)
+        =
+        match messageSenders with
+        | MessageSenders.MessageSender messageSender when (messageSender queueName |> Result.isOk) ->
+            let sender = messageSender queueName |> Result.get
+            let message =
+                MessageType<'A, 'E>.Events
+                    {
+                        InitEventId = initEventId
+                        EndEventId = endEventId
+                        Events = events
+                    }
+            let aggregateMessage =
+                {
+                  AggregateId = aggregateId
+                  Message = message
+                }.Serialize
+            sender aggregateMessage
+        | _ ->
+            ValueTask.CompletedTask
+    
    
     let optionallySendMultipleAggregateEventsAsync<'A, 'E when 'E :> Event<'A>>
         (queueName: StreamName)

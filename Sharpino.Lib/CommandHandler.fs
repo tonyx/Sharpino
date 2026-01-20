@@ -3,6 +3,7 @@ namespace Sharpino
 
 open System
 
+open System.Reflection
 open System.Threading
 open FSharp.Core
 open FSharpPlus
@@ -2033,12 +2034,19 @@ module CommandHandler =
                 
                 return ()
             }
-     
-    let inline runPreExecutedAggregateCommands<'F> (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>) (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) =
+    
+   
+    // todo: this approach is an hack to retrieve again the source deserialized events
+    // I should be able to avoid this trick by just using reflection and the serialize on the origin object themselves
+    // on the preExecutedAggregateCommands (which is basd on the wrong assumption that to solve the problem the serialized must be part of it)
+    let inline runPreExecutedAggregateCommands<'F>
+        (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders) =
         logger.Value.LogDebug "runPreExecutedCommands"
         result {
             let! storedIds =
-                storeMultipleEvents eventStore eventBroker
+                storeMultipleEvents eventStore messageSenders
                     preExecutedAggregateCommands
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
@@ -2060,19 +2068,46 @@ module CommandHandler =
                     serialized
                 |> ignore
             
+            // note: 
+            // this reckless unsafe operation must work because the involved types are actually typechecked outside
+            // the scope of this call, so at the moment there is no specific treatment about theoretical runtime exceptions
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let queueName = preExecutedAggregateCommands.[i].Version + preExecutedAggregateCommands.[i].StorageName
+                let deserializer = preExecutedAggregateCommands.[i].EventType.GetMethod "Deserialize"
+                let deserializedEvents =
+                    preExecutedAggregateCommands.[i].SerializedEvents
+                    |> List.map
+                           (fun x -> deserializer.Invoke(null, [|x|]))
+                           |> List.map 
+                                (fun x ->
+                                   (
+                                    let resultType = x.GetType()
+                                    let resultValueProperty = resultType.GetProperty("ResultValue")
+                                    resultValueProperty.GetValue x 
+                                    )
+                                )
+                                
+                optionallySendTypelessAggregateEventsAsync
+                    queueName
+                    messageSenders
+                    preExecutedAggregateCommands.[i].AggregateId
+                    deserializedEvents
+                    preExecutedAggregateCommands.[i].EventId
+                    (storedIds.Item i |> List.last)
+                    |> ignore
+                    
             return ()
         }
      
-    // this one is the same as runPreExecutedAggregateCommands but it returns the stored ids.
+    // this one is the same as runPreExecutedAggregateCommands returning the stored ids. Unify them when you decide to do it: no rush
     let inline runPreExecutedAggregateCommands2<'F> 
-            
         (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
         (eventStore: IEventStore<'F>)
-        (eventBroker: MessageSenders) =
+        (messageSenders: MessageSenders) =
         logger.Value.LogDebug "runPreExecutedCommands"
         result {
             let! storedIds =
-                storeMultipleEvents eventStore eventBroker
+                storeMultipleEvents eventStore messageSenders
                     preExecutedAggregateCommands
             
             for i in 0 ..(preExecutedAggregateCommands.Length - 1) do
@@ -2094,6 +2129,33 @@ module CommandHandler =
                     serialized
                 |> ignore
 
+            // note: 
+            // this reckless unsafe operation must work because the involved types are actually typechecked outside
+            // the scope of this call, so at the moment there is no specific treatment about theoretical runtime exceptions
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let queueName = preExecutedAggregateCommands.[i].Version + preExecutedAggregateCommands.[i].StorageName
+                let deserializer = preExecutedAggregateCommands.[i].EventType.GetMethod "Deserialize"
+                let deserializedEvents =
+                    preExecutedAggregateCommands.[i].SerializedEvents
+                    |> List.map
+                           (fun x -> deserializer.Invoke(null, [|x|]))
+                           |> List.map 
+                                (fun x ->
+                                   (
+                                    let resultType = x.GetType()
+                                    let resultValueProperty = resultType.GetProperty("ResultValue")
+                                    resultValueProperty.GetValue x 
+                                    )
+                                )
+                optionallySendTypelessAggregateEventsAsync
+                    queueName
+                    messageSenders
+                    preExecutedAggregateCommands.[i].AggregateId
+                    deserializedEvents
+                    preExecutedAggregateCommands.[i].EventId
+                    (storedIds.Item i |> List.last)
+                    |> ignore
+                
             let result =
                 storedIds |>> List.last
             return result    
