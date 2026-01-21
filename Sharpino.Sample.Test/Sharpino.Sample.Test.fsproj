@@ -7,7 +7,6 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <compile Include="Shared.fs" />
     <Compile Include="contexts/Tags/entities/TagsTests.fs" />
     <Compile Include="contexts/Tags/TagsContextTests.fs" />
@@ -26,5 +25,9 @@
     <PackageReference Include="Expecto" Version="10.2.3" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.*" />
     <ProjectReference Include="../Sharpino.Sample/Sharpino.Sample.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appSettings.json" />
   </ItemGroup>
 </Project>

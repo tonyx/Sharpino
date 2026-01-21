@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.7.1</Version>
+    <Version>4.7.2</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -14,7 +14,7 @@
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event-Sourcing Library</Description>
     <ReleaseNotes>This release supports In-memory and Postgres as event store</ReleaseNotes> 
-    <Copyright>Copyright ©2023-2025 Antonio Lucca</Copyright>
+    <Copyright>Copyright ©2023-2026 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#, FSharp, PostgreSQL</PackageTags>
 <!--    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants> -->
       
@@ -26,7 +26,6 @@
 
   <ItemGroup>
     <Compile Include="Commons.fs" />
-    <Compile Include="Conf.fs" />
     <Compile Include="EventStore.fs" />
     <Compile Include="ListRepository.fs" />
     <Compile Include="PgEventStore.fs" />

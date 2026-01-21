@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="appSettings.json" />
         <Compile Include="Definitions.fs" />
         <Compile Include="Models/Course/Course.fs" />
         <Compile Include="Models/Course/Events.fs" />
@@ -20,7 +20,6 @@
         <Compile Include="Main.fs" />
         <Content Include=".env" />
         <Content Include="README.md" />
-        <Content Include="sharpinoSettings.json" />
     </ItemGroup>
 
     <ItemGroup>

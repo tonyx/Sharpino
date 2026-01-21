@@ -9,6 +9,8 @@ open Npgsql
 open FSharpPlus
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Hosting
 open FSharpPlus.Operators
 open Sharpino
 open Sharpino.Storage
@@ -16,8 +18,12 @@ open Sharpino.PgStorage
 open Sharpino.Definitions
 
 module PgBinaryStore =
-    let cancellationTokenSourceExpiration = 100000
-
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+    let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
+    let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
+    
+    // todo: the logger needs to be compliant with appsettings as well
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger
@@ -27,7 +33,7 @@ module PgBinaryStore =
         new (connection: string) = PgBinaryStore (connection, readAsBinary)
 
         member this.Reset version name = 
-            if (Conf.isTestEnv) then
+            if isTestEnv then
                 try
                     let res1 =
                         Async.RunSynchronously
@@ -36,8 +42,8 @@ module PgBinaryStore =
                             |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                             |> Sql.executeNonQueryAsync
                             |> Async.AwaitTask
-                            ,  
-                            evenStoreTimeout)
+                            ,
+                            eventStoreTimeout)
                     let res2 =
                         Async.RunSynchronously
                         (connection
@@ -46,14 +52,14 @@ module PgBinaryStore =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                     ()
                 with 
                     | _ as e -> failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
         member this.ResetAggregateStream version name =
-            if (Conf.isTestEnv) then
+            if isTestEnv then
                 try
                     
                     Async.RunSynchronously
@@ -63,7 +69,7 @@ module PgBinaryStore =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                         |> ignore
                     
                     Async.RunSynchronously
@@ -73,7 +79,7 @@ module PgBinaryStore =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                         |> ignore    
                     
                     ()    
@@ -89,12 +95,12 @@ module PgBinaryStore =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -123,12 +129,12 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
@@ -157,12 +163,12 @@ module PgBinaryStore =
                     {
                        try
                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                            cts.CancelAfter(cancellationTokenSourceExpiration)
                            use conn = new NpgsqlConnection(connection)
                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
-                           command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                           command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                            command.Parameters.AddWithValue("id", id) |> ignore
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -187,7 +193,7 @@ module PgBinaryStore =
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
@@ -196,7 +202,7 @@ module PgBinaryStore =
                     if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                         try
                             use command' = new NpgsqlCommand(command, conn)
-                            command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             command'.Parameters.AddWithValue("snapshot", napshot) |> ignore
                             command'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
@@ -221,7 +227,7 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -232,7 +238,7 @@ module PgBinaryStore =
                                 let ids = ResizeArray<int>()
                                 for x in events do
                                     use command' = new NpgsqlCommand(commandText, conn, transaction)
-                                    command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                                    command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                     command'.Parameters.AddWithValue("event", x) |> ignore
                                     command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
                                     command'.Parameters.AddWithValue("md", md) |> ignore
@@ -257,7 +263,7 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -294,7 +300,7 @@ module PgBinaryStore =
                                                 for event in events do
                                                     let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                     (
-                                                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                                                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
                                                         command.Parameters.AddWithValue("md", md ) |> ignore
@@ -343,7 +349,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
@@ -360,7 +366,7 @@ module PgBinaryStore =
                             |> Sql.query query 
                             |> Sql.execute  (fun read -> read.int "id")
                             |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
 
             member this.TryGetLastSnapshotEventId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
@@ -374,7 +380,7 @@ module PgBinaryStore =
                                 |> Sql.query query
                                 |> Sql.execute  (fun read -> read.int "event_id")
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
@@ -399,7 +405,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 match result with        
                 | None -> None
                 | Some (eventId, id, false) -> Some (eventId, id)
@@ -425,7 +431,7 @@ module PgBinaryStore =
                                         )
                                     )
                                     |> Seq.tryHead
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try              
                     result ()
                 with
@@ -457,7 +463,7 @@ module PgBinaryStore =
                                             result
                                     )
                                     |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -503,7 +509,7 @@ module PgBinaryStore =
                                         return result
                                     finally
                                         conn.Close()
-                                }, evenStoreTimeout
+                                }, eventStoreTimeout
                             )
                 try
                     result ()
@@ -566,7 +572,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -600,7 +606,7 @@ module PgBinaryStore =
                                     | _ as ex ->
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with    
@@ -632,7 +638,7 @@ module PgBinaryStore =
                                                     ]
                                                 ]
                                         ]
-                                }, evenStoreTimeout)
+                                }, eventStoreTimeout)
                         |> ignore
                         |> Ok
                     with
@@ -680,7 +686,7 @@ module PgBinaryStore =
                                     | _ as ex -> 
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -696,21 +702,21 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
                         for (aggregateId, json) in idsAndSnapshots do
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn)
-                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             do! insertSnapshot'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
                             use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn)
-                            firstEmptyEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             do! firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
@@ -729,19 +735,19 @@ module PgBinaryStore =
                     {
                         use conn= new NpgsqlConnection(connection)
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let! transaction = conn.BeginTransactionAsync (cts.Token)
                         try
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn)
-                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             
                             use firstEmptyAggregateEvent' = new NpgsqlCommand(firstEmptyAggregateEvent, conn)
-                            firstEmptyAggregateEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyAggregateEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             
                             let! _ = insertSnapshot'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
@@ -790,7 +796,7 @@ module PgBinaryStore =
                                 | _ as ex ->
                                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                     ex.Message |> Error
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -858,7 +864,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -932,7 +938,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1028,7 +1034,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1061,7 +1067,7 @@ module PgBinaryStore =
                                                     ]
                                                 ]
                                         ]
-                                }, evenStoreTimeout)
+                                }, eventStoreTimeout)
                                 |> ignore
                                 |> Ok
                     with
@@ -1087,7 +1093,7 @@ module PgBinaryStore =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> ignore
                         |> Ok
                     with    
@@ -1113,7 +1119,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> Ok
                         
                 with
@@ -1140,7 +1146,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> Ok    
                     with
                     | _ as ex ->
@@ -1165,7 +1171,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1178,13 +1184,13 @@ module PgBinaryStore =
                 task
                     {
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -1224,7 +1230,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1241,12 +1247,12 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
@@ -1292,7 +1298,7 @@ module PgBinaryStore =
                                         )
                                     )
                                     |> Seq.toList
-                                }, evenStoreTimeout)
+                                }, eventStoreTimeout)
                     result |> Ok      
                 with
                 | _ as ex ->
@@ -1316,7 +1322,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1339,7 +1345,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1352,7 +1358,7 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1383,7 +1389,7 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1427,7 +1433,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1453,7 +1459,7 @@ module PgBinaryStore =
                                 )
                                 |> Seq.tryHead
                                 |> Result.ofOption "Snapshot not found"
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
@@ -1477,7 +1483,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
@@ -1510,7 +1516,7 @@ module PgBinaryStore =
                                 else
                                     return Ok (eventId, snapshot)
                             | None -> return Error $"object {aggregateId} type {version}{name} not existing"    
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
@@ -1523,12 +1529,12 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
@@ -1565,7 +1571,7 @@ module PgBinaryStore =
                                     )
                                 )
                                 |> Seq.tryHead
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
@@ -1584,7 +1590,7 @@ module PgBinaryStore =
                                 |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
                                 |> Sql.execute (fun read -> read.int "event_id")
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                     | _ as ex ->
                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1607,7 +1613,7 @@ module PgBinaryStore =
                                         )     
                                     )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1679,7 +1685,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1721,7 +1727,7 @@ module PgBinaryStore =
                                     | _ as ex ->
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1735,12 +1741,12 @@ module PgBinaryStore =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
@@ -1806,7 +1812,7 @@ module PgBinaryStore =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1838,7 +1844,7 @@ module PgBinaryStore =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                             |> ignore
                             |> Ok
                     with
@@ -1912,7 +1918,7 @@ module PgBinaryStore =
                                         finally
                                             transaction.Dispose()
                                             conn.Dispose()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         with
                         | _ as ex ->
                             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -2000,6 +2006,6 @@ module PgBinaryStore =
                                         transaction.Rollback()
                                         conn.Close()
                                         return (ex.Message |> Error)
-                        }, evenStoreTimeout) 
+                        }, eventStoreTimeout) 
                     else Error ("optimistic lock failure: " + (errors |> String.concat ", ") + $"lastEventId: {lastEventId}, eventId: {s1EventId}")
                         

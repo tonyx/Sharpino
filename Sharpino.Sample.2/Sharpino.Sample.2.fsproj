@@ -19,14 +19,14 @@
     <Compile Include="Domain/Row2/Events.fs" />
     <Compile Include="Domain/Row2/Commands.fs" />
     <Compile Include="App.fs" />
-    <None Include="sharpinoSettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
  
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
+  </ItemGroup>
+ 
+  <ItemGroup>
+    <Content Include="appSettings.json" />
   </ItemGroup>
 
 

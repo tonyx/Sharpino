@@ -36,13 +36,14 @@ Sharpino is a library to support Event-Sourcing in F# based on the following pri
 
 ## Overview and terms
 
-- Contexts: Event-sourced objects with no Id, so only one instance is around for each type. (Contexts are deprecated. Just use an aggregates with a constant Id)
+- Contexts (_deprecated: just use ordinary aggregates with a constant Id_) _Event-sourced objects with no Id, so only one instance is around for each type. 
 - Aggregates: Event-sourced objects with Id (Guid).
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 - Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
 - Events are based on D.U. and are wrappers to transformation events, i.e. processing events means calling the transformation members.
 - Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events (in the future).
-- Cache: Dictionary-based cache of the current state of any aggregate or context.
+- Cache: use of MemoryCache to keep the latest state of any aggregate or context.
+- CacheDetails: use of MemoryCache to keep the state of details (combination of values from other aggregates or streams) and update them when the related aggregates are updated.
 - Soft delete: Mark an aggregate as deleted.
 - StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
 - HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
@@ -164,7 +165,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-Note/reminder/warning: in sharpinoSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
+Note/reminder/warning: in appSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
 Other configuration, using PgJson for instance and JSON or JSONB fields and different serializer than fsPickler, are ok as long as you test carefully by doing low level operations on the eventstore e.g. store and retrieve events and snapshot bypassing the command handler and the cache.
 The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
 However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
@@ -362,35 +363,6 @@ module CartCommands =
  ```
 
 
-- WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
-- Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
-```json
-{
-  "LockType":{"Case":"Optimistic"},
-  "RefreshTimeout": 100,
-  "CacheAggregateSize": 100,
-  "PgSqlJsonFormat":{"Case":"PlainText"},
-  "MailBoxCommandProcessorsSize": 100,
-  "EventStoreTimeout": 100
-}
-```
-- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as follows:
-```json
-{
-  "LockType":{"Case":"Optimistic"},
-  "RefreshTimeout": 100,
-  "CacheAggregateSize": 100,
-  "PgSqlJsonFormat":{"Case":"PlainText"},
-  "MailBoxCommandProcessorsSize": 100
-}
-```
-
-Example of line in your .fsproj or .csproj file:
-```xml
-  <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
-</ItemGroup>
-```
 
 - Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
 - Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)

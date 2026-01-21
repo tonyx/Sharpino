@@ -10,6 +10,8 @@ open FSharpPlus
 
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Hosting
 open Sharpino.Cache
 open Sharpino.Core
 open Sharpino.RabbitMq
@@ -17,7 +19,6 @@ open Sharpino.Storage
 open Sharpino.Definitions
 open Sharpino.StateView
 open Sharpino.EventBroker
-open Sharpino.Conf
 
 open FsToolkit.ErrorHandling
 
@@ -28,7 +29,11 @@ open FsToolkit.ErrorHandling
 // after all what we are going for is leaving only the md version and keep the
 // non-md only for backward compatibility
 module CommandHandler =
-    let cancellationTokenSourceExpiration = 10000
+    let builder = Host.CreateApplicationBuilder()
+    let myConfig = builder.Configuration
+    let cancellationTokenSourceExpiration = myConfig.GetValue<int>("CancellationTokenSourceExpiration", 100000)
+    let eventStoreTimeout = myConfig.GetValue<int>("EventStoreTimeout", 10000)
+    
     type StramName = string
 
     // will play around D.I./host to make logging more flexible as something like follows
@@ -101,17 +106,6 @@ module CommandHandler =
                             (eventId, result :?> 'A) 
                     }
 
-    let config =
-        try
-            Conf.config ()
-        with
-        | :? _ as ex -> 
-            logger.Value.LogError (sprintf "appSettings.json file not found using defult!!! %A\n" ex)
-            printf "appSettings.json file not found using defult!!! %A\n" ex
-            Conf.defaultConf
-
-    let eventStoreTimeout = config.EventStoreTimeout
-    // let evenStoreTimeout = config.EventStoreTimeout
     // using variuos versions of mkSnapshotIfIntervalPassed instead. Leaving it to allow use from any app if needed
     let inline mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)

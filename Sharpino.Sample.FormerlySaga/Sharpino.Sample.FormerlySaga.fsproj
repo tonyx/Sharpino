@@ -7,7 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
       <Compile Include="Commons.fs" />
 
       <Compile Include="Domain/Rows/Row.fs" />
@@ -34,6 +33,10 @@
     
     <ItemGroup>
       <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <Content Include="appSettings.json" />
     </ItemGroup>
 
 </Project>

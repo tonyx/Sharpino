@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Definitions.fs" />
     <Compile Include="Domain/Site/Site.fs" />
     <Compile Include="Domain/Site/Events.fs" />

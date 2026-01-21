@@ -1,6 +1,8 @@
 
 namespace Sharpino
 
+open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Configuration
 open Sharpino
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
@@ -12,14 +14,16 @@ module MailBoxProcessors =
     let logger: ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: ILogger) =
         logger := newLogger
-    let config = 
-        try
-            Conf.config ()
-        with
-        | :? _ as ex -> 
-            // if appSettings.json is missing
-            logger.Value.LogError (sprintf "appSettings.json file not found using default!!! %A\n" ex)
-            Conf.defaultConf
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+    // let config = 
+    //     try
+    //         Conf.config ()
+    //     with
+    //     | :? _ as ex -> 
+    //         // if appSettings.json is missing
+    //         logger.Value.LogError (sprintf "appSettings.json file not found using default!!! %A\n" ex)
+    //         Conf.defaultConf
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
     
@@ -38,7 +42,7 @@ module MailBoxProcessors =
   
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         member this.addAndGetNewProcessor name =
-            if (queue.Count > config.MailBoxCommandProcessorsSize) then
+            if (queue.Count > config.GetValue<int>("MailBoxCommandProcessorsSize", 100)) then
                 try
                     let removed = queue.Dequeue()
                     let processor = processors.[removed]

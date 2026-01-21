@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Commons.fs" />
     <Compile Include="Ingredients/Ingredient.fs" />
     <Compile Include="Ingredients/Events.fs" />
@@ -29,6 +28,9 @@
   </ItemGroup> 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+  </ItemGroup> 
+  <ItemGroup>
+    <Content Include="appSettings.json" />
   </ItemGroup>
   
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">

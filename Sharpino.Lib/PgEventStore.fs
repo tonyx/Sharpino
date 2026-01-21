@@ -9,6 +9,8 @@ open FSharpPlus
 open FsToolkit.ErrorHandling
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Hosting
 open System.Runtime.CompilerServices
 open System.Threading
 open System.Threading.Tasks
@@ -17,15 +19,18 @@ open Sharpino.Storage
 open Sharpino.Definitions
 
 module PgStorage =
-    let cancellationTokenSourceExpiration = 100000
-    open Conf
-
-    let config = Conf.config ()
-    let sqlJson = 
-        match config.PgSqlJsonFormat with
-        | PgSqlJson.PlainText -> Sql.text
-        | PgSqlJson.PgJson -> Sql.jsonb
-    let evenStoreTimeout = config.EventStoreTimeout    
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+    let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 10000)
+    let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
+    let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
+    
+    let confJsonFormat = config.GetValue<string>("PgSqlJsonFormat", "PlainText")
+    let sqlJson =
+        match confJsonFormat with
+        | "PlainText" -> Sql.text
+        | "PgJson" -> Sql.jsonb
+        | _ -> Sql.text
 
     let sqlBinary = Sql.bytea
 
@@ -42,7 +47,7 @@ module PgStorage =
             PgEventStore(connection, readAsText)
 
         member this.Reset version name =
-            if (Conf.isTestEnv) then
+            if isTestEnv then
                 try
                     Async.RunSynchronously
                         (connection
@@ -50,8 +55,8 @@ module PgStorage =
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
-                        ,  
-                        evenStoreTimeout)
+                        ,
+                        eventStoreTimeout)
                         |> ignore
                             
                     Async.RunSynchronously
@@ -61,7 +66,7 @@ module PgStorage =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                     
                 with 
                     | _ as e -> failwith (e.ToString())
@@ -69,7 +74,7 @@ module PgStorage =
                 failwith "operation allowed only in test db"
                 
         member this.ResetAggregateStream version name =
-            if (Conf.isTestEnv) then
+            if isTestEnv then
                 try
                     
                     Async.RunSynchronously
@@ -79,7 +84,7 @@ module PgStorage =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                         |> ignore
                     
                     Async.RunSynchronously
@@ -89,9 +94,8 @@ module PgStorage =
                         |> Sql.executeNonQueryAsync
                         |> Async.AwaitTask
                         ,
-                        evenStoreTimeout)
+                        eventStoreTimeout)
                         |> ignore 
-                    
                     ()    
                 with
                     | _ as e -> failwith (e.ToString())
@@ -106,12 +110,12 @@ module PgStorage =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
@@ -142,11 +146,11 @@ module PgStorage =
                        try
                            use conn = new NpgsqlConnection(connection)
                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                            cts.CancelAfter(cancellationTokenSourceExpiration)
                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
-                           command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                           command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                            command.Parameters.AddWithValue("id", id) |> ignore
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -172,7 +176,7 @@ module PgStorage =
                 logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
@@ -181,7 +185,7 @@ module PgStorage =
                     if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                         try
                             use command' = new NpgsqlCommand(command, conn)
-                            command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             command'.Parameters.AddWithValue("snapshot", napshot) |> ignore
                             command'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
@@ -200,7 +204,7 @@ module PgStorage =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -237,7 +241,7 @@ module PgStorage =
                                                 for event in events do
                                                     let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name, conn)
                                                     (
-                                                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                                                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                                         command.Parameters.AddWithValue("event", event ) |> ignore
                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
                                                         command.Parameters.AddWithValue("md", md ) |> ignore
@@ -283,7 +287,7 @@ module PgStorage =
                     let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -294,7 +298,7 @@ module PgStorage =
                                 let ids = ResizeArray<int>()
                                 for x in events do
                                     use command' = new NpgsqlCommand(commandText, conn, transaction)
-                                    command'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                                    command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                     command'.Parameters.AddWithValue("event", x) |> ignore
                                     command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
                                     command'.Parameters.AddWithValue("md", md) |> ignore
@@ -332,7 +336,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
@@ -349,7 +353,7 @@ module PgStorage =
                             |> Sql.query query
                             |> Sql.execute (fun read -> read.int "id")
                             |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
             member this.TryGetLastSnapshotEventId version name =
                 logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
@@ -362,7 +366,7 @@ module PgStorage =
                                 |> Sql.query query 
                                 |> Sql.execute  (fun read -> read.int "event_id")
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
@@ -388,7 +392,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 match result with
                 | None -> None
                 | Some (eventId, id, false) -> Some (eventId, id)
@@ -414,7 +418,7 @@ module PgStorage =
                                         )
                                     )
                                     |> Seq.tryHead
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try              
                     result ()
                 with
@@ -444,7 +448,7 @@ module PgStorage =
                                     )
                                     |> Seq.tryHead
                         }
-                        , evenStoreTimeout)
+                        , eventStoreTimeout)
                 with    
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -490,7 +494,7 @@ module PgStorage =
                                         return result
                                     finally
                                         conn.Close()
-                                }, evenStoreTimeout
+                                }, eventStoreTimeout
                             )
                 try
                     result ()
@@ -555,7 +559,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try             
                     result ()
                 with    
@@ -589,7 +593,7 @@ module PgStorage =
                                     | _ as ex ->
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -621,7 +625,7 @@ module PgStorage =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> ignore
                         |> Ok
                     with
@@ -637,19 +641,19 @@ module PgStorage =
                     {
                         use conn= new NpgsqlConnection(connection)
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let! transaction = conn.BeginTransactionAsync (cts.Token)
                         try
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn)
-                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             
                             use firstEmptyAggregateEvent' = new NpgsqlCommand(firstEmptyAggregateEvent, conn)
-                            firstEmptyAggregateEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyAggregateEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             
                             let! _ = insertSnapshot'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
@@ -697,7 +701,7 @@ module PgStorage =
                                     | _ as ex ->
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -713,21 +717,21 @@ module PgStorage =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
                         for (aggregateId, json) in idsAndSnapshots do
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn)
-                            insertSnapshot'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             do! insertSnapshot'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
                             use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn)
-                            firstEmptyEvent'.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             do! firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
 
@@ -775,7 +779,7 @@ module PgStorage =
                                 | _ as ex ->
                                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                     ex.Message |> Error
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -841,7 +845,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     
                 try
                     result ()
@@ -917,7 +921,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1012,7 +1016,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1045,7 +1049,7 @@ module PgStorage =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> ignore
                         |> Ok
                     with
@@ -1071,7 +1075,7 @@ module PgStorage =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> ignore
                         |> Ok
                     with    
@@ -1097,7 +1101,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         |> Ok
                 with
                 | _ as ex ->
@@ -1110,12 +1114,12 @@ module PgStorage =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -1156,7 +1160,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok     
                 with
                 | _ as ex ->
@@ -1183,7 +1187,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok    
                 with
                 | _ as ex ->
@@ -1198,12 +1202,12 @@ module PgStorage =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
@@ -1248,7 +1252,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok     
                 with
                 | _ as ex ->
@@ -1261,12 +1265,12 @@ module PgStorage =
                 task
                     {
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 100)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -1305,7 +1309,7 @@ module PgStorage =
                                         )
                                     )
                                     |> Seq.toList
-                                }, evenStoreTimeout)
+                                }, eventStoreTimeout)
                     result |> Ok         
                 with
                 | _ as ex ->
@@ -1329,7 +1333,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1355,7 +1359,7 @@ module PgStorage =
                                 )
                                 |> Seq.tryHead
                                 |> Result.ofOption "snapshot not found"
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1379,7 +1383,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
@@ -1403,7 +1407,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
@@ -1436,7 +1440,7 @@ module PgStorage =
                                 else
                                     return Ok (eventId, snapshot)
                             | None -> return Error $"object {aggregateId} type {version}{name} not existing"    
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
@@ -1449,12 +1453,12 @@ module PgStorage =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
@@ -1486,7 +1490,7 @@ module PgStorage =
                                 |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
                                 |> Sql.execute (fun read -> read.int "event_id")
                                 |> Seq.tryHead
-                        }, evenStoreTimeout)
+                        }, eventStoreTimeout)
                 with        
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1509,7 +1513,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.tryHead
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 with
                 | _ as ex ->
                     logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1581,7 +1585,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1624,7 +1628,7 @@ module PgStorage =
                                     | _ as ex ->
                                         logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try             
                     result ()
                 with
@@ -1638,12 +1642,12 @@ module PgStorage =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
-                        command.CommandTimeout <- max 1 (evenStoreTimeout / 1000)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
@@ -1710,7 +1714,7 @@ module PgStorage =
                                     return result
                                 finally
                                     conn.Close()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                 try
                     result ()
                 with
@@ -1735,7 +1739,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1749,7 +1753,7 @@ module PgStorage =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1791,7 +1795,7 @@ module PgStorage =
                                     )
                                 )
                                 |> Seq.toList
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                     |> Ok
                 with
                 | _ as ex ->
@@ -1805,7 +1809,7 @@ module PgStorage =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(evenStoreTimeout)).Token)
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                             cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1867,7 +1871,7 @@ module PgStorage =
                                                     ]
                                                 ]
                                         ]
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                             |> ignore
                             |> Ok
                     with
@@ -1942,7 +1946,7 @@ module PgStorage =
                                         finally
                                             transaction.Dispose()
                                             conn.Dispose()
-                            }, evenStoreTimeout)
+                            }, eventStoreTimeout)
                         with
                         | _ as ex ->
                             logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -2031,7 +2035,7 @@ module PgStorage =
                                         transaction.Rollback()
                                         conn.Close()
                                         return (ex.Message |> Error)
-                        }, evenStoreTimeout) 
+                        }, eventStoreTimeout) 
                     else Error ("optimistic lock failure: " + (errors |> String.concat ", ") + $"lastEventId: {lastEventId}, eventId: {s1EventId}")
                         
                 

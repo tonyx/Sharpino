@@ -291,35 +291,7 @@ module CartCommands =
  ```
 
 
-- WARNING!!! Version 2.2.9 is DEPRECATED. Fixing it.
-- Version 2.2.9: introduced timeout in connection with postgres as eventstore. Plus more error control. New parameter in sharpinoSeettings.json needed:
-```json
-{
-    "LockType":{"Case":"Optimistic"},
-    "RefreshTimeout": 100,
-    "CacheAggregateSize": 100,
-    "PgSqlJsonFormat":{"Case":"PlainText"},
-    "MailBoxCommandProcessorsSize": 100,
-    "EventStoreTimeout": 100
-}
-```
-- Version 2.2.8: renamed the config from appSettings.json to sharpinoSettings.json. An example of the config file is as follows:
-```json
-{
-    "LockType":{"Case":"Optimistic"},
-    "RefreshTimeout": 100,
-    "CacheAggregateSize": 100,
-    "PgSqlJsonFormat":{"Case":"PlainText"},
-    "MailBoxCommandProcessorsSize": 100
-}
-```
 
-Example of line in your .fsproj or .csproj file:
-```xml
-  <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-```
  
 - Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git
 - Version 2.2.6: runCommands work in threads for aggregates and context using mailboxprocessors for aggregates (the number of those active mailboxprocessors can be limited in config)

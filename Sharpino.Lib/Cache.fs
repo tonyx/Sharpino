@@ -3,6 +3,8 @@ namespace Sharpino
 open System.Collections.Concurrent
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Caching.Memory
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.Hosting
 open Sharpino
 open Sharpino.Core
 open Sharpino.Definitions
@@ -13,20 +15,15 @@ open FSharp.Core
 open System
 
 module Cache =
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+        
     let numProcs = Environment.ProcessorCount
     let concurrencyLevel = numProcs * 2
 
     let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         logger := newLogger
-    let config = 
-        try
-            Conf.config ()
-        with
-        | :? _ as ex -> 
-            // if sharpinoSettings.json is missing
-            printf "sharpinoSettings.json file not found using default!!! %A\n" ex
-            Conf.defaultConf
    
     type Refreshable<'A> =
         abstract member Refresh: unit -> Result<'A, string>
@@ -40,16 +37,19 @@ module Cache =
         
     type DetailsCache private () =
         let statesDetails = new MemoryCache(MemoryCacheOptions())
-        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+            
+        let detailsCacheExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheExpiration", 300)
+        let detailsCacheDependenciesExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheDependenciesExpiration", 301)
         
-        // move the value into the appsettings.json (not anymore sharpinoConfig.json that needs to go away)
-        let defaultExpiration = TimeSpan.FromMinutes(60.0)
-        let createCacheEntryOptions (expiration: TimeSpan option) =
-            let options =
-                MemoryCacheEntryOptions().
-                    SetSize(1L).
-                    SetSlidingExpiration(expiration |> Option.defaultValue defaultExpiration)
-            options
+        let detailsEntryOptions =
+            MemoryCacheEntryOptions().
+                SetSize(1L).
+                SetSlidingExpiration(TimeSpan.FromSeconds(detailsCacheExpirationConfigInSeconds))
+        
+        let detailsDependenciesEntryOptions =
+            MemoryCacheEntryOptions().
+                SetSize(1L).
+                SetSlidingExpiration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))        
         
         let objectDetailsAssociationsCache = new MemoryCache(MemoryCacheOptions())
         
@@ -66,11 +66,12 @@ module Cache =
                         key :: existingKeys
                     else
                         existingKeys
-                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, entryOptions) |> ignore
+                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, detailsDependenciesEntryOptions) |> ignore
             ()
             
+        // will be deprecated as passing an expiration is a risk (or at least it should be greater than the default)
         member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) (expiration: TimeSpan option)=
-            let entryOptions = createCacheEntryOptions expiration
+            
             for aggregateId in aggregateIds do
                 let existingKeys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
                 let updatedKeys = 
@@ -80,7 +81,7 @@ module Cache =
                         key :: existingKeys
                     else
                         existingKeys
-                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, entryOptions) |> ignore
+                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, detailsDependenciesEntryOptions) |> ignore
             ()
         
         member this.Refresh (key: DetailsCacheKey) =
@@ -117,7 +118,7 @@ module Cache =
                         | Ok resultObj ->
                             // Update the cache directly without going through TryCache
                             try
-                                statesDetails.Set<obj>(key.Value, resultObj, entryOptions) |> ignore
+                                statesDetails.Set<obj>(key.Value, resultObj, detailsEntryOptions) |> ignore
                                 Ok resultObj
                             with :? _ as e ->
                                 logger.Value.LogError (sprintf "error: cache update failed. %A\n" e)
@@ -150,7 +151,7 @@ module Cache =
         
         member private this.TryCache (key: string, value: Refreshable<_>) =
             try
-                statesDetails.Set<obj>(key, value, entryOptions) |> ignore
+                statesDetails.Set<obj>(key, value, detailsEntryOptions) |> ignore
             with :? _ as e ->
                 logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Compact(1.0)
@@ -163,9 +164,9 @@ module Cache =
             else
                 let res = f()
                 match res with
-                | Ok (result, dependandIds) ->
+                | Ok (result, dependendIds) ->
                     this.TryCache (key.Value, result)
-                    this.UpdateMultipleAggregateIdAssociationRef (dependandIds |> List.toArray) key (defaultExpiration |> Some)
+                    this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
                     Ok (result |> unbox)
                 | Error e ->
                     Error e
@@ -176,7 +177,11 @@ module Cache =
     
     type AggregateCache3 private () =
         let statePerAggregate = new MemoryCache(MemoryCacheOptions())
-        let entryOptions = MemoryCacheEntryOptions().SetSize(1L)
+        let cacheExpirationConfigInSeconds = config.GetValue<float>("AggregateCacheExpiration", 600)
+        let entryOptions =
+            MemoryCacheEntryOptions().
+                SetSize(1L).
+                SetSlidingExpiration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
         static let instance = AggregateCache3()
         static member Instance = instance
         

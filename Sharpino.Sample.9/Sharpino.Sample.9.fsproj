@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="models/Item/Item.fs" />
     <Compile Include="models/Item/Events.fs" />
     <Compile Include="models/Item/Commands.fs" />
@@ -56,10 +55,6 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
     <DefineConstants>RABBITMQ</DefineConstants>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="appSettings.json" />

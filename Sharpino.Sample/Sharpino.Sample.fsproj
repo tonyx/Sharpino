@@ -7,7 +7,6 @@
 <!--    <GenerateProgramFile>false</GenerateProgramFile>-->
   </PropertyGroup>
   <ItemGroup>
-    <None Include="sharpinoSettings.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="Commons.fs" />
     <Compile Include="Domain/Categories/Categories.fs" />
     <Compile Include="Domain/Todos/Todos.fs" />
@@ -41,6 +40,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sharpino.Sample.Shared\Sharpino.Sample.Shared.fsproj" />
+  </ItemGroup> 
+
+  <ItemGroup>
+    <Content Include="appSettings.json" />
   </ItemGroup>
 
 </Project>
