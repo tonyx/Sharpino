@@ -16,14 +16,6 @@ module MailBoxProcessors =
         logger := newLogger
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
-    // let config = 
-    //     try
-    //         Conf.config ()
-    //     with
-    //     | :? _ as ex -> 
-    //         // if appSettings.json is missing
-    //         logger.Value.LogError (sprintf "appSettings.json file not found using default!!! %A\n" ex)
-    //         Conf.defaultConf
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
     

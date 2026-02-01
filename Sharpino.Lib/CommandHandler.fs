@@ -1622,10 +1622,10 @@ module CommandHandler =
                     |> command.Execute
             
                 let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders md command
+                
                 let! ids = storeEvents storage messageSenders executedCommand
-                
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
-                
+                 
                 let _ =
                     DetailsCache.Instance.RefreshDependentDetails aggregateId
                 let _ =
