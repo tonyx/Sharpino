@@ -174,7 +174,7 @@ Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for 
 The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
-- Version 4.7.3: logging is managed by appsettings.json "setLogger" are deprecated
+- Version 4.7.3: logging is managed by appsettings.json. "setLogger" calls are deprecated.
 - Version 4.7.2: removed sharpinoSettings.json. Settings are part of appSettings.json now
 - Version 4.7.1: the "runPreExecuteAggregateCommd" can use the MessageSenders (RabbitMq for example). 
 - Version 4.7.0: interface "Aggregate" is not needed anymore. Type constraints are enough -> Related members Id and Serializer needs to be defined in the aggregate. Important: if using typed Id (wrapping Guid), then it cannot use the name Id anymore. The actual Id must be still Guid (so for example I can have a StudentId field of type StudentId and I still need to expose the Id as a Guid, like StudentId.Value)
