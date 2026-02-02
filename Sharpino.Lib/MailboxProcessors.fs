@@ -1,6 +1,8 @@
 
 namespace Sharpino
 
+open System
+open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Configuration
 open Sharpino
@@ -11,11 +13,18 @@ open System.Collections
 open FSharp.Core
 
 module MailBoxProcessors =
-    let logger: ILogger ref = ref NullLogger.Instance
-    let setLogger (newLogger: ILogger) =
-        logger := newLogger
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
+    let loggerFactory = LoggerFactory.Create(fun b ->
+        if config.GetValue<bool>("Logging:Console", true) then
+            b.AddConsole() |> ignore
+        )
+    
+    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Sharpino.MailBoxProcessors")
+    
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
+    let setLogger (newLogger: ILogger) =
+        ()
 
     type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
     
@@ -41,7 +50,7 @@ module MailBoxProcessors =
                     processor.Dispose()
                     processors.Remove removed |> ignore
                 with :? _ as e ->
-                    logger.Value.LogError(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                    logger.LogError(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 
             let processor = this.createProcessor ()
             processors.Add(name, processor)

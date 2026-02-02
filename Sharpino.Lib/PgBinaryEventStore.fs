@@ -4,6 +4,7 @@ open System
 open System.Threading
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
+open Microsoft.Extensions.DependencyInjection
 open Npgsql.FSharp
 open Npgsql
 open FSharpPlus
@@ -23,12 +24,12 @@ module PgBinaryStore =
     let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
     let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
     
-    // todo: the logger needs to be compliant with appsettings as well
-    let logger: ILogger ref = ref NullLogger.Instance
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
-        logger := newLogger
+        ()
         
     type PgBinaryStore (connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+        let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgBinaryStore>>()
 
         new (connection: string) = PgBinaryStore (connection, readAsBinary)
 
@@ -90,7 +91,7 @@ module PgBinaryStore =
         
         interface IEventStore<byte []> with
             member this.GetEventsInATimeIntervalAsync(version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"  version name
                 task {
                     try
@@ -118,12 +119,12 @@ module PgBinaryStore =
                         do! loop ()
                         return results |> Seq.toList |> Ok
                     with ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
                 
             member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
+                logger.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and timestamp >= @dateFrom and timestamp <= @dateTo ORDER BY id"  version name
                 task
                     {
@@ -153,11 +154,11 @@ module PgBinaryStore =
                             do! loop ()
                             return results |> Seq.toList |> Ok
                         with ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return Error ex.Message
                     }
             member this.GetAggregateEventsAfterIdAsync(version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+                logger.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
                 task
                     {
@@ -186,11 +187,11 @@ module PgBinaryStore =
                            do! loop ()
                            return results |> Seq.toList |> Ok
                        with ex ->
-                           logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                           logger.LogError (sprintf "an error occurred: %A" ex.Message)
                            return Error ex.Message
                     }
             member this.SnapshotAndMarkDeletedAsync (version: Version, name: Name, eventId: EventId, aggregateId: System.Guid, napshot: byte[], ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
@@ -221,7 +222,7 @@ module PgBinaryStore =
             member this.ResetAggregateStream(version: Version) (name: Name): unit =
                 this.ResetAggregateStream version name    
             member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<byte[]>, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
+                logger.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
                 let stream_name = version + name
                 let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @md);" stream_name
                 task {
@@ -247,19 +248,19 @@ module PgBinaryStore =
                                 do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
                                 return Ok (List.ofSeq ids)
                             with ex ->
-                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                 do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                                 return Error ex.Message
                         else
                             do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                             return Error "EventId is not the last one"
                     with ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
                 
             member this.MultiAddAggregateEventsMdAsync (arg: List<EventId * List<byte[]> * Version * Name * AggregateId>, md: Metadata, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "MultiAddAggregateEventsMd %A" arg )
+                logger.LogDebug (sprintf "MultiAddAggregateEventsMd %A" arg )
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
@@ -316,7 +317,7 @@ module PgBinaryStore =
                                     |> List.ofSeq |> Ok
                                 with
                                     | _ as ex ->
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         transaction.Rollback()
                                         ex.Message |> Error
                             else
@@ -328,11 +329,11 @@ module PgBinaryStore =
                             conn.Close()
                     with
                     | _  as ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return (Error ex.Message)
                 }
             member this.TryGetLastSnapshot version name =
-                logger.Value.LogDebug("TryGetLastSnapshot")
+                logger.LogDebug("TryGetLastSnapshot")
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously 
@@ -352,11 +353,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
+                    logger.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
                     None
 
             member this.TryGetLastEventId version name =
-                logger.Value.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
                 Async.RunSynchronously
                     (async {
@@ -369,7 +370,7 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
 
             member this.TryGetLastSnapshotEventId version name =
-                logger.Value.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously
@@ -383,11 +384,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
                     None
 
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT event_id, id, is_deleted FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
                 let result =
                     Async.RunSynchronously
@@ -412,7 +413,7 @@ module PgBinaryStore =
                 | _ -> None
                 
             member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
                 
                 let result =
@@ -436,12 +437,12 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (ex.Message)
+                    logger.LogError (ex.Message)
                     None
             // todo: that's not good approach. revise possibly using result
             
             member this.TryGetEvent version id name =
-                logger.Value.LogDebug (sprintf "TryGetEvent %s %s" version name)
+                logger.LogDebug (sprintf "TryGetEvent %s %s" version name)
                 let query = sprintf "SELECT * from events%s%s where id = @id" version name
                 try
                     Async.RunSynchronously
@@ -466,11 +467,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
 
             member this.AddEventsMd eventId version name metadata events  =
-                logger.Value.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
+                logger.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" stream_name
                 
@@ -500,7 +501,7 @@ module PgBinaryStore =
                                             with
                                                 | _ as ex -> 
                                                     transaction.Rollback()
-                                                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                                     ex.Message |> Error
                                         else
                                             transaction.Rollback()
@@ -515,11 +516,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                 
             member this.MultiAddEventsMd md (arg: List<EventId * List<byte[]> * Version * Name>) =
-                logger.Value.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
+                logger.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
                 let result =
                     fun _ ->
                         let conn = new NpgsqlConnection(connection)
@@ -562,7 +563,7 @@ module PgBinaryStore =
                                             cmdList |> Ok
                                         with
                                             | _ as ex ->
-                                                logger.Value.LogDebug (sprintf "an error occurred: %A" ex.Message)
+                                                logger.LogDebug (sprintf "an error occurred: %A" ex.Message)
                                                 transaction.Rollback()
                                                 ex.Message |> Error
                                     else
@@ -577,11 +578,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                     
             member this.GetEventsAfterId version id name =
-                logger.Value.LogDebug (sprintf "GetEventsAfterId %s %s %d" version name id)
+                logger.LogDebug (sprintf "GetEventsAfterId %s %s %d" version name id)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
                
                 let result =
@@ -604,18 +605,18 @@ module PgBinaryStore =
                                         |> Ok
                                     with
                                     | _ as ex ->
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
                             }, eventStoreTimeout)
                 try
                     result ()
                 with    
                 | _ as ex  ->  
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.SetSnapshot version (id: int, snapshot: byte array) name =
-                logger.Value.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
+                logger.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
                 let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
                 let tryEvent = ((this :> IEventStore<byte []>).TryGetEvent version id name)
                 match tryEvent with
@@ -643,11 +644,11 @@ module PgBinaryStore =
                         |> Ok
                     with
                     | _ as ex -> 
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
 
             member this.SetInitialAggregateState aggregateId version name json =
-                logger.Value.LogDebug (sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
+                logger.LogDebug (sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" version name
                 let makeFirstEmptyEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 
@@ -684,18 +685,18 @@ module PgBinaryStore =
                                         () |> Ok
                                     with
                                     | _ as ex -> 
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
                             }, eventStoreTimeout)
                 try
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.SetInitialAggregateStatesAsync(version: Version, name: Name, idsAndSnapshots: (AggregateId * byte[])[], ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "SetInitialAggregateStatesAsync %s %s" version name)
+                logger.LogDebug (sprintf "SetInitialAggregateStatesAsync %s %s" version name)
                 let insertSnapshotCmd = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                 let firstEmptyEventCmd = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
 
@@ -728,7 +729,7 @@ module PgBinaryStore =
                 }
                    
             member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct: CancellationToken) =
-                logger.Value.LogDebug (sprintf "SetInitialAggregateStateAsync %A %s %s" aggregateId version name)
+                logger.LogDebug (sprintf "SetInitialAggregateStateAsync %A %s %s" aggregateId version name)
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                 let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 task
@@ -760,7 +761,7 @@ module PgBinaryStore =
                                 return Error e.Message
                     }
             member this.SetInitialAggregateStates version name idsAndSnapshots =
-                logger.Value.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)
+                logger.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                 let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
               
@@ -794,16 +795,16 @@ module PgBinaryStore =
                                     () |> Ok
                                 with
                                 | _ as ex ->
-                                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                     ex.Message |> Error
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename initInstance contextVersion contextName md events =
-                logger.Value.LogDebug "entered in setInitialAggregateStateAndAddEvents"
+                logger.LogDebug "entered in setInitialAggregateStateAndAddEvents"
 
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
@@ -854,7 +855,7 @@ module PgBinaryStore =
                                             ids |> Ok
                                         with
                                             | _ as ex ->
-                                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                                 transaction.Rollback()
                                                 ex.Message |> Error
                                     else
@@ -869,11 +870,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                 
             member this.SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName md events =
-                logger.Value.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
+                logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
 
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
@@ -928,7 +929,7 @@ module PgBinaryStore =
                                             ids |> Ok
                                         with
                                             | _ as ex ->
-                                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                                 transaction.Rollback()
                                                 ex.Message |> Error
                                     else
@@ -943,11 +944,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                 
             member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd  aggregateId version name jsonSnapshot md events =
-                logger.Value.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
+                logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
                 let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" version name
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                 
@@ -1024,7 +1025,7 @@ module PgBinaryStore =
                                             ids |> Ok
                                         with
                                             | _ as ex ->
-                                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                                 transaction.Rollback()
                                                 ex.Message |> Error
                                     else
@@ -1039,11 +1040,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                     
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: byte array) name =
-                logger.Value.LogDebug "entered in setAggregateSnapshot"
+                logger.LogDebug "entered in setAggregateSnapshot"
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
                 let tryEvent = ((this :> IEventStore<byte array>).TryGetEvent version eventId name)
                 match (tryEvent, eventId) with
@@ -1072,7 +1073,7 @@ module PgBinaryStore =
                                 |> Ok
                     with
                     | _ as ex -> 
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
                 | None, 0 ->
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, null, @snapshot, @timestamp)" version name
@@ -1098,11 +1099,11 @@ module PgBinaryStore =
                         |> Ok
                     with    
                     | _ as ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         ex.Message |> Error
             
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
-                logger.Value.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     Async.RunSynchronously
@@ -1124,12 +1125,12 @@ module PgBinaryStore =
                         
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
            
             // todo: verify the "async" version and wrap to it if working fine
             member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
-                logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     Async.RunSynchronously
@@ -1150,11 +1151,11 @@ module PgBinaryStore =
                         |> Ok    
                     with
                     | _ as ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
                       
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
-                logger.Value.LogDebug (sprintf "GetAllAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetAllAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     Async.RunSynchronously
@@ -1175,11 +1176,11 @@ module PgBinaryStore =
                     |> Ok
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
            
             member this.GetAllAggregateEventsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct:CancellationToken) =
-                logger.Value.LogDebug (sprintf "GetAllAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetAllAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 task
                     {
@@ -1212,7 +1213,7 @@ module PgBinaryStore =
                     
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
                 let aggregateIdsArray = aggregateIds |> Array.ofList
-                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     Async.RunSynchronously
@@ -1234,12 +1235,12 @@ module PgBinaryStore =
                     |> Ok
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                      
                     
             member this.GetMultipleAggregateEventsInATimeIntervalAsync (version, name, aggregateIds, dateFrom, dateTo, ?ct) =
-                logger.Value.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 
                 let aggregateIdsArray = aggregateIds |> Array.ofList
                 let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
@@ -1273,12 +1274,12 @@ module PgBinaryStore =
                             return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return Error ex.Message    
                     }
                     
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
-                logger.Value.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT id, aggregate_id, timestamp FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     let result =
@@ -1302,11 +1303,11 @@ module PgBinaryStore =
                     result |> Ok      
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     ex.Message |> Error
                     
             member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
-                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
                 try
                     Async.RunSynchronously
@@ -1326,11 +1327,11 @@ module PgBinaryStore =
                     |> Ok
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
             
             member this.GetAggregateIds version name =
-                logger.Value.LogDebug (sprintf "GetAggregateIds %s %s" version name)
+                logger.LogDebug (sprintf "GetAggregateIds %s %s" version name)
                 let query = sprintf "SELECT DISTINCT aggregate_id FROM snapshots%s%s" version name
                 try
                     Async.RunSynchronously
@@ -1349,10 +1350,10 @@ module PgBinaryStore =
                     |> Ok
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message        
             member this.GetAggregateIdsAsync (version, name, ?ct) =
-                logger.Value.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
+                logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
                 taskResult
                     {
@@ -1378,12 +1379,12 @@ module PgBinaryStore =
                             return results |> Seq.toList
                         with
                         | _ as ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return! Error ex.Message
                     }
              
             member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
-                logger.Value.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
+                logger.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
                 taskResult
                     {
@@ -1411,12 +1412,12 @@ module PgBinaryStore =
                             return results |> Seq.toList
                         with
                         | _ as ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return! Error ex.Message
                     }
                     
             member this.TryGetLastSnapshotId version name =
-                logger.Value.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 // log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 try
@@ -1436,11 +1437,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
 
             member this.TryGetFirstSnapshot version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetSnapshotById %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "TryGetSnapshotById %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id LIMIT 1" version name
                 
                 try
@@ -1462,11 +1463,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     Error (sprintf "error occurred %A" ex.Message)
             
             member this.TryGetSnapshotById version name id =
-                logger.Value.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
+                logger.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
                 try
                     Async.RunSynchronously
@@ -1486,11 +1487,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     None
                     
             member this.TryGetLastAggregateSnapshot version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
                 
                 let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
                 try
@@ -1519,11 +1520,11 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
                     Error (sprintf "error occurred %A" ex.Message)
                     
             member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct) =
-                logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
                 task
                     {
@@ -1549,12 +1550,12 @@ module PgBinaryStore =
                             else
                                 return Error (sprintf "object %A type %s%s not existing" aggregateId version name)
                         with ex ->
-                            logger.Value.LogError (sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
                             return Error ex.Message
                     }
                     
             member this.TryGetAggregateSnapshotById version name aggregateId id =
-                logger.Value.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
+                logger.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
                 try
                     Async.RunSynchronously
@@ -1574,11 +1575,11 @@ module PgBinaryStore =
                             }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     None
             
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously
@@ -1593,11 +1594,12 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                     | _ as ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        // not an error anymore
+                        // logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         None
 
             member this.TryGetLastAggregateEventId version name aggregateId =
-                logger.Value.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s where aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously
@@ -1616,14 +1618,14 @@ module PgBinaryStore =
                         }, eventStoreTimeout)
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
 
             member this.AddAggregateEventsMd (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (md: Metadata) (events: List<byte[]>) : Result<List<int>,string> =
                 (this :> IEventStore<byte[]>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
                     
             member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<byte array> * Version * Name * System.Guid>) =
-                logger.Value.LogDebug (sprintf "MultiAddAggregateEvents %A %s" arg md)
+                logger.LogDebug (sprintf "MultiAddAggregateEvents %A %s" arg md)
                 
                
                 let result =
@@ -1675,7 +1677,7 @@ module PgBinaryStore =
                                             cmdList |> Ok
                                         with
                                             | _ as ex ->
-                                                logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                                 transaction.Rollback()
                                                 ex.Message |> Error
                                     else
@@ -1690,11 +1692,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * byte array>,string> = 
-                logger.Value.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+                logger.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
                 taskResult
                     {
                         return! (this :> IEventStore<byte[]>).GetAggregateEventsAfterIdAsync(version, name, aggregateId, id)
@@ -1703,7 +1705,7 @@ module PgBinaryStore =
                 |> Async.RunSynchronously
                                 
             member this.GetAggregateEvents version name aggregateId: Result<List<EventId * byte array>, string> = 
-                logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
                 let result =
                     fun _ ->
@@ -1725,18 +1727,18 @@ module PgBinaryStore =
                                         |> Ok
                                     with
                                     | _ as ex ->
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
                             }, eventStoreTimeout)
                 try
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
             
             member this.GetAggregateEventsAsync (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken): Task<Result<List<EventId * byte array>, string>> =
-                logger.Value.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
                 task {
                     try
@@ -1763,12 +1765,12 @@ module PgBinaryStore =
                         do! loop ()
                         return results |> Seq.toList |> Ok
                     with ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
                     
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
-                logger.Value.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
+                logger.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
                 let conn = new NpgsqlConnection(connection)
                 let sqlReplaceAllAggregates = (sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE aggregate_id = @aggregateId" version name)
                 let sqlReplaceAllEvents = (sprintf "UPDATE events%s%s SET event = @event WHERE aggregate_id = @aggregateId" version name)
@@ -1805,7 +1807,7 @@ module PgBinaryStore =
                                         Ok ()
                                     with
                                     | _ as ex -> 
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         transaction.Rollback()
                                         ex.Message |> Error
                                 try
@@ -1817,11 +1819,11 @@ module PgBinaryStore =
                     result ()
                 with
                 | _ as ex ->
-                    logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
                 
             member this.SnapshotAndMarkDeleted version name eventId aggregateId napshot =
-                logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
                 let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                 let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                 
@@ -1849,7 +1851,7 @@ module PgBinaryStore =
                             |> Ok
                     with
                     | _ as ex ->
-                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
                 else
                     Error $"error checking event alignments. eventId passed: {eventId}. Latest event id: {lastEventId}"
@@ -1866,7 +1868,7 @@ module PgBinaryStore =
                 streamAggregateId
                 metaData
                 events =
-                    logger.Value.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
+                    logger.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
                     let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
                     let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
                     
@@ -1921,7 +1923,7 @@ module PgBinaryStore =
                             }, eventStoreTimeout)
                         with
                         | _ as ex ->
-                            logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             Error ex.Message
                     else
                         Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}"
@@ -2002,7 +2004,7 @@ module PgBinaryStore =
                                     return (cmdList |> Ok)
                                 with
                                     | _ as ex ->
-                                        logger.Value.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
                                         transaction.Rollback()
                                         conn.Close()
                                         return (ex.Message |> Error)

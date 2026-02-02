@@ -1,35 +1,25 @@
 namespace Sharpino
 
 open System
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Console
 open FSharp.Core
 open Sharpino.Definitions
 
 module Core =
-    // need to use a proper d.i. based logger, but not now
-    let factory = LoggerFactory.Create(fun (builder: ILoggingBuilder) ->
-        builder
-            .AddFilter("Microsoft", LogLevel.Warning)
-            .AddFilter("System", LogLevel.Warning)
-            .AddFilter("Sharpino", LogLevel.Debug)
-            .AddSimpleConsole(fun options ->
-                options.IncludeScopes <- true
-                options.SingleLine <- true
-                options.TimestampFormat <- "[HH:mm:ss] "
-                options.ColorBehavior <- LoggerColorBehavior.Enabled
-            )
-            |> ignore
-    )
-    let logger: Microsoft.Extensions.Logging.ILogger ref = ref (factory.CreateLogger("Sharpino"))
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Sharpino.Core")
 
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
-        logger := newLogger
+        ()
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
    
-   
-    [<Obsolete("the members should be defined on the aggregates without implementing the interface")>]
+    [<Obsolete("no need for aggregates interface")>]
     type Aggregate<'F> =
         abstract member Id: AggregateId 
         abstract member Serialize: 'F
@@ -56,7 +46,7 @@ module Core =
                         |> Result.mapError
                             (fun x ->
                                 let msg = sprintf "Error processing event %A: %s" e x
-                                logger.Value.LogError msg
+                                logger.LogError msg
                                 msg
                             )
                     )
@@ -69,12 +59,12 @@ module Core =
         // if the accumulator is an error then skip it, and use the guard instead which was the 
         // latest valid value of the accumulator
         | Error err, _::es ->
-            logger.Value.LogCritical (sprintf "Skipping error: %s" err)
+            logger.LogCritical (sprintf "Skipping error: %s" err)
             evolveSkippingErrors (guard |> Ok) es guard
         // if the accumulator is error and the list is empty then we are at the end, and so we just
         // get the guard as the latest valid value of the accumulator
         | Error err, [] -> 
-            logger.Value.LogCritical (sprintf "Skipping error: %s" err)
+            logger.LogCritical (sprintf "Skipping error: %s" err)
             guard |> Ok
         // if the accumulator is Ok and the list is not empty then we use a new guard as the value of the 
         // accumulator processed if is not error itself, otherwise we keep using the old guard
@@ -82,7 +72,7 @@ module Core =
             let newGuard = state |> (e :> Event<'A>).Process
             match newGuard with
             | Error err -> 
-                logger.Value.LogCritical (sprintf "Skipping error: %s" err)
+                logger.LogCritical (sprintf "Skipping error: %s" err)
                 evolveSkippingErrors (guard |> Ok) es guard
             | Ok h' ->
                 evolveSkippingErrors (h' |> Ok) es h'
@@ -95,7 +85,7 @@ module Core =
             match result with
             | Ok x -> Ok x
             | Error e ->
-                logger.Value.LogCritical (sprintf "!!!! Unconsistency detected in eventstore. A reboot or cache clear (of the involved aggregate at least) is highly recommended: %s" e)
+                logger.LogCritical (sprintf "!!!! Unconsistency detected in eventstore. A reboot or cache clear (of the involved aggregate at least) is highly recommended: %s" e)
                 evolveSkippingErrors (h |> Ok) events h 
         #else    
             evolveUNforgivingErrors h events

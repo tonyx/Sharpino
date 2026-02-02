@@ -21,9 +21,14 @@ module Cache =
     let numProcs = Environment.ProcessorCount
     let concurrencyLevel = numProcs * 2
 
-    let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
+    let loggerFactory = LoggerFactory.Create(fun b ->
+        if config.GetValue<bool>("Logging:Console", true) then
+            b.AddConsole() |> ignore
+        )
+    let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
+    
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
-        logger := newLogger
+        logger.LogError ("setting logger is not supported")
    
     type Refreshable<'A> =
         abstract member Refresh: unit -> Result<'A, string>
@@ -121,7 +126,7 @@ module Cache =
                                 statesDetails.Set<obj>(key.Value, resultObj, detailsEntryOptions) |> ignore
                                 Ok resultObj
                             with :? _ as e ->
-                                logger.Value.LogError (sprintf "error: cache update failed. %A\n" e)
+                                logger.LogError (sprintf "error: cache update failed. %A\n" e)
                                 statesDetails.Compact(1.0)
                                 Error "Failed to update cache"
                         | Error e -> Error e
@@ -153,7 +158,7 @@ module Cache =
             try
                 statesDetails.Set<obj>(key, value, detailsEntryOptions) |> ignore
             with :? _ as e ->
-                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Compact(1.0)
                 ()
                     
@@ -191,7 +196,7 @@ module Cache =
                 ()
                 
             with :? _ as e -> 
-                logger.Value.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statePerAggregate.Compact(1.0)
                 // if an object failed to be cached then clear the details cache as well (otherwise dependencies could be out of sync)
                 DetailsCache.Instance.Clear()
