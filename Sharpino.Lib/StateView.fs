@@ -5,6 +5,7 @@ open System.Threading
 open FSharp.Core
 open FSharpPlus
 
+open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Sharpino.Core
@@ -17,9 +18,11 @@ open System
 
 module StateView =
     let cancellationTokenSourceExpiration = 100000
-    let logger: ILogger ref = ref NullLogger.Instance
+    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Sharpino.StateView")
+    
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
-        logger := newLogger
+        ()
 
     let inline private tryGetAggregateSnapshot<'A, 'F
         when 
@@ -45,10 +48,10 @@ module StateView =
                             | Ok deserSnapshot, Some evId  ->
                                 (evId, deserSnapshot) |> Ok
                             | Error e, _->
-                                logger.Value.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
+                                logger.LogError (sprintf "deserialization error %A for snapshot %A" e snapshot')
                                 Error (sprintf "deserialization error %A for snapshot %A" e snapshot')
                             | _ ->
-                                logger.Value.LogError (sprintf "deserialization error for snapshot %A" snapshot')
+                                logger.LogError (sprintf "deserialization error for snapshot %A" snapshot')
                                 Error (sprintf "deserialization error for snapshot %A" snapshot')
                         | None ->
                             Error (sprintf "snapshot not found. Stream %A %A, aggregate id %A" 'A.Version 'A.StorageName aggregateId)
@@ -82,7 +85,7 @@ module StateView =
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         >
         (storage: IEventStore<'F>) =
-            logger.Value.LogDebug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getLastSnapshotOrStateCache %s - %s" 'A.Version 'A.StorageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -109,7 +112,7 @@ module StateView =
         (storage: IEventStore<'F>)
         :Result<(Option<Definitions.EventId> * 'A) option,string>
         =
-            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -137,7 +140,7 @@ module StateView =
         (storageName: string)
         (storage: IEventStore<'F>) 
         =
-            logger.Value.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -170,7 +173,7 @@ module StateView =
         (storageName: string)
         (storage: IEventStore<'F>) 
         =
-            logger.Value.LogDebug (sprintf "getLastHistoryAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.LogDebug (sprintf "getLastHistoryAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -203,7 +206,7 @@ module StateView =
         and 'E: (member Serialize: 'F)
         >
         (storage: IEventStore<'F>) =
-        logger.Value.LogDebug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
+        logger.LogDebug (sprintf "snapIdStateAndEvents %s - %s" 'A.Version 'A.StorageName)
         Async.RunSynchronously
             (async {
                 return
@@ -224,7 +227,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         = 
-        logger.Value.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
+        logger.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         
         async {
             return
@@ -255,7 +258,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         = 
-        logger.Value.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
+        logger.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         
         async {
             return
@@ -311,7 +314,7 @@ module StateView =
                         | Ok state' -> 
                             (lastEventId, state') |> Ok
                         | Error e ->
-                            logger.Value.LogError (sprintf "getState: %A" e)
+                            logger.LogError (sprintf "getState: %A" e)
                             Error e
                     return result
                 }, Commons.generalAsyncTimeOut)
@@ -328,7 +331,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewStateAndLatestEventId =
                 fun () ->
                     result {
@@ -352,7 +355,7 @@ module StateView =
             | Ok (eventId, stateValue) ->
                 (eventId, stateValue) |> Ok
             | Error e ->
-                logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
+                logger.LogDebug (sprintf "getAggregateFreshState: %s" e)
                 Error e
 
     let inline getRefreshableDetails<'A>
@@ -374,7 +377,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            logger.Value.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
                     result {
@@ -395,7 +398,7 @@ module StateView =
             | Ok state -> 
                 (lastEventId, state) |> Ok
             | Error e ->
-                logger.Value.LogError (sprintf "getAggregateFreshState: %s" e)
+                logger.LogError (sprintf "getAggregateFreshState: %s" e)
                 Error e
      
     let inline getFilteredEventsInATimeInterval<'A, 'E, 'F
@@ -411,7 +414,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            logger.Value.LogDebug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredEventsInATimeInterval %A - %s" 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetEventsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -438,7 +441,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            logger.Value.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetAggregateEventsInATimeInterval 'A.Version 'A.StorageName id start end_
@@ -466,7 +469,7 @@ module StateView =
         (predicate: 'E -> bool)
         (ct: Option<CancellationToken>)
         =
-            logger.Value.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredAggregateEventsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             taskResult
                 {
                     let! allEventsInTimeInterval =
@@ -496,7 +499,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            logger.Value.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInAtimeInterval = eventStore.GetMultipleAggregateEventsInATimeInterval 'A.Version 'A.StorageName ids start end_
@@ -524,7 +527,7 @@ module StateView =
         (predicate: 'E -> bool)
         (ct: Option<CancellationToken>)
         =
-            logger.Value.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredMultipleAggregateEventsInATimeInterval - %s - %s" 'A.Version 'A.StorageName)
             taskResult
                 {
                     let! allEventsInAtimeInterval =
@@ -555,7 +558,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'E -> bool)
         =
-            logger.Value.LogDebug (sprintf "getAllFilteredAggregateEventsInATimeInterval %A - %s " 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAllFilteredAggregateEventsInATimeInterval %A - %s " 'A.Version 'A.StorageName)
             result
                 {
                     let! allEventsInTimeInterval = eventStore.GetAllAggregateEventsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -581,7 +584,7 @@ module StateView =
         (end_: DateTime)
         (ct: Option<CancellationToken>)
         = 
-        logger.Value.LogDebug (sprintf "getAllAggregateEventsInATimeIntervalAsync %A - %s " 'A.Version 'A.StorageName)
+        logger.LogDebug (sprintf "getAllAggregateEventsInATimeIntervalAsync %A - %s " 'A.Version 'A.StorageName)
         taskResult
             {
                 let! allEventsInTimeInterval =
@@ -621,7 +624,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'A -> bool)
         =
-            logger.Value.LogDebug (sprintf "getFilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredAggregateSnapshotsInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allSnapshotsInTimeInterval = eventStore.GetAggregateSnapshotsInATimeInterval 'A.Version 'A.StorageName start end_
@@ -650,7 +653,7 @@ module StateView =
         (initialStateFilter: 'A -> bool)
         (currentStateFilter: 'A -> bool)
         =
-            logger.Value.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allInitialStates =
@@ -685,7 +688,7 @@ module StateView =
         (end_: DateTime)
         (predicate: 'A -> bool)
         =
-            logger.Value.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! ids =
@@ -718,7 +721,7 @@ module StateView =
         (start: DateTime)
         (end_: DateTime)
         =
-            logger.Value.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! ids =
@@ -742,7 +745,7 @@ module StateView =
         (end_: DateTime)
         (ct: Option<CancellationToken>)
         =
-            logger.Value.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             taskResult
                 {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
@@ -768,7 +771,7 @@ module StateView =
         and 'A: (static member Version: string)
         >
         (eventStore: IEventStore<'F>) =
-            logger.Value.LogDebug (sprintf "getAggregateStates %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateStates %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! ids =
@@ -796,7 +799,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            logger.Value.LogDebug (sprintf "getInitialAggregateSnapshot %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getInitialAggregateSnapshot %A - %s - %s" id 'A.Version 'A.StorageName)
             eventStore.TryGetFirstSnapshot 'A.Version 'A.StorageName id
             >>= (fun x -> 'A.Deserialize (snd x))
             

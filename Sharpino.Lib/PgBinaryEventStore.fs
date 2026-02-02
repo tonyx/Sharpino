@@ -4,6 +4,7 @@ open System
 open System.Threading
 open System.Threading.Tasks
 open FsToolkit.ErrorHandling
+open Microsoft.Extensions.DependencyInjection
 open Npgsql.FSharp
 open Npgsql
 open FSharpPlus
@@ -23,17 +24,12 @@ module PgBinaryStore =
     let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
     let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
     
-    // todo: the logger needs to be compliant with appsettings as well
-    let loggerFactory = LoggerFactory.Create(fun b ->
-        if config.GetValue<bool>("Logging:Console", true) then
-            b.AddConsole() |> ignore
-        )
-    let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
-    
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
-        failwith "setLogger is deprecated. Use config"
+        ()
         
     type PgBinaryStore (connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+        let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgBinaryStore>>()
 
         new (connection: string) = PgBinaryStore (connection, readAsBinary)
 

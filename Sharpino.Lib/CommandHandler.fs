@@ -8,6 +8,7 @@ open System.Threading
 open FSharp.Core
 open FSharpPlus
 
+open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open Microsoft.Extensions.Configuration
@@ -56,15 +57,11 @@ module CommandHandler =
                 
     type UnitResult = ((unit -> unit) * AsyncReplyChannel<unit>)
    
-    let loggerFactory = LoggerFactory.Create(fun b ->
-        if myConfig.GetValue<bool>("Logging:Console", true) then
-            b.AddConsole() |> ignore
-        )
-    let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
+    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Sharpino.CommandHandler")
      
-    // let logger: Microsoft.Extensions.Logging.ILogger ref = ref NullLogger.Instance
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
-        failwith "deprecated. Config logger in appsettings"
+        ()
     
     // this is not used anymore, as was able to queue the command processing messages of any specific stream. Keeping it
     // there to make it come back if needed

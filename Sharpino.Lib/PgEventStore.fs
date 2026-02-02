@@ -3,6 +3,7 @@ namespace Sharpino
 
 open System
 open FSharp.Control
+open Microsoft.Extensions.DependencyInjection
 open Npgsql.FSharp
 open Npgsql
 open FSharpPlus
@@ -38,15 +39,13 @@ module PgStorage =
     let readAsBinary:RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
 
     // todo: should set the logger from outside or, better (next release), use the dependency injection infrastructure
-    let loggerFactory = LoggerFactory.Create(fun b ->
-        if config.GetValue<bool>("Logging:Console", true) then
-            b.AddConsole() |> ignore
-        )
-    let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
+    
+    [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
-        failwith "setLogger is deprecated. Use config"
+        ()
     
     type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
+        let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgEventStore>>()
         new (connection: string) =
             PgEventStore(connection, readAsText)
 
