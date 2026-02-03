@@ -1,1 +1,1 @@
-Same as 16. Spike for different approach.[CommandHandler.fs](../Sharpino.Lib/CommandHandler.fs)
+Same as 16. Spike for different approach.
