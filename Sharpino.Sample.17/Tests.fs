@@ -14,6 +14,7 @@ open Sharpino.Template.Models
 open Sharpino.Cache
 open Sharpino.CommandHandler
 open Sharpino.Template
+open Sharpino.Template.Manager
 open Sharpino.Template.Commons
 open FsToolkit.ErrorHandling
 open sharpino.Template.Models
@@ -48,27 +49,64 @@ let productsViewer = getAggregateStorageFreshStateViewer<Product, ProductEvents,
 let workOrdersViewer =  getAggregateStorageFreshStateViewer<WorkOrder, WorkOrderEvents, string> pgEventStore
 let messagesReceiver = MailBoxProcessors.Processors.Instance.createProcessor ()
 
-let dummyResultFunction =
-    fun x ->
-        printf "function called %A\n" x
-        Ok ()
-
-let messageSender =
-    (fun x ->
-        MailBoxProcessors.postToTheProcessor messagesReceiver dummyResultFunction |> ignore
-        printf "sent to the processor %A\n" x
-        ValueTask.CompletedTask)
     
 let emptyMessageSender =
-    fun x ->
-        printf "Emtpy message sender %A\n" x
-        MailBoxProcessors.postToTheProcessor messagesReceiver dummyResultFunction |> ignore
+    fun _ ->
         ValueTask.CompletedTask
 
 let workOrderFailReactor =
     (fun x ->
-        MailBoxProcessors.postToTheProcessor messagesReceiver dummyResultFunction |> ignore
-        printf "workOrderFail - Reactor to the processor %A\n" x
+        let deserialized = AggregateMessage<WorkOrder, WorkOrderEvents>.Deserialize x
+        
+        let productIdsWithQuantitiesOfFailedWorkingItems =
+            match deserialized with
+            | Ok workOrder ->
+                match workOrder.Message with
+                | MessageType.Events eventMessage ->
+                    let events = eventMessage.Events
+                    let eventsFailed =
+                        events |> List.filter (fun x -> x.IsFailed)
+                    let failedProductIdsWithQuantities =
+                        eventsFailed
+                        |>> fun x ->
+                            match x with
+                            | Failed (productid, quantity) -> (productid.Value, quantity.Value)
+                            | _ ->  (Guid.Empty, 0)
+                    failedProductIdsWithQuantities        
+                | _ ->
+                    []
+            | _ ->
+                []
+                
+        let productsAndQuantitiesInvolved =
+            productIdsWithQuantitiesOfFailedWorkingItems
+            |>> (fun (x, y) -> (productsViewer x, y))
+            |> List.filter (fun (x, _) -> x.IsOk)
+            |>> fun (x, y) -> x.OkValue |> snd, y
+        
+        let materialsWithQuantitiesInvolved =
+            productsAndQuantitiesInvolved
+            |>> fun (x, y) -> (x.Materials |> List.map (fun (m, q) -> (m, q.Value * y)))
+            |> List.concat
+           
+        let materialsReAddCommands =
+            materialsWithQuantitiesInvolved
+            |>> (fun (x, y) -> (x, MaterialCommands.Add (Quantity.New y |> Result.get)))
+           
+        let aggregateIds =
+            materialsReAddCommands
+            |>> (fun (x, _) -> x.Value)
+       
+        let readdCommands =
+            materialsReAddCommands
+            |>> (fun (_, y) -> y :> AggregateCommand<Material, MaterialEvents>)
+         
+        let executeCommandToCompensateFailures =
+            CommandHandler.runNAggregateCommands<Material, MaterialEvents, string>
+                aggregateIds
+                pgEventStore
+                MessageSenders.NoSender
+                readdCommands
         ValueTask.CompletedTask)
 
 let messageSenders =
@@ -364,7 +402,7 @@ let tests =
             Expect.isOk retrievedWorkOrder "should be ok"
             Expect.equal (retrievedWorkOrder.OkValue).WorkOrderState  WorkOrderState.FullyCompleted "should be equal"
             
-        ftestCase "a workOrder with a single workingitem starts and then it fails, the related material quantities are restored" <| fun _ ->
+        testCase "a workOrder with a single workingitem starts and then it fails, the related material quantities are restored" <| fun _ ->
             setUp ()
             let pistacchio =
                 Material.New "Pistacchio" (Quantity.New 1).OkValue
