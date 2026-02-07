@@ -321,8 +321,6 @@ module StateView =
 
     let inline getAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>
-        // and 'A: (member Id: Guid)
-        // and 'A: (member Serialize: 'F)
         and 'A: (static member Deserialize: 'F -> Result<'A, string>)
         and 'E: (static member Deserialize: 'F -> Result<'E, string>)
         and 'A: (static member StorageName: string)
@@ -696,13 +694,15 @@ module StateView =
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore) 
                     
-                    let! states =
+                    let states =
                         allStates
-                        |> List.traverseResultM (fun x -> x)
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue)
+                        // |> List.traverseResultM (fun x -> x)
                    
-                    let result =
-                        states
-                        |> List.filter (fun (_, x)  -> predicate (x |> unbox))
+                    // let result =
+                    //     states
+                    //     |> List.filter (fun (_, x)  -> predicate (x |> unbox))
                     
                     return
                         states
@@ -728,9 +728,9 @@ module StateView =
                         eventStore.GetAggregateIdsInATimeInterval 'A.Version 'A.StorageName start end_
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
-                    return! 
-                        allStates
-                        |> List.traverseResultM (fun x -> x)
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                    return allStates    
                 }
                 
     let inline getAggregateStatesInATimeIntervalAsync<'A, 'E, 'F
@@ -755,12 +755,12 @@ module StateView =
                         eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, cts.Token)
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
-                    let! result =    
+                        
+                    let result =
                         allStates
-                        |> List.traverseResultM (fun x -> x)
-                    return    
-                        result
-                        |> List.map (fun (x, y) -> x, y:?> 'A)
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                    return result
                 }
                 
     let inline getAllAggregateStates<'A, 'E, 'F
@@ -781,14 +781,39 @@ module StateView =
                         |> List.distinct // todo: not needed, remove with next release
                         |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                     
-                    let! result =
+                    let result =
                         allStates
-                        |> List.traverseResultM (fun x -> x)
-                    let result' =
-                        result
-                        |> List.map (fun (id, x) -> (id, x :?> 'A ))
-                    return result'
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                    return result
                 }
+    
+    let inline getAllAggregateStatesAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "getAllAggregateStatesAsync %A - %s - %s\n" id 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
+                    cts.CancelAfter cancellationTokenSourceExpiration
+                    let! ids =
+                        eventStore.GetAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
+                    let allStates =
+                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    let result =
+                        allStates
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                    return result    
+                }
+                
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
     let inline getInitialAggregateSnapshot<'A, 'F

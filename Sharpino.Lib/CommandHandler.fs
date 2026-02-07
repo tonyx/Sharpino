@@ -3535,7 +3535,6 @@ module CommandHandler =
             logger.LogDebug (sprintf "runThreeCommands %A %A %A" command1 command2 command3)
             runThreeCommandsMd<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F> storage eventBroker Metadata.Empty command1 command2 command3
             
-    // this needs to be extended to snapshots flagged as 'deleted'        
     let inline GDPRResetSnapshotsAndEventsOfAnAggregate<'A, 'E, 'F
         when 'A: (member Id: Guid)
         and 'A: (member Serialize: 'F)
