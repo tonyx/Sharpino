@@ -137,7 +137,9 @@ module Storage =
         abstract member GetAggregateIdsInATimeInterval: Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
         abstract member GetAggregateIdsInATimeIntervalAsync: Version * Name * DateTime * DateTime * ?ct: CancellationToken -> Task<Result<List<AggregateId>, string>>
         abstract member GetAggregateIds: Version -> Name -> Result<List<AggregateId>, string>
+        abstract member GetUndeletedAggregateIds: Version -> Name -> Result<List<AggregateId>, string>
         abstract member GetAggregateIdsAsync: Version * Name * ?ct:CancellationToken -> Task<Result<List<AggregateId>, string>>
+        abstract member GetUndeletedAggregateIdsAsync: Version * Name * ?ct:CancellationToken -> Task<Result<List<AggregateId>, string>>
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
         

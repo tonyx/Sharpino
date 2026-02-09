@@ -1808,6 +1808,29 @@ module PgStorage =
                 | _ as ex ->
                     logger.LogDebug (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
+                    
+            member this.GetUndeletedAggregateIds version name = 
+                logger.LogDebug (sprintf "GetAggregateIds %A %A" version name)
+                let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
+                try
+                    Async.RunSynchronously
+                        (async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.execute ( fun read ->
+                                    (
+                                        read.uuid "aggregate_id"
+                                    )
+                                )
+                                |> Seq.toList
+                            }, eventStoreTimeout)
+                    |> Ok
+                with
+                | _ as ex ->
+                    logger.LogDebug (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
              
             member this.GetAggregateIdsAsync (version, name, ?ct) =
                 logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
@@ -1840,6 +1863,37 @@ module PgStorage =
                             return! Error ex.Message
                     }         
                 
+            member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
+                logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
+                let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
+
+                taskResult
+                    {
+                        try
+                            use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                            use conn = new NpgsqlConnection(connection)
+                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                            use command = new NpgsqlCommand(query, conn)
+                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                            let results = ResizeArray<_>()
+                            let rec loop () = task {
+                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                                if hasRow then
+                                    let aggregateId = reader.GetGuid(0)
+                                    results.Add(aggregateId)
+                                    return! loop ()
+                                else
+                                    return ()
+                            }
+                            do! loop ()
+                            return results |> Seq.toList
+                        with
+                        | _ as ex ->
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error ex.Message
+                    }         
                 // take note: should implement something like following where executeAsync will use the token
                 // taskResult
                 //     {

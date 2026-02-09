@@ -698,11 +698,6 @@ module StateView =
                         allStates
                         |> List.filter _.IsOk
                         |> List.map (fun x -> x.OkValue)
-                        // |> List.traverseResultM (fun x -> x)
-                   
-                    // let result =
-                    //     states
-                    //     |> List.filter (fun (_, x)  -> predicate (x |> unbox))
                     
                     return
                         states
@@ -775,12 +770,10 @@ module StateView =
             result
                 {
                     let! ids =
-                        eventStore.GetAggregateIds 'A.Version 'A.StorageName
+                        eventStore.GetUndeletedAggregateIds 'A.Version 'A.StorageName
                     let allStates =
                         ids
-                        |> List.distinct // todo: not needed, remove with next release
                         |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
-                    
                     let result =
                         allStates
                         |> List.filter _.IsOk
@@ -804,7 +797,7 @@ module StateView =
                                   (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
                     cts.CancelAfter cancellationTokenSourceExpiration
                     let! ids =
-                        eventStore.GetAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
+                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                     let result =
@@ -813,7 +806,6 @@ module StateView =
                         |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
                     return result    
                 }
-                
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
     let inline getInitialAggregateSnapshot<'A, 'F

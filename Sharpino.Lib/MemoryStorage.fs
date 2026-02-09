@@ -616,12 +616,31 @@ module MemoryStorage =
                     aggregate_snapshots_dic.[version].[name]
                     |> Dictionary.keys
                     |> Seq.toList
+                    |> Ok
+                    
+            member this.GetUndeletedAggregateIds version name =
+                logger.LogDebug (sprintf "GetAggregateIds %s %s" version name)
+                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else
+                    aggregate_snapshots_dic.[version].[name]
+                    |> Dictionary.keys
+                    |> Seq.toList
+                    |> List.map (fun x -> aggregate_snapshots_dic.[version].[name].[x])
+                    |> List.last
+                    |> List.filter (fun x -> x.Deleted = false)
+                    |> List.map (fun x -> x.AggregateId)
                     |> Ok        
             
             member this.GetAggregateIdsAsync (version, name, ?ct) =
                 task
                     {
                         return (this:>IEventStore<string>).GetAggregateIds version name
+                    }
+            member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
+                task
+                    {
+                        return (this:>IEventStore<string>).GetUndeletedAggregateIds version name
                     }
            
             member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
