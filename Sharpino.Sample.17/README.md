@@ -5,7 +5,7 @@ Proof of concept, Inspired by the example 16 with a difference:
 This time it tries to establish a mechanism so that events causes commands (i.e. more like an actual process-manager)
 
 So in the example 16 the "Failed" fires more commands at once (WorkOrder.Failed and MaterialCommand.Add)
-In this example, instead, only the Filed command is fired, and by using the "messageSenders" if the related events are stored then message senders are used to invoke new Commands.
+In this example, instead, only the Failed command is fired, and by using the "messageSenders" if the related events are stored then message senders are used to invoke new Commands.
 
 So in essence:
 Example 16: FailWorkingItem = commands that says the some workingItems are failed and the related materials readd command are executed together.

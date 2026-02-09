@@ -11,10 +11,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample", "Sharpino
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.Test", "Sharpino.Sample.Test\Sharpino.Sample.Test.fsproj", "{563DB7F0-879A-4C07-9F41-C3E1660A161A}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{D8B699CD-600D-477E-A4AB-0B2B5F35A226}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D74786DA-7BB5-4880-8E69-024965488E0D}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6", "Sharpino.Sample.6\Sharpino.Sample.6.fsproj", "{CC088C14-7F69-40F1-929D-7406366D6DC3}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.6.Test", "Sharpino.Sample.6.Test\Sharpino.Sample.6.Test.fsproj", "{BA9E7EE2-20F9-4899-9769-C7C1DEFD7116}"
@@ -26,8 +22,6 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.3.Test", "Sharpino.Sample.3.Test\Sharpino.Sample.3.Test.fsproj", "{5A6520C7-9498-4423-BBBF-44EBC64AAD3A}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.FormerlySaga.Test", "Sharpino.Sample.FormerlySaga.Test\Sharpino.Sample.FormerlySaga.Test.fsproj", "{4AA103AD-279E-450B-82B4-31875E72EAF5}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.7", "Sharpino.Sample.7", "{ADD9CCF5-A132-4E4C-B2DC-F356FAF70879}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "shoppingCart", "Sharpino.Sample.7\shoppingCartWithSharpino\shoppingCart.fsproj", "{77490E96-8B06-4BF7-BC60-7BD7B3B9C718}"
 EndProject
@@ -60,6 +54,10 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.17", "Sharpino.Sample.17", "{2821FB42-6FEA-43FC-7726-1FBC61A0D5C1}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoSample17", "Sharpino.Sample.17\sharpinoSample17.fsproj", "{75147B44-1D0D-4EE5-8207-ACD29A601BCB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.18", "Sharpino.Sample.18", "{4571749C-5EBB-02BC-7868-39EE3C151CA7}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoTemplate", "Sharpino.Sample.18\sharpinoTemplate.fsproj", "{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -359,6 +357,18 @@ Global
 		{75147B44-1D0D-4EE5-8207-ACD29A601BCB}.Release|x64.Build.0 = Release|Any CPU
 		{75147B44-1D0D-4EE5-8207-ACD29A601BCB}.Release|x86.ActiveCfg = Release|Any CPU
 		{75147B44-1D0D-4EE5-8207-ACD29A601BCB}.Release|x86.Build.0 = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|x64.Build.0 = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Debug|x86.Build.0 = Debug|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|x64.ActiveCfg = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|x64.Build.0 = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|x86.ActiveCfg = Release|Any CPU
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -366,5 +376,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{19CCA717-64CD-4B0A-8868-732C3AF098F1} = {A2529508-8D30-DDF8-7A0A-35ADBC47E969}
 		{75147B44-1D0D-4EE5-8207-ACD29A601BCB} = {2821FB42-6FEA-43FC-7726-1FBC61A0D5C1}
+		{ACB9FC71-5DDA-4D9D-9664-6D82F28F2115} = {4571749C-5EBB-02BC-7868-39EE3C151CA7}
 	EndGlobalSection
 EndGlobal
