@@ -174,6 +174,7 @@ Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for 
 The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
+- Version 4.7.5: optimize the getAllAggregateStates and getAllAggregateStatesAsync by filtering out the (soft) deleted aggregates using new db functions
 - Version 4.7.4: fix getAllAggregateStatesAsync and getAggregateStatesInATimeIntervalAsync are able to filter out deleted states from resut
 - Version 4.7.3: logging config is managed by appsettings.json. "setLogger" calls are deprecated.
 - Version 4.7.2: removed sharpinoSettings.json. Settings are part of appSettings.json now
