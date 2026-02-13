@@ -115,7 +115,6 @@ __Faq__ and __trivia__:
     - Any functional language of the ML family language in my opinion is a good fit for event-sourcing for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (compensator events, former "Saga-like").
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project.
@@ -249,7 +248,6 @@ Note about the recent change in caching policy. Each process will maintain its o
 - Version 2.7.2: Support metadata field in db (any command has the correspondent commandMd that accepts any string as metadata). Those metadata can be used for debugging purposes. To use them any event table in the db needs a new nullable text field called "md".
   New db functions are also needed. See the functions like "insert_md{Version}{AggregateStorageName}_events_and_return_id" in the sql scripts in the SqlTemplate dir doing a proper substitution in {Version} and {Format} and {AggregateStorageName}. Similar function is in the ContextTemplate.sql.
 - Version 2.7.1: Bug fix
-- Version 2.7.0: Fix bug in Saga-ish multi-command and added some tests for it.
 - Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).
 - Version 2.6.7: Optimize snapshotting by using the in-memory cached value to avoid multiple reads of the same aggregate.
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
@@ -262,7 +260,6 @@ Note about the recent change in caching policy. Each process will maintain its o
 - A short pdf: [why do we need upcastors for aggregates and not for events](https://drive.google.com/file/d/1DKx8IXqakc14qjQbrymzwHAJQEbhxZGq/view?usp=share_link) (sorry for typos)
 - Blog post: [Upcasting aggregates in Sharpino](https://medium.com/@tonyx1/upcast-to-read-aggregates-in-an-older-format-in-a-sharpino-based-solution-839b807265f9)
 - Blog post: comparing the example of the "Counter" app in Equnox and in Sharpino https://medium.com/@tonyx1/equinox-vs-sharpino-comparing-the-counter-example-0e2bd6e9bbf2
-- Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
 - Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
