@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: sharpino
+      POSTGRES_USER: sharpino
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./db/migrations/01-schema.sql:/docker-entrypoint-initdb.d/02-schema.sql
+      - ./db/migrations/20260115115559_create_todo.sql:/docker-entrypoint-initdb.d/03-create_todo.sql
+      - ./db/migrations/20260115115952_set_user_rights.sql:/docker-entrypoint-initdb.d/04-set_user_rights.sql
