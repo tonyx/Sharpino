@@ -3,6 +3,7 @@ namespace Sharpino
 open System.Collections.Concurrent
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Caching.Memory
+open ZiggyCreatures.Caching.Fusion
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.Hosting
 open Sharpino
@@ -41,29 +42,27 @@ module Cache =
                 | DetailsCacheKey (t, id) -> sprintf "%s:%A" t.Name id
         
     type DetailsCache private () =
-        let statesDetails = new MemoryCache(MemoryCacheOptions())
+        let statesDetails = new FusionCache(new FusionCacheOptions())
             
         let detailsCacheExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheExpiration", 300)
         let detailsCacheDependenciesExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheDependenciesExpiration", 301)
         
         let detailsEntryOptions =
-            MemoryCacheEntryOptions().
-                SetSize(1L).
-                SetSlidingExpiration(TimeSpan.FromSeconds(detailsCacheExpirationConfigInSeconds))
+            FusionCacheEntryOptions().
+                SetDuration(TimeSpan.FromSeconds(detailsCacheExpirationConfigInSeconds))
         
         let detailsDependenciesEntryOptions =
-            MemoryCacheEntryOptions().
-                SetSize(1L).
-                SetSlidingExpiration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))        
+            FusionCacheEntryOptions().
+                SetDuration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))        
         
-        let objectDetailsAssociationsCache = new MemoryCache(MemoryCacheOptions())
+        let objectDetailsAssociationsCache = new FusionCache(new FusionCacheOptions())
         
         static let instance = DetailsCache ()
         static member Instance = instance
             
         member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
             for aggregateId in aggregateIds do
-                let existingKeys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+                let existingKeys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
                 let updatedKeys = 
                     if isNull (box existingKeys) then
                         [key]
@@ -71,14 +70,14 @@ module Cache =
                         key :: existingKeys
                     else
                         existingKeys
-                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, detailsDependenciesEntryOptions) |> ignore
+                objectDetailsAssociationsCache.Set(aggregateId.ToString(), updatedKeys, detailsDependenciesEntryOptions)
             ()
             
         // will be deprecated as passing an expiration is a risk (or at least it should be greater than the default)
         member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) (expiration: TimeSpan option)=
             
             for aggregateId in aggregateIds do
-                let existingKeys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+                let existingKeys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
                 let updatedKeys = 
                     if isNull (box existingKeys) then
                         [key]
@@ -86,11 +85,11 @@ module Cache =
                         key :: existingKeys
                     else
                         existingKeys
-                objectDetailsAssociationsCache.Set(aggregateId, updatedKeys, detailsDependenciesEntryOptions) |> ignore
+                objectDetailsAssociationsCache.Set(aggregateId.ToString(), updatedKeys, detailsDependenciesEntryOptions)
             ()
         
         member this.Refresh (key: DetailsCacheKey) =
-            let v = statesDetails.Get<obj>(key.Value)
+            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
             if (obj.ReferenceEquals(v, null)) then
                 Error "not found"
             else 
@@ -123,11 +122,11 @@ module Cache =
                         | Ok resultObj ->
                             // Update the cache directly without going through TryCache
                             try
-                                statesDetails.Set<obj>(key.Value, resultObj, detailsEntryOptions) |> ignore
+                                statesDetails.Set<obj>(key.Value, resultObj, detailsEntryOptions)
                                 Ok resultObj
                             with :? _ as e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
-                                statesDetails.Compact(1.0)
+                                statesDetails.Clear()
                                 Error "Failed to update cache"
                         | Error e -> Error e
                     | _ -> Error "Object does not implement Refreshable interface"
@@ -139,7 +138,7 @@ module Cache =
             statesDetails.Remove key.Value
         
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
-            let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+            let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
                     let refreshed =
@@ -148,7 +147,7 @@ module Cache =
             ()
         
         member this.evictDependentDetails (aggregateId: AggregateId) =
-            let keys = objectDetailsAssociationsCache.Get<List<DetailsCacheKey>>(aggregateId)
+            let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
                     this.Evict key
@@ -156,14 +155,14 @@ module Cache =
         
         member private this.TryCache (key: string, value: Refreshable<_>) =
             try
-                statesDetails.Set<obj>(key, value, detailsEntryOptions) |> ignore
+                statesDetails.Set<obj>(key, value, detailsEntryOptions)
             with :? _ as e ->
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                statesDetails.Compact(1.0)
+                statesDetails.Clear()
                 ()
                     
         member this.Memoize (f: unit -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
-            let v = statesDetails.Get<obj>(key.Value)
+            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
             if not (obj.ReferenceEquals(v, null)) then
                 v |> Ok
             else
@@ -177,33 +176,32 @@ module Cache =
                     Error e
         
         member this.Clear () =
-            statesDetails.Compact(1.0)
-            objectDetailsAssociationsCache.Compact(1.0)
+            statesDetails.Clear()
+            objectDetailsAssociationsCache.Clear()
     
     type AggregateCache3 private () =
-        let statePerAggregate = new MemoryCache(MemoryCacheOptions())
+        let statePerAggregate = new FusionCache(new FusionCacheOptions())
         let cacheExpirationConfigInSeconds = config.GetValue<float>("AggregateCacheExpiration", 600)
         let entryOptions =
-            MemoryCacheEntryOptions().
-                SetSize(1L).
-                SetSlidingExpiration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
+            FusionCacheEntryOptions().
+                SetDuration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
         static let instance = AggregateCache3()
         static member Instance = instance
         
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
-                statePerAggregate.Set<(EventId * obj)>(aggregateId, (eventId, resultState), entryOptions) |> ignore
+                statePerAggregate.Set<(EventId * obj)>(aggregateId.ToString(), (eventId, resultState), entryOptions)
                 ()
                 
             with :? _ as e -> 
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                statePerAggregate.Compact(1.0)
+                statePerAggregate.Clear()
                 // if an object failed to be cached then clear the details cache as well (otherwise dependencies could be out of sync)
                 DetailsCache.Instance.Clear()
                 () 
    
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
-            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
             if not (obj.ReferenceEquals(v, null)) then
                 v |> Ok
             else
@@ -220,17 +218,17 @@ module Cache =
             this.TryCache (aggregateId, eventId, x)
         
         member this.Clean (aggregateId: AggregateId)  =
-            statePerAggregate.Remove aggregateId
+            statePerAggregate.Remove (aggregateId.ToString())
         
         member this.Clear () =
-            statePerAggregate.Compact(1.0)
+            statePerAggregate.Clear()
         
         member this.LastEventId (aggregateId: AggregateId) =
-            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
             if not (obj.ReferenceEquals(v, null)) then v |> fst |> Some else None
         
         member this.GetState (aggregateId: AggregateId) =
-            let v = statePerAggregate.Get<(EventId * obj)>(aggregateId)
+            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
             if not (obj.ReferenceEquals(v, null)) then v |> snd |> Ok else Error "aggregate not found"        
      
     type StateCache2<'A> private () =

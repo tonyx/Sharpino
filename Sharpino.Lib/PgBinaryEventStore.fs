@@ -477,7 +477,7 @@ module PgBinaryStore =
                 
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction() 
                         Async.RunSynchronously
@@ -523,7 +523,7 @@ module PgBinaryStore =
                 logger.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction() 
                         Async.RunSynchronously
@@ -813,7 +813,7 @@ module PgBinaryStore =
                
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         Async.RunSynchronously
@@ -882,7 +882,7 @@ module PgBinaryStore =
                 
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         let lastEventId =
@@ -955,7 +955,7 @@ module PgBinaryStore =
                 let result =
                     fun _ ->
                 
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         
                         let transaction = conn.BeginTransaction()
@@ -1683,10 +1683,9 @@ module PgBinaryStore =
             member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<byte array> * Version * Name * System.Guid>) =
                 logger.LogDebug (sprintf "MultiAddAggregateEvents %A %s" arg md)
                 
-               
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction() 
 
@@ -1827,7 +1826,7 @@ module PgBinaryStore =
                     
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
                 logger.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
-                let conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(connection)
                 let sqlReplaceAllAggregates = (sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE aggregate_id = @aggregateId" version name)
                 let sqlReplaceAllEvents = (sprintf "UPDATE events%s%s SET event = @event WHERE aggregate_id = @aggregateId" version name)
                
@@ -1939,7 +1938,7 @@ module PgBinaryStore =
                         try
                             Async.RunSynchronously (
                                 async {
-                                    let conn = new NpgsqlConnection(connection)
+                                    use conn = new NpgsqlConnection(connection)
                                     conn.Open()
                                     let transaction = conn.BeginTransaction()
                                     try
@@ -2015,7 +2014,7 @@ module PgBinaryStore =
                         
                     if ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) && checks then
                         
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         

@@ -461,7 +461,7 @@ module PgStorage =
                 logger.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
                 let command = sprintf "SELECT insert_md%s_event_and_return_id(@event,@md);" stream_name
-                let conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(connection)
 
                 let result =
                     fun _ ->
@@ -511,7 +511,7 @@ module PgStorage =
                 
                 let result =
                     fun _ -> 
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction() 
                         Async.RunSynchronously
@@ -798,7 +798,7 @@ module PgStorage =
                 
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         Async.RunSynchronously
@@ -869,7 +869,7 @@ module PgStorage =
                
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         let lastEventId =
@@ -941,7 +941,7 @@ module PgStorage =
                
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         
                         let transaction = conn.BeginTransaction()
@@ -1533,7 +1533,7 @@ module PgStorage =
                 logger.LogDebug (sprintf "MultiAddAggregateEventsMd %A %s" arg md)
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction() 
                 
@@ -1683,7 +1683,7 @@ module PgStorage =
                 
                 let result =
                     fun _ ->
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         Async.RunSynchronously
@@ -1970,7 +1970,7 @@ module PgStorage =
                         try
                             Async.RunSynchronously (
                                 async {
-                                    let conn = new NpgsqlConnection(connection)
+                                    use conn = new NpgsqlConnection(connection)
                                     conn.Open()
                                     let transaction = conn.BeginTransaction()
                                     try
@@ -2047,7 +2047,7 @@ module PgStorage =
                         
                     if ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) && eventIdsMatch then
                         
-                        let conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
                         
