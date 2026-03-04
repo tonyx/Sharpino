@@ -174,10 +174,11 @@ The benefit of wrapping the Id in a non primitive type is the ability to typeche
 
 Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
 
+- Version 4.7.7: using ZiggyCreatures.FusionCache with Azure Sql Server as distributed cache and Azure Message Bus to propagate cache related events (see Sharpino.Sample.19).
 - Version 4.7.6: using ZiggyCreatures.FusionCache instead of MemoryCache
 - Version 4.7.5: optimize the getAllAggregateStates and getAllAggregateStatesAsync by filtering out the (soft) deleted aggregates using new db functions
 - Version 4.7.4: fix getAllAggregateStatesAsync and getAggregateStatesInATimeIntervalAsync are able to filter out deleted states from resut
-- Version 4.7.3: logging config is managed by appsettings.json. "setLogger" calls are deprecated.
+- Version 4.7.3: logging config is managed by appSettings.json. "setLogger" calls are deprecated.
 - Version 4.7.2: removed sharpinoSettings.json. Settings are part of appSettings.json now
 - Version 4.7.1: the "runPreExecuteAggregateCommd" can use the MessageSenders (RabbitMq for example). 
 - Version 4.7.0: interface "Aggregate" is not needed anymore. Type constraints are enough -> Related members Id and Serializer needs to be defined in the aggregate. Important: if using typed Id (wrapping Guid), then it cannot use the name Id anymore. The actual Id must be still Guid (so for example I can have a StudentId field of type StudentId and I still need to expose the Id as a Guid, like StudentId.Value)
