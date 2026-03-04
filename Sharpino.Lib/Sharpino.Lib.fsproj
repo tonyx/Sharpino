@@ -33,6 +33,8 @@
     <Compile Include="MemoryStorage.fs" />
 
     <Compile Include="MailboxProcessors.fs" />
+    <Compile Include="MqttBackplane.fs" />
+    <Compile Include="AzureServiceBusBackplane.fs" />
     <Compile Include="Cache.fs" />
     <Compile Include="StateView.fs" />
     <Compile Include="EventBroker.fs" />
@@ -145,10 +147,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
+    <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.5.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.5.0" />

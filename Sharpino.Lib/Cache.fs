@@ -23,6 +23,7 @@ open Microsoft.Extensions.Options
 open ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson
 open System.Text.Json
 open System.Text.Json.Serialization
+open MQTTnet
 
 module Cache =
     let builder = Host.CreateApplicationBuilder()
@@ -337,3 +338,19 @@ module Cache =
         let jsonOptions = JsonFSharpOptions.Default().ToJsonSerializerOptions()
         let serializer = new FusionCacheSystemTextJsonSerializer(jsonOptions)
         setupSecondLevelCacheAndBackplane (Some (sqlCache :> IDistributedCache)) (Some (serializer :> IFusionCacheSerializer)) None
+
+    let setupEventGridMqttOptions (hostname: string) (port: int) (clientId: string) (username: string) (password: string) =
+        MqttClientOptionsBuilder()
+            .WithTcpServer(hostname, port)
+            .WithCredentials(username, password)
+            .WithClientId(clientId)
+            .WithTlsOptions(fun o -> o.UseTls() |> ignore)
+            .Build()
+
+    let setupAzureServiceBusBackplane (connectionString: string) (topicName: string) (subscriptionName: string) =
+        let bp = new AzureServiceBusBackplane(connectionString, topicName, subscriptionName)
+        bp :> IFusionCacheBackplane
+
+    let setupMqttBackplane (options: MqttClientOptions) (topicPrefix: string) =
+        let bp = new MqttBackplane(options, topicPrefix)
+        bp :> IFusionCacheBackplane

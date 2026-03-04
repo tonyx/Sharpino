@@ -32,8 +32,17 @@ let l2CacheTableName = Environment.GetEnvironmentVariable("L2_CACHE_SQL_TABLE_NA
 let pgEventStore = PgStorage.PgEventStore connection
 let memoryEventStore = MemoryStorage.MemoryStorage()
 
+let sbConnectionString = Environment.GetEnvironmentVariable("SERVICE_BUS_CONNECTION_STRING")
+let sbTopicName = Environment.GetEnvironmentVariable("SERVICE_BUS_TOPIC_NAME")
+let sbSubscriptionName = Environment.GetEnvironmentVariable("SERVICE_BUS_SUBSCRIPTION_NAME")
+
 let setupL2Cache () =
     Cache.setupAzureSqlCache l2CacheConnectionString "dbo" l2CacheTableName
+
+let setupBackplane () =
+    if not (isNull sbConnectionString) && not (isNull sbTopicName) && not (isNull sbSubscriptionName) then
+        let bp = Cache.setupAzureServiceBusBackplane sbConnectionString sbTopicName sbSubscriptionName
+        Cache.setupSecondLevelCacheAndBackplane None None (Some bp)
 
 let clearL2Cache () =
     try
@@ -47,6 +56,7 @@ let clearL2Cache () =
 
 let setUp () =
     setupL2Cache ()
+    setupBackplane ()
     clearL2Cache ()
     pgEventStore.Reset Todo.Version Todo.StorageName |> ignore
     pgEventStore.ResetAggregateStream Todo.Version Todo.StorageName |> ignore
