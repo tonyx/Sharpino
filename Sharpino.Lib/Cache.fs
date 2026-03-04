@@ -14,6 +14,15 @@ open Microsoft.Extensions.Logging.Abstractions
 open System.Collections
 open FSharp.Core
 open System
+open Microsoft.Extensions.Caching.Distributed
+open ZiggyCreatures.Caching.Fusion.Backplane
+open ZiggyCreatures.Caching.Fusion.Serialization
+
+open Microsoft.Extensions.Caching.SqlServer
+open Microsoft.Extensions.Options
+open ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson
+open System.Text.Json
+open System.Text.Json.Serialization
 
 module Cache =
     let builder = Host.CreateApplicationBuilder()
@@ -42,7 +51,13 @@ module Cache =
                 | DetailsCacheKey (t, id) -> sprintf "%s:%A" t.Name id
         
     type DetailsCache private () =
-        let statesDetails = new FusionCache(new FusionCacheOptions())
+        let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
+        let detailsOptions = FusionCacheOptions(
+            CacheName = "statesDetails",
+            CacheKeyPrefix = "statesDetails:",
+            IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
+        )
+        let statesDetails = new FusionCache(detailsOptions)
             
         let detailsCacheExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheExpiration", 300)
         let detailsCacheDependenciesExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheDependenciesExpiration", 301)
@@ -55,10 +70,24 @@ module Cache =
             FusionCacheEntryOptions().
                 SetDuration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))        
         
-        let objectDetailsAssociationsCache = new FusionCache(new FusionCacheOptions())
+        let assocOptions = FusionCacheOptions(
+            CacheName = "objectDetails",
+            CacheKeyPrefix = "objectDetails:",
+            IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
+        )
+        let objectDetailsAssociationsCache = new FusionCache(assocOptions)
         
         static let instance = DetailsCache ()
         static member Instance = instance
+        
+        member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
+            if dc.IsSome && ser.IsSome then
+                (statesDetails :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+                (objectDetailsAssociationsCache :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+            if bp.IsSome then
+                (statesDetails :> IFusionCache).SetupBackplane(bp.Value) |> ignore
+                (objectDetailsAssociationsCache :> IFusionCache).SetupBackplane(bp.Value) |> ignore
+            ()
             
         member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
             for aggregateId in aggregateIds do
@@ -180,7 +209,13 @@ module Cache =
             objectDetailsAssociationsCache.Clear()
     
     type AggregateCache3 private () =
-        let statePerAggregate = new FusionCache(new FusionCacheOptions())
+        let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
+        let aggregateOptions = FusionCacheOptions(
+            CacheName = "statePerAggregate",
+            CacheKeyPrefix = "statePerAggregate:",
+            IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
+        )
+        let statePerAggregate = new FusionCache(aggregateOptions)
         let cacheExpirationConfigInSeconds = config.GetValue<float>("AggregateCacheExpiration", 600)
         let entryOptions =
             FusionCacheEntryOptions().
@@ -188,6 +223,13 @@ module Cache =
         static let instance = AggregateCache3()
         static member Instance = instance
         
+        member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
+            if dc.IsSome && ser.IsSome then
+                (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+            if bp.IsSome then
+                (statePerAggregate :> IFusionCache).SetupBackplane(bp.Value) |> ignore
+            ()
+
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
                 statePerAggregate.Set<(EventId * obj)>(aggregateId.ToString(), (eventId, resultState), entryOptions)
@@ -275,6 +317,23 @@ module Cache =
             cachedValue <- None         
             eventId <- 0
             ()
-            
-           
-            
+
+    let setupSecondLevelCacheAndBackplane 
+        (distributedCache: IDistributedCache option) 
+        (serializer: IFusionCacheSerializer option) 
+        (backplane: IFusionCacheBackplane option) =
+        DetailsCache.Instance.SetupL2AndBackplane(distributedCache, serializer, backplane)
+        AggregateCache3.Instance.SetupL2AndBackplane(distributedCache, serializer, backplane)
+
+    let setupAzureSqlCache (connectionString: string) (schemaName: string) (tableName: string) =
+        let options = SqlServerCacheOptions(
+            ConnectionString = connectionString,
+            SchemaName = schemaName,
+            TableName = tableName
+        )
+        let opts = Options.Create(options)
+        let sqlCache = new SqlServerCache(opts)
+        
+        let jsonOptions = JsonFSharpOptions.Default().ToJsonSerializerOptions()
+        let serializer = new FusionCacheSystemTextJsonSerializer(jsonOptions)
+        setupSecondLevelCacheAndBackplane (Some (sqlCache :> IDistributedCache)) (Some (serializer :> IFusionCacheSerializer)) None

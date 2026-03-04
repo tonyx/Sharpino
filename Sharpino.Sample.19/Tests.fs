@@ -12,6 +12,7 @@ open Sharpino.CommandHandler
 open Sharpino.Template
 open Sharpino.Template.Commons
 open FsToolkit.ErrorHandling
+open Microsoft.Data.SqlClient
 
 Env.Load() |> ignore
 let password = Environment.GetEnvironmentVariable("password")
@@ -25,10 +26,28 @@ let connection =
     $"User Id={userId};" +
     $"Password={password}"
 
+let l2CacheConnectionString = Environment.GetEnvironmentVariable("L2_CACHE_SQL_URL")
+let l2CacheTableName = Environment.GetEnvironmentVariable("L2_CACHE_SQL_TABLE_NAME")
+
 let pgEventStore = PgStorage.PgEventStore connection
 let memoryEventStore = MemoryStorage.MemoryStorage()
 
+let setupL2Cache () =
+    Cache.setupAzureSqlCache l2CacheConnectionString "dbo" l2CacheTableName
+
+let clearL2Cache () =
+    try
+        use sqlConnection = new SqlConnection(l2CacheConnectionString)
+        sqlConnection.Open()
+        use command = sqlConnection.CreateCommand()
+        command.CommandText <- sprintf "DELETE FROM %s" l2CacheTableName
+        command.ExecuteNonQuery() |> ignore
+    with
+    | ex -> printfn "Error cleaning L2 cache: %s" ex.Message
+
 let setUp () =
+    setupL2Cache ()
+    clearL2Cache ()
     pgEventStore.Reset Todo.Version Todo.StorageName |> ignore
     pgEventStore.ResetAggregateStream Todo.Version Todo.StorageName |> ignore
     memoryEventStore.Reset Todo.Version Todo.StorageName |> ignore
@@ -217,5 +236,23 @@ let tests =
                 Expect.isTrue (retrievedTodos |> List.exists (fun x -> x = learnFSharp)) "error in retrieving todos"
                 Expect.isTrue (retrievedTodos |> List.exists (fun x -> x = learnRust)) "error in retrieving todos"
             }
+
+        testCase "add a todo and verify it in the l2 sql cache" <| fun _ ->
+            setUp ()
+            let todoManager = TodoManager (MessageSenders.NoSender, pgEventStore, todoViewer)
+            let learnFSharp = Todo.New "Verify L2 Cache"
+            let addLearnFSharp = todoManager.AddTodo learnFSharp
+            Expect.isOk addLearnFSharp "error in adding todo"
+            
+            // Allow a short delay for cache writes if they happen asynchronously or rely on backplane
+            System.Threading.Thread.Sleep(500)
+            
+            // Query the Azure SQL database directly to verify the cache entry 
+            use sqlConnection = new SqlConnection(l2CacheConnectionString)
+            sqlConnection.Open()
+            use command = sqlConnection.CreateCommand()
+            command.CommandText <- sprintf "SELECT COUNT(*) FROM %s" l2CacheTableName
+            let count = command.ExecuteScalar() :?> int
+            Expect.isGreaterThan count 0 "L2 cache table should have at least one entry"
     ] 
     |> testSequenced
