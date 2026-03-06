@@ -218,6 +218,7 @@ module CommandHandler =
                                 let lastEventId = 
                                     storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
                                     |> Option.defaultValue 0
+                                // verify again the computation of events (should be the number of events related to a specific aggregateId rather than the events for any aggregate)
                                 let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
                                 let result =
                                     if (lastEventId - snapEventId) > 'A.SnapshotsInterval then

@@ -84,6 +84,7 @@ module Storage =
 
         [<Obsolete("")>]
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StoragePgEvent<'F>>
+
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
