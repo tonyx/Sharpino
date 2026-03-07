@@ -51,7 +51,15 @@ type TodoManager (messageSenders: MessageSenders, eventStore: IEventStore<string
                 let! _, result = todosViewer id.Value
                 return result
             }
-            
+    
+    member this.AddComment (id: TodoId) (comment: string) =
+        result
+            {
+                return!
+                    AddComment comment
+                    |> runAggregateCommand<Todo, TodoEvents, string> id.Value eventStore messageSenders
+            }
+
     member this.DeleteTodo (id: TodoId) =
         result
             {

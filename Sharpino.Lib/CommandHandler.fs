@@ -215,14 +215,13 @@ module CommandHandler =
                     return
                         result
                             {
-                                let lastEventId = 
-                                    storage.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
-                                    |> Option.defaultValue 0
-                                // verify again the computation of events (should be the number of events related to a specific aggregateId rather than the events for any aggregate)
-                                let snapEventId = storage.TryGetLastAggregateSnapshotEventId 'A.Version 'A.StorageName aggregateId |> Option.defaultValue 0
+                                let distanceFromLatestSnapshot = 
+                                    storage.GetDistanceFromLatestSnapshotAsync ('A.Version, 'A.StorageName, aggregateId)
+                                    |> Async.AwaitTask
+                                    |> Async.RunSynchronously
                                 let result =
-                                    if (lastEventId - snapEventId) > 'A.SnapshotsInterval then
-                                        storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, state.Serialize) 'A.StorageName
+                                    if distanceFromLatestSnapshot = 0
+                                        then storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, state.Serialize) 'A.StorageName
                                     else
                                         () |> Ok
                                 return! result
@@ -244,13 +243,14 @@ module CommandHandler =
                     return
                         result
                             {
-                                let lastEventId = 
-                                    storage.TryGetLastAggregateEventId storageVersion storageName aggregateId
-                                    |> Option.defaultValue 0
-                                let snapEventId = storage.TryGetLastAggregateSnapshotEventId storageVersion storageName aggregateId |> Option.defaultValue 0
+
+                                let distanceFromLatestSnapshot = 
+                                    storage.GetDistanceFromLatestSnapshotAsync (storageVersion, storageName, aggregateId)
+                                    |> Async.AwaitTask
+                                    |> Async.RunSynchronously
                                 let result =
-                                    if (lastEventId - snapEventId) > snapshotInterval then
-                                        storage.SetAggregateSnapshot storageVersion (aggregateId, eventId, state) storageName
+                                    if distanceFromLatestSnapshot = 0
+                                        then storage.SetAggregateSnapshot storageVersion (aggregateId, eventId, state) storageName
                                     else
                                         () |> Ok
                                 return! result

@@ -10,6 +10,7 @@ open System
 type TodoCommands =
     | Activate of DateTime
     | Complete of DateTime
+    | AddComment of string
     interface AggregateCommand<Todo, TodoEvents> with
         member this.Execute todo =
             match this with
@@ -20,5 +21,9 @@ type TodoCommands =
             | Complete dateTime -> 
                 todo.Complete dateTime
                 |> Result.map (fun s -> (s, [Completed  dateTime]))
+
+            | AddComment comment -> 
+                todo.AddComment comment
+                |> Result.map (fun s -> (s, [CommentAdded  comment]))
         member this.Undoer =
             None

@@ -1,6 +1,12 @@
+\restrict cinYfhGBa9PiejMVNSmLE3e9B2M1JkA3FChbkfWeaBjWLZKpEe7hEwQdUJYYQeq
+
+-- Dumped from database version 14.4
+-- Dumped by pg_dump version 18.0
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -166,6 +172,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_booking_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_booking_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_booking_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_booking(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_booking_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -177,6 +203,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_booking(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_booking_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_booking_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_booking(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -203,6 +246,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_row_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_row_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_row_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_row(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_row_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -214,6 +277,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_row(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_row_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_row_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_row(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -258,6 +338,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_voucher_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_voucher_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_voucher_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_voucher(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_voucher_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -269,6 +369,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_voucher(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_voucher_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_voucher_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_voucher(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -357,7 +474,8 @@ CREATE TABLE public.events_01_booking (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -385,7 +503,8 @@ CREATE TABLE public.events_01_row (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -440,7 +559,8 @@ CREATE TABLE public.events_01_voucher (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -725,6 +845,8 @@ ALTER TABLE ONLY public.snapshots_01_voucher
 -- PostgreSQL database dump complete
 --
 
+\unrestrict cinYfhGBa9PiejMVNSmLE3e9B2M1JkA3FChbkfWeaBjWLZKpEe7hEwQdUJYYQeq
+
 
 --
 -- Dbmate schema migrations
@@ -736,4 +858,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20241024083748'),
     ('20241201155023'),
     ('20241224084319'),
-    ('20250613072815');
+    ('20250613072815'),
+    ('20260307145730'),
+    ('20260307145755'),
+    ('20260307145804');

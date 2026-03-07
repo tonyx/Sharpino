@@ -1,4 +1,4 @@
-\restrict YrlX5ubV6lQ2afTNed1EdEcZA6odK5tuBSHoYhEFUIHRxvmO2T5T0Rm1dgJKsQf
+\restrict XdinxQQKoERpIoxbrK9X6C3cHXjBHW5k5mdIT1Ph55fn0U2eMMYBFtUcl0s5GEn
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -117,6 +117,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_reservationfornicknames_aggregate_event_and_return(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_reservationfornicknames_aggregate_event_and_return(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_ReservationForNickNames_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_ReservationForNickNames(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_reservationfornicknames_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -128,6 +148,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_ReservationForNickNames(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_reservationfornicknames_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_reservationfornicknames_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_ReservationForNickNames(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -154,6 +191,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_user_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_user_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_User_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_User(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_user_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -165,6 +222,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_User(event, aggregate_id, timestamp, md)
 VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_user_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_user_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_User(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -230,7 +304,8 @@ CREATE TABLE public.events_01_reservationfornicknames (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -258,7 +333,8 @@ CREATE TABLE public.events_01_user (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -529,7 +605,7 @@ ALTER TABLE ONLY public.snapshots_01_user
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YrlX5ubV6lQ2afTNed1EdEcZA6odK5tuBSHoYhEFUIHRxvmO2T5T0Rm1dgJKsQf
+\unrestrict XdinxQQKoERpIoxbrK9X6C3cHXjBHW5k5mdIT1Ph55fn0U2eMMYBFtUcl0s5GEn
 
 
 --
@@ -539,4 +615,6 @@ ALTER TABLE ONLY public.snapshots_01_user
 INSERT INTO public.schema_migrations (version) VALUES
     ('20251130111314'),
     ('20251130111325'),
-    ('20251130115849');
+    ('20251130115849'),
+    ('20260307131705'),
+    ('20260307131711');

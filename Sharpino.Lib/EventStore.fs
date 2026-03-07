@@ -75,8 +75,8 @@ module Storage =
         
         abstract member TryGetLastAggregateSnapshot: Version -> Name -> AggregateId -> Result<Option<EventId> * 'F, string>
         abstract member TryGetLastAggregateSnapshotAsync: Version * Name * AggregateId * ?ct:CancellationToken -> Task<Result<Option<EventId> * 'F, string>>
+        abstract member GetDistanceFromLatestSnapshotAsync: Version * Name * AggregateId * ?ct:CancellationToken -> Task<int>
 
-        
         [<Obsolete("")>]
         abstract member TryGetSnapshotById: Version -> Name -> int ->Option<EventId * 'F>
         [<Obsolete("")>]

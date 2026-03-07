@@ -1,6 +1,12 @@
+\restrict f4zn2mbxmbwdcomaQ8xo2x1HAlwh8q0aEB3l3zxo7UAAvsuUVWV5ZgUSSyC0GCX
+
+-- Dumped from database version 14.4
+-- Dumped by pg_dump version 18.0
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -111,6 +117,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_account_aggregate_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_account_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_account_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_account(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_account_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -122,6 +148,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_account(event, aggregate_id, timestamp, md)
 VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_account_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_account_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_account(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -148,6 +191,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_counter_aggregate_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_counter_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_counter_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_counter(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_counter_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -159,6 +222,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_counter(event, aggregate_id, timestamp, md)
 VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_counter_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_counter_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_counter(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -224,7 +304,8 @@ CREATE TABLE public.events_01_account (
     event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -252,7 +333,8 @@ CREATE TABLE public.events_01_counter (
     event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -423,6 +505,8 @@ ALTER TABLE ONLY public.snapshots_01_counter
 -- PostgreSQL database dump complete
 --
 
+\unrestrict f4zn2mbxmbwdcomaQ8xo2x1HAlwh8q0aEB3l3zxo7UAAvsuUVWV5ZgUSSyC0GCX
+
 
 --
 -- Dbmate schema migrations
@@ -430,6 +514,7 @@ ALTER TABLE ONLY public.snapshots_01_counter
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250712060304'),
-    ('20250712060838'),
     ('20250712185240'),
-    ('20250712260838');
+    ('20250712260838'),
+    ('20260307130135'),
+    ('20260307130144');

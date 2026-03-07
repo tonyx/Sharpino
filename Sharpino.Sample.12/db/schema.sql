@@ -1,4 +1,4 @@
-\restrict EG9cZnFGesPN6xtKikhxscSItGaGBwwnFXaFUEahw1aIw0mZbeKjzE1ye1moSXo
+\restrict xCyiE64BURR1PdBktdvzZkUx6kGOX6EellquNxMJo6iXrcQRp8sIuWH6MtxyiVe
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -117,6 +117,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_course_aggregate_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_course_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_course_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -128,6 +148,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_course(event, aggregate_id, timestamp, md)
 VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_course_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_course_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_course(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -154,6 +191,26 @@ $$;
 
 
 --
+-- Name: insert_md_01_student_aggregate_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_student_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_student_event_and_return_id(bytea, uuid, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -165,6 +222,23 @@ inserted_id integer;
 BEGIN
 INSERT INTO events_01_student(event, aggregate_id, timestamp, md)
 VALUES(event_in::bytea, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_student_event_and_return_id(bytea, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_student_event_and_return_id(event_in bytea, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_student(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -230,7 +304,8 @@ CREATE TABLE public.events_01_course (
     event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -258,7 +333,8 @@ CREATE TABLE public.events_01_student (
     event bytea NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    distance_from_latest_snapshot integer
 );
 
 
@@ -499,7 +575,7 @@ ALTER TABLE ONLY public.snapshots_01_student
 -- PostgreSQL database dump complete
 --
 
-\unrestrict EG9cZnFGesPN6xtKikhxscSItGaGBwwnFXaFUEahw1aIw0mZbeKjzE1ye1moSXo
+\unrestrict xCyiE64BURR1PdBktdvzZkUx6kGOX6EellquNxMJo6iXrcQRp8sIuWH6MtxyiVe
 
 
 --
@@ -509,4 +585,6 @@ ALTER TABLE ONLY public.snapshots_01_student
 INSERT INTO public.schema_migrations (version) VALUES
     ('20251110093022'),
     ('20251110093026'),
-    ('20251110093341');
+    ('20251110093341'),
+    ('20260307131102'),
+    ('20260307131108');

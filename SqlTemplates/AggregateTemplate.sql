@@ -5,6 +5,7 @@ CREATE TABLE public.events{Version}{AggregateStorageName} (
                                           aggregate_id uuid NOT NULL,
                                           event {Format} NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
+                                          distance_from_latest_snapshot int,
                                           "timestamp" timestamp without time zone NOT NULL,
                                           md text 
 );
@@ -90,6 +91,7 @@ $$;
 CREATE OR REPLACE FUNCTION insert_md{Version}{AggregateStorageName}_event_and_return_id(
     IN event_in {Format},
     IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
     IN md text
 )
 RETURNS int
@@ -99,8 +101,8 @@ AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events{Version}{AggregateStorageName}(event, aggregate_id, timestamp, md)
-VALUES(event_in::{Format}, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+INSERT INTO events{Version}{AggregateStorageName}(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::{Format}, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -129,6 +131,7 @@ $$;
 CREATE OR REPLACE FUNCTION insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id(
     IN event_in {Format},
     IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
     IN md text   
 )
 RETURNS int
@@ -139,7 +142,7 @@ DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, aggregate_id, md);
+    event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
 
 INSERT INTO aggregate_events{Version}{AggregateStorageName}(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;

@@ -164,15 +164,70 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-Note/reminder/warning: in appSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
-Other configuration, using PgJson for instance and JSON or JSONB fields and different serializer than fsPickler, are ok as long as you test carefully by doing low level operations on the eventstore e.g. store and retrieve events and snapshot bypassing the command handler and the cache.
-The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
-However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
-Note: the Sharpino.Sample.11 removed the antipattern of primitive obsession for the Id type. It would be wise to do the same in any other example.
-The benefit of wrapping the Id in a non primitive type is the ability to typecheck expressions related to ids of multiple object of different type.
+- Version 4.7.8: changes/fix to the snapshot making logic to compute correctly the interval between snapshots for a single aggregate. It needs a patch for backward compatibility. Following steps are needed for existing applications:
+1. A new optional parameter in appSettings.json specifies the distance (in number of events) between snapshots:
+```
+  "DistanceBetweenSnapshots": 100,
+```
+- - This makes obsolete the static member SnapshotsInterval defined for aggregate level (which cannot be removed, yet)
 
-Note about the recent change in caching policy. Each process will maintain its own cache, so no more than one process should be entitled to talk directly to the db (distributing an app should be based on other means like using a message bus, in a way similar to the RabbitMQ based examples)
+2. A patch to any existing sql table is needed. Here is an example of that patch. Instead of _01 you place the Version (tipically _01) and instead of _course you place the value of the static member StorageName defined at aggregate level 
+```
+    ALTER TABLE public.events_01_course ADD COLUMN distance_from_latest_snapshot int;
+
+    CREATE OR REPLACE FUNCTION insert_md_01_course_event_and_return_id(
+        IN event_in bytea,
+        IN aggregate_id uuid,
+        IN distance_from_latest_snapshot int,
+        IN md text
+    )
+    RETURNS int
+
+    LANGUAGE plpgsql
+    AS $$
+    DECLARE
+    inserted_id integer;
+    BEGIN
+    INSERT INTO events_01_course(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+    VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
+    return inserted_id;
+    END;
+    $$;
+
+    CREATE OR REPLACE FUNCTION insert_md_01_course_aggregate_event_and_return_id(
+        IN event_in bytea,
+        IN aggregate_id uuid,
+        IN distance_from_latest_snapshot int,
+        IN md text   
+    )
+    RETURNS int
+        
+    LANGUAGE plpgsql
+    AS $$
+    DECLARE
+    inserted_id integer;
+        event_id integer;
+    BEGIN
+        event_id := insert_md_01_course_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+    END;
+$$;
+
+```
+
+- - At typical way to apply the patch is generating it using
+
+- - `dbmate new alter_mytable`
+insert the SQL statements provided above by changing the version (_01) and storagename (_student) leaving the lines --migrate:up on top and --migrate:down on botton.
+
+- - `dbmate up`
+
+- -  should work seamlessy, but a prelimianry test in a controlled environment and a database backup is strongly adviced.
+
 
 - Version 4.7.7: using ZiggyCreatures.FusionCache with Azure Sql Server as distributed cache and Azure Message Bus to propagate cache related events (see Sharpino.Sample.19).
 - Version 4.7.6: using ZiggyCreatures.FusionCache instead of MemoryCache

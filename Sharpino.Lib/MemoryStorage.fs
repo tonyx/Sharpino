@@ -270,7 +270,13 @@ module MemoryStorage =
                         let ids = newEvents |>> (fun x -> x.Id)
                         return ids
                     }
-                
+
+            member this.GetDistanceFromLatestSnapshotAsync (arg: Version, arg_1: Name, arg_2: AggregateId, ct: CancellationToken option): Tasks.Task<int> = 
+                task
+                    {
+                        return 1
+                    }
+
             // not handling metadata in memory storage      
             member this.AddEventsMd _ version name md xs: Result<List<int>, string> =
                 logger.LogDebug (sprintf "AddEvents %s %s" version name)
