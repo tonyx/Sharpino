@@ -36,13 +36,14 @@ Sharpino is a library to support Event-Sourcing in F# based on the following pri
 
 ## Overview and terms
 
-- Contexts: Event-sourced objects with no Id, so only one instance is around for each type.
+- Contexts (_deprecated: just use ordinary aggregates with a constant Id_) _Event-sourced objects with no Id, so only one instance is around for each type. 
 - Aggregates: Event-sourced objects with Id (Guid).
 - Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
 - Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
 - Events are based on D.U. and are wrappers to transformation events, i.e. processing events means calling the transformation members.
 - Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events (in the future).
-- Cache: Dictionary-based cache of the current state of any aggregate or context.
+- Cache: use of MemoryCache to keep the latest state of any aggregate or context.
+- CacheDetails: use of MemoryCache to keep the state of details (combination of values from other aggregates or streams) and update them when the related aggregates are updated.
 - Soft delete: Mark an aggregate as deleted.
 - StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
 - HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
@@ -114,7 +115,6 @@ __Faq__ and __trivia__:
     - Any functional language of the ML family language in my opinion is a good fit for event-sourcing for the following reasons:
         - Events are immutable, building the state of the context is a function of those events.
         - Discriminated Unions are suitable to represent events and commands.
-        - The use of the lambda expression is a nice trick for the undoers (compensator events, former "Saga-like").
         - It is a .net language, so you can use everything in the .net ecosystem (including C# libraries).
 - How to use it
     - add the nuget package Sharpino to your project.
@@ -139,6 +139,7 @@ __Faq__ and __trivia__:
     - More complex projections (i.e. "materialized views") may need some work to be efficient in the same way the aggregates are.
 - Why caring about cross streams transactions and cross aggregates invariants (instead of just ruling them out)?
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
+- Other questions? Just opened a discord channel: https://discord.com/channels/1274092774643339315/
 
 ## Acknowledgements
 
@@ -163,12 +164,90 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-Note/reminder/warning: in sharpinoSettings.json the PgSqlJsonFormat should be PlainText, and the fields containing serialized data (snapshots and events) must be text.  
-Other configuration, using PgJson for instance and JSON or JSONB fields and different serializer than fsPickler, are ok as long as you test carefully by doing low level operations on the eventstore e.g. store and retrieve events and snapshot bypassing the command handler and the cache.
-The reason is that the cache will avoid the re-read and deserialize on db, and that means that if it fails then you may not realize it (not immediately) and even in many tests.
-However: postgres JSON types are not necessary and will probably cause an overhead as the db will try to parse them, whereas text fields are not parsed at all.
 
-- Version 4.5.5: added cachable details/view: a detailed view can be Refreshable and cachable, so that it refreshes when any of its object is updated (i.e. a related event is stored).
+- Version 4.7.8: changes/fix to the snapshot making logic to compute correctly the interval between snapshots for a single aggregate. It needs a patch for backward compatibility. Following steps are needed for existing applications:
+1. A new optional parameter in appSettings.json specifies the distance (in number of events) between snapshots:
+```
+  "DistanceBetweenSnapshots": 100,
+```
+- - This makes obsolete the static member SnapshotsInterval defined for aggregate level (which cannot be removed, yet)
+
+2. A patch to any existing sql table is needed. Here is an example of that patch. Instead of _01 you place the Version (tipically _01) and instead of _course you place the value of the static member StorageName defined at aggregate level 
+```
+    ALTER TABLE public.events_01_course ADD COLUMN distance_from_latest_snapshot int;
+
+    CREATE OR REPLACE FUNCTION insert_md_01_course_event_and_return_id(
+        IN event_in bytea,
+        IN aggregate_id uuid,
+        IN distance_from_latest_snapshot int,
+        IN md text
+    )
+    RETURNS int
+
+    LANGUAGE plpgsql
+    AS $$
+    DECLARE
+    inserted_id integer;
+    BEGIN
+    INSERT INTO events_01_course(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+    VALUES(event_in::bytea, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
+    return inserted_id;
+    END;
+    $$;
+
+    CREATE OR REPLACE FUNCTION insert_md_01_course_aggregate_event_and_return_id(
+        IN event_in bytea,
+        IN aggregate_id uuid,
+        IN distance_from_latest_snapshot int,
+        IN md text   
+    )
+    RETURNS int
+        
+    LANGUAGE plpgsql
+    AS $$
+    DECLARE
+    inserted_id integer;
+        event_id integer;
+    BEGIN
+        event_id := insert_md_01_course_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+    END;
+$$;
+
+```
+
+- - At typical way to apply the patch is generating it using
+
+- - `dbmate new alter_mytable`
+insert the SQL statements provided above by changing the version (_01) and storagename (_student) leaving the lines --migrate:up on top and --migrate:down on botton.
+
+- - `dbmate up`
+
+- -  should work seamlessy, but a prelimianry test in a controlled environment and a database backup is strongly adviced.
+
+
+- Version 4.7.7: using ZiggyCreatures.FusionCache with Azure Sql Server as distributed cache and Azure Message Bus to propagate cache related events (see Sharpino.Sample.19).
+- Version 4.7.6: using ZiggyCreatures.FusionCache instead of MemoryCache
+- Version 4.7.5: optimize the getAllAggregateStates and getAllAggregateStatesAsync by filtering out the (soft) deleted aggregates using new db functions
+- Version 4.7.4: fix getAllAggregateStatesAsync and getAggregateStatesInATimeIntervalAsync are able to filter out deleted states from resut
+- Version 4.7.3: logging config is managed by appSettings.json. "setLogger" calls are deprecated.
+- Version 4.7.2: removed sharpinoSettings.json. Settings are part of appSettings.json now
+- Version 4.7.1: the "runPreExecuteAggregateCommd" can use the MessageSenders (RabbitMq for example). 
+- Version 4.7.0: interface "Aggregate" is not needed anymore. Type constraints are enough -> Related members Id and Serializer needs to be defined in the aggregate. Important: if using typed Id (wrapping Guid), then it cannot use the name Id anymore. The actual Id must be still Guid (so for example I can have a StudentId field of type StudentId and I still need to expose the Id as a Guid, like StudentId.Value)
+- Released a template with a minimal yml docker file for postgres if needed. https://github.com/tonyx/sharpinoTemplate 
+``dotnet install Sharpino.Templates``
+``dotnet new sharpino``
+- Version 4.6.3: handle task/CancellationToken in few more eventstore/stateview functions
+- Blogged [Event Sourcing in F#: From Cross-Stream Invariants to Refreshable Details](https://medium.com/@tonyx1/event-sourcing-in-f-from-cross-stream-invariants-to-refreshable-details-d5d6f7fd2dd8)
+- Version 4.6.1: handle CancellationToken "scope" (for implicit disposal) in pg(Binary)EventStore, added GetAllAggregateEventsInATimeIntervalAsync (ResizeArray based).
+- Version 4.6.0: added support for CancellationToken in StateView async functions and their related db functions
+- Version 4.5.8: added runInitAsync and runMultipleInitAsync to CommandHanldler and related db functions with optional CancellationToken.
+- Version 4.5.7: using console logging by default on Core.fs, update dependencies
+- Version 4.5.6: fix an update of refreshable/cachable details.
+- Version 4.5.5: added cachable details/view: a detailed view can be Refreshable and cachable, so that it refreshes when any of its object is updated (i.e. a related event is stored): [CACHING_DETAILS_VIEW.md](CACHING_DETAILS_VIEW.md)
 - Version 4.5.4: few more versions of eventstore functions handling task/cancellationToken
 - Version 4.5.3: removed some dupication in eventstore
 - Version 4.5.2: changed the definition of "undoer" in core (returning new state not only compensation events). Cleaned core a little. It may break existing code ("undoers" may need an update).
@@ -177,7 +256,7 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 - Version 4.4.9: Replaced ConcurrentDictionary based cache with MemoryCache
 - Version 4.4.7: fix a problem of indexes in aggregateCache that was unoticed and harmless (until 4.4.6).
 - Version 4.4.6 (DEPRECATED. need fix): avoid an unnecessary access to last snapshot event id to get last aggregateSnapshot
-- Added an article on mediumi[F# Domain Model with Event Sourcing vs C# with Entity Framework] (https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
+- Added an article on medium [F# Domain Model with Event Sourcing vs C# with Entity Framework](https://medium.com/@tonyx1/f-domain-model-with-event-sourcing-vs-c-with-entity-framework-ff870ce5c48c)
 - Version 4.4.4: added bulk object initializations
 - Version 4.4.3: added support for net10.0
 - Version 4.4.2: mkAggregateSnapshot is reintroduced (was dropped in 4.4.1)
@@ -227,7 +306,6 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 - Version 2.7.2: Support metadata field in db (any command has the correspondent commandMd that accepts any string as metadata). Those metadata can be used for debugging purposes. To use them any event table in the db needs a new nullable text field called "md".
   New db functions are also needed. See the functions like "insert_md{Version}{AggregateStorageName}_events_and_return_id" in the sql scripts in the SqlTemplate dir doing a proper substitution in {Version} and {Format} and {AggregateStorageName}. Similar function is in the ContextTemplate.sql.
 - Version 2.7.1: Bug fix
-- Version 2.7.0: Fix bug in Saga-ish multi-command and added some tests for it.
 - Version 2.6.8: Remove EventStoreDb and starting removing Kafka (for future rewrite or replacement).
 - Version 2.6.7: Optimize snapshotting by using the in-memory cached value to avoid multiple reads of the same aggregate.
 - Version 2.6.6: Can create new snapshots for aggregates that have no events yet (can happen when you want to do massive upcast/snapshot for any aggregate)
@@ -240,7 +318,6 @@ However: postgres JSON types are not necessary and will probably cause an overhe
 - A short pdf: [why do we need upcastors for aggregates and not for events](https://drive.google.com/file/d/1DKx8IXqakc14qjQbrymzwHAJQEbhxZGq/view?usp=share_link) (sorry for typos)
 - Blog post: [Upcasting aggregates in Sharpino](https://medium.com/@tonyx1/upcast-to-read-aggregates-in-an-older-format-in-a-sharpino-based-solution-839b807265f9)
 - Blog post: comparing the example of the "Counter" app in Equnox and in Sharpino https://medium.com/@tonyx1/equinox-vs-sharpino-comparing-the-counter-example-0e2bd6e9bbf2
-- Version 2.5.7 added mixtures of saga-like multi-commands and saga-less multi-aggregate commands (not ideal at all, but useful for some use cases that I found that I will describe later, I hope)
 - Blogged [About Sharpino. An Event Shourcing library](https://medium.com/@tonyx1/about-sharpino-an-f-event-sourcing-library-dbadb4282ab9)
 - Version 2.5.4 added _runInitAndTwoAggregateCommands_ that creates a new aggregate snapshot and run two commands in a single transaction.
 - Version 2.5.3 added _runSagaThreeNAggregateCommands_ this is needed when transaction cannot be simultaneous for instance when it needs to involve the same aggregate in multiple commands.
@@ -343,6 +420,7 @@ module CartCommands =
                                 }
                         )
  ```
+
 
 
 - Changes to the classic Blazor counter app to use Sharpino in the backend: https://github.com/tonyx/blazorCounterSharpino.git

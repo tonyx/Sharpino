@@ -12,10 +12,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
-    <Description>F# Event-Sourcing Library</Description>
+    <Description>F# Event Sourcing Library</Description>
     <ReleaseNotes>This release supports In-memory and Postgres as event store</ReleaseNotes> 
     <Copyright>Copyright ©2023-2026 Antonio Lucca</Copyright>
-    <PackageTags>event-sourcing, F#, FSharp, PostgreSQL</PackageTags>
+    <PackageTags>eventsourcing, F#, FSharp, PostgreSQL</PackageTags>
 <!--    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants> -->
       
     <AsyncTimeOut>1000</AsyncTimeOut> 
