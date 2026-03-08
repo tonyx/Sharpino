@@ -8,9 +8,45 @@ services:
       POSTGRES_USER: sharpino
       POSTGRES_PASSWORD: password
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
       - ./db/migrations/01-schema.sql:/docker-entrypoint-initdb.d/02-schema.sql
       - ./db/migrations/20260115115559_create_todo.sql:/docker-entrypoint-initdb.d/03-create_todo.sql
       - ./db/migrations/20260115115952_set_user_rights.sql:/docker-entrypoint-initdb.d/04-set_user_rights.sql
+
+  sqledge:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Sharpino@1234"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Sharpino@1234' -No -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:1.1.2-arm64
+    platform: linux/arm64
+    environment:
+      ACCEPT_EULA: "Y"
+      SQL_SERVER: sqledge
+      MSSQL_SA_PASSWORD: "Sharpino@1234"
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+    volumes:
+      - ./servicebus-config/config.json:/ServiceBus_Emulator/ConfigFiles/Config.json
+    depends_on:
+      sqledge:
+        condition: service_healthy
+
+networks:
+  default:
+    name: sharpino19-network

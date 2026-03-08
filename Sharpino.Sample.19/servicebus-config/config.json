@@ -1,0 +1,37 @@
+{
+  "UserConfig": {
+    "Namespaces": [
+      {
+        "Name": "sbemulatorns",
+        "Queues": [],
+        "Topics": [
+          {
+            "Name": "sharpino-topic",
+            "Properties": {
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT20S",
+              "RequiresDuplicateDetection": false
+            },
+            "Subscriptions": [
+              {
+                "Name": "sharpino-subscription",
+                "Properties": {
+                  "DeadLetteringOnMessageExpiration": false,
+                  "DefaultMessageTimeToLive": "PT1H",
+                  "LockDuration": "PT1M",
+                  "MaxDeliveryCount": 3,
+                  "ForwardDeadLetteredMessagesTo": "",
+                  "ForwardTo": "",
+                  "RequiresSession": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "Logging": {
+      "Type": "Console"
+    }
+  }
+}
