@@ -106,7 +106,7 @@ module CommandHandler =
                     {
                         let! (eventId, result) = getAggregateFreshState<'A, 'E, 'F> id eventStore
                         return
-                            (eventId, result :?> 'A) 
+                            (eventId, result) 
                     }
 
     // using variuos versions of mkSnapshotIfIntervalPassed instead. Leaving it to allow use from any app if needed
@@ -515,7 +515,7 @@ module CommandHandler =
                     |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
                 
                 let serializedState =
-                    (state :?> 'A1).Serialize
+                    state.Serialize
                
                 let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
                 AggregateCache3.Instance.Clean id

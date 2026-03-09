@@ -63,6 +63,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.20", "Sharp
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoTemplate", "Sharpino.Sample.20\sharpinoTemplate.fsproj", "{F4CB6930-4AE6-4492-B5A5-4F2C05D2AD2C}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.21", "Sharpino.Sample.21\Sharpino.Sample.21.fsproj", "{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.22", "Sharpino.Sample.22\Sharpino.Sample.22.fsproj", "{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -385,6 +389,30 @@ Global
 		{F4CB6930-4AE6-4492-B5A5-4F2C05D2AD2C}.Release|x64.Build.0 = Release|Any CPU
 		{F4CB6930-4AE6-4492-B5A5-4F2C05D2AD2C}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4CB6930-4AE6-4492-B5A5-4F2C05D2AD2C}.Release|x86.Build.0 = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|x64.Build.0 = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Debug|x86.Build.0 = Debug|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|x64.ActiveCfg = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|x64.Build.0 = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|x86.ActiveCfg = Release|Any CPU
+		{FECCD619-F4EC-4AFE-9F2C-65D1D85DD192}.Release|x86.Build.0 = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|x64.Build.0 = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Debug|x86.Build.0 = Debug|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x64.ActiveCfg = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x64.Build.0 = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x86.ActiveCfg = Release|Any CPU
+		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

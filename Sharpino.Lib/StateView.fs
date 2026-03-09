@@ -1,6 +1,7 @@
 namespace Sharpino
 
 open System.Text
+open System.Text.Json
 open System.Threading
 open FSharp.Core
 open FSharpPlus
@@ -18,7 +19,22 @@ open System
 
 module StateView =
     let cancellationTokenSourceExpiration = 100000
-    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Sharpino.StateView")
+
+    let inline private unboxCacheState<'A> (stateValue: obj) : Result<'A, string> =
+        match stateValue with
+        | :? 'A as state -> Ok state
+        | :? System.Text.Json.JsonElement as jsonElement ->
+            try
+                System.Text.Json.JsonSerializer.Deserialize<'A>(jsonElement, Cache.jsonOptions) |> Ok
+            with ex ->
+                Error (sprintf "unboxCacheState: failed to deserialize JsonElement to %s using System.Text.Json. Error: %s" (typeof<'A>.FullName) ex.Message)
+        | x -> 
+             try
+                Ok (x :?> 'A)
+             with _ ->
+                Error (sprintf "unboxCacheState: cannot cast %s to %s" (x.GetType().FullName) (typeof<'A>.FullName))
+
+    let logger = Cache.loggerFactory.CreateLogger("Sharpino.StateView")
     
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
@@ -154,11 +170,12 @@ module StateView =
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
                                         Cache.AggregateCache3.Instance.GetState aggregateId
-                                    return (lastCacheEventId |> Some, state) |> Some 
+                                    let! unboxedState = unboxCacheState<'A> state
+                                    return (lastCacheEventId |> Some, unboxedState) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                    return (eventId , snapshot |> unbox) |> Some 
+                                    return (eventId, snapshot) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
                 
@@ -187,11 +204,12 @@ module StateView =
                                     snapshotEventId.IsSome && lastCacheEventId >= snapshotEventId.Value then
                                     let! state = 
                                         Cache.AggregateCache3.Instance.GetState aggregateId
-                                    return (lastCacheEventId |> Some, state) |> Some 
+                                    let! unboxedState = unboxCacheState<'A> state
+                                    return (lastCacheEventId |> Some, unboxedState) |> Some 
                                 else
                                     let! (eventId, snapshot) = 
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
-                                    return (eventId , snapshot |> unbox) |> Some 
+                                    return (eventId, snapshot) |> Some 
                         }
                 }, Commons.generalAsyncTimeOut)
 
@@ -338,8 +356,9 @@ module StateView =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        let! unboxedState = unboxCacheState<'A> state
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> (state |> unbox)
+                            deserEvents |> evolve<'A, 'E> unboxedState
                         let lastEventId =
                             if (events.Length > 0)
                                 then (events |> List.last |> fst)
@@ -351,7 +370,10 @@ module StateView =
             let state = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
             match state with
             | Ok (eventId, stateValue) ->
-                (eventId, stateValue) |> Ok
+                result {
+                    let! unboxedState = unboxCacheState<'A> stateValue
+                    return (eventId, unboxedState)
+                }
             | Error e ->
                 logger.LogDebug (sprintf "getAggregateFreshState: %s" e)
                 Error e
@@ -363,7 +385,7 @@ module StateView =
         let result = DetailsCache.Instance.Memoize refreshableDetailsBuilder key
         match result with
         | Error e -> Error e
-        | Ok res -> Ok (res :?> 'A)
+        | Ok res -> unboxCacheState<'A> res
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>
@@ -384,8 +406,9 @@ module StateView =
                             events 
                             |>> snd 
                             |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        let! unboxedState = unboxCacheState<'A> state
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> (state |> unbox)
+                            deserEvents |> evolve<'A, 'E> unboxedState
                         return newState
                     }
             
@@ -670,7 +693,7 @@ module StateView =
                         let errors = errors |> List.fold (fun acc x -> acc + x.ToString()+", ") ""
                         return! (Error errors)
                     else 
-                        return okStates |> List.filter (fun (_, x)  -> currentStateFilter (x |> unbox))
+                        return okStates |> List.filter (fun (_, x)  -> currentStateFilter x)
                 }
                 
     let inline getFilteredAggregateStatesInATimeInterval2<'A, 'E, 'F
@@ -701,8 +724,8 @@ module StateView =
                     
                     return
                         states
-                        |> List.filter (fun (_, x)  -> predicate (x |> unbox))
-                        |> List.map (fun (id, x) -> (id, x :?> 'A ))
+                        |> List.filter (fun (_, x)  -> predicate x)
+                        |> List.map (fun (id, x) -> (id, x))
                 }
     
     let inline getAggregateStatesInATimeInterval<'A, 'E, 'F
@@ -724,7 +747,7 @@ module StateView =
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                         |> List.filter _.IsOk
-                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
                     return allStates    
                 }
                 
@@ -754,7 +777,7 @@ module StateView =
                     let result =
                         allStates
                         |> List.filter _.IsOk
-                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
                     return result
                 }
                 
@@ -777,7 +800,7 @@ module StateView =
                     let result =
                         allStates
                         |> List.filter _.IsOk
-                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
                     return result
                 }
     
@@ -803,7 +826,7 @@ module StateView =
                     let result =
                         allStates
                         |> List.filter _.IsOk
-                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x :?> 'A))
+                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
                     return result    
                 }
     

@@ -17,3 +17,4 @@ SERVICE_BUS_SUBSCRIPTION_NAME=
 ```
 4) Access to the .env file and update the values of the parameters according to the configuration we created in the previous step
 5) Run the test (dotnet run) and verify that the test is passing or change any parameters in the .env file or in docker setup until the test is passing
+6) Add additional parameters to the appsettings.json file that corresponds to the ones we specified in the .env file from  L2_CACHE_SQL_URL to SERVICE_BUS_SUBSCRIPTION_NAME

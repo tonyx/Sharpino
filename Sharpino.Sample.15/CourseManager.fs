@@ -215,7 +215,7 @@ module CourseManager =
                     
                 let studentDetailsKey =  DetailsCacheKey (typeof<RefreshableStudentDetails>, studentId.Id)
                 let _ =
-                    DetailsCache.Instance.UpdateMultipleAggregateIdAssociationRef [|courseId.Id|] studentDetailsKey ((TimeSpan.FromMinutes 10.0) |> Some)
+                    DetailsCache.Instance.UpdateMultipleAggregateIdAssociation [|courseId.Id|] studentDetailsKey
                     
                 let command = EnrollmentCommands.AddEnrollment enrollmentItem
                 let! result = 

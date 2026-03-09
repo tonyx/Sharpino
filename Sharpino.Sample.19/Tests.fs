@@ -26,27 +26,20 @@ let connection =
     $"User Id={userId};" +
     $"Password={password}"
 
-let l2CacheConnectionString = Environment.GetEnvironmentVariable("L2_CACHE_SQL_URL")
-let l2CacheTableName = Environment.GetEnvironmentVariable("L2_CACHE_SQL_TABLE_NAME")
+
+let l2CacheSqlUrl = Cache.config.["Cache:L2CacheSqlUrl"]
+let l2CacheTableName = Cache.config.["Cache:L2CacheSqlTableName"]
 
 let pgEventStore = PgStorage.PgEventStore connection
 let memoryEventStore = MemoryStorage.MemoryStorage()
 
-let sbConnectionString = Environment.GetEnvironmentVariable("SERVICE_BUS_CONNECTION_STRING")
-let sbTopicName = Environment.GetEnvironmentVariable("SERVICE_BUS_TOPIC_NAME")
-let sbSubscriptionName = Environment.GetEnvironmentVariable("SERVICE_BUS_SUBSCRIPTION_NAME")
-
-let setupL2Cache () =
-    Cache.setupAzureSqlCache l2CacheConnectionString "dbo" l2CacheTableName
-
-let setupBackplane () =
-    if not (isNull sbConnectionString) && not (isNull sbTopicName) && not (isNull sbSubscriptionName) then
-        let bp = Cache.setupAzureServiceBusBackplane sbConnectionString sbTopicName sbSubscriptionName
-        Cache.setupSecondLevelCacheAndBackplane None None (Some bp)
+let serviceBusConnectionString = Cache.config.["Cache:ServiceBusConnectionString"]
+let serviceBusTopicName = Cache.config.["Cache:ServiceBusTopicName"]
+let serviceBusSubscriptionName = Cache.config.["Cache:ServiceBusSubscriptionName"]
 
 let clearL2Cache () =
     try
-        use sqlConnection = new SqlConnection(l2CacheConnectionString)
+        use sqlConnection = new SqlConnection(l2CacheSqlUrl)
         sqlConnection.Open()
         use command = sqlConnection.CreateCommand()
         command.CommandText <- sprintf "DELETE FROM %s" l2CacheTableName
@@ -55,8 +48,6 @@ let clearL2Cache () =
     | ex -> printfn "Error cleaning L2 cache: %s" ex.Message
 
 let setUp () =
-    setupL2Cache ()
-    setupBackplane ()
     clearL2Cache ()
     pgEventStore.Reset Todo.Version Todo.StorageName |> ignore
     pgEventStore.ResetAggregateStream Todo.Version Todo.StorageName |> ignore
@@ -258,7 +249,7 @@ let tests =
             System.Threading.Thread.Sleep(500)
             
             // Query the Azure SQL database directly to verify the cache entry 
-            use sqlConnection = new SqlConnection(l2CacheConnectionString)
+            use sqlConnection = new SqlConnection(l2CacheSqlUrl)
             sqlConnection.Open()
             use command = sqlConnection.CreateCommand()
             command.CommandText <- sprintf "SELECT COUNT(*) FROM %s" l2CacheTableName

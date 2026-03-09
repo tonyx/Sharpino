@@ -27,6 +27,16 @@ open MQTTnet
 
 module Cache =
     let builder = Host.CreateApplicationBuilder()
+    let env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+    
+    builder.Configuration
+        .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+        .AddJsonFile("appSettings.json", optional=false, reloadOnChange=true) |> ignore
+    
+    if not (String.IsNullOrWhiteSpace env) then
+        builder.Configuration.AddJsonFile($"appSettings.{env}.json", optional=true) |> ignore
+        
+    builder.Configuration.AddEnvironmentVariables() |> ignore
     let config = builder.Configuration
         
     let numProcs = Environment.ProcessorCount
@@ -37,6 +47,9 @@ module Cache =
             b.AddConsole() |> ignore
         )
     let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
+
+    let jsonOptions = JsonFSharpOptions.Default().ToJsonSerializerOptions()
+    let serializer = new FusionCacheSystemTextJsonSerializer(jsonOptions)
     
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         logger.LogError ("setting logger is not supported")
@@ -78,6 +91,8 @@ module Cache =
         )
         let objectDetailsAssociationsCache = new FusionCache(assocOptions)
         
+        let mutable _backplane: IFusionCacheBackplane option = None
+        
         static let instance = DetailsCache ()
         static member Instance = instance
         
@@ -86,8 +101,43 @@ module Cache =
                 (statesDetails :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
                 (objectDetailsAssociationsCache :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
             if bp.IsSome then
-                (statesDetails :> IFusionCache).SetupBackplane(bp.Value) |> ignore
-                (objectDetailsAssociationsCache :> IFusionCache).SetupBackplane(bp.Value) |> ignore
+                let backplane = bp.Value
+                _backplane <- Some backplane
+                (statesDetails :> IFusionCache).SetupBackplane(backplane) |> ignore
+                (objectDetailsAssociationsCache :> IFusionCache).SetupBackplane(backplane) |> ignore
+                
+                // FusionCache only auto-subscribes when managed by DI/IHostedService.
+                // Since we instantiate it directly, we manually trigger the internal Subscribe() using reflection.
+                let activateBackplane (fc: IFusionCache) =
+                    let bpaProp = fc.GetType().GetProperty("BackplaneAccessor", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.NonPublic)
+                    if not (isNull bpaProp) then
+                        let bpa = bpaProp.GetValue(fc)
+                        if not (isNull bpa) then
+                            let subMethod = bpa.GetType().GetMethod("Subscribe", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.Public ||| System.Reflection.BindingFlags.NonPublic)
+                            if not (isNull subMethod) then
+                                subMethod.Invoke(bpa, [||]) |> ignore
+                
+                activateBackplane (statesDetails :> IFusionCache)
+                activateBackplane (objectDetailsAssociationsCache :> IFusionCache)
+                
+                // Manually invalidate L1 cache when receiving backplane messages
+                let receiverOptions = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions().SetSkipBackplaneNotifications(true)
+                
+                statesDetails.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
+                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                        let prefix = "statesDetails:"
+                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
+                        statesDetails.Remove(key, receiverOptions)
+                        printfn "[Cache Event] DetailsCache manually removed L1 entry for %s" key
+                ))
+                
+                objectDetailsAssociationsCache.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
+                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                        let prefix = "objectDetails:"
+                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
+                        objectDetailsAssociationsCache.Remove(key, receiverOptions)
+                        printfn "[Cache Event] DetailsCache(Associations) manually removed L1 entry for %s" key
+                ))
             ()
             
         member this.UpdateMultipleAggregateIdAssociation (aggregateIds: AggregateId[]) (key: DetailsCacheKey) =
@@ -152,7 +202,16 @@ module Cache =
                         | Ok resultObj ->
                             // Update the cache directly without going through TryCache
                             try
-                                statesDetails.Set<obj>(key.Value, resultObj, detailsEntryOptions)
+                                let keyStr = key.Value
+                                statesDetails.Set<obj>(keyStr, resultObj, detailsEntryOptions)
+                                if _backplane.IsSome then
+                                    let fullKey = "statesDetails:" + keyStr
+                                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
+                                        statesDetails.InstanceId, 
+                                        fullKey, 
+                                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                                    )
+                                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
                                 Ok resultObj
                             with :? _ as e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
@@ -165,7 +224,16 @@ module Cache =
                 
         
         member this.Evict (key: DetailsCacheKey)  =
-            statesDetails.Remove key.Value
+            let keyStr = key.Value
+            statesDetails.Remove keyStr
+            if _backplane.IsSome then
+                let fullKey = "statesDetails:" + keyStr
+                let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntryRemove(
+                    statesDetails.InstanceId, 
+                    fullKey, 
+                    System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                )
+                _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
         
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
@@ -186,6 +254,14 @@ module Cache =
         member private this.TryCache (key: string, value: Refreshable<_>) =
             try
                 statesDetails.Set<obj>(key, value, detailsEntryOptions)
+                if _backplane.IsSome then
+                    let fullKey = "statesDetails:" + key
+                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
+                        statesDetails.InstanceId, 
+                        fullKey, 
+                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    )
+                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
             with :? _ as e ->
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Clear()
@@ -208,6 +284,14 @@ module Cache =
         member this.Clear () =
             statesDetails.Clear()
             objectDetailsAssociationsCache.Clear()
+
+        member this.ClearL1 () =
+            statesDetails.Clear(true)
+            objectDetailsAssociationsCache.Clear(true)
+
+        member this.ClearL2 () =
+            statesDetails.Clear(false)
+            objectDetailsAssociationsCache.Clear(false)
     
     type AggregateCache3 private () =
         let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
@@ -221,6 +305,9 @@ module Cache =
         let entryOptions =
             FusionCacheEntryOptions().
                 SetDuration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
+        
+        let mutable _backplane: IFusionCacheBackplane option = None
+
         static let instance = AggregateCache3()
         static member Instance = instance
         
@@ -228,18 +315,58 @@ module Cache =
             if dc.IsSome && ser.IsSome then
                 (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
             if bp.IsSome then
-                (statePerAggregate :> IFusionCache).SetupBackplane(bp.Value) |> ignore
+                let backplane = bp.Value
+                _backplane <- Some backplane
+                (statePerAggregate :> IFusionCache).SetupBackplane(backplane) |> ignore
+                
+                // Activate backplane manually via reflection
+                let bpaProp = statePerAggregate.GetType().GetProperty("BackplaneAccessor", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.NonPublic)
+                if not (isNull bpaProp) then
+                    let bpa = bpaProp.GetValue(statePerAggregate)
+                    if not (isNull bpa) then
+                        let subMethod = bpa.GetType().GetMethod("Subscribe", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.Public ||| System.Reflection.BindingFlags.NonPublic)
+                        if not (isNull subMethod) then
+                            subMethod.Invoke(bpa, [||]) |> ignore
+                            logger.LogInformation (sprintf "[Cache] AggregateCache3: HasBackplane = %A" statePerAggregate.HasBackplane)
+                            
+                            let usableMethod = bpa.GetType().GetMethod("IsCurrentlyUsable", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.Public ||| System.Reflection.BindingFlags.NonPublic)
+                            if not (isNull usableMethod) then
+                                logger.LogInformation (sprintf "[Cache] AggregateCache3: IsCurrentlyUsable = %A" (usableMethod.Invoke(bpa, [| null; null |])))
+                            logger.LogInformation (sprintf "[Cache] AggregateCache3: SkipBackplane = %A" entryOptions.SkipBackplaneNotifications)
+                
+                // Add event listeners
+                let receiverOptions = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions().SetSkipBackplaneNotifications(true)
+                statePerAggregate.Events.Backplane.add_MessagePublished(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
+                    logger.LogDebug (sprintf "[Cache Event] MessagePublished: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
+                ))
+                statePerAggregate.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
+                    logger.LogDebug (sprintf "[Cache Event] MessageReceived: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
+                    // Manually invalidate L1 cache
+                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                        let prefix = "statePerAggregate:"
+                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
+                        statePerAggregate.Remove(key, receiverOptions)
+                        logger.LogDebug (sprintf "[Cache Event] AggregateCache3 manually removed L1 entry for %s" key)
+                ))
             ()
 
         member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
             try
-                statePerAggregate.Set<(EventId * obj)>(aggregateId.ToString(), (eventId, resultState), entryOptions)
-                ()
+                let key = aggregateId.ToString()
+                statePerAggregate.Set<(EventId * obj)>(key, (eventId, resultState), entryOptions)
                 
+                // Manually notify backplane if FusionCache skips it
+                if _backplane.IsSome then
+                    let fullKey = "statePerAggregate:" + key
+                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
+                        statePerAggregate.InstanceId, 
+                        fullKey, 
+                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    )
+                    _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
             with :? _ as e -> 
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statePerAggregate.Clear()
-                // if an object failed to be cached then clear the details cache as well (otherwise dependencies could be out of sync)
                 DetailsCache.Instance.Clear()
                 () 
    
@@ -261,10 +388,25 @@ module Cache =
             this.TryCache (aggregateId, eventId, x)
         
         member this.Clean (aggregateId: AggregateId)  =
-            statePerAggregate.Remove (aggregateId.ToString())
+            let key = aggregateId.ToString()
+            statePerAggregate.Remove(key)
+            if _backplane.IsSome then
+                let fullKey = "statePerAggregate:" + key
+                let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntryRemove(
+                    statePerAggregate.InstanceId, 
+                    fullKey, 
+                    System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                )
+                _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
         
         member this.Clear () =
             statePerAggregate.Clear()
+
+        member this.ClearL1 () =
+            statePerAggregate.Clear(true)
+
+        member this.ClearL2 () =
+            statePerAggregate.Clear(false)
         
         member this.LastEventId (aggregateId: AggregateId) =
             let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
@@ -335,9 +477,23 @@ module Cache =
         let opts = Options.Create(options)
         let sqlCache = new SqlServerCache(opts)
         
-        let jsonOptions = JsonFSharpOptions.Default().ToJsonSerializerOptions()
-        let serializer = new FusionCacheSystemTextJsonSerializer(jsonOptions)
         setupSecondLevelCacheAndBackplane (Some (sqlCache :> IDistributedCache)) (Some (serializer :> IFusionCacheSerializer)) None
+
+    do // initialize L2 cache in azure Sql mode
+        let l2SqlCacheEnabled = config.GetValue<bool>("Cache:L2SqlCacheEnabled", false)
+        logger.LogInformation (sprintf "[Cache] Config: L2SqlCacheEnabled = %b" l2SqlCacheEnabled)
+        if l2SqlCacheEnabled then
+            let l2CacheSqlUrl = config.GetValue<string>("Cache:L2CacheSqlUrl", String.Empty)
+            let l2CacheSqlTableName = config.GetValue<string>("Cache:L2CacheSqlTableName", String.Empty)
+            match l2CacheSqlUrl, l2CacheSqlTableName with
+            | "", _ -> logger.LogCritical ("[Cache] Error: L2CacheSqlUrl is empty")
+            | _, "" -> logger.LogCritical ("[Cache] Error: L2CacheSqlTableName is empty")
+            | _ ->
+                logger.LogInformation (sprintf "[Cache] Initializing L2 SQL Cache with table: %s" l2CacheSqlTableName)
+                setupAzureSqlCache l2CacheSqlUrl "dbo" l2CacheSqlTableName |> ignore
+                logger.LogInformation (sprintf "[Cache] L2 SQL Cache initialized.")
+        else 
+            ()
 
     let setupEventGridMqttOptions (hostname: string) (port: int) (clientId: string) (username: string) (password: string) =
         MqttClientOptionsBuilder()
@@ -347,9 +503,32 @@ module Cache =
             .WithTlsOptions(fun o -> o.UseTls() |> ignore)
             .Build()
 
-    let setupAzureServiceBusBackplane (connectionString: string) (topicName: string) (subscriptionName: string) =
-        let bp = new AzureServiceBusBackplane(connectionString, topicName, subscriptionName)
+    let setupAzureServiceBusBackplane (connectionString: string) (topicName: string) (subscriptionName: string) (managementConnectionString: string option) =
+        let bp =
+            match managementConnectionString with
+            | Some mcs -> new AzureServiceBusBackplane(connectionString, topicName, subscriptionName, mcs)
+            | None     -> new AzureServiceBusBackplane(connectionString, topicName, subscriptionName)
         bp :> IFusionCacheBackplane
+
+    do // initialize backplane in Service Bus
+        let backplaneEnabled = config.GetValue<bool>("Cache:L2ServiceBusEnabled", false)
+        if backplaneEnabled then
+            printfn "[Cache] Initializing Service Bus Backplane..."
+            let serviceBusConnectionString = config.GetValue<string>("Cache:ServiceBusConnectionString", String.Empty)
+            let serviceBusTopicName = config.GetValue<string>("Cache:ServiceBusTopicName", String.Empty)
+            let serviceBusSubscriptionName = config.GetValue<string>("Cache:ServiceBusSubscriptionName", String.Empty)
+            match serviceBusConnectionString, serviceBusTopicName, serviceBusSubscriptionName with
+            | "", _, _ -> logger.LogCritical "[Cache] Error: ServiceBusConnectionString is empty"
+            | _, "", _ -> logger.LogCritical "[Cache] Error: ServiceBusTopicName is empty"
+            | _, _, "" -> logger.LogCritical "[Cache] Error: ServiceBusSubscriptionName is empty"
+            | _ ->
+                let mgmtUrl = config.GetValue<string>("Cache:ServiceBusManagementConnectionString", String.Empty)
+                let mgmtOpt = if String.IsNullOrWhiteSpace mgmtUrl then None else Some mgmtUrl
+                let bp = setupAzureServiceBusBackplane serviceBusConnectionString serviceBusTopicName serviceBusSubscriptionName mgmtOpt
+                setupSecondLevelCacheAndBackplane None None (Some bp)
+                logger.LogCritical (sprintf "[Cache] Service Bus Backplane initialized (Subscription: %s)" serviceBusSubscriptionName)
+        else
+            logger.LogInformation "[Cache] Service Bus Backplane is disabled."
 
     let setupMqttBackplane (options: MqttClientOptions) (topicPrefix: string) =
         let bp = new MqttBackplane(options, topicPrefix)
