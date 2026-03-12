@@ -82,4 +82,4 @@ Notes, follow up:
 3. The most important reason for this setup is that the "only L1" cache can work well only if the application has a single instance otherwise. The L1 data will definitely be not in sync making the system unable to add new events to the event store. This is because of the optimistic lock eventid based check (the local cache mantains the state with the related event id). An alternative way to hande this (without inter nodes sync messages we are dealing here) is by giving any object a very short L1 cache expiration time. 
 The scenario is when using the application with tech stack able to replicate new nodes according to the load. The tipical mechanism is the Azure functions. In that case the L1 cache is not enough and a L2 cache is required. 
 
-4. Feel free to improve the code and the setup. Particularly, the documentation needs some improvements in relation with the newest features.  
+4. Feel free to improve the code and the setup. Particularly, the documentation needs some improvements in relation with those newest cache synchronization features.  
