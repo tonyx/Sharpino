@@ -164,7 +164,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-
+- Version 4.7.9: some fixes about sql L2 cache + Service bus (see example 22 for setup working example with dockerized pgSql eventstore,  Azure sql l2 cache + service bus for invalidation messages)
 - Version 4.7.8: changes/fix to the snapshot making logic to compute correctly the interval between snapshots for a single aggregate. It needs a patch for backward compatibility. Following steps are needed for existing applications:
 1. A new optional parameter in appSettings.json specifies the distance (in number of events) between snapshots:
 ```
