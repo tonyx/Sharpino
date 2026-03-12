@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.7.9-alpha</Version>
+    <Version>4.7.9</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -14,7 +14,7 @@
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>F# Event Sourcing Library</Description>
     <ReleaseNotes>This release supports In-memory and Postgres as event store</ReleaseNotes> 
-    <Copyright>Copyright ©2023-2026 Antonio Lucca</Copyright>
+    <Copyright>Copyright ©2026 Antonio Lucca</Copyright>
     <PackageTags>eventsourcing, F#, FSharp, PostgreSQL</PackageTags>
 <!--    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants> -->
       
@@ -56,22 +56,25 @@
 
         <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.3" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
 
-        <PackageReference Include="Sharpino.Core" Version="4.7.6" />
+        <PackageReference Include="Sharpino.Core" Version="4.7.9" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
         <PackageReference Include="Farmer" Version="1.9.26" />
-        <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.5.0" />
-        <PackageReference Include="FSharp.Data" Version="8.0.0" />
+        <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
+        <PackageReference Include="FSharp.Data" Version="8.1.0" />
         <PackageReference Include="FSharpPlus" Version="1.9.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="Npgsql" Version="10.0.1" />
@@ -89,22 +92,25 @@
 
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
 
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.14" />
     
-    <PackageReference Include="Sharpino.Core" Version="4.7.6" />
+    <PackageReference Include="Sharpino.Core" Version="4.7.9" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
     <PackageReference Include="Farmer" Version="1.9.26" />
-    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.5.0" />
-    <PackageReference Include="FSharp.Data" Version="8.0.0" />
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
+    <PackageReference Include="FSharp.Data" Version="8.1.0" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
@@ -129,19 +135,22 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
     
-    <PackageReference Include="Sharpino.Core" Version="4.7.6" />
+    <PackageReference Include="Sharpino.Core" Version="4.7.9" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
     <PackageReference Include="Farmer" Version="1.9.26" />
-    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.5.0" />
-    <PackageReference Include="FSharp.Data" Version="8.0.0" />
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
+    <PackageReference Include="FSharp.Data" Version="8.1.0" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Npgsql" Version="8.0.7" />
+    <PackageReference Include="Npgsql" Version="8.0.8" />
     <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -149,9 +158,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
-    <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
+
     <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.5.0" />

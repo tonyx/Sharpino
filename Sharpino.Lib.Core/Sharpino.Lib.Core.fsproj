@@ -4,7 +4,7 @@
     <TargetFrameworks>net10.0; net9.0; net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>4.7.6</Version>
+    <Version>4.7.9</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -13,7 +13,7 @@
     <RepositoryUrl>https://github.com/tonyx/Sharpino</RepositoryUrl>
     <Description>Simple F# Event Sourcing Library (Core)</Description>
     <ReleaseNotes>Core of Sharpino library</ReleaseNotes> 
-    <Copyright>Copyright © 2023 .. 2025 Antonio Lucca</Copyright>
+    <Copyright>Copyright © 2026 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#</PackageTags>
     <DefineConstants>EVOLVE_SKIPS_ERRORS</DefineConstants>
 
@@ -34,7 +34,7 @@
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.4" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
     
