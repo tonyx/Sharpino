@@ -190,7 +190,7 @@ module CourseManager =
                                 ,
                                 studentId.Id :: Enrollment.enrollmentId.Id ::  (studentDetails.EnrolledInCourses |> Array.toList |>> _.CourseId.Id)
                         }
-            let key = DetailsCacheKey (typeof<RefreshableStudentDetails>, studentId.Id)
+            let key = DetailsCacheKey.OfType typeof<RefreshableStudentDetails> studentId.Id
             StateView.getRefreshableDetails<RefreshableStudentDetails> detailsBuilder key
 
         member this.GetDetails (studentId: StudentId) =
@@ -213,7 +213,7 @@ module CourseManager =
                       StudentId = studentId
                       EnrollmentDate = DateTime.UtcNow }
                     
-                let studentDetailsKey =  DetailsCacheKey (typeof<RefreshableStudentDetails>, studentId.Id)
+                let studentDetailsKey = DetailsCacheKey.OfType typeof<RefreshableStudentDetails> studentId.Id
                 let _ =
                     DetailsCache.Instance.UpdateMultipleAggregateIdAssociation [|courseId.Id|] studentDetailsKey
                     

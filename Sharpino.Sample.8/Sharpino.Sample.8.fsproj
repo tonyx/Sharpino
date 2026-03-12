@@ -24,7 +24,6 @@
     <Content Include=".gitignore" />
     <Content Include=".env" />
     <Content Include="README.md" />
-    <Content Include="appSettings.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +35,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
     <DefineConstants>RABBITMQ</DefineConstants>

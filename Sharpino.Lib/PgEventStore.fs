@@ -121,7 +121,7 @@ module PgStorage =
                 
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                    command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                    command.Parameters.AddWithValue("@aggregateId", aggregateId) |> ignore
                 
                     let! result = command.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                 
@@ -335,7 +335,10 @@ module PgStorage =
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
 
-                        let! currentDistanceFromLastestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)  
+                        let currentDistanceFromLastestSnapshot = 
+                            this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)  
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
 
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
@@ -358,7 +361,7 @@ module PgStorage =
                                 return Error ex.Message
                         else
                             do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
-                            return Error "EventId is not the last one"
+                            return Error (sprintf "EventId is not the last one version %s name %s eventId %A lastEventId %A" version name eventId lastEventId.Value)
                     with ex ->
                         logger.LogError (sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
                         return Error ex.Message
@@ -389,17 +392,26 @@ module PgStorage =
                     None
 
             member this.TryGetLastEventId version name =
-                logger.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug(sprintf "TryXGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
-                Async.RunSynchronously
-                    (async {
-                        return
-                            connection
-                            |> Sql.connect
-                            |> Sql.query query
-                            |> Sql.execute (fun read -> read.int "id")
-                            |> Seq.tryHead
-                        }, eventStoreTimeout)
+                let result = 
+                    fun () ->
+                        Async.RunSynchronously
+                            (async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query query
+                                    |> Sql.execute (fun read -> read.int "id")
+                                    |> Seq.tryHead
+                                }, eventStoreTimeout)
+                try
+                    result ()
+                with
+                | _ as ex ->
+                    logger.LogError (sprintf "TryGetLastEventId. An error occurred: %A" ex.Message)
+                    None
+
             member this.TryGetLastSnapshotEventId version name =
                 logger.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
                 let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
@@ -1555,7 +1567,7 @@ module PgStorage =
                     None         
 
             member this.TryGetLastAggregateEventId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastAggregateEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s where aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously

@@ -29,10 +29,12 @@
     <Compile Include="Main.fs" />
     <Content Include=".env" />
     <Content Include="README.md" />
-    <Content Include="appSettings.json" />
   </ItemGroup>
+
   <ItemGroup>
-    <Content Include="appSettings.json" />
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

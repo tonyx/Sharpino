@@ -90,7 +90,7 @@ module CourseManager =
                                 id.Id:: (students |> List.map _.StudentId.Id)
                             )
                     }
-            let key = DetailsCacheKey (typeof<CourseDetails>, id.Id)
+            let key = DetailsCacheKey.OfType typeof<CourseDetails> id.Id
             StateView.getRefreshableDetails<CourseDetails> detailsBuilder key
         
         member this.GetStudentDetails (id: StudentId) =
@@ -117,7 +117,7 @@ module CourseManager =
                                 id.Id:: (courses |> List.map _.CourseId.Id)
                             )
                         }
-            let key = DetailsCacheKey (typeof<StudentDetails>, id.Id)
+            let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
             StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
             
         member this.GetStudents (ids: List<StudentId>) =

@@ -1,4 +1,4 @@
-\restrict wU1caqd78Tt8GzqRgeZZ3RLX4dij6JJPj5WBIaeTBe6d0QZ1vtobY543LTXWraA
+\restrict Y1J8MVOPoX7v7oUONeV2xPceiddObhjvJYlg3B9CMgKGSD2Ai02tTdqH2euAogf
 
 -- Dumped from database version 15.15 (Debian 15.15-1.pgdg13+1)
 -- Dumped by pg_dump version 18.0
@@ -6,6 +6,7 @@
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -288,7 +289,7 @@ ALTER TABLE ONLY public.snapshots_01_todo
 -- PostgreSQL database dump complete
 --
 
-\unrestrict wU1caqd78Tt8GzqRgeZZ3RLX4dij6JJPj5WBIaeTBe6d0QZ1vtobY543LTXWraA
+\unrestrict Y1J8MVOPoX7v7oUONeV2xPceiddObhjvJYlg3B9CMgKGSD2Ai02tTdqH2euAogf
 
 
 --
@@ -298,12 +299,3 @@ ALTER TABLE ONLY public.snapshots_01_todo
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260115115559'),
     ('20260115115952');
--- migrate:up
-
-GRANT ALL ON TABLE public.aggregate_events_01_Todo TO sharpino;
-GRANT ALL ON SEQUENCE public.aggregate_events_01_Todo_id_seq to sharpino;
-GRANT ALL ON TABLE public.events_01_Todo to sharpino;
-GRANT ALL ON TABLE public.snapshots_01_Todo to sharpino;
-GRANT ALL ON SEQUENCE public.snapshots_01_Todo_id_seq to sharpino;
-
--- migrate:down

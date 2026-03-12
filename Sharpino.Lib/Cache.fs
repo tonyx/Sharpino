@@ -58,11 +58,13 @@ module Cache =
         abstract member Refresh: unit -> Result<'A, string>
    
     type DetailsCacheKey =
-        | DetailsCacheKey of Type * Guid
+        | DetailsCacheKey of string * Guid  // string = type name (not System.Type, for JSON-serializability)
         with
             member this.Value =
                 match this with
-                | DetailsCacheKey (t, id) -> sprintf "%s:%A" t.Name id
+                | DetailsCacheKey (typeName, id) -> sprintf "%s:%A" typeName id
+            static member OfType (t: Type) (id: Guid) =
+                DetailsCacheKey (t.Name, id)
         
     type DetailsCache private () =
         let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
@@ -98,7 +100,13 @@ module Cache =
         
         member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
             if dc.IsSome && ser.IsSome then
-                (statesDetails :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+                // NOTE: statesDetails intentionally does NOT use L2/SQL cache.
+                // It stores Refreshable<'T> wrappers which contain live closures and
+                // are fundamentally non-serializable (they carry System.Type references).
+                // If we wire statesDetails to L2, System.Text.Json will throw
+                // "Serialization of System.Type is not supported" on the first write.
+                // Only objectDetailsAssociationsCache (which stores plain List<DetailsCacheKey>)
+                // is safe to persist in L2.
                 (objectDetailsAssociationsCache :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
             if bp.IsSome then
                 let backplane = bp.Value
@@ -124,19 +132,23 @@ module Cache =
                 let receiverOptions = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions().SetSkipBackplaneNotifications(true)
                 
                 statesDetails.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
-                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
-                        let prefix = "statesDetails:"
-                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
-                        statesDetails.Remove(key, receiverOptions)
-                        printfn "[Cache Event] DetailsCache manually removed L1 entry for %s" key
+                    if e.Message.SourceId <> statesDetails.InstanceId then
+                        if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                            let prefix = "statesDetails:"
+                            if e.Message.CacheKey.StartsWith(prefix) then
+                                let key = e.Message.CacheKey.Substring(prefix.Length)
+                                statesDetails.Remove(key, receiverOptions)
+                                printfn "[Cache Event] DetailsCache manually removed L1 entry for %s" key
                 ))
                 
                 objectDetailsAssociationsCache.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
-                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
-                        let prefix = "objectDetails:"
-                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
-                        objectDetailsAssociationsCache.Remove(key, receiverOptions)
-                        printfn "[Cache Event] DetailsCache(Associations) manually removed L1 entry for %s" key
+                    if e.Message.SourceId <> objectDetailsAssociationsCache.InstanceId then
+                        if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                            let prefix = "objectDetails:"
+                            if e.Message.CacheKey.StartsWith(prefix) then
+                                let key = e.Message.CacheKey.Substring(prefix.Length)
+                                objectDetailsAssociationsCache.Remove(key, receiverOptions)
+                                printfn "[Cache Event] DetailsCache(Associations) manually removed L1 entry for %s" key
                 ))
             ()
             
@@ -211,7 +223,7 @@ module Cache =
                                         fullKey, 
                                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                                     )
-                                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
+                                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
                                 Ok resultObj
                             with :? _ as e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
@@ -233,7 +245,7 @@ module Cache =
                     fullKey, 
                     System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 )
-                _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
+                _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
         
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
@@ -261,7 +273,7 @@ module Cache =
                         fullKey, 
                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     )
-                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
+                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
             with :? _ as e ->
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Clear()
@@ -342,11 +354,19 @@ module Cache =
                 statePerAggregate.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
                     logger.LogDebug (sprintf "[Cache Event] MessageReceived: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
                     // Manually invalidate L1 cache
-                    if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
-                        let prefix = "statePerAggregate:"
-                        let key = if e.Message.CacheKey.StartsWith(prefix) then e.Message.CacheKey.Substring(prefix.Length) else e.Message.CacheKey
-                        statePerAggregate.Remove(key, receiverOptions)
-                        logger.LogDebug (sprintf "[Cache Event] AggregateCache3 manually removed L1 entry for %s" key)
+                    if e.Message.SourceId <> statePerAggregate.InstanceId then
+                        if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                            let prefix = "statePerAggregate:"
+                            if e.Message.CacheKey.StartsWith(prefix) then
+                                let key = e.Message.CacheKey.Substring(prefix.Length)
+                                statePerAggregate.Remove(key, receiverOptions)
+
+                                let (isGuid, guidKey) = Guid.TryParse(key)
+                                if isGuid then
+                                    DetailsCache.Instance.RefreshDependentDetails(guidKey)
+                                else
+                                    logger.LogWarning (sprintf "[Cache Event] AggregateCache3: Could not parse Guid from key %s" key)
+                                logger.LogDebug (sprintf "[Cache Event] AggregateCache3 manually removed L1 entry for %s" key)
                 ))
             ()
 
@@ -363,7 +383,7 @@ module Cache =
                         fullKey, 
                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     )
-                    _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
+                    _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
             with :? _ as e -> 
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statePerAggregate.Clear()
@@ -397,7 +417,7 @@ module Cache =
                     fullKey, 
                     System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 )
-                _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask().Wait()
+                _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
         
         member this.Clear () =
             statePerAggregate.Clear()

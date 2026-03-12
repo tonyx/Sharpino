@@ -30,6 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Expecto" Version="10.*" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
@@ -40,8 +46,5 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="appSettings.json" />
   </ItemGroup>
 </Project>

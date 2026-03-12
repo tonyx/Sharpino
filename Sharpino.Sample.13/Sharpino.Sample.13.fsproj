@@ -32,6 +32,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sharpino.Lib\Sharpino.Lib.fsproj" />
   </ItemGroup>
 </Project>

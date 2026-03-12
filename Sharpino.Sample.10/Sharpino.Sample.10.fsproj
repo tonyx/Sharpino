@@ -35,8 +35,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="appSettings.json" />
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
+
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">
     <DefineConstants>RABBITMQ</DefineConstants>
   </PropertyGroup>

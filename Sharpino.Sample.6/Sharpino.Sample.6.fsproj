@@ -37,8 +37,10 @@
     <DefineConstants>RABBITMQ</DefineConstants>
   </PropertyGroup>
 
-<!--  <ItemGroup>-->
-<!--    <PackageReference Include="Sharpino" Version="2.5.3" />-->
-<!--  </ItemGroup>-->
+  <ItemGroup>
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
 </Project>

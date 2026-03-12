@@ -266,7 +266,10 @@ module PgBinaryStore =
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
-                        let! currentDistanceFromLastestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token) 
+                        let currentDistanceFromLastestSnapshot = 
+                            this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token) 
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
                                 let ids = ResizeArray<int>()
@@ -288,7 +291,7 @@ module PgBinaryStore =
                                 return Error ex.Message
                         else
                             do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
-                            return Error "EventId is not the last one"
+                            return Error (sprintf "EventId is not the last one version %s name %s eventId %A lastEventId %A" version name eventId lastEventId.Value)
                     with ex ->
                         logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
@@ -919,7 +922,10 @@ module PgBinaryStore =
                 let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
                 let insertEvents = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" (version + name)
                 
-                let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, CancellationToken.None).GetAwaiter().GetResult()
+                let distanceFromLatestSnapshot = 
+                    this.GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, CancellationToken.None)
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
                 let index = distanceFromLatestSnapshot + 1 % distanceBetweenSnapshots
                 
                 let result =

@@ -90,7 +90,7 @@ module PubSystem =
                                     ,
                                     id:: (ingredients |> List.map _.Id)
                             }
-                let key = DetailsCacheKey (typeof<DishDetails>, id)
+                let key = DetailsCacheKey.OfType typeof<DishDetails> id
                 StateView.getRefreshableDetails<DishDetails> detailsBuilder key 
                 
             member this.GetIngredient ( guid: Guid ) =
