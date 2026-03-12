@@ -46,7 +46,4 @@
   <ItemGroup>
     <ProjectReference Include="../Sharpino.Lib/Sharpino.Lib.fsproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="appSettings.json" />
-  </ItemGroup>
 </Project>

@@ -1,4 +1,4 @@
-\restrict FfX8nOgLNXwcgJg1UWXxWdu4YX4jxrVPktP2GVHGzfMnLxrrLNf7dpcGRcAQpbd
+\restrict s17HRGIghFKlvoK0eZuTRwhbSFoJS9iNFHxhkVjeksEldWxO8wB5k8VSmuFIcLH
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -387,7 +387,7 @@ ALTER TABLE ONLY public.snapshots_01_sampleobject
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FfX8nOgLNXwcgJg1UWXxWdu4YX4jxrVPktP2GVHGzfMnLxrrLNf7dpcGRcAQpbd
+\unrestrict s17HRGIghFKlvoK0eZuTRwhbSFoJS9iNFHxhkVjeksEldWxO8wB5k8VSmuFIcLH
 
 
 --
@@ -397,5 +397,5 @@ ALTER TABLE ONLY public.snapshots_01_sampleobject
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250420134002'),
     ('20251208085305'),
-    ('20251220135214'),
-    ('20260307161019');
+    ('20260307161019'),
+    ('20261220135214');

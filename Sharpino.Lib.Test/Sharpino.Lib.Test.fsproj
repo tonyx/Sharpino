@@ -8,7 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="appSettings.json" />
     <Compile Include="Models/SampleObject/SampleObject.fs" />
     <Compile Include="Models/SampleObject/Events.fs" />
     <Compile Include="Models/SampleObject/Commands.fs" />
@@ -18,6 +17,12 @@
     <Compile Include="EventStoreTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

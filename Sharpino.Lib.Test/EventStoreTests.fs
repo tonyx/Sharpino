@@ -71,7 +71,7 @@ let tests =
             let retrieved = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId eventStore
             Expect.isOk retrieved "should be ok"
             let (eventId, okRetrieved) = retrieved.OkValue
-            let retrievedWithCast = okRetrieved :?> SampleObject
+            let retrievedWithCast = okRetrieved // :?> SampleObject
             Expect.equal retrievedWithCast.Name "new name async" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
 
@@ -175,7 +175,7 @@ let tests =
             let retrieved = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleObjectId eventStore
             Expect.isOk retrieved "should be ok"
             let (eventId, okRetrieved) = retrieved.OkValue
-            let retrievedWithCast = okRetrieved :?> SampleObject
+            let retrievedWithCast = okRetrieved // :?> SampleObject
             Expect.equal retrievedWithCast.Name "new name" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
        
