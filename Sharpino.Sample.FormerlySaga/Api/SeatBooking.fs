@@ -287,6 +287,45 @@ module SeatBooking =
                 return!
                     forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
             }
+
+        member this.ForceAssignBookingsSpendingVouchersAsync (bookingRowsAndVouchers: List<BookingId * RowId * VoucherId>) =
+            taskResult {
+                let bookingIds = bookingRowsAndVouchers |> List.map (fun (x, _, _) -> x)
+                let rowIds = bookingRowsAndVouchers |> List.map (fun (_, x, _) -> x)
+                let voucherIds = bookingRowsAndVouchers |> List.map (fun (_, _, x) -> x)
+                
+                let! bookings =
+                    bookingIds
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
+                
+                let! rows =
+                    rowIds
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
+                
+                let! vouchers =
+                    voucherIds
+                    |> List.traverseResultM (vouchersViewer >> Result.map snd)
+                    
+                let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
+                    List.zip bookingIds bookings
+                    |> List.map (fun (bookingId, booking) -> RowCommands.Book (bookingId, booking.ClaimedSeats)) 
+                
+                let assignRowsToBookingsCommands: List<AggregateCommand<Booking, BookingEvents>> =
+                    List.zip rowIds rows
+                    |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)    
+            
+                let seatsPerRows =
+                    List.zip rowIds rows
+                    |> List.map (fun (rowId, row) -> row.FreeSeats)
+               
+                let consumeVouchersCommands: List<AggregateCommand<Voucher, VoucherEvents>> =
+                    [ for i in 0 .. bookingRowsAndVouchers.Length - 1 -> VoucherCommands.Consume (seatsPerRows.[i])]
+                
+                return!
+                    forceRunThreeNAggregateCommandsMdAsync<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders "md" assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands None
+
+            }
+
             
         member this.AssignBookingUsingSagaWayNotSagaishAnymore (bookingAndRows: List<Guid * Guid>) =
             result {

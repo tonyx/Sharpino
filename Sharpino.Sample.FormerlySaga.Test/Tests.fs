@@ -1967,6 +1967,56 @@ let tests =
             Expect.equal retrievedRow1Value.NumberOfSeatsBooked 7 "should be equal"
             Expect.equal retrievedRow1Value.FreeSeats 3 "should be equal"
             Expect.equal retrievedRow1Value.AssociatedBookings.Length 1 "should be equal"
+
+        multipleTestCase "one voucher sufficient enough, three rows and three boookings enough for each rows async - Ok" appVersionsEnvs <| fun (setup, _, service, delay) ->
+            setup ()
+            let seatBookingService = service ()
+            let voucher = { Id = Guid.NewGuid (); Capacity = 30}
+            
+            let addVoucher1 = seatBookingService.AddVoucher voucher
+            Expect.isOk addVoucher1 "should be ok"
+            let row1 = mkDefaultRow10Seats ()
+            Async.Sleep delay |> Async.RunSynchronously
+            let addRow1 = seatBookingService.AddRow row1
+            Expect.isOk addRow1 "should be ok"
+            let row2 = mkDefaultRow10Seats ()
+            let addRow2 = seatBookingService.AddRow row2
+            Expect.isOk addRow2 "should be ok"
+            let row3 = mkDefaultRow10Seats ()
+            let addRow3 = seatBookingService.AddRow row3
+            Expect.isOk addRow3 "should be ok"
+            
+            let booking1 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking1 = seatBookingService.AddBooking booking1
+            Expect.isOk addBooking1 "should be ok"
+            let booking2 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking2 = seatBookingService.AddBooking booking2
+            Expect.isOk addBooking2 "should be ok"
+            let booking3 = { Id = Guid.NewGuid (); ClaimedSeats = 7; RowId = None}
+            let addBooking3 = seatBookingService.AddBooking booking3
+            Expect.isOk addBooking3 "should be ok"
+            
+            let bookingId1 = booking1.Id
+            let booking2Id = booking2.Id
+            let booking3Id = booking3.Id
+            let rowId1 = row1.Id
+            let rowId2 = row2.Id
+            let rowId3 = row3.Id
+            let voucherId = voucher.Id
+            Async.Sleep delay |> Async.RunSynchronously
+            let assignBookingsSpendingVouchers =
+                seatBookingService.ForceAssignBookingsSpendingVouchersAsync [(bookingId1, rowId1, voucherId);(booking2Id, rowId2, voucherId); (booking3Id, rowId3, voucherId)]
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
+            Expect.isOk assignBookingsSpendingVouchers "should be ok"
+            
+            Async.Sleep delay |> Async.RunSynchronously
+            let retrievedRow1 = seatBookingService.GetRow row1.Id
+            let retrievedRow1Value = retrievedRow1.OkValue
+            Expect.equal retrievedRow1Value.NumberOfSeatsBooked 7 "should be equal"
+            Expect.equal retrievedRow1Value.FreeSeats 3 "should be equal"
+            Expect.equal retrievedRow1Value.AssociatedBookings.Length 1 "should be equal"
             
     ]
     |> testSequenced

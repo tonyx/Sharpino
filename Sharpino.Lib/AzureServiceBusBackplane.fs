@@ -8,6 +8,13 @@ open Azure.Messaging.ServiceBus
 open ZiggyCreatures.Caching.Fusion
 open ZiggyCreatures.Caching.Fusion.Backplane
 open Azure.Messaging.ServiceBus.Administration
+open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.DependencyInjection
+
+[<AutoOpen>]
+module AzureServiceBusBackplaneConfig =
+    let builder = Host.CreateApplicationBuilder()
 
 /// Azure Service Bus backplane for FusionCache.
 /// One instance of this type is shared among ALL FusionCache instances in the process
@@ -15,6 +22,7 @@ open Azure.Messaging.ServiceBus.Administration
 /// to every registered local FusionCache, and uses message.SourceId (set by FusionCache)
 /// as the authoritative source identity in published messages.
 type AzureServiceBusBackplane(connectionString: string, topicName: string, subscriptionName: string, ?managementConnectionString: string) =
+    let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<AzureServiceBusBackplane>>()
     let client = new ServiceBusClient(connectionString)
     let adminClientOpt =
         match managementConnectionString with
@@ -37,7 +45,8 @@ type AzureServiceBusBackplane(connectionString: string, topicName: string, subsc
                 let actionStr = parts.[0]
                 let sourceId  = parts.[1]
                 let cacheKey  = parts.[2]
-                printfn "[Backplane] Received %s | key: %s | source: %s" actionStr cacheKey sourceId
+                logger.LogDebug ($"[Backplane] Received {actionStr} | key: {cacheKey} | source: {sourceId}")
+                
 
                 for KeyValue(instanceId, opts) in handlers do
                     // Don't echo back to the originating cache instance
@@ -60,19 +69,19 @@ type AzureServiceBusBackplane(connectionString: string, topicName: string, subsc
 
     let handleError (args: ProcessErrorEventArgs) =
         task {
-            printfn "[Backplane] ServiceBus processor error: %s" args.Exception.Message
+            logger.LogError ($"[Backplane] ServiceBus processor error: {args.Exception.Message}")
         } :> Task
 
     interface IFusionCacheBackplane with
 
         member this.Subscribe(options) =
-            printfn "[Backplane] Subscribe (SYNC) called for instance: %s" options.CacheInstanceId
+            logger.LogDebug ($"[Backplane] Subscribe (SYNC) called for instance: {options.CacheInstanceId}")
             (this :> IFusionCacheBackplane).SubscribeAsync(options).AsTask().Wait()
 
         member this.SubscribeAsync(options: BackplaneSubscriptionOptions) =
             task {
                 handlers.[options.CacheInstanceId] <- options
-                printfn "[Backplane] Registered local cache %s (total: %d)" options.CacheInstanceId handlers.Count
+                logger.LogDebug ($"[Backplane] Registered local cache {options.CacheInstanceId} (total: {handlers.Count})")
 
                 // Start the processor only once for the whole process,
                 // regardless of how many FusionCache instances subscribe.
@@ -97,12 +106,12 @@ type AzureServiceBusBackplane(connectionString: string, topicName: string, subsc
                                 return subscriptionName
                         }
 
-                    printfn "[Backplane] Starting processor on subscription: %s" resolvedSubName
+                    logger.LogDebug ($"[Backplane] Starting processor on subscription: {resolvedSubName}")
                     processor <- client.CreateProcessor(topicName, resolvedSubName)
                     processor.add_ProcessMessageAsync(Func<ProcessMessageEventArgs, Task>(handleMessage))
                     processor.add_ProcessErrorAsync(Func<ProcessErrorEventArgs, Task>(handleError))
                     do! processor.StartProcessingAsync()
-                    printfn "[Backplane] Processor started."
+                    logger.LogDebug ("[Backplane] Processor started.")
 
                 if not (isNull options.ConnectHandlerAsync) then
                     let! _ = options.ConnectHandlerAsync.Invoke(BackplaneConnectionInfo(false))
@@ -133,7 +142,7 @@ type AzureServiceBusBackplane(connectionString: string, topicName: string, subsc
             } |> ValueTask
 
         member this.Publish(message, options, token) =
-            printfn "[Backplane] Publish (SYNC) called for key: %s" message.CacheKey
+            logger.LogDebug ($"[Backplane] Publish (SYNC) called for key: {message.CacheKey}")
             (this :> IFusionCacheBackplane).PublishAsync(message, options, token).AsTask().Wait()
 
         /// FusionCache calls this when a cache entry is updated or removed.
@@ -149,7 +158,7 @@ type AzureServiceBusBackplane(connectionString: string, topicName: string, subsc
 
                 // Use message.SourceId — this is the CacheInstanceId set by FusionCache
                 let payload = sprintf "%s:%s:%s" actionStr message.SourceId message.CacheKey
-                printfn "[Backplane] Publishing %s | key: %s | source: %s" actionStr message.CacheKey message.SourceId
+                logger.LogDebug ($"[Backplane] Publishing {actionStr} | key: {message.CacheKey} | source: {message.SourceId}")
                 let sbMsg = ServiceBusMessage(payload)
                 do! sender.SendMessageAsync(sbMsg, token)
             } |> ValueTask

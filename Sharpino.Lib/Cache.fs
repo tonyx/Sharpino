@@ -46,7 +46,7 @@ module Cache =
         if config.GetValue<bool>("Logging:Console", true) then
             b.AddConsole() |> ignore
         )
-    let logger = loggerFactory.CreateLogger("Sharpino.CommandHandler")
+    let logger = loggerFactory.CreateLogger("Sharpino.Cache")
 
     let jsonOptions = JsonFSharpOptions.Default().ToJsonSerializerOptions()
     let serializer = new FusionCacheSystemTextJsonSerializer(jsonOptions)
@@ -77,15 +77,19 @@ module Cache =
             
         let detailsCacheExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheExpiration", 300)
         let detailsCacheDependenciesExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheDependenciesExpiration", 301)
+        let l2CacheExpirationConfigInSeconds = config.GetValue<float>("Cache:L2CacheExpirationSeconds", 120)
         
         let detailsEntryOptions =
             FusionCacheEntryOptions().
                 SetDuration(TimeSpan.FromSeconds(detailsCacheExpirationConfigInSeconds))
         
         let detailsDependenciesEntryOptions =
-            FusionCacheEntryOptions().
-                SetDuration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))        
-        
+            // L2 TTL is set separately and shorter than L1 to avoid stale entries polluting L1 on restarts
+            let opts = FusionCacheEntryOptions().
+                           SetDuration(TimeSpan.FromSeconds(detailsCacheDependenciesExpirationConfigInSeconds))
+            opts.DistributedCacheDuration <- System.Nullable(TimeSpan.FromSeconds(l2CacheExpirationConfigInSeconds))
+            opts
+
         let assocOptions = FusionCacheOptions(
             CacheName = "objectDetails",
             CacheKeyPrefix = "objectDetails:",
@@ -164,21 +168,6 @@ module Cache =
                         existingKeys
                 objectDetailsAssociationsCache.Set(aggregateId.ToString(), updatedKeys, detailsDependenciesEntryOptions)
             ()
-            
-        // will be deprecated as passing an expiration is a risk (or at least it should be greater than the default)
-        member this.UpdateMultipleAggregateIdAssociationRef (aggregateIds: AggregateId[]) (key: DetailsCacheKey) (expiration: TimeSpan option)=
-            
-            for aggregateId in aggregateIds do
-                let existingKeys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
-                let updatedKeys = 
-                    if isNull (box existingKeys) then
-                        [key]
-                    elif not (List.contains key existingKeys) then
-                        key :: existingKeys
-                    else
-                        existingKeys
-                objectDetailsAssociationsCache.Set(aggregateId.ToString(), updatedKeys, detailsDependenciesEntryOptions)
-            ()
         
         member this.Refresh (key: DetailsCacheKey) =
             let v = statesDetails.GetOrDefault<obj>(key.Value, null)
@@ -225,7 +214,7 @@ module Cache =
                                     )
                                     _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
                                 Ok resultObj
-                            with :? _ as e ->
+                            with e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
                                 statesDetails.Clear()
                                 Error "Failed to update cache"
@@ -274,7 +263,7 @@ module Cache =
                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     )
                     _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-            with :? _ as e ->
+            with e ->
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Clear()
                 ()
@@ -314,9 +303,13 @@ module Cache =
         )
         let statePerAggregate = new FusionCache(aggregateOptions)
         let cacheExpirationConfigInSeconds = config.GetValue<float>("AggregateCacheExpiration", 600)
+        let l2CacheExpirationConfigInSeconds = config.GetValue<float>("Cache:L2CacheExpirationSeconds", 120)
         let entryOptions =
-            FusionCacheEntryOptions().
-                SetDuration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
+            // L2 TTL is shorter than L1 to prevent stale aggregate states from polluting L1 on node restarts
+            let opts = FusionCacheEntryOptions().
+                           SetDuration(TimeSpan.FromSeconds(cacheExpirationConfigInSeconds))
+            opts.DistributedCacheDuration <- System.Nullable(TimeSpan.FromSeconds(l2CacheExpirationConfigInSeconds))
+            opts
         
         let mutable _backplane: IFusionCacheBackplane option = None
 
@@ -384,7 +377,7 @@ module Cache =
                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     )
                     _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-            with :? _ as e -> 
+            with e -> 
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statePerAggregate.Clear()
                 DetailsCache.Instance.Clear()

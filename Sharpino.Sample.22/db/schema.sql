@@ -1,4 +1,4 @@
-\restrict Y1J8MVOPoX7v7oUONeV2xPceiddObhjvJYlg3B9CMgKGSD2Ai02tTdqH2euAogf
+\restrict 1937X5l0gqg5rOOUJie43mipoKMbJg90ubBiylrHcMxhMDSakK941tvIfVObYfT
 
 -- Dumped from database version 15.15 (Debian 15.15-1.pgdg13+1)
 -- Dumped by pg_dump version 18.0
@@ -53,6 +53,43 @@ $$;
 
 
 --
+-- Name: insert_01_user_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_user_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_01_User_event_and_return_id(event_in, aggregate_id);
+
+INSERT INTO aggregate_events_01_User(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_01_user_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_user_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_User(event, aggregate_id, timestamp)
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: insert_md_01_todo_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -90,6 +127,43 @@ $$;
 
 
 --
+-- Name: insert_md_01_user_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_user_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_User_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_User(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_user_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_user_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+BEGIN
+INSERT INTO events_01_User(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
+return inserted_id;
+END;
+$$;
+
+
+--
 -- Name: aggregate_events_01_todo_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -117,6 +191,29 @@ CREATE TABLE public.aggregate_events_01_todo (
 
 
 --
+-- Name: aggregate_events_01_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.aggregate_events_01_user_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: aggregate_events_01_user; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.aggregate_events_01_user (
+    id integer DEFAULT nextval('public.aggregate_events_01_user_id_seq'::regclass) NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event_id integer
+);
+
+
+--
 -- Name: events_01_todo; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -137,6 +234,35 @@ CREATE TABLE public.events_01_todo (
 
 ALTER TABLE public.events_01_todo ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.events_01_todo_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: events_01_user; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.events_01_user (
+    id integer NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event text NOT NULL,
+    published boolean DEFAULT false NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    distance_from_latest_snapshot integer,
+    md text
+);
+
+
+--
+-- Name: events_01_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.events_01_user ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.events_01_user_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -181,6 +307,32 @@ CREATE TABLE public.snapshots_01_todo (
 
 
 --
+-- Name: snapshots_01_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.snapshots_01_user_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: snapshots_01_user; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.snapshots_01_user (
+    id integer DEFAULT nextval('public.snapshots_01_user_id_seq'::regclass) NOT NULL,
+    snapshot text NOT NULL,
+    event_id integer,
+    aggregate_id uuid NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
+);
+
+
+--
 -- Name: aggregate_events_01_todo aggregate_events_01_todo_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -197,11 +349,35 @@ ALTER TABLE ONLY public.aggregate_events_01_todo
 
 
 --
+-- Name: aggregate_events_01_user aggregate_events_01_user_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_user
+    ADD CONSTRAINT aggregate_events_01_user_event_id_key UNIQUE (event_id);
+
+
+--
+-- Name: aggregate_events_01_user aggregate_events_01_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_user
+    ADD CONSTRAINT aggregate_events_01_user_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: events_01_todo events_todo_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.events_01_todo
     ADD CONSTRAINT events_todo_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: events_01_user events_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.events_01_user
+    ADD CONSTRAINT events_user_pkey PRIMARY KEY (id);
 
 
 --
@@ -221,10 +397,25 @@ ALTER TABLE ONLY public.snapshots_01_todo
 
 
 --
+-- Name: snapshots_01_user snapshots_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_01_user
+    ADD CONSTRAINT snapshots_user_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ix_01_aggregate_events_todo_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_aggregate_events_todo_id ON public.aggregate_events_01_todo USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_aggregate_events_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_user_id ON public.aggregate_events_01_user USING btree (aggregate_id);
 
 
 --
@@ -239,6 +430,20 @@ CREATE INDEX ix_01_events_todo_id ON public.events_01_todo USING btree (aggregat
 --
 
 CREATE INDEX ix_01_events_todo_timestamp ON public.events_01_todo USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_events_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_user_id ON public.events_01_user USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_user_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_user_timestamp ON public.events_01_user USING btree ("timestamp");
 
 
 --
@@ -263,10 +468,38 @@ CREATE INDEX ix_01_snapshot_todo_id ON public.snapshots_01_todo USING btree (agg
 
 
 --
+-- Name: ix_01_snapshot_user_aggregate_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_user_aggregate_id_and_id ON public.snapshots_01_user USING btree (aggregate_id, id DESC);
+
+
+--
+-- Name: ix_01_snapshot_user_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_user_event_id ON public.snapshots_01_user USING btree (event_id);
+
+
+--
+-- Name: ix_01_snapshot_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_user_id ON public.snapshots_01_user USING btree (aggregate_id);
+
+
+--
 -- Name: ix_01_snapshots_todo_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_snapshots_todo_timestamp ON public.snapshots_01_todo USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_user_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_user_timestamp ON public.snapshots_01_user USING btree ("timestamp");
 
 
 --
@@ -278,6 +511,14 @@ ALTER TABLE ONLY public.aggregate_events_01_todo
 
 
 --
+-- Name: aggregate_events_01_user aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_user
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_user(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
 -- Name: snapshots_01_todo event_01_todo_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -286,10 +527,18 @@ ALTER TABLE ONLY public.snapshots_01_todo
 
 
 --
+-- Name: snapshots_01_user event_01_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.snapshots_01_user
+    ADD CONSTRAINT event_01_user_fk FOREIGN KEY (event_id) REFERENCES public.events_01_user(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Y1J8MVOPoX7v7oUONeV2xPceiddObhjvJYlg3B9CMgKGSD2Ai02tTdqH2euAogf
+\unrestrict 1937X5l0gqg5rOOUJie43mipoKMbJg90ubBiylrHcMxhMDSakK941tvIfVObYfT
 
 
 --
@@ -298,4 +547,5 @@ ALTER TABLE ONLY public.snapshots_01_todo
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260115115559'),
-    ('20260115115952');
+    ('20260313163325'),
+    ('20260415115952');
