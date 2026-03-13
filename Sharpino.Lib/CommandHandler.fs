@@ -480,6 +480,7 @@ module CommandHandler =
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                               (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                 cts.CancelAfter(cancellationTokenSourceExpiration)
+
                 let! res = eventStore.SetInitialAggregateStateAsync(initialInstance.Id, 'A1.Version, 'A1.StorageName, initialInstance.Serialize, cts.Token)
                 let _ = AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                 let _ =
@@ -1640,47 +1641,50 @@ module CommandHandler =
                 return ()
             }
             
-    // I keep this one available to remind the 'old' way of doing it
-    // [<Obsolete("use runAggregateCommandMd instead")>]
-    // let inline runAggregateCommandMdBack<'A, 'E, 'F
-    //     when 'A :> Aggregate<'F>
-    //     and 'E :> Event<'A>
-    //     and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
-    //     and 'A : (static member StorageName: string) 
-    //     and 'A : (static member Version: string)
-    //     and 'A : (static member SnapshotsInterval: int)
-    //     and 'E : (static member Deserialize: 'F -> Result<'E, string>)
-    //     and 'E : (member Serialize: 'F)
-    //     >
-    //     (aggregateId: Guid)
-    //     (storage: IEventStore<'F>)
-    //     (eventBroker: IEventBroker<'F>)
-    //     (md: Metadata)
-    //     (command: AggregateCommand<'A, 'E>)
-    //     =
-    //         logger.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
-    //         let command = fun () ->
-    //             result {
-    //                 let! eventId, state = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
-    //                 let! newState, events =
-    //                     state
-    //                     |> unbox
-    //                     |> command.Execute
-    //                 let! ids =
-    //                     events |>> _.Serialize
-    //                     |> storage.AddAggregateEventsMd eventId 'A.Version 'A.StorageName aggregateId md
-    //                
-    //                 AggregateCache3.Instance.Memoize2 (eventId, newState |> box) aggregateId
-    //                 
-    //                 let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId newState (ids |> List.last)
-    //                 return ()
-    //             }
-    //     #if USING_MAILBOXPROCESSOR        
-    //         let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
-    //         MailBoxProcessors.postToTheProcessor processor command
-    //     #else    
-    //         command ()
-    //     #endif    
+    let inline runAggregateCommandMdAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (member Serialize: 'F) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string)
+        and 'A : (static member SnapshotsInterval: int)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command: AggregateCommand<'A, 'E>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            let command = fun () ->
+                taskResult {
+                    let! eventId, state = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
+                    let! newState, events =
+                        state
+                        |> unbox
+                        |> command.Execute
+
+                    let! ids =
+                        storage.AddAggregateEventsMdAsync(eventId, 'A.Version, 'A.StorageName, aggregateId, md, events |>> _.Serialize, ct)
+                   
+                    AggregateCache3.Instance.Memoize2 (eventId, newState |> box) aggregateId
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (newState |> unbox) (ids |> List.last)
+
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR        
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
+            MailBoxProcessors.postToTheProcessor processor command
+        #else    
+            command ()
+        #endif    
             
     let inline runAggregateCommand<'A, 'E, 'F
         when 'A : (member Id: Guid)
@@ -1927,6 +1931,99 @@ module CommandHandler =
             commands ()
         #endif    
                 
+    let inline runNAggregateCommandsMdAsync<'A1, 'E1, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        >
+        (aggregateIds: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (commands: List<AggregateCommand<'A1, 'E1>>)
+        (cancellationToken: Option<CancellationToken>)
+        =
+            taskResult {
+                logger.LogDebug "runNAggregateCommandsMd"
+                let aggregateIdsAreUnique = aggregateIds |> List.distinct |> List.length = aggregateIds.Length
+                let ct = defaultArg cancellationToken CancellationToken.None
+
+                if (not aggregateIdsAreUnique) then
+                    return! Error "aggregateIds are not unique"
+                else
+                let! states =
+                    aggregateIds
+                    |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+
+                let states' = 
+                    states 
+                    |>> fun (_, state) -> state
+                let lastEventIds =
+                    states
+                    |>> fun (eventId, _) -> eventId
+                let statesAndCommands =
+                    List.zip states' commands
+
+                let! stateEvents =
+                    statesAndCommands
+                    |>> fun (state, command) -> (command.Execute (state |> unbox))
+                    |> List.traverseResultM id
+
+                let newStates =
+                    stateEvents 
+                    |>> fun (state, _) -> state
+                let events =
+                    stateEvents
+                    |>> fun (_, events) -> events
+                    
+                let serializedEvents =
+                    events 
+                    |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                let currentStateEventIdEventsAndAggregateIds =
+                    List.zip3 lastEventIds serializedEvents aggregateIds
+                    |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+
+                let! storedEventIds =
+                    eventStore.MultiAddAggregateEventsMdAsync (currentStateEventIdEventsAndAggregateIds, md, ct)
+                
+                for i in 0..(aggregateIds.Length - 1) do
+                    AggregateCache3.Instance.Memoize2 (storedEventIds.[i] |> List.last, newStates.[i] |> box) aggregateIds.[i]
+                    mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds.[i] (newStates.[i] |> unbox) (storedEventIds.[i] |> List.last) |> ignore
+                
+                let duplicatedIds =
+                    aggregateIds
+                    |> List.groupBy id
+                    |> List.filter (fun (_, x) -> x.Length > 1)
+                    |> List.map fst
+                
+                let _ =
+                    duplicatedIds
+                    |> List.iter (fun x -> AggregateCache3.Instance.Clean x)
+                
+                let _ =
+                    aggregateIds
+                    |> List.distinct
+                    |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                    
+                let aggregateIdAndInitialEventIdEndEventIdAndEvents =
+                    let initialEventIdEndEventIdAndEvents =
+                        List.zip3 lastEventIds (storedEventIds |>> List.last) events
+                    List.zip aggregateIds initialEventIdEndEventIdAndEvents
+                    |>> fun (id, (eventId, storedEventIds, events)) -> (id, eventId, storedEventIds, events)
+                
+                let _ =
+                    optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateIdAndInitialEventIdEndEventIdAndEvents 
+                return () 
+            }
+        // there is no USING_MAILBOXPROCESSOR anymore
+
+
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -2266,6 +2363,7 @@ module CommandHandler =
             runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F> aggregateId1 aggregateId2 eventStore messageSenders String.Empty command1 command2
    
     // any forceRunXX will relax the check on the uniqueness of the aggregateId passed
+
     let inline forceRunTwoNAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -2405,6 +2503,211 @@ module CommandHandler =
                     let! dbNewStatesEventIds =
                         allPacked
                         |> eventStore.MultiAddAggregateEventsMd md
+                       
+                    let newDbBasedEventIds1 =
+                        dbNewStatesEventIds
+                        |> List.take uniqueAggregateIds1.Length
+                    let newDbBasedEventIds2 =
+                        dbNewStatesEventIds
+                        |> List.skip uniqueAggregateIds1.Length    
+                    
+                    let doCacheResults =
+                        fun () ->
+                            for i in 0 .. (uniqueAggregateIds1.Length - 1) do
+                                AggregateCache3.Instance.Memoize2 (newDbBasedEventIds1.[i] |> List.last, newStates1.[i] |> box) uniqueAggregateIds1.[i]
+                            for i in 0 .. (uniqueAggregateIds2.Length - 1) do
+                                AggregateCache3.Instance.Memoize2 (newDbBasedEventIds2.[i] |> List.last, newStates2.[i] |> box) uniqueAggregateIds2.[i]
+                    
+                    doCacheResults ()
+                    
+                    let allIds = uniqueAggregateIds1 @ uniqueAggregateIds2
+                    let duplicatedIds =
+                        allIds
+                        |> List.groupBy id
+                        |> List.filter (fun (_, l) -> l.Length > 1)
+                        |> List.map (fun (id, _) -> id)
+                    
+                    // the caching mechanism screws up if the same aggregateId is used in more than one command
+                    // so we clean the cache for the duplicated ids
+                    let _ =
+                        duplicatedIds
+                        |> List.iter AggregateCache3.Instance.Clean
+                        
+                    let _ =    
+                        allIds
+                        |> List.distinct
+                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                       
+                    // todo introduce snapshot mechanism here back only when any consistency issue is carefually checked
+                    
+                    let initEventIdEndEventIdAndEventA1 = List.zip3 initialStateEventIds1 (newDbBasedEventIds1 |>> List.last) generatedEvents1
+                   
+                    let aggregateIdInitEventIdEndEventIdAndEventA1 =
+                        List.zip aggregateIds1 initEventIdEndEventIdAndEventA1
+                        |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
+                    let initEventIdEndEventIdAndEventA2 = List.zip3 initialStateEventIds2 (newDbBasedEventIds2 |>> List.last) generatedEvents2
+                    let aggregateIdInitEventIdEndEventIdAndEventA2 =
+                        List.zip aggregateIds2 initEventIdEndEventIdAndEventA2
+                        |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
+                    let _ = optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventA1
+                    let _ = optionallySendMultipleAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateIdInitEventIdEndEventIdAndEventA2
+                       
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR
+            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else    
+            commands ()
+        #endif    
+
+    let inline forceRunTwoNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member SnapshotsInterval: int)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member SnapshotsInterval: int)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        >
+        (aggregateIds1: List<Guid>)
+        (aggregateIds2: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
+        (ct: Option<CancellationToken>)
+        =
+
+            logger.LogDebug "forceRunTwoNAggregateCommandsAsync"
+            let ct = 
+                match ct with
+                | Some c -> c
+                | None -> CancellationToken.None
+
+            let commands = fun () ->
+                result {
+                    let aggregateIdsWithCommands1 =
+                        List.zip aggregateIds1 command1
+                        |> List.groupBy fst
+                        |> List.map (fun (id, cmds) -> id, cmds |> List.map snd)    
+                   
+                    let uniqueAggregateIds1 =
+                        aggregateIdsWithCommands1
+                        |>> fst
+                        
+                    let aggregateIdsWithCommands2 =
+                        List.zip aggregateIds2 command2
+                        |> List.groupBy fst
+                        |> List.map (fun (id, cmds) -> id, cmds |> List.map snd)    
+                       
+                    let uniqueAggregateIds2 =
+                        aggregateIdsWithCommands2
+                        |>> fst
+                        
+                    let! uniqueInitialstates1 =
+                        aggregateIdsWithCommands1
+                        |> List.traverseResultM (fun (id, _) -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+                        
+                    let! uniqueInitialstates2 =
+                        aggregateIdsWithCommands2
+                        |> List.traverseResultM (fun (id, _) -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
+                        
+                    let uniqueInitialStatesOnly1 =
+                        uniqueInitialstates1 
+                        |>> fun (_, state) -> state
+                        
+                    let uniqueInitialStatesOnly2 =
+                        uniqueInitialstates2 
+                        |>> fun (_, state) -> state
+                        
+                    let multicommands1 =
+                        aggregateIdsWithCommands1
+                        |>> fun (_, cmds) -> cmds
+                        
+                    let multicommands2 =
+                        aggregateIdsWithCommands2
+                        |>> fun (_, cmds) -> cmds
+                        
+                    let initialStatesAndMultiCommands1 =
+                        List.zip uniqueInitialStatesOnly1 multicommands1
+                    let initialStatesAndMultiCommands2 =
+                        List.zip uniqueInitialStatesOnly2 multicommands2
+                  
+                    let! newStatesAndEvents1 =
+                        initialStatesAndMultiCommands1
+                        |> List.traverseResultM (fun (state, commands) -> foldCommands (state |> unbox) commands)
+                        
+                    let! newStatesAndEvents2 =
+                        initialStatesAndMultiCommands2
+                        |> List.traverseResultM (fun (state, commands) -> foldCommands (state |> unbox) commands)
+                        
+                    let generatedEvents1 =
+                        newStatesAndEvents1
+                        |>> snd
+                    
+                    let newStates1 =
+                        newStatesAndEvents1
+                        |>> fst
+                        
+                    let newStates2 =
+                        newStatesAndEvents2
+                        |>> fst    
+                        
+                    let generatedEvents2 =
+                        newStatesAndEvents2
+                        |>> snd
+                        
+                    let serializedEvents1 =
+                        generatedEvents1
+                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                    
+                    let serializedEvents2 =
+                        generatedEvents2
+                        |>> fun x -> x |>> fun (z: 'E2) -> z.Serialize
+                        
+                    let initialStateEventIds1 =
+                        uniqueInitialstates1
+                        |>> fst
+                        
+                    let initialStateEventIds2 =
+                        uniqueInitialstates2
+                        |>> fst
+                    
+                    let aggregateIds1 =
+                        aggregateIdsWithCommands1
+                        |>> fst
+                        
+                    let aggregateIds2 =
+                        aggregateIdsWithCommands2
+                        |>> fst
+                    
+                    let initialEventIds1Events1AndAggregateIds1 =
+                        List.zip3 initialStateEventIds1 serializedEvents1 aggregateIds1
+                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+                    
+                    let initialEventIds2EventIds2AndAggregateIds2 =
+                        List.zip3 initialStateEventIds2 serializedEvents2 aggregateIds2
+                        |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
+                    
+                    let allPacked = initialEventIds1Events1AndAggregateIds1 @ initialEventIds2EventIds2AndAggregateIds2
+                    
+                    let! dbNewStatesEventIds =
+                        eventStore.MultiAddAggregateEventsMdAsync (allPacked, md, ct)
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
                        
                     let newDbBasedEventIds1 =
                         dbNewStatesEventIds
@@ -2642,6 +2945,148 @@ module CommandHandler =
             commands ()
         #endif
         
+    // let inline runTwoNAggregateCommandsMdAync<'A1, 'E1, 'A2, 'E2, 'F
+    //     when 'A1 : (member Id: Guid)
+    //     and 'A1 : (member Serialize: 'F)
+    //     and 'E1 :> Event<'A1>
+    //     and 'E1 : (member Serialize: 'F)
+    //     and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+    //     and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+    //     and 'A1 : (static member SnapshotsInterval: int)
+    //     and 'A1 : (static member StorageName: string)
+    //     and 'A1 : (static member Version: string)
+    //     and 'A2 : (member Id: Guid)
+    //     and 'A2 : (member Serialize: 'F)
+    //     and 'E2 :> Event<'A2>
+    //     and 'E2 : (member Serialize: 'F)
+    //     and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+    //     and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+    //     and 'A2 : (static member SnapshotsInterval: int)
+    //     and 'A2 : (static member StorageName: string)
+    //     and 'A2 : (static member Version: string)
+    //     >
+    //     (aggregateIds1: List<Guid>)
+    //     (aggregateIds2: List<Guid>)
+    //     (eventStore: IEventStore<'F>)
+    //     (messageSenders: MessageSenders)
+    //     (md: Metadata)
+    //     (command1: List<AggregateCommand<'A1, 'E1>>)
+    //     (command2: List<AggregateCommand<'A2, 'E2>>)
+    //     =
+    //         logger.LogDebug "runTwoNAggregateCommands"
+    //         let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
+    //         let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
+    //         if (not aggregateId1AreUnique) then
+    //             Error "aggregateIds1 are not unique"
+    //         else if (not aggregateId2AreUnique) then
+    //             Error "aggregateIds2 are not unique"
+    //         else
+    //             result {
+    //                 let! states1 =
+    //                     aggregateIds1
+    //                     |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id eventStore)
+    //                 let! states2 =
+    //                     aggregateIds2
+    //                     |> List.traverseResultM (fun id -> getAggregateFreshState<'A2, 'E2, 'F> id eventStore)
+                        
+    //                 let states1' =
+    //                     states1 
+    //                     |>> fun (_, state) -> state
+    //                 let states2' =
+    //                     states2 
+    //                     |>> fun (_, state) -> state
+                        
+    //                 let eventIds1 =
+    //                     states1
+    //                     |>> fun (eventId, _) -> eventId
+    //                 let eventIds2 =
+    //                     states2
+    //                     |>> fun (eventId, _) -> eventId
+                        
+    //                 let statesAndCommands1 =
+    //                     List.zip states1' command1
+    //                 let statesAndCommands2 =
+    //                     List.zip states2' command2
+                        
+    //                 let! events1 =
+    //                     statesAndCommands1
+    //                     |>> fun (state, command) -> command.Execute (state |> unbox)
+    //                     |> List.traverseResultM id
+    //                 let! events2 =
+    //                     statesAndCommands2
+    //                     |>> fun (state, command) -> command.Execute (state |> unbox)
+    //                     |> List.traverseResultM id
+    //                 let serializedEvents1 =
+    //                     events1 
+    //                     |>> fun (_, x) -> x |>> fun (z: 'E1) -> z.Serialize
+    //                 let serializedEvents2 =
+    //                     events2 
+    //                     |>> fun (_, x) -> x |>> fun (z: 'E2) -> z.Serialize
+                        
+    //                 let! statesAndEvents1 =
+    //                     statesAndCommands1
+    //                     |>> fun (state, command) -> (command.Execute (state |> unbox))
+    //                     |> List.traverseResultM id
+    //                 let! statesAndEvents2 =
+    //                     statesAndCommands2
+    //                     |>> fun (state, command) -> (command.Execute (state |> unbox))
+    //                     |> List.traverseResultM id
+
+    //                 let newStates1: List<'A1> =
+    //                     statesAndEvents1
+    //                     |>> fun (state, _) -> state
+                        
+    //                 let newStates2: List<'A2> =
+    //                     statesAndEvents2
+    //                     |>> fun (state, _) -> state    
+                        
+    //                 let packParametersForDb1 =
+    //                     List.zip3 eventIds1 serializedEvents1 aggregateIds1
+    //                     |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+    //                 let packParametersForDb2 =
+    //                     List.zip3 eventIds2 serializedEvents2 aggregateIds2
+    //                     |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
+                        
+    //                 let allPacked = packParametersForDb1 @ packParametersForDb2
+    //                 let! eventIds =
+    //                     allPacked
+    //                     |> eventStore.MultiAddAggregateEventsMd md
+                        
+    //                 let eventIds1' = eventIds |> List.take aggregateIds1.Length
+    //                 let eventIds2' = eventIds |> List.skip aggregateIds1.Length
+                       
+    //                 for i in 0 .. (aggregateIds1.Length - 1) do
+    //                     AggregateCache3.Instance.Memoize2 (eventIds1'.[i] |> List.last, newStates1.[i] |> box) aggregateIds1.[i]
+    //                     mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateIds1.[i] newStates1.[i] (eventIds1'.[i] |> List.last) |> ignore
+                    
+    //                 for i in 0 .. (aggregateIds2.Length - 1) do
+    //                     AggregateCache3.Instance.Memoize2 (eventIds2'.[i] |> List.last, newStates2.[i] |> box) aggregateIds2.[i]
+    //                     mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2'.[i] |> List.last) |> ignore
+                        
+    //                 let _ =    
+    //                     aggregateIds1 @ aggregateIds2
+    //                     |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                
+    //                 let aggregateIdInitialEventIdEndEventIdAndEventsA1 =
+    //                     let initialEventIdEndEventIdAndEventsA1 =
+    //                         List.zip3 eventIds1 (eventIds1' |>> List.last) (events1 |>> snd)
+    //                     List.zip aggregateIds1 initialEventIdEndEventIdAndEventsA1
+    //                     |>> fun (id, (eventId, endEventId, events)) -> (id, eventId, endEventId, events)
+                        
+    //                 let aggregateIdInitialEventIdEndEventIdAndEventsA2 =
+    //                     let initialEventIdEndEventIdAndEventsA2 =
+    //                         List.zip3 eventIds2 (eventIds2' |>> List.last) (events2 |>> snd)
+    //                     List.zip aggregateIds2 initialEventIdEndEventIdAndEventsA2
+    //                     |>> fun (id, (eventId, endEventId, events)) -> (id, eventId, endEventId, events)
+                    
+    //                 let _ =
+    //                     optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders  aggregateIdInitialEventIdEndEventIdAndEventsA1
+    //                 let _ =
+    //                     optionallySendMultipleAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders  aggregateIdInitialEventIdEndEventIdAndEventsA2
+                        
+    //                 return ()
+    //             }
+
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)

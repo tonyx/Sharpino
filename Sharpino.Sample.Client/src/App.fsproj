@@ -20,7 +20,7 @@
         <PackageReference Include="Feliz.Bulma.Checkradio" Version="3.0.0" />
         <PackageReference Include="Feliz.Router" Version="4.0.0" />
         <PackageReference Include="Fulma" Version="3.0.0" />
-        <PackageReference Update="FSharp.Core" Version="8.*" />
+        <!-- <PackageReference Update="FSharp.Core" Version="8.*" /> -->
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
 
     </ItemGroup>

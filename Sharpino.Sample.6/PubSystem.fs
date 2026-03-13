@@ -33,10 +33,28 @@ module PubSystem =
                     let! result = runInit<Dish, DishEvents, string> storage messageSenders dish
                     return result
                 }
+
+            member this.AddDishAsync (dish: Dish) =
+                taskResult {
+                    let! result = runInitAsync<Dish, DishEvents, string> storage messageSenders dish None
+                    return result
+                }
+
+            member this.AddManyDishesAsync (dishes: Dish[]) =
+                taskResult {
+                    let! result = runMultipleInitAsync<Dish, DishEvents, string> storage messageSenders dishes None
+                    return result
+                }
                 
             member this.AddIngredient ( ingredientId: Guid, name: string ) =
                 result {
                     let! result = runInit<Ingredient, IngredientEvents, string> storage messageSenders (Ingredient(ingredientId, name, [], []))
+                    return result
+                }
+
+            member this.AddIngredientAsync ( ingredientId: Guid, name: string ) =
+                taskResult {
+                    let! result = runInitAsync<Ingredient, IngredientEvents, string> storage messageSenders (Ingredient(ingredientId, name, [], [])) None
                     return result
                 }
                 
@@ -116,11 +134,26 @@ module PubSystem =
                     let! result = runAggregateCommandMd<Ingredient, IngredientEvents, string> guid storage messageSenders "metadata" addIngredientType 
                     return result
                 }
+
+            member this.AddTypeToIngredientAsync ( guid: Guid, ingredientType: IngredientType ) =
+                taskResult {
+                    let! ingredient = this.GetIngredient guid
+                    let addIngredientType = IngredientCommands.AddIngredientType ingredientType 
+                    let! result = runAggregateCommandMdAsync<Ingredient, IngredientEvents, string> guid storage messageSenders "metadata" addIngredientType None
+                    return result
+                }
                 
             member this.AddMeasureType ( guid: Guid, measureType: MeasureType ) =
                 result {
                     let! ingredient = this.GetIngredient guid
                     let addMeasureType = IngredientCommands.AddMeasureType measureType
                     let! result = runAggregateCommandMd<Ingredient, IngredientEvents, string> guid storage messageSenders "metadata" addMeasureType 
+                    return result
+                }     
+            member this.AddMeasureTypeAsync ( guid: Guid, measureType: MeasureType ) =
+                taskResult {
+                    let! ingredient = this.GetIngredient guid
+                    let addMeasureType = IngredientCommands.AddMeasureType measureType
+                    let! result = runAggregateCommandMdAsync<Ingredient, IngredientEvents, string> guid storage messageSenders "metadata" addMeasureType None
                     return result
                 }     

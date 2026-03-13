@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.7.9</Version>
+    <Version>4.8.0</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -64,6 +64,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.4" />
         <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.4" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
+
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
 
         <PackageReference Include="Sharpino.Core" Version="4.7.9" />
@@ -99,8 +100,9 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.14" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.14" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.14" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.14" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.14" />
+
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
     
     <PackageReference Include="Sharpino.Core" Version="4.7.9" />
 
@@ -136,8 +138,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
+
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
     
     <PackageReference Include="Sharpino.Core" Version="4.7.9" />
     

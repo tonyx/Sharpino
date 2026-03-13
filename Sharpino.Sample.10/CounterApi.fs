@@ -77,6 +77,13 @@ type CounterApi
                 return!
                     runNAggregateCommands<Counter, CounterEvents, byte[]> ids eventStore messageSenders ([0 .. ids.Length - 1] |>> (fun _ -> Increment))
             }
+
+    member this.IncrementManyCountersAsync (ids: List<Guid>) =
+        taskResult
+            {
+                return!
+                    runNAggregateCommandsMdAsync<Counter, CounterEvents, byte[]> ids eventStore messageSenders "md" ([0 .. ids.Length - 1] |>> (fun _ -> Increment)) None
+            }
     
     member this.IncrementCountersAndAccounts (counterIds: List<Guid>, accountIds: List<Guid>) =
         result

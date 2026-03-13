@@ -39,7 +39,7 @@
     <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
-    <PackageReference Update="FSharp.Core" Version="10.*" />
+    <!-- <PackageReference Update="FSharp.Core" Version="10.*" /> -->
   </ItemGroup>
   
   <PropertyGroup Condition=" '$(Configuration)' == 'RabbitMq' ">

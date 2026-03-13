@@ -141,6 +141,40 @@ let tests =
             Expect.equal (result |> List.length) 1 "should be equal"
             let retrievedDish = result |> List.head
             Expect.equal retrievedDish.Id dish.Id "should be equal"
+
+        multipleTestCase "add a dish and retrieve it,  async - OK" storages <| fun (pubSystem, eventStore, _, delay, _) ->
+            setUp ()
+        
+            let dish = Dish(Guid.NewGuid(), "test", [])
+            let addDish = 
+                pubSystem.AddDishAsync dish
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            Expect.isOk addDish "should be ok"
+            Thread.Sleep delay
+            let retrievedDish = pubSystem.GetAllDishes()
+            Expect.isOk retrievedDish "should be ok"
+            let result = retrievedDish.OkValue
+            Expect.equal (result |> List.length) 1 "should be equal"
+            let retrievedDish = result |> List.head
+            Expect.equal retrievedDish.Id dish.Id "should be equal"
+
+        multipleTestCase "add many dishes and retrieve them, async - Ok " storages <| fun (pubSystem, eventStore, _, delay, _) ->
+            setUp ()
+            
+            let dishes = [|Dish(Guid.NewGuid(), "test1", []); Dish(Guid.NewGuid(), "test2", [])|]
+            let addDishes = 
+                pubSystem.AddManyDishesAsync dishes
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            Expect.isOk addDishes "should be ok"
+            Thread.Sleep delay
+            let retrievedDishes = pubSystem.GetAllDishes()
+            Expect.isOk retrievedDishes "should be ok"
+            let result = retrievedDishes.OkValue
+            Expect.equal (result |> List.length) 2 "should be equal"
+            let retrievedDishes = result |> List.head
+            Expect.isTrue (dishes |> Array.exists (fun d -> d.Id = retrievedDishes.Id)) "should be equal"
         
         multipleTestCase "add an ingredient and check that it does exist - OK" storages <| fun (pubSystem, eventStore, _, delay, _) ->
             setUp ()
@@ -176,6 +210,30 @@ let tests =
             Expect.equal ingredient.Name "testIngredient" "should be equal"
             Expect.equal ingredient.Id guid "should be equal"
             Expect.equal ingredient.IngredientTypes.Length 1 "should be equal"
+
+        multipleTestCase "add an ingredient and add a type to it, async - OK" storages <| fun (pubSystem, eventStore, _,  delay, _) ->
+            setUp ()
+        
+            let guid = Guid.NewGuid()
+            let addIngredient = pubSystem.AddIngredient (guid, "testIngredient")
+            Expect.isOk addIngredient "should be ok"
+        
+            let addTypeToIngredient = 
+                pubSystem.AddTypeToIngredientAsync (guid, IngredientType.Meat)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                
+            Expect.isOk addTypeToIngredient "should be ok"
+        
+            Thread.Sleep delay
+            let retrievedIngredients = pubSystem.GetAllIngredients()
+            Expect.isOk retrievedIngredients "should be ok"
+            let retrievedIngredients' = retrievedIngredients.OkValue
+            Expect.equal retrievedIngredients'.Length 1 "should be equal"
+            let ingredient = retrievedIngredients'.[0]
+            Expect.equal ingredient.Name "testIngredient" "should be equal"
+            Expect.equal ingredient.Id guid "should be equal"
+            Expect.equal ingredient.IngredientTypes.Length 1 "should be equal"
        
         multipleTestCase "sugar can be measured in term of teaspoon" storages <| fun (pubSystem, eventStore, _, delay, _) ->
             setUp ()
@@ -184,6 +242,28 @@ let tests =
             let addIngredient = pubSystem.AddIngredient (guid, "sugar")
             Expect.isOk addIngredient "should be ok"
             let addTypeToIngredient = pubSystem.AddMeasureType (guid, MeasureType.Teaspoons)
+            Expect.isOk addTypeToIngredient "should be ok"
+            Thread.Sleep delay
+            let retrievedIngredients = pubSystem.GetIngredient guid
+            Expect.isOk retrievedIngredients "should be ok"
+            let retrievedIngredients' = retrievedIngredients.OkValue
+            Expect.equal retrievedIngredients'.Id guid "should be equal"
+            let measures = retrievedIngredients'.MeasureTypes
+            Expect.equal measures.Length 1 "should be equal"
+
+        multipleTestCase "sugar can be measured in term of teaspoon, async" storages <| fun (pubSystem, eventStore, _, delay, _) ->
+            setUp ()
+            
+            let guid = Guid.NewGuid()
+            let addIngredient = 
+                pubSystem.AddIngredientAsync (guid, "sugar")
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            Expect.isOk addIngredient "should be ok"
+            let addTypeToIngredient = 
+                pubSystem.AddMeasureTypeAsync (guid, MeasureType.Teaspoons)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
             Expect.isOk addTypeToIngredient "should be ok"
             Thread.Sleep delay
             let retrievedIngredients = pubSystem.GetIngredient guid
