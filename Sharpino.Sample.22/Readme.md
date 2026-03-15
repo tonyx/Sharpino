@@ -58,7 +58,8 @@ DATABASE_URL="postgres://sharpino:password@127.0.0.1:5435/sharpino?sslmode=disab
     "L2ServiceBusEnabled": true,
     "ServiceBusConnectionString": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
     "ServiceBusTopicName": "sharpino-topic",
-    "ServiceBusSubscriptionName": "sharpino-sub-2"
+    "ServiceBusSubscriptionName": "sharpino-sub-1",
+    "L2CacheExpirationSeconds": 120
   },
 
   "Logging": {
