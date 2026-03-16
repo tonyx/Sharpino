@@ -1822,6 +1822,7 @@ module PgStorage =
                     logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message 
 
+            // todo: this is questionable as it just takes the state of objects that have a snapshot in the given time interval
             member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
                 logger.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name

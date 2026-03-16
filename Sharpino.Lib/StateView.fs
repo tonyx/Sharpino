@@ -728,6 +728,7 @@ module StateView =
                         |> List.map (fun (id, x) -> (id, x))
                 }
     
+    // todo: open issue https://github.com/tonyx/Sharpino/issues/57
     let inline getAggregateStatesInATimeInterval<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
@@ -751,6 +752,7 @@ module StateView =
                     return allStates    
                 }
                 
+    // todo: open issue https://github.com/tonyx/Sharpino/issues/57
     let inline getAggregateStatesInATimeIntervalAsync<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
