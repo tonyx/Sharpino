@@ -322,7 +322,14 @@ module MemoryStorage =
                 snapshots.Add (aggregateId, [initialState])
                 addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
                 (this:> IEventStore<string>).AddAggregateEventsMd 0 contextVersion contextName secondAggregateId "" events
-                
+
+            member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId,  aggregateId, version,  name, secondAggregateId, json, contextVersion, contextName, md, events, ?ct:CancellationToken) =
+                taskResult
+                    {
+                        let res = (this:> IEventStore<string>).SetInitialAggregateStateAndAddAggregateEventsMd 0 aggregateId version name secondAggregateId "" version name md events 
+                        return! res    
+                    }
+
             member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId Version Name jsonSnapshot md events =
                 let initialState =
                     {

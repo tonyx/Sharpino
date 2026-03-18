@@ -200,6 +200,22 @@ let tests =
             Expect.isOk balance "should be ok"
             let balance = balance.OkValue
             Expect.equal balance.Amount 900.0M "should be equal"
+
+        multipleTestCase "add a course will costs 100, verify it, async version - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+            setUp ()
+            let course = Course.MkCourse  ("Math", 10)
+            let courseManager = courseManager ()
+            Async.Sleep delay |> Async.RunSynchronously
+            let addCourse = 
+                courseManager.AddCourseAsync course
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            Expect.isOk addCourse "should be ok"
+            Async.Sleep delay |> Async.RunSynchronously
+            let balance = courseManager.Balance 
+            Expect.isOk balance "should be ok"
+            let balance = balance.OkValue
+            Expect.equal balance.Amount 900.0M "should be equal"
         
         multipleTestCase "add a course, which costs 100, then delete the course, witch costs 50 more. Verify the balance is decreased by 150 - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()

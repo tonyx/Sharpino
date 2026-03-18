@@ -20,6 +20,7 @@ open Sharpino.Sample._9.TeacherEvents
 open Sharpino.Storage
 open Sharpino
 open System
+open System.Threading
 
 type CourseManager
     (eventStore: IEventStore<string>,
@@ -118,6 +119,15 @@ type CourseManager
                 let foundCourseCreation = BalanceCommands.PayCourseCreationFee course.Id
                 return!
                     runInitAndAggregateCommand<Balance, BalanceEvents, Course, string> initialBalance.Id eventStore messageSenders course foundCourseCreation
+            }
+    member this.AddCourseAsync (course: Course, ?ct: CancellationToken) =
+        taskResult
+            {
+                let ct = defaultArg ct CancellationToken.None
+                let foundCourseCreation = BalanceCommands.PayCourseCreationFee course.Id
+                let! result =
+                    runInitAndAggregateCommandMdAsync<Balance, BalanceEvents, Course, string> initialBalance.Id eventStore messageSenders course "md" foundCourseCreation (Some ct)
+                return result
             }
     
     member this.GetCourse (id: Guid) =

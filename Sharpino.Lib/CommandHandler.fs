@@ -1104,7 +1104,7 @@ module CommandHandler =
             logger.LogDebug (sprintf "runInitAndCommand %A %A" 'A.StorageName command)
             runInitAndCommandMd<'A, 'E, 'A1, 'F> storage messageSenders initialInstance Metadata.Empty command
             
-    let rec inline runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F
+    let inline runInitAndAggregateCommandMd<'A1, 'E1, 'A2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
@@ -1139,6 +1139,68 @@ module CommandHandler =
                         |>> fun x -> x.Serialize
                     let! ids =
                         events' |> storage.SetInitialAggregateStateAndAddAggregateEventsMd eventId initialInstance.Id 'A2.Version 'A2.StorageName aggregateId initialInstance.Serialize 'A1.Version 'A1.StorageName md
+                        
+                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
+                    AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
+                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    
+                    let _ =
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    let _ =
+                        optionallySendInitialInstanceAsync<'A2, _> ('A2.Version + 'A2.StorageName) messageSenders initialInstance.Id initialInstance
+                        
+                    return ()    
+                }
+                
+        #if USING_MAILBOXPROCESSOR         
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
+
+    let inline runInitAndAggregateCommandMdAsync<'A1, 'E1, 'A2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders) 
+        (initialInstance: 'A2)
+        (md: Metadata)
+        (command: AggregateCommand<'A1, 'E1>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            let command = fun () ->
+                asyncResult {
+                    let ct = 
+                        match ct with
+                        | Some c -> c
+                        | None -> CancellationToken.None
+                    let! eventId, state = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId storage (Some ct)
+                    let! newState, events =
+                        state
+                        |> unbox
+                        |> command.Execute
+                    let events' =
+                        events 
+                        |>> fun x -> x.Serialize
+                    let! ids = 
+                        storage.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, initialInstance.Id, 'A2.Version, 'A2.StorageName, aggregateId, initialInstance.Serialize, 'A1.Version, 'A1.StorageName, md, events', ct)
                         
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
