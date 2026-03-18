@@ -128,7 +128,7 @@ let tests =
                 stopwatch.Stop()
                 printfn "Inserting 5000 students took %d ms" stopwatch.ElapsedMilliseconds
                 
-            testCase "insert 10000 students" <| fun _ ->
+            ftestCase "insert 10000 students and retrieve them" <| fun _ ->
                 setUp ()
                 let students = Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
@@ -136,6 +136,22 @@ let tests =
                 Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
                 printfn "Inserting 10000 students took %d ms" stopwatch.ElapsedMilliseconds
+
+                let stopwatch2 = Stopwatch()
+                stopwatch2.Start()
+                let students = courseManagerAsync.GetAllStudents()
+                Expect.isOk students "Courses not retrieved"
+                Expect.equal students.OkValue.Length 10000 "Courses not equal"
+                stopwatch2.Stop()
+                printfn "Retrieving 10000 students non async took %d ms" stopwatch2.ElapsedMilliseconds
+
+                let stopwatch3 = Stopwatch()
+                stopwatch3.Start()
+                let studentsAsync = courseManagerAsync.GetAllStudentsAsync() |> Async.AwaitTask |> Async.RunSynchronously 
+                Expect.isOk studentsAsync "Courses not retrieved"
+                Expect.equal studentsAsync.OkValue.Length 10000 "Courses not equal"
+                stopwatch3.Stop()
+                printfn "Retrieving 10000 courses async took %d ms" stopwatch3.ElapsedMilliseconds
                 
             testCase "insert 1000 students in batch" <| fun _ ->
                 setUp ()

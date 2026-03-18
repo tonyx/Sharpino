@@ -68,6 +68,30 @@ module CourseManager =
                     let! _, course = courseViewer id
                     return course
                 }
+        member this.GetAllCourses () =
+            result
+                {
+                    let! courses = StateView.getAllAggregateStates<Course, CourseEvents, byte[]> eventStore
+                    return courses
+                }
+        member this.GetAllStudents () =
+            result
+                {
+                    let! students = StateView.getAllAggregateStates<Student, StudentEvents, byte[]> eventStore
+                    return students
+                }
+        member this.GetAllCoursesAsync () =
+            taskResult
+                {
+                    let! courses = StateView.getAllAggregateStatesAsync<Course, CourseEvents, byte[]> eventStore None
+                    return courses
+                }
+        member this.GetAllStudentsAsync () =
+            taskResult
+                {
+                    let! students = StateView.getAllAggregateStatesAsync<Student, StudentEvents, byte[]> eventStore None
+                    return students
+                }
         
         member this.SubscribeStudentToCourse (studentId: Guid) (courseId: Guid) =
             result

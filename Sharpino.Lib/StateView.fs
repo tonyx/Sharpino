@@ -3,6 +3,7 @@ namespace Sharpino
 open System.Text
 open System.Text.Json
 open System.Threading
+open System.Threading.Tasks
 open FSharp.Core
 open FSharpPlus
 
@@ -443,37 +444,28 @@ module StateView =
         (eventStore: IEventStore<'F>)
         (ct: Option<CancellationToken>) : TaskResult<EventId * 'A, string> =
             logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
-            let computeNewStateAndLatestEventId =
-                fun () ->
-                    taskResult {
-                        let! (eventId, state, events) = snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore ct
-                        let! deserEvents =
-                            events 
-                            |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
-                        let! unboxedState = unboxCacheState<'A> state
-                        let! newState = 
-                            deserEvents |> evolve<'A, 'E> unboxedState   
-                        let lastEventId =
-                            if (events.Length > 0)
-                                then (events |> List.last |> fst)
-                            else (eventId |> Option.defaultValue 0)
-                        let result = (lastEventId, newState |> box)
-                        return result 
-                    }
-            let state = AggregateCache3.Instance.Memoize (fun _ -> computeNewStateAndLatestEventId() |> Async.AwaitTask |> Async.RunSynchronously)  id
-            match state with
-            | Ok (eventId, stateValue) ->
+            let computeNewStateAndLatestEventId (token: Option<CancellationToken>) =
                 taskResult {
-                    let! unboxedState = unboxCacheState<'A> stateValue
-                    return (eventId, unboxedState)
+                    let! (eventId, state, events) = snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore token
+                    let! deserEvents =
+                        events 
+                        |>> snd 
+                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                    let! unboxedState = unboxCacheState<'A> state
+                    let! newState = 
+                        deserEvents |> evolve<'A, 'E> unboxedState   
+                    let lastEventId =
+                        if (events.Length > 0)
+                            then (events |> List.last |> fst)
+                        else (eventId |> Option.defaultValue 0)
+                    let result = (lastEventId, newState |> box)
+                    return result 
                 }
-            | Error e ->
-                logger.LogDebug (sprintf "getAggregateFreshStateAsync: %s" e)
-                taskResult
-                    {
-                        return! Error e 
-                    }
+            taskResult {
+                let! (eventId, stateValue) = AggregateCache3.Instance.MemoizeAsync computeNewStateAndLatestEventId id ct
+                let! unboxedState = unboxCacheState<'A> stateValue
+                return (eventId, unboxedState)
+            }
 
 
     let inline getRefreshableDetails<'A>
@@ -881,6 +873,7 @@ module StateView =
                     return result
                 }
                 
+    // A valid reason for throwing errors is that theoretically if you have an id of an "undeleted" aggregate, it could be possible that later you cannot retrieve it anymore because, for example, in the mean time it becomes "deleted"
     let inline getAllAggregateStates<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
@@ -903,7 +896,8 @@ module StateView =
                         |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
                     return result
                 }
-    
+
+    // A valid reason for throwing errors is that theoretically if you have an id of an "undeleted" aggregate, it could be possible that later you cannot retrieve it anymore because, for example, in the mean time it becomes "deleted"
     let inline getAllAggregateStatesAsync<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
@@ -913,20 +907,25 @@ module StateView =
         >
         (eventStore: IEventStore<'F>)
         (ct: Option<CancellationToken>) =
-            logger.LogDebug (sprintf "getAllAggregateStatesAsync %A - %s - %s\n" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAllAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
             taskResult
                 {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
                     cts.CancelAfter cancellationTokenSourceExpiration
-                    let! ids =
+                    let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
-                    let allStates =
-                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    
+                    let! (results: Result<EventId * 'A, string> array) = 
+                         ids 
+                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some cts.Token))
+                         |> Task.WhenAll
+                         |> Task.map Ok
+                    
                     let result =
-                        allStates
-                        |> List.filter _.IsOk
-                        |> List.map (fun x -> x.OkValue |> fun (id, x) -> (id, x))
+                        results
+                        |> Array.toList
+                        |> List.choose (function | Ok x -> Some x | Error _ -> None)
                     return result    
                 }
     

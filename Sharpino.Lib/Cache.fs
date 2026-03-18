@@ -14,6 +14,8 @@ open Microsoft.Extensions.Logging.Abstractions
 open System.Collections
 open FSharp.Core
 open System
+open System.Threading
+open System.Threading.Tasks
 open Microsoft.Extensions.Caching.Distributed
 open ZiggyCreatures.Caching.Fusion.Backplane
 open ZiggyCreatures.Caching.Fusion.Serialization
@@ -395,7 +397,24 @@ module Cache =
                     Ok (eventId, state)
                 | Error e ->
                     Error e
-       
+
+        member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<EventId * obj, string>>) (aggregateId: AggregateId) (ct: Option<CancellationToken>): Task<Result<EventId * obj, string>> =
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            task {
+                let key = aggregateId.ToString()
+                let! v = statePerAggregate.GetOrDefaultAsync<(EventId * obj)>(key, token = ct)
+                if not (obj.ReferenceEquals(v, null)) then
+                    return v |> Ok
+                else
+                    let! res = f (Some ct)
+                    match res with
+                    | Ok (eventId, state) ->
+                        this.TryCache (aggregateId, eventId, state)
+                        return Ok (eventId, state)
+                    | Error e ->
+                        return Error e
+            }
+              
         member this.Memoize2 (eventId: EventId, x:'A) (aggregateId: AggregateId) =
             this.Clean aggregateId
             this.TryCache (aggregateId, eventId, x)
