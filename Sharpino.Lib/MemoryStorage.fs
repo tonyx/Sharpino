@@ -447,6 +447,11 @@ module MemoryStorage =
                     | Some x ->
                         Some (x.Id, x.EventId, x.Snapshot)
 
+            member this.TryGetLastSnapshotAsync(version,name, ?ct:CancellationToken) =
+                logger.LogDebug (sprintf "TryGetLastSnapshotAsync %s %s" version name)
+                task {
+                    return (this :> IEventStore<string>).TryGetLastSnapshot version name
+                }
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
                 logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
                 if (aggregate_snapshots_dic.ContainsKey version |> not) || 

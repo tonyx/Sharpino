@@ -109,6 +109,23 @@ module CommandHandler =
                             (eventId, result) 
                     }
 
+    let inline getAggregateStorageFreshStateViewerAsync<'A, 'E, 'F
+        when 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string) 
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>) 
+        (ct: Option<CancellationToken>)
+        (id: Guid) : TaskResult<EventId * 'A, string> =
+            logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
+            taskResult {
+                let! (eventId: EventId, state: 'A) = 
+                    getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore ct
+                return (eventId, state)
+            }
+
     // using variuos versions of mkSnapshotIfIntervalPassed instead. Leaving it to allow use from any app if needed
     let inline mkSnapshot<'A, 'E, 'F
         when 'A: (static member Zero: 'A)

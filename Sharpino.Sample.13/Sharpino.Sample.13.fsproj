@@ -17,6 +17,7 @@
     <Compile Include="Models/Reservation/Commands.fs" />
     <Compile Include="UsersRegistrationManager.fs" />
     <Compile Include="Tests.fs" />
+    <Compile Include="TestsAsync.fs" />
     <Compile Include="Main.fs" />
     <Content Include="README.md" />
     <Content Include=".env" />

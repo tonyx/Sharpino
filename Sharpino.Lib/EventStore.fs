@@ -60,6 +60,7 @@ module Storage =
         abstract member ResetAggregateStream: Version -> Name -> unit
 
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * 'F>
+        abstract member TryGetLastSnapshotAsync: Version * Name * ?ct:CancellationToken -> Task<Option<SnapId * EventId * 'F>>
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
 
         abstract member TryGetLastAggregateEventId: Version -> Name -> AggregateId -> Option<EventId> 

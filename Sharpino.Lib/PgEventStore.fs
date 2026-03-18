@@ -391,6 +391,36 @@ module PgStorage =
                     logger.LogInformation (sprintf "TryGetLastSnapshot. An error occurred in retrieving snapshot: %A" ex.Message)
                     None
 
+            member this.TryGetLastSnapshotAsync(version, name, ?ct:CancellationToken) =
+                logger.LogDebug("TryGetLastSnapshotAsync")
+                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                let timeout = max 1 (eventStoreTimeout / 1000)
+
+                task {
+                    use cts = 
+                        CancellationTokenSource.CreateLinkedTokenSource
+                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                    use conn = new NpgsqlConnection(connection)
+                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                    use command = new NpgsqlCommand(query, conn)
+                    command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
+                    use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                    let results = ResizeArray<_>()
+                    let rec loop() = task {
+                        let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                        if hasRows then
+                            let id = reader.GetInt32(0)
+                            let eventId = reader.GetInt32(1)
+                            let snapshot = reader.GetString(2)
+                            results.Add((id, eventId, snapshot))
+                            return! loop()
+                        else
+                            return results |> List.ofSeq
+                    }
+                    let! snapshot = loop()
+                    return snapshot |> Seq.tryHead
+                }
             member this.TryGetLastEventId version name =
                 logger.LogDebug(sprintf "TryXGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name

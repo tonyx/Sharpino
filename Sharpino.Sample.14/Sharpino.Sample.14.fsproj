@@ -21,6 +21,7 @@
     <Compile Include="CourseManager.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="TestUtils.fs" />
+    <Compile Include="TestAsync.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
     <Content Include="README.md" />

@@ -1,4 +1,4 @@
-module Tests
+module AsyncTests
 
 open System
 open System.Diagnostics
@@ -47,28 +47,75 @@ let courseManagerAsync = CourseManager(pgEventStore, courseViewerAsync, studentV
 
 [<Tests>]
 let tests =
-    testList "samples" 
+    testList "async tests" 
         [
-            testCase "add a course and a student" <| fun _ ->
+            testCase "add a course and a student async 1" <| fun _ ->
                 setUp ()
                 let course = Course.MkCourse ("math", 10)
                 let student = Student.MkStudent ("Jack", 3)
-                let courseCreated = courseManager.AddCourse course
-                let studentCreated = courseManager.AddStudent student
+                let courseCreated = courseManagerAsync.AddCourse course
+                let studentCreated = courseManagerAsync.AddStudent student
                 Expect.isTrue courseCreated.IsOk "Course not created"
                 Expect.isTrue studentCreated.IsOk "student not created"
-                let courseRetrieved = courseManager.GetCourse course.Id
-                let studentRetrieved = courseManager.GetStudent student.Id
+                let courseRetrieved = courseManagerAsync.GetCourse course.Id
+                let studentRetrieved = courseManagerAsync.GetStudent student.Id
 
                 Expect.isOk courseRetrieved "Course not retrieved"
                 Expect.isOk studentRetrieved "Student not retrieved"
+
+            testCase "add only a student" <| fun _ ->
+                setUp ()
+                let course = Course.MkCourse ("math", 10)
+                let student = Student.MkStudent ("Jack", 3)
+                let studentCreated = courseManagerAsync.AddStudent student
+                Expect.isTrue studentCreated.IsOk "student not created"
+                let studentRetrieved = courseManagerAsync.GetStudent student.Id
+                Expect.isOk studentRetrieved "Student not retrieved"
+                Expect.equal student.Name studentRetrieved.OkValue.Name "must be equal"
+
+            testCase "add only a student get fresh state on state View" <| fun _ ->
+                setUp ()
+                let student = Student.MkStudent ("Jack", 3)
+                let studentCreated = courseManagerAsync.AddStudent student
+                Expect.isTrue studentCreated.IsOk "student not created"
+
+                let studentRetrieved = StateView.getAggregateFreshState<Student, StudentEvents, byte[]> student.Id pgEventStore 
+                Expect.isOk studentRetrieved "State not retrieved"
+
+            testCase "add only a student get fresh state on by the eventstore " <| fun _ ->
+                setUp ()
+                let student = Student.MkStudent ("Jack", 3)
+
+                let studentCreated = courseManagerAsync.AddStudent student
+                Expect.isTrue studentCreated.IsOk "student not created"
+
+                let stateRetrieved = pgEventStore.TryGetLastAggregateSnapshot Student.Version Student.StorageName student.Id
+
+                Expect.isOk stateRetrieved "State not retrieved"
+                let value = stateRetrieved.OkValue |> snd |> Student.Deserialize
+                Expect.isOk value "State not deserialized"
+
+            testCase "binary write and read test" <| fun _ ->
+                setUp ()
+                let id = Guid.NewGuid()
+
+                let anyRandomBin: byte[] = [|1uy; 2uy; 3uy; 4uy; 5uy; 6uy; 7uy; 8uy; 9uy; 10uy|]
+
+                let snapshotInitialized =
+                    pgEventStore.SetInitialAggregateState id Student.Version Student.StorageName anyRandomBin
+
+                Expect.isOk snapshotInitialized "Snapshot not initialized"
+
+                let stateRetrieved = pgEventStore.TryGetLastAggregateSnapshot Student.Version Student.StorageName id
+
+                Expect.equal anyRandomBin (stateRetrieved.OkValue |> snd) "State not equal"
                 
             testCase "insert 1000 students" <| fun _ ->
                 setUp ()
                 let students = Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+                Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
                 printfn "Inserting 1000 students took %d ms" stopwatch.ElapsedMilliseconds
                 
@@ -77,7 +124,7 @@ let tests =
                 let students = Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+                Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
                 printfn "Inserting 5000 students took %d ms" stopwatch.ElapsedMilliseconds
                 
@@ -86,7 +133,7 @@ let tests =
                 let students = Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                Array.iter (fun student -> courseManager.AddStudent student |> ignore) students
+                Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
                 printfn "Inserting 10000 students took %d ms" stopwatch.ElapsedMilliseconds
                 
@@ -106,7 +153,7 @@ let tests =
                     Array.init 5000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                courseManager.AddMultipleStudents students |> ignore
+                courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
                 printfn "Inserting 5000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
             
@@ -116,7 +163,7 @@ let tests =
                     Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                courseManager.AddMultipleStudents students |> ignore
+                courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
                 printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
                 
@@ -126,7 +173,7 @@ let tests =
                     Array.init 100000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()
                 stopwatch.Start()
-                courseManager.AddMultipleStudents students |> ignore
+                courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
                 printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds   
 
@@ -138,27 +185,6 @@ let tests =
                 let studentRetrieved = courseManagerAsync.GetStudent student.Id
                 Expect.isOk studentRetrieved "Student not retrieved"
 
-            testCase "add a student async, retrieve snapshot " <| fun _ ->
-                setUp ()
-                let student = Student.MkStudent ("Jack", 3)
-                let studentCreated = courseManagerAsync.AddStudent student
-                Expect.isTrue studentCreated.IsOk "student not created"
-                let snapshot = pgEventStore.TryGetLastAggregateSnapshot Student.Version Student.StorageName student.Id
-                Expect.isTrue snapshot.IsOk "snapshot not found"
-                let (_, snap) = snapshot.OkValue
-                let student = Student.Deserialize snap
-                Expect.isOk student "student not deserialized"
-
-            testCase "add a studen, retrieve snapshot " <| fun _ ->
-                setUp ()
-                let student = Student.MkStudent ("Jack", 3)
-                let studentCreated = courseManager.AddStudent student
-                Expect.isTrue studentCreated.IsOk "student not created"
-                let snapshot = pgEventStore.TryGetLastAggregateSnapshot Student.Version Student.StorageName student.Id
-                Expect.isTrue snapshot.IsOk "snapshot not found"
-                let (_, snap) = snapshot.OkValue
-                let student = Student.Deserialize snap
-                Expect.isOk student "student not deserialized"
 
             testCase "serialize and deserialize a student" <| fun _ ->
                 let student = Student.MkStudent ("Jack", 3)
@@ -168,16 +194,6 @@ let tests =
                 let student' =  deserialized.OkValue
                 Expect.equal student student' "must be equal"
 
-            testCase "create a snapshot of student, retrieve it and deserialize it " <| fun _ ->
-                setUp ()
-                let student = Student.MkStudent ("Jack", 3)
-                let serialized = student.Serialize
-                let stored = pgEventStore.SetInitialAggregateState student.Id Student.Version Student.StorageName serialized
-                Expect.isOk stored "should store the initial state"
-                let snapshot = pgEventStore.TryGetLastAggregateSnapshot Student.Version Student.StorageName student.Id
-                Expect.isOk snapshot "snapshot not found"
-                let (_, snap) = snapshot.OkValue
-                Expect.equal snap serialized "snapshot not equal to serialized"
 
             testCase "add a course and a student async" <| fun _ ->
                 setUp ()
@@ -199,7 +215,7 @@ let tests =
                 stopwatch.Start()
                 Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
-                printfn "Inserting 1000 students took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 1000 students async took %d ms" stopwatch.ElapsedMilliseconds
                 
             testCase "insert 5000 students async" <| fun _ ->
                 setUp ()
@@ -208,7 +224,7 @@ let tests =
                 stopwatch.Start()
                 Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
-                printfn "Inserting 5000 students took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 5000 students async took %d ms" stopwatch.ElapsedMilliseconds
                 
             testCase "insert 10000 students async" <| fun _ ->
                 setUp ()
@@ -217,7 +233,7 @@ let tests =
                 stopwatch.Start()
                 Array.iter (fun student -> courseManagerAsync.AddStudent student |> ignore) students
                 stopwatch.Stop()
-                printfn "Inserting 10000 students took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 10000 students async took %d ms" stopwatch.ElapsedMilliseconds
                 
             testCase "insert 1000 students in batch async" <| fun _ ->
                 setUp ()
@@ -227,7 +243,7 @@ let tests =
                 stopwatch.Start()
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
-                printfn "Inserting 1000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 1000 students in batch async took %d ms" stopwatch.ElapsedMilliseconds
             
             testCase "insert 5000 students in batch async" <| fun _ ->
                 setUp ()
@@ -237,7 +253,7 @@ let tests =
                 stopwatch.Start()
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
-                printfn "Inserting 5000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 5000 students in batch async took %d ms" stopwatch.ElapsedMilliseconds
             
             testCase "insert 10000 students in batch async" <| fun _ ->
                 setUp ()
@@ -247,7 +263,7 @@ let tests =
                 stopwatch.Start()
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
-                printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds
+                printfn "Inserting 10000 students in batch async took %d ms" stopwatch.ElapsedMilliseconds
                 
             testCase "insert 100000 students in batch async" <| fun _ ->
                 setUp ()
@@ -257,9 +273,8 @@ let tests =
                 stopwatch.Start()
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
-                printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds   
+                printfn "Inserting 10000 students in batch async took %d ms" stopwatch.ElapsedMilliseconds   
         ]
         |> testSequenced
-    
     
     

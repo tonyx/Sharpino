@@ -109,6 +109,11 @@ let emptyMessageSenders =
             ValueTask.CompletedTask
 let goodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, byte[]> eventStore
 let cartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, byte[]> eventStore
+
+let goodsViewerAsync = 
+    fun (id: Guid) -> getAggregateStorageFreshStateViewerAsync<Good, GoodEvents, byte[]> eventStore None id |> Async.AwaitTask |> Async.RunSynchronously
+let cartViewerAsync = 
+    fun (id: Guid) -> getAggregateStorageFreshStateViewerAsync<Cart, CartEvents, byte[]> eventStore None id |> Async.AwaitTask |> Async.RunSynchronously
 let goodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, byte[]> eventStore
 
 let doNothingBroker: IEventBroker<byte[]> = 
@@ -122,8 +127,8 @@ let marketInstances =
           #if RABBITMQ 
             Supermarket(eventStore, messageSenders, goodsContainerViewer, rabbitMqGoodsStateViewer, rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, rabbitMqGoodsStateViewer, eventStore:> IEventStore<byte[]>, messageSenders, 200
           #else   
-            Supermarket(eventStore, MessageSenders.NoSender, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>,
-                                                                                                                                                                  MessageSenders.NoSender, 0
+            Supermarket(eventStore, MessageSenders.NoSender, goodsContainerViewer, goodsViewer, cartViewer ), "eventStorePostgres", setupPgEventStore, goodsViewer  , eventStore:> IEventStore<byte[]>, MessageSenders.NoSender, 0
+            Supermarket(eventStore, MessageSenders.NoSender, goodsContainerViewer, goodsViewerAsync, cartViewerAsync ), "eventStorePostgres", setupPgEventStore, goodsViewerAsync  , eventStore:> IEventStore<byte[]>, MessageSenders.NoSender, 0
           #endif  
     ]
    

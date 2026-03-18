@@ -375,31 +375,59 @@ module PgBinaryStore =
                         return (Error ex.Message)
                 }
             member this.TryGetLastSnapshot version name =
-                logger.LogDebug("TryGetLastSnapshot")
+                logger.LogDebug (sprintf "TryGetLastSnapshot %s %s" version name)
                 let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                try
-                    Async.RunSynchronously 
-                        (async {
-                            return
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "id",
-                                        read.int "event_id",
-                                        readAsBinary read "snapshot"
-                                    )
-                                )
-                                |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogInformation (sprintf "an error occurred in retrieving snapshot: %A" ex.Message)
-                    None
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
+                        let! hasRow = reader.ReadAsync().ConfigureAwait(false)
+                        if hasRow then
+                            let snapshotId = reader.GetInt32(0)
+                            let eventId = reader.GetInt32(1)
+                            let snapshot = reader.GetFieldValue<byte[]>(2)
+                            return Some (snapshotId, eventId, snapshot)
+                        else
+                            return None
+                    with ex ->
+                        logger.LogError (sprintf "TryGetLastSnapshot an error occurred: %A" ex.Message)
+                        return None
+                } |> Async.AwaitTask |> Async.RunSynchronously
 
+            member this.TryGetLastSnapshotAsync(version, name, ?ct:CancellationToken) =
+                logger.LogDebug("TryGetLastSnapshotAsync")
+                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                let timeout = max 1 (eventStoreTimeout / 1000)
+
+                task {
+                    use cts = 
+                        CancellationTokenSource.CreateLinkedTokenSource
+                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                    use conn = new NpgsqlConnection(connection)
+                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                    use command = new NpgsqlCommand(query, conn)
+                    command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
+                    use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                    let results = ResizeArray<_>()
+                    let rec loop() = task {
+                        let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                        if hasRows then
+                            let id = reader.GetInt32(0)
+                            let eventId = reader.GetInt32(1)
+                            let snapshot = reader.GetFieldValue<byte[]>(2)
+                            results.Add((id, eventId, snapshot))
+                            return! loop()
+                        else
+                            return results |> List.ofSeq
+                    }
+                    let! snapshot = loop()
+                    return snapshot |> Seq.tryHead
+                }
             member this.TryGetLastEventId version name =
-                logger.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
                 let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
                 Async.RunSynchronously
                     (async {
@@ -624,38 +652,29 @@ module PgBinaryStore =
                     Error ex.Message
                     
             member this.GetEventsAfterId version id name =
-                logger.LogDebug (sprintf "GetEventsAfterId %s %s %d" version name id)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
-               
-                let result =
-                    fun _ ->
-                        Async.RunSynchronously
-                            (async {
-                                return
-                                    try
-                                        connection
-                                        |> Sql.connect
-                                        |> Sql.query query
-                                        |> Sql.parameters ["id", Sql.int id]
-                                        |> Sql.execute ( fun read ->
-                                            (
-                                                read.int "id",
-                                                readAsBinary read "event"
-                                            )
-                                        )
-                                        |> Seq.toList
-                                        |> Ok
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                                        ex.Message |> Error
-                            }, eventStoreTimeout)
-                try
-                    result ()
-                with    
-                | _ as ex  ->  
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
+                logger.LogDebug (sprintf "GetEventsAfterId %s %d %s" version id name)
+                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id" version name
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.Parameters.AddWithValue("id", id) |> ignore
+                        use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+                        let mutable hasRow = true
+                        while hasRow do
+                            let! nextRow = reader.ReadAsync().ConfigureAwait(false)
+                            hasRow <- nextRow
+                            if hasRow then
+                                let id' = reader.GetInt32(0)
+                                let event = reader.GetFieldValue<byte[]>(1)
+                                results.Add(id', event)
+                        return results |> Seq.toList |> Ok
+                    with ex ->
+                        logger.LogError (sprintf "GetEventsAfterId an error occurred: %A" ex.Message)
+                        return Error (sprintf "error occurred %A" ex.Message)
+                } |> Async.AwaitTask |> Async.RunSynchronously
 
             member this.SetSnapshot version (id: int, snapshot: byte array) name =
                 logger.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
@@ -691,51 +710,31 @@ module PgBinaryStore =
 
             member this.SetInitialAggregateState aggregateId version name json =
                 logger.LogDebug (sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" version name
-                let makeFirstEmptyEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
-                
-                let result =
-                    fun _ ->
-                        Async.RunSynchronously
-                            (async {
-                                return 
-                                    try
-                                        let _ =
-                                            connection
-                                            |> Sql.connect
-                                            |> Sql.executeTransactionAsync
-                                                [
-                                                    insertSnapshot,
-                                                        [
-                                                            [
-                                                                ("@aggregate_id", Sql.uuid aggregateId);
-                                                                ("snapshot",  sqlBinary json);
-                                                                ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                            ]
-                                                        ]
-                                                    makeFirstEmptyEvent,
-                                                        [
-                                                            [
-                                                                ("@aggregate_id", Sql.uuid aggregateId)
-                                                            ]
-                                                        ]
-                                                ]
-                                            // tests in sharpinoSample7 binary show that the following two statements are needed
-                                            // on the other hand the equivalent in jsonEventStore are not needed (to be investigated)
-                                            |> Async.AwaitTask
-                                            |> Async.RunSynchronously
-                                        () |> Ok
-                                    with
-                                    | _ as ex -> 
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                                        ex.Message |> Error
-                            }, eventStoreTimeout)
-                try
-                    result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
+                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
+                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+               
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use transaction = conn.BeginTransaction()
+                        
+                        use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn, transaction)
+                        insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                        insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
+                        insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
+                        let! _ = insertSnapshot'.ExecuteNonQueryAsync().ConfigureAwait(false)
+                        
+                        use firstEmptyAggregateEvent' = new NpgsqlCommand(firstEmptyAggregateEvent, conn, transaction)
+                        firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                        let! _ = firstEmptyAggregateEvent'.ExecuteNonQueryAsync().ConfigureAwait(false)
+
+                        do! transaction.CommitAsync().ConfigureAwait(false)
+                        return Ok ()
+                    with e ->
+                        logger.LogError (sprintf "SetInitialAggregateState Error occurred %A" e.Message)
+                        return Error e.Message
+                } |> Async.AwaitTask |> Async.RunSynchronously
 
             member this.SetInitialAggregateStatesAsync(version: Version, name: Name, idsAndSnapshots: (AggregateId * byte[])[], ?ct: CancellationToken) =
                 logger.LogDebug (sprintf "SetInitialAggregateStatesAsync %s %s" version name)
@@ -1181,9 +1180,8 @@ module PgBinaryStore =
                     logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
            
-            // todo: verify the "async" version and wrap to it if working fine
             member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
-                logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
+                logger.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s" version name)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
                 try
                     Async.RunSynchronously
@@ -1192,20 +1190,20 @@ module PgBinaryStore =
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
+                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamptz dateFrom; "dateTo", Sql.timestamptz dateTo]
                                 |> Sql.execute ( fun read ->
                                     (
                                         read.int "id",
                                         readAsBinary read "event"
                                     )
                                 )
-                                |> Seq.toList
-                            }, eventStoreTimeout)
-                        |> Ok    
-                    with
-                    | _ as ex ->
-                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                        Error ex.Message
+                                |> Seq.toList            
+                                |> Ok
+                        }, eventStoreTimeout)
+                with
+                | _ as ex ->
+                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
                       
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
                 logger.LogDebug (sprintf "GetAllAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
@@ -1578,59 +1576,50 @@ module PgBinaryStore =
             member this.TryGetSnapshotById version name id =
                 logger.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
                 let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            return
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.parameters ["id", Sql.int id]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "event_id",
-                                        readAsBinary read "snapshot"
-                                    )
-                                )
-                                |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
-                    None
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.Parameters.AddWithValue("id", id) |> ignore
+                        use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
+                        let! hasRow = reader.ReadAsync().ConfigureAwait(false)
+                        if hasRow then
+                            let eventId = reader.GetInt32(0)
+                            let snapshot = reader.GetFieldValue<byte[]>(1)
+                            return Some (eventId, snapshot)
+                        else
+                            return None
+                    with ex ->
+                        logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
+                        return None
+                } |> Async.AwaitTask |> Async.RunSynchronously
                     
             member this.TryGetLastAggregateSnapshot version name aggregateId =
                 logger.LogDebug (sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
-                
                 let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            let result =
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.intOrNone "event_id",
-                                        readAsBinary read "snapshot",
-                                        read.bool "is_deleted"
-                                    )
-                                )
-                                |> Seq.tryHead
-                            match result with
-                            | Some (eventId, snapshot, isDeleted) ->
-                                if isDeleted then
-                                    return Error $"object {aggregateId} type {version}{name} previously deleted"
-                                else
-                                    return Ok (eventId, snapshot)
-                            | None -> return Error $"object {aggregateId} type {version}{name} not existing"    
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
-                    Error (sprintf "error occurred %A" ex.Message)
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
+                        let! hasRow = reader.ReadAsync().ConfigureAwait(false)
+                        if hasRow then
+                            let eventId = if reader.IsDBNull(0) then None else Some (reader.GetInt32(0))
+                            let isDeleted = reader.GetBoolean(1)
+                            let snapshot = reader.GetFieldValue<byte[]>(2)
+                            if isDeleted then
+                                return Error $"object {aggregateId} type {version}{name} previously deleted"
+                            else
+                                return Ok (eventId, snapshot)
+                        else
+                            return Error $"object {aggregateId} type {version}{name} not existing"
+                    with ex ->
+                        logger.LogError (sprintf "TryGetLastAggregateSnapshot an error occurred: %A" ex.Message)
+                        return Error (sprintf "error occurred %A" ex.Message)
+                } |> Async.AwaitTask |> Async.RunSynchronously
                     
             member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct) =
                 logger.LogDebug (sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
@@ -1820,35 +1809,27 @@ module PgBinaryStore =
             member this.GetAggregateEvents version name aggregateId: Result<List<EventId * byte array>, string> = 
                 logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
-                let result =
-                    fun _ ->
-                        Async.RunSynchronously
-                            (async {
-                                return
-                                    try 
-                                        connection
-                                        |> Sql.connect
-                                        |> Sql.query query
-                                        |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                        |> Sql.execute ( fun read ->
-                                            (
-                                                read.int "id",
-                                                readAsBinary read "event"
-                                            )
-                                        )
-                                        |> Seq.toList
-                                        |> Ok
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                                        ex.Message |> Error
-                            }, eventStoreTimeout)
-                try
-                    result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync().ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+                        let mutable hasRow = true
+                        while hasRow do
+                            let! nextRow = reader.ReadAsync().ConfigureAwait(false)
+                            hasRow <- nextRow
+                            if hasRow then
+                                let id = reader.GetInt32(0)
+                                let event = reader.GetFieldValue<byte[]>(1)
+                                results.Add(id, event)
+                        return results |> Seq.toList |> Ok
+                    with ex ->
+                        logger.LogError (sprintf "GetAggregateEvents an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                } |> Async.AwaitTask |> Async.RunSynchronously
             
             member this.GetAggregateEventsAsync (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken): Task<Result<List<EventId * byte array>, string>> =
                 logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)

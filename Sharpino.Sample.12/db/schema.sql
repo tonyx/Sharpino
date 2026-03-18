@@ -1,4 +1,4 @@
-\restrict xCyiE64BURR1PdBktdvzZkUx6kGOX6EellquNxMJo6iXrcQRp8sIuWH6MtxyiVe
+\restrict FIYLfhAN02uoDB4Ie6nXu6Z0LpYPHfjCiheVP7VNDgZF8spY4qy1kBiVW904K9P
 
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 18.0
@@ -575,7 +575,7 @@ ALTER TABLE ONLY public.snapshots_01_student
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xCyiE64BURR1PdBktdvzZkUx6kGOX6EellquNxMJo6iXrcQRp8sIuWH6MtxyiVe
+\unrestrict FIYLfhAN02uoDB4Ie6nXu6Z0LpYPHfjCiheVP7VNDgZF8spY4qy1kBiVW904K9P
 
 
 --

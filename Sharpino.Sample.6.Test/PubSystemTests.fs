@@ -116,6 +116,9 @@ let tests =
             PubSystem.PubSystem(pgEventStore, rabbitMQmessageSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore), pgEventStore, rabbitMQmessageSender, 100, 0
          #else
             PubSystem.PubSystem(pgEventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore), pgEventStore, emptyMessageSender, 0, 0
+            PubSystem.PubSystem
+                (pgEventStore, MessageSenders.NoSender, (fun (id: Guid) -> (getAggregateStorageFreshStateViewerAsync<Ingredient, IngredientEvents, string> pgEventStore None id |> Async.AwaitTask |> Async.RunSynchronously |> Result.map (fun (eventId, state) -> (eventId, state :?> Ingredient))))),
+                 pgEventStore, emptyMessageSender, 0, 100
          #endif
     ]
    

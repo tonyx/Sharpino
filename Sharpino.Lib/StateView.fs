@@ -128,7 +128,7 @@ module StateView =
         (storage: IEventStore<'F>)
         :Result<(Option<Definitions.EventId> * 'A) option,string>
         =
-            logger.LogDebug (sprintf "getLastAggregateSnapshotOrStateCache %A - %s - %s" aggregateId version storageName)
+            logger.LogDebug (sprintf "getLastAggregateSnapshot %A - %s - %s" aggregateId version storageName)
             Async.RunSynchronously
                 (async {
                     return
@@ -144,7 +144,38 @@ module StateView =
                         }
                 }, Commons.generalAsyncTimeOut)
                 
-    // todo: can safely remove
+    let inline  getLastAggregateSnapshotAsync<'A, 'F 
+        when 
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)
+        >
+        (aggregateId: Guid)
+        (version: string)
+        (storageName: string)
+        (storage: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : TaskResult<(Option<Definitions.EventId> * 'A) ,string> =
+            logger.LogDebug (sprintf "getLastAggregateSnapshotAsync %A - %s - %s" aggregateId version storageName)
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            taskResult
+                {
+                    let result =
+                        let found = 
+                            storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
+                            
+                        match found with
+                        | Ok (eventId, snapshot) ->
+                            let deserialized = 'A.Deserialize snapshot
+                            match deserialized with
+                            | Ok deserialized ->  (eventId , deserialized) |> Ok
+                            | Error e ->  Error e 
+                        | Error e ->  Error e
+                    return! result
+                }
+                
+    // todo: it's safe to remove
     let inline private getLastAggregateSnapshotOrStateCache<'A, 'F 
         when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
@@ -267,6 +298,30 @@ module StateView =
                 }
         }
         |> Async.RunSynchronously
+
+    let inline snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F
+        when 'E :> Event<'A> and
+        'A: (static member Deserialize: 'F -> Result<'A, string>) and
+        'A: (static member StorageName: string) and
+        'A: (static member Version: string)>
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : TaskResult<Option<Definitions.EventId> * 'A * List<Definitions.EventId * 'F>, string> =
+            logger.LogDebug (sprintf "snapAggregateEventIdStateAndEventsAsync %A - %s - %s" id 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    let! eventIdAndState = 
+                        getLastAggregateSnapshotAsync<'A, 'F> id 'A.Version 'A.StorageName eventStore ct
+                    match eventIdAndState with
+                    | Some eventId, (state: 'A) ->
+                        let! events = eventStore.GetAggregateEventsAfterIdAsync ('A.Version, 'A.StorageName, id, eventId, ct |> Option.defaultValue CancellationToken.None)
+                        let result = (Some eventId, state, events)
+                        return result
+                    | None, (state: 'A) ->
+                        let! events = eventStore.GetAggregateEventsAsync ('A.Version, 'A.StorageName, id, ct |> Option.defaultValue CancellationToken.None)
+                        let result = (None, state, events)
+                        return result
+                }
     
     let inline snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F
         when 'E :> Event<'A> and
@@ -276,7 +331,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         = 
-        logger.LogDebug (sprintf "snapAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
+        logger.LogDebug (sprintf "snapHistoryAggregateEventIdStateAndEvents %A - %s - %s" id 'A.Version 'A.StorageName)
         
         async {
             return
@@ -366,7 +421,6 @@ module StateView =
                         let result = (lastEventId, newState |> box)
                         return result 
                     }
-                    
             let state = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
             match state with
             | Ok (eventId, stateValue) ->
@@ -377,6 +431,50 @@ module StateView =
             | Error e ->
                 logger.LogDebug (sprintf "getAggregateFreshState: %s" e)
                 Error e
+
+    let inline getAggregateFreshStateAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (id: Guid)
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : TaskResult<EventId * 'A, string> =
+            logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
+            let computeNewStateAndLatestEventId =
+                fun () ->
+                    taskResult {
+                        let! (eventId, state, events) = snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore ct
+                        let! deserEvents =
+                            events 
+                            |>> snd 
+                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        let! unboxedState = unboxCacheState<'A> state
+                        let! newState = 
+                            deserEvents |> evolve<'A, 'E> unboxedState   
+                        let lastEventId =
+                            if (events.Length > 0)
+                                then (events |> List.last |> fst)
+                            else (eventId |> Option.defaultValue 0)
+                        let result = (lastEventId, newState |> box)
+                        return result 
+                    }
+            let state = AggregateCache3.Instance.Memoize (fun _ -> computeNewStateAndLatestEventId() |> Async.AwaitTask |> Async.RunSynchronously)  id
+            match state with
+            | Ok (eventId, stateValue) ->
+                taskResult {
+                    let! unboxedState = unboxCacheState<'A> stateValue
+                    return (eventId, unboxedState)
+                }
+            | Error e ->
+                logger.LogDebug (sprintf "getAggregateFreshStateAsync: %s" e)
+                taskResult
+                    {
+                        return! Error e 
+                    }
+
 
     let inline getRefreshableDetails<'A>
         (refreshableDetailsBuilder: unit -> Result<Refreshable<'A> * List<Guid>, string>)
@@ -397,7 +495,7 @@ module StateView =
         (id: Guid)
         (eventStore: IEventStore<'F>)
         =
-            logger.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getHistoryAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
                     result {
@@ -674,7 +772,7 @@ module StateView =
         (initialStateFilter: 'A -> bool)
         (currentStateFilter: 'A -> bool)
         =
-            logger.LogDebug (sprintf "getfilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getFilteredAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             result
                 {
                     let! allInitialStates =

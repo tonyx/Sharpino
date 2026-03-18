@@ -119,6 +119,11 @@ let jsonDbGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, st
 let jsonDbCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStorePostgres
 let jsonDbGoodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStorePostgres
 
+let jsonDbGoodsViewerAsync = 
+    fun (id: Guid) -> getAggregateStorageFreshStateViewerAsync<Good, GoodEvents, string> eventStorePostgres None id |> Async.AwaitTask |> Async.RunSynchronously
+let jsonDbCartViewerAsync = 
+    fun (id: Guid) -> getAggregateStorageFreshStateViewerAsync<Cart, CartEvents, string> eventStorePostgres None id |> Async.AwaitTask |> Async.RunSynchronously
+
 let jsonMemoryGoodsViewer = getAggregateStorageFreshStateViewer<Good, GoodEvents, string> eventStoreMemory
 let jsonMemoryCartViewer = getAggregateStorageFreshStateViewer<Cart, CartEvents, string> eventStoreMemory
 let jsonMemoryGoodsContainerViewer = getStorageFreshStateViewer<GoodsContainer, GoodsContainerEvents, string> eventStoreMemory
@@ -136,6 +141,7 @@ let marketInstances =
         Supermarket(eventStorePostgres, rabbitMqmessageSender, jsonDbGoodsContainerViewer, rabbitMqGoodsStateViewer,  rabbitMqCartStateViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, rabbitMqmessageSender, 300
 #else
         Supermarket(eventStorePostgres, MessageSenders.NoSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, MessageSenders.NoSender, 0 ;
+        Supermarket(eventStorePostgres, MessageSenders.NoSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewerAsync, jsonDbCartViewerAsync ), "eventStorePostgres", setupPgEventStore, jsonDbGoodsViewer, eventStorePostgres:> IEventStore<string>, MessageSenders.NoSender, 0 ;
 #endif
     ]
     
@@ -379,7 +385,7 @@ let tests =
             Expect.isOk lemonsQuantity "should be ok"
             Expect.equal lemonsQuantity.OkValue 9 "should be the same quantity"
 
-        fmultipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart, async - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
+        multipleTestCase "add multiple goods to a cart, the goods in the supermarket will decrease by the quantity added to the cart, async - Ok" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
             // given
