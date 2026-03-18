@@ -164,7 +164,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-- Version 4.8.3: align getAllAggregateStatesAsync to async calls
+- Version 4.8.4: add SetInitialAggregateStateAndAddAggregateEventsMdAsync. (The "async" versions of existing functions is needed for a modern scalable approach using cancellation tokens and thread pool optimization). This looks a way to proliferate the nasty "multiple streams" commands. That's right: will clean up stuff, by removing the need to use the "multiple streams" commands.
 - Version 4.8.2: added getAggregateFreshStateAsync.  Some existing tests have their equivalent "async" version as well
 - Version 4.8.1: added more "async" with cancellation token CommandHandler functions. Added a specific expiration time for L2 (Azure Sql) cache, which should be short lived, shorter than L1. Added case of "refreshable details" in example22 to check that details will be in sync with values coming from L1 cache. At the moment it seems to work as expected. More tests are needed to try to break it.
 - Version 4.7.9: some fixes about sql L2 cache + Service bus (see example 22 for setup working example with dockerized pgSql eventstore,  Azure sql l2 cache + service bus for invalidation messages)
