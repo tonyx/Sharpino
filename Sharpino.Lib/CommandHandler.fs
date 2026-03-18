@@ -119,7 +119,7 @@ module CommandHandler =
         (eventStore: IEventStore<'F>) 
         (ct: Option<CancellationToken>)
         (id: Guid) : TaskResult<EventId * 'A, string> =
-            logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
+            logger.LogDebug (sprintf "getAggregateStorageFreshStateViewerAsync %A - %s - %s" id 'A.Version 'A.StorageName)
             taskResult {
                 let! (eventId: EventId, state: 'A) = 
                     getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore ct

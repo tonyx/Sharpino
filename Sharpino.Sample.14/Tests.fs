@@ -1,30 +1,22 @@
 module Tests
 
 open System
-open System.Diagnostics
-open System.Threading
 open Expecto
-open Microsoft.Extensions.Logging
-open RabbitMQ.Client
-open Shaprino.Sample._14.StudentConsumer
 open Sharpino
 open Sharpino.Cache
 open Sharpino.CommandHandler
 open Sharpino.EventBroker
-open Sharpino.RabbitMq
 open Sharpino.Sample._14.Course
-open Sharpino.Sample._14.CourseConsumer
 open Sharpino.Sample._14.CourseEvents
 open Sharpino.Sample._14.CourseManager
 
-open DotNetEnv
 open Sharpino.Sample._14.Details.Details
 open Sharpino.Sample._14.Student
 open Sharpino.Sample._14.StudentEvents
 open Sharpino.Storage
 
-open Microsoft.Extensions.DependencyInjection
-open Microsoft.Extensions.Hosting
+open DotNetEnv
+
 
 Env.Load() |> ignore
 let password = Environment.GetEnvironmentVariable("password")
