@@ -133,51 +133,126 @@ module PgBinaryStore =
             task {
 
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
-                              (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
+                cts.CancelAfter(cancellationTokenSourceExpiration)
+
+                use conn = new NpgsqlConnection(connection)
+                do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                use transaction = conn.BeginTransaction()
+                let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId aggregateVersion aggregatename aggregateId
+                if not ((lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId)) then
+                    do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
+                    return Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
+                else
+                    let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
+                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                    insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
+                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow) |> ignore
+
+                    let! insertSnapshotTask = 
+                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+
+                    let insertFirstEmptyAggregateEventCommand = new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
+                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                    let! insertFirstEmptyAggregateEventTask = 
+                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+
+                    let insertEventsCommand = new NpgsqlCommand(insertEvents, conn, transaction)
+                    insertEventsCommand.Parameters.AddWithValue("@event", json) |> ignore
+                    insertEventsCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                    insertEventsCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
+                    insertEventsCommand.Parameters.AddWithValue("@md", md) |> ignore
+
+                    let results = ResizeArray<_>()
+                    for event in events do
+                        let insertEventCommand = new NpgsqlCommand(insertEvents, conn, transaction)
+                        insertEventCommand.Parameters.AddWithValue("@event", event) |> ignore
+                        insertEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                        insertEventCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
+                        insertEventCommand.Parameters.AddWithValue("@md", md) |> ignore
+                        let! ids =
+                            insertEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
+                        results.Add(ids)
+
+                    do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
+
+                    return Ok (results |> Seq.toList) 
+            }
+
+        member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: byte[], md: Metadata, events: List<EventId * List<byte[]> * Version * Name * AggregateId>, ?ct:CancellationToken) = 
+            logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
+            let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
+            let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+
+            task {
+                use cts = CancellationTokenSource.CreateLinkedTokenSource
+                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
+                let lastEventIds =
+                    events 
+                    |>> 
+                    fun (_, _, version, name, aggrId) -> 
+                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
+                    
+                let eventIds =
+                    events
+                    |>> fun (eventId, _, _, _, _) -> eventId
+                
+                let checks =
+                    List.zip lastEventIds eventIds
+                    |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || (lastEventId.IsSome && lastEventId.Value = eventId))
+                
+                let errors =
+                    List.zip lastEventIds eventIds
+                    |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                    |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
 
-                let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
-                insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
-                insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow) |> ignore
+                if not checks then
+                    return Error (errors |> List.reduce (fun acc x -> acc + "\n" + x)) 
+                else
+                    let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
+                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                    insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
+                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow) |> ignore
 
-                let! insertSnapshotTask = 
-                    insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    let! insertSnapshotTask = 
+                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
 
-                let insertFirstEmptyAggregateEventCommand = new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
-                insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                let! insertFirstEmptyAggregateEventTask = 
-                    insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    let insertFirstEmptyAggregateEventCommand = new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
+                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+                    let! insertFirstEmptyAggregateEventTask = 
+                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
 
-                let insertEventsCommand = new NpgsqlCommand(insertEvents, conn, transaction)
-                insertEventsCommand.Parameters.AddWithValue("@event", json) |> ignore
-                insertEventsCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                insertEventsCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                insertEventsCommand.Parameters.AddWithValue("@md", md) |> ignore
+                    let ids = 
+                        events  
+                        |>> fun (eventId, events, version, name, aggId) -> 
+                            let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggId, CancellationToken.None).GetAwaiter().GetResult()
+                            let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
+                            let stream_name = version + name
+                            events
+                            |>> 
 
-                let results = ResizeArray<_>()
-                for event in events do
-                    let insertEventCommand = new NpgsqlCommand(insertEvents, conn, transaction)
-                    insertEventCommand.Parameters.AddWithValue("@event", event) |> ignore
-                    insertEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                    insertEventCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                    insertEventCommand.Parameters.AddWithValue("@md", md) |> ignore
-                    let! ids =
-                        insertEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
-                    results.Add(ids)
-
-                do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
-
-                return Ok (results |> Seq.toList) 
+                                fun x ->
+                                    let command' = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
+                                    command'.Parameters.AddWithValue("event", x ) |> ignore
+                                    command'.Parameters.AddWithValue("@aggregate_id", aggId ) |> ignore
+                                    command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
+                                    command'.Parameters.AddWithValue("md", md ) |> ignore
+                                    let result = command'.ExecuteScalar()
+                                    result  :?> int
+                    do! transaction.CommitAsync(cts.Token).ConfigureAwait(false) 
+                    return Ok ids 
             }
-
                  
         interface IEventStore<byte []> with
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: byte[], md: Metadata, events: List<EventId * List<byte[]> * Version * Name * AggregateId>, ?ct:CancellationToken) = 
+                let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
+                this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId, aggregateVersion, aggregatename, json, md, events, ct)
             member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId: EventId, aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, secondAggregateId: AggregateId, json: byte[], version: Version, name: Name, md: Metadata, events: List<byte[]>, ?ct:CancellationToken) =
                 let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
                 this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, aggregateId, aggregateVersion, aggregatename, secondAggregateId, json, version, name, md, events, ct)

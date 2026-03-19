@@ -1316,6 +1316,101 @@ module CommandHandler =
         #else
             command ()
         #endif
+
+    let inline runInitAndNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'F
+        when 'A1: (member Id: Guid)
+        and 'A1: (member Serialize: 'F)
+        and 'E1:> Event<'A1>
+        and 'E1: (member Serialize: 'F)
+        and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1: (static member SnapshotsInterval : int)
+        and 'A2: (member Id: Guid)
+        and 'A2: (member Serialize: 'F)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        >
+        (aggregateIds: List<Guid>)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders) 
+        (initialInstance: 'A2)
+        (md: Metadata)
+        (commands: List<AggregateCommand<'A1, 'E1>>)
+        (cancellationToken: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runInitAndNAggregateCommandsMdAsync %A %A" 'A1.StorageName commands)
+            let ct = cancellationToken |> Option.defaultValue CancellationToken.None
+            let command = fun () ->
+                taskResult {
+                    let! states =
+                        aggregateIds
+                        |> List.traverseResultM (fun id -> getAggregateFreshState<'A1, 'E1, 'F> id storage)
+                    let states' = 
+                        states 
+                        |>> fun (_, state) -> state
+                    let lastEventIds =
+                        states
+                        |>> fun (eventId, _) -> eventId
+                    let statesAndCommands =
+                        List.zip states' commands
+                    let! stateEvents =
+                        statesAndCommands
+                        |>> fun (state, command) -> (command.Execute (state |> unbox))
+                        |> List.traverseResultM id
+                    let newStates =
+                        stateEvents 
+                        |>> fun (state, _) -> state
+                    let events =
+                        stateEvents
+                        |>> fun (_, events) -> events
+                        
+                    let serializedEvents =
+                        events 
+                        |>> fun x -> x |>> fun (z: 'E1) -> z.Serialize
+                        
+                    let currentStateEventIdEventsAndAggregateIds =
+                        List.zip3 lastEventIds serializedEvents aggregateIds
+                        |>> fun (eventId, events, id) -> (eventId, events, 'A1.Version, 'A1.StorageName, id)
+
+                    let! eventIds =
+                        storage.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync (initialInstance.Id, 'A2.Version, 'A2.StorageName, initialInstance.Serialize, md, currentStateEventIdEventsAndAggregateIds, ct)
+                    
+                    let finalWrittenEventIds = eventIds |>> List.last  
+                        
+                    for i in 0..(aggregateIds.Length - 1) do
+                        AggregateCache3.Instance.Memoize2 (eventIds.[i] |> List.last, newStates.[i] |> box) aggregateIds.[i]
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateIds.[i] newStates.[i] (eventIds.[i] |> List.last) |> ignore
+                     
+                    let snapshotStreamName = sprintf "%s%s" 'A2.Version 'A2.StorageName
+                    
+                    let _ =
+                        aggregateIds
+                        |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetails id)
+                    
+                    let _ =
+                        optionallySendInitialInstanceAsync<'A2, _> snapshotStreamName messageSenders initialInstance.Id initialInstance
+                    
+                    let aggregateIdsInitialEventIdsFinalEventIdsAndEvents =
+                        let initialEventIdsFinalEventsIdsAndEvents =
+                            List.zip3 lastEventIds finalWrittenEventIds events
+                        List.zip aggregateIds initialEventIdsFinalEventsIdsAndEvents
+                        |>> fun (aggregateId, (initEventId, endEventId, events)) -> (aggregateId, initEventId, endEventId, events)
+                    
+                    let _ =
+                        let eventStreamName = sprintf "%s%s" 'A1.Version 'A1.StorageName
+                        optionallySendMultipleAggregateEventsAsync
+                            eventStreamName messageSenders aggregateIdsInitialEventIdsFinalEventIdsAndEvents
+                        
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR         
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
+            MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
     
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
         when 'A1 : (member Id: Guid)

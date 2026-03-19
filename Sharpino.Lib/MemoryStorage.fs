@@ -345,6 +345,12 @@ module MemoryStorage =
                 addAggregateSnapshots Version Name aggregateId initialState
                 (this:> IEventStore<string>).MultiAddAggregateEventsMd md events
                 
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: string, md: Metadata, events: List<EventId * List<string> * Version * Name * AggregateId>, ?ct:CancellationToken) =
+                taskResult
+                    {
+                        let res = (this:> IEventStore<string>).SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId aggregateVersion aggregatename json md events 
+                        return! res    
+                    }
             member this.GetEventsAfterId version id name =
                 logger.LogDebug (sprintf "GetEventsAfterId %s %A %s" version id name)
                 if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then

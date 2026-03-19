@@ -117,6 +117,48 @@ type MaterialManager (messageSenders: MessageSenders, eventStore: IEventStore<st
                         ""
                         consumeCommands
             }
+    member this.AddWorkOrderAsync (workOrder: WorkOrder) =
+        taskResult
+            {
+                let! products =
+                    workOrder.WorkingItems |> List.map _.ProductId
+                    |> List.traverseResultM (fun id -> productsViewer id.Value |> Result.map snd)
+               
+                let materialIdsWithConsumeCommands =
+                    let materialsWithQuantities =
+                        products
+                        |>> fun x ->
+                            x.Materials
+                            |>> 
+                                fun (id, q) ->
+                                    id, (Quantity.New (q.Value * workOrder.GetQuantityPerProduct x.ProductId)).OkValue
+                        |> List.concat
+                    
+                    materialsWithQuantities
+                    |> List.groupBy fst
+                    |> List.map
+                       (fun (id, quantities) ->
+                            id, List.sumBy
+                                (fun x -> x |> snd|> fun (x: Quantity) -> x.Value) quantities)
+                    |>> fun (id, quantity) -> (id.Value, Consume (Quantity.New quantity |> Result.get))
+                    
+                let materialIds = materialIdsWithConsumeCommands |>> fst
+                let consumeCommands: List<AggregateCommand<Material, MaterialEvents>> =
+                    materialIdsWithConsumeCommands
+                    |>> (snd >> fun x -> x :> AggregateCommand<Material, MaterialEvents>)
+                
+                let result =
+                    CommandHandler.runInitAndNAggregateCommandsMdAsync<Material, MaterialEvents, WorkOrder, string>
+                        materialIds
+                        eventStore
+                        messageSenders
+                        workOrder
+                        ""
+                        consumeCommands
+                        None
+                return! result
+
+            }
     
     member this.StartWorkingItem (workOrderId: WorkOrderId) (productId: ProductId) =
         WorkOrderCommands.Start productId

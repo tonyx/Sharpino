@@ -101,6 +101,7 @@ module Storage =
         abstract member SetInitialAggregateStateAndAddEventsMd: EventId -> AggregateId -> Version -> Name -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         
         abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd: AggregateId -> Version -> Name -> 'F -> Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>   
+        abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync: AggregateId * Version * Name * 'F * Metadata * List<EventId * List<'F> * Version * Name * AggregateId> * ?ct:CancellationToken -> Task<Result<List<List<EventId>>, string>>   
         
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd: EventId -> AggregateId -> Version -> Name -> AggregateId -> 'F -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
         abstract member SetInitialAggregateStateAndAddAggregateEventsMdAsync: EventId * AggregateId * Version * Name * AggregateId * 'F * Version * Name * Metadata * List<'F> * ?ct:CancellationToken -> Task<Result<List<int>, string>>
