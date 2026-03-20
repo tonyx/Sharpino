@@ -146,12 +146,8 @@ module PgStorage =
             let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
             let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
             let insertEvents = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" (version + name)
-            let distanceFromLatestSnapshot = (this :> IEventStore<string>).GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, CancellationToken.None).GetAwaiter().GetResult()
-
-            let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
 
             task {
-
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                             (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
                 cts.CancelAfter(cancellationTokenSourceExpiration)
@@ -161,11 +157,12 @@ module PgStorage =
 
                 use transaction = conn.BeginTransaction()
 
-                let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId aggregateVersion aggregatename aggregateId
-                if not ((lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId)) then
-                    do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
-                    return Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
-                else
+                let distanceFromLatestSnapshot = (this :> IEventStore<string>).GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, cts.Token).GetAwaiter().GetResult()
+                let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
+                let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name secondAggregateId
+
+                if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+
                     let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
                     insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
                     insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
@@ -199,6 +196,10 @@ module PgStorage =
                     do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
 
                     return Ok (results |> Seq.toList) 
+
+                else
+                    do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
+                    return Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
             }
 
         member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: string, md: Metadata, events: List<EventId * List<string> * Version * Name * AggregateId>, ?ct:CancellationToken) = 
