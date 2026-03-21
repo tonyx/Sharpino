@@ -476,6 +476,19 @@ module StateView =
         match result with
         | Error e -> Error e
         | Ok res -> unboxCacheState<'A> res
+
+    // todo:
+    // let inline getRefreshableDetailsAsync<'A>
+    //     (refreshableDetailsBuilder: Option<CancellationToken> -> Task<Result<RefreshableAsync<'A> * List<Guid>, string>> )
+    //     (key: DetailsCacheKey) 
+    //     (ct: Option<CancellationToken>)
+    //     =
+        
+    //     let result = DetailsCache.Instance.MemoizeAsync refreshableDetailsBuilder key ct
+    //     match result with
+    //     | Error e -> Error e
+    //     | Ok res -> unboxCacheState<'A> res
+    
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>

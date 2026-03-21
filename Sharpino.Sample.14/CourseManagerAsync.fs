@@ -21,14 +21,13 @@ open Sharpino
 open System
 open System.Threading
 
-module CourseManager =
-    type CourseManager
+module CourseManagerAsync =
+    type AggregateViewerAsync<'A> = Definitions.AggregateId -> CancellationToken ->  TaskResult<Definitions.EventId * 'A,string>
+    type CourseManagerAsync
         (
             eventStore: IEventStore<string>,
             courseViewer: AggregateViewer<Course>,
             studentViewer: AggregateViewer<Student>,
-            courseViewerAsync: AggregateViewerAsync<Course>,
-            studentViewerAsync: AggregateViewerAsync<Student>,
             messageSenders: MessageSenders,
             allStudentsAggregateStatesViewer: unit -> Result<(Definitions.EventId * Student) list, string>
         )
@@ -42,17 +41,6 @@ module CourseManager =
                         messageSenders
                         student
                 }
-
-        member this.AddStudentAsync (student: Student) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    return!
-                        runInitAsync<Student, StudentEvents, string>
-                        eventStore
-                        messageSenders
-                        student
-                        cancellationToken
-                }
         
         member this.AddMultipleStudents (students: Student[]) =
             result
@@ -63,17 +51,6 @@ module CourseManager =
                         messageSenders
                         students
                 }
-
-        member this.AddMultipleStudentsAsync (students: Student[]) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    return!
-                        runMultipleInitAsync<Student, StudentEvents, string>
-                        eventStore
-                        messageSenders
-                        students
-                        cancellationToken
-                }
         
         member this.AddMultipleCourses (courses: Course[]) =
             result
@@ -83,30 +60,12 @@ module CourseManager =
                         eventStore
                         messageSenders
                         courses
-        }        
-
-        member this.AddMultipleCoursesAsync (courses: Course[]) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    return!
-                        runMultipleInitAsync<Course, CourseEvents, string>
-                        eventStore
-                        messageSenders
-                        courses
-                        cancellationToken
-                }
+                }        
         
         member this.GetStudent (id: StudentId)  =
             result
                 {
                     let! _, student = studentViewer id.Id
-                    return student
-                }
-
-        member this.GetStudentAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    let! _, student = studentViewerAsync id.Id cancellationToken
                     return student
                 }
         
@@ -162,45 +121,6 @@ module CourseManager =
                         }
             let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
             StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
-
-        // member this.GetStudentDetailsAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
-        //     let detailsBuilder =
-        //         fun () ->
-        //             let refresher =
-        //                 fun () ->
-        //                     taskResult {
-        //                         let! student = 
-        //                             this.GetStudentAsync id cancellationToken
-        //                             // |> Async.AwaitTask
-        //                             // |> Async.RunSynchronously
-
-        //                         let! courses = 
-        //                             this.GetCoursesAsync (student.Courses |> Array.ofList) cancellationToken
-        //                             // |> Async.AwaitTask
-        //                             // |> Async.RunSynchronously
-        //                         return
-        //                             student, courses
-        //                     }
-        //             taskResult
-        //                 {
-        //                     let! student, courses = refresher ()
-        //                     return (
-        //                         {
-        //                             Student = student
-        //                             Courses = courses
-        //                             Refresher = 
-        //                                 fun () ->
-        //                                     refresher ()
-        //                                     |> Async.AwaitTask
-        //                                     |> Async.RunSynchronously
-        //                         } :> Refreshable<_>
-        //                         ,
-        //                         id.Id:: (courses |> List.map _.CourseId.Id)
-        //                     )
-        //                 }
-        //     let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
-        //     StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
-
             
         member this.GetStudents (ids: List<StudentId>) =
             result
@@ -228,28 +148,11 @@ module CourseManager =
                         messageSenders
                         course
                 }
-        member this.AddCourseAsync (course: Course) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    return!
-                        runInitAsync<Course, CourseEvents, string>
-                        eventStore
-                        messageSenders
-                        course
-                        cancellationToken
-                }
         
         member this.GetCourse (id: CourseId): Result<Course, string> =
             result
                 {
                     let! _, course = courseViewer id.Id
-                    return course
-                }
-
-        member this.GetCourseAsync (id: CourseId) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    let! _, course = courseViewerAsync id.Id cancellationToken
                     return course
                 }
         
@@ -261,17 +164,6 @@ module CourseManager =
                             ids
                             |> List.ofArray
                             |> List.traverseResultM (fun id -> this.GetCourse id )
-                    return courses
-                }
-
-        member this.GetCoursesAsync (ids: CourseId[]) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    let!
-                        courses =
-                            ids
-                            |> List.ofArray
-                            |> List.traverseTaskResultM (fun id -> this.GetCourseAsync id cancellationToken)
                     return courses
                 }
         
@@ -337,24 +229,6 @@ module CourseManager =
                             messageSenders
                             addCourseToStudentEnrollments
                             addStudentToCourseEnrollments
-                }
-
-        member this.EnrollStudentToCourseAsync (studentId: StudentId) (courseId: CourseId) (cancellationToken: Option<CancellationToken>) =
-            taskResult
-                {
-                    let addCourseToStudentEnrollments = StudentCommands.Enroll courseId
-                    let addStudentToCourseEnrollments = CourseCommands.EnrollStudent studentId
-
-                    return! 
-                        runTwoNAggregateCommandsMdAsync 
-                            [studentId.Id]
-                            [courseId.Id]
-                            eventStore 
-                            messageSenders 
-                            ""
-                            [addCourseToStudentEnrollments]
-                            [addStudentToCourseEnrollments]
-                            cancellationToken
                 }
         
         

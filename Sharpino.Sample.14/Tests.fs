@@ -1,6 +1,8 @@
 module Tests
 
 open System
+open System.Threading
+open FsToolkit.ErrorHandling
 open Expecto
 open Sharpino
 open Sharpino.Cache
@@ -13,6 +15,7 @@ open Sharpino.Sample._14.CourseManager
 open Sharpino.Sample._14.Details.Details
 open Sharpino.Sample._14.Student
 open Sharpino.Sample._14.StudentEvents
+open Sharpino.Sample._14.Definitions
 open Sharpino.Storage
 
 open DotNetEnv
@@ -36,17 +39,31 @@ let setUp () =
     AggregateCache3.Instance.Clear()
     DetailsCache.Instance.Clear()
     
+let courseViewerAsync: AggregateViewerAsync<Course> = 
+    fun (id: Guid) (cancellationToken: Option<CancellationToken>) ->
+        getAggregateStorageFreshStateViewerAsync<Course, CourseEvents, string> pgEventStore cancellationToken id 
+
+let studentViewerAsync: AggregateViewerAsync<Student> = 
+    fun (id: Guid) (cancellationToken: Option<CancellationToken>) ->
+        getAggregateStorageFreshStateViewerAsync<Student, StudentEvents, string> pgEventStore cancellationToken id 
 let courseViewer = getAggregateStorageFreshStateViewer<Course, CourseEvents, string> pgEventStore
 let studentViewer = getAggregateStorageFreshStateViewer<Student, StudentEvents, string> pgEventStore
 
-let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, MessageSenders.NoSender,
-                                     fun () ->
+let courseManager = CourseManager(
+                                    pgEventStore, 
+                                    courseViewer, 
+                                    studentViewer, 
+                                    courseViewerAsync,
+                                    studentViewerAsync,
+
+                                    MessageSenders.NoSender,
+                                    fun () ->
                                         StateView.getFilteredAggregateStatesInATimeInterval2<Student, StudentEvents, string>
                                            pgEventStore
                                            DateTime.MinValue
                                            DateTime.MaxValue
                                            (fun _ -> true)
-                                     )
+                                 )
 
 [<Tests>]
 let tests =
@@ -61,6 +78,36 @@ let tests =
           Expect.isTrue studentCreated.IsOk "student not created"
           let courseRetrieved = courseManager.GetCourse course.CourseId
           let studentRetrieved = courseManager.GetStudent student.StudentId
+          Expect.isOk courseRetrieved "Course not retrieved"
+          Expect.isOk studentRetrieved "Student not retrieved"
+
+       testCase "add a course and a student async" <| fun _ ->
+          setUp ()
+          let course = Course.MkCourse ("math", 10)
+          let student = Student.MkStudent ("Jack", 3)
+          let courseCreated = 
+            courseManager.AddCourseAsync course None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously    
+
+          let studentCreated = 
+            courseManager.AddStudentAsync student None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isTrue courseCreated.IsOk "Course not created"
+          Expect.isTrue studentCreated.IsOk "student not created"
+
+          let courseRetrieved = 
+            courseManager.GetCourseAsync course.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          let studentRetrieved = 
+            courseManager.GetStudentAsync student.StudentId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
           
@@ -93,7 +140,71 @@ let tests =
           Expect.equal retrievePhysics.Students.Length 0 "should be zero"
           let retrieveStudent = courseManager.GetStudent student.StudentId |> Result.get
           Expect.equal retrieveStudent.Courses.Length 2 "should be two"
-    
+
+       testCase "a student can enroll to only two courses, and they tries to enroll to the third one and it will be rejected - Async" <| fun _ ->
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+
+          let courseAdded = 
+            courseManager.AddMultipleCoursesAsync [|math; english; physics|] None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isOk courseAdded "Courses not created"
+
+          let student = Student.MkStudent ("Jack", 2)
+          let addStudent = 
+            courseManager.AddStudentAsync student None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+          Expect.isOk addStudent "Student not created"
+          
+          // when
+          let enrollStudentToMath = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId math.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isOk enrollStudentToMath "Student not enrolled to math"
+
+          let enrollStudentToEnglish = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId english.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
+
+          let enrollStudentToPhysics = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId physics.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isError enrollStudentToPhysics "Student enrolled to physics"
+          
+          // then
+          let retrieveMath = 
+            courseManager.GetCourseAsync math.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isOk retrieveMath "Course not retrieved"
+          Expect.equal retrieveMath.OkValue.Students.Length 1 "should be one"
+          
+          let retrieveEnglish = 
+            courseManager.GetCourseAsync english.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+
+          Expect.isOk retrieveEnglish "Course not retrieved"
+          Expect.equal retrieveEnglish.OkValue.Students.Length 1 "should be one"
+          let retrievePhysics = courseManager.GetCourse physics.CourseId |> Result.get
+          Expect.equal retrievePhysics.Students.Length 0 "should be zero"
+          let retrieveStudent = courseManager.GetStudent student.StudentId |> Result.get
+          Expect.equal retrieveStudent.Courses.Length 2 "should be two"
+
+
        testCase "enroll a student in some courses and retrieve the details of the student - Ok" <| fun _ ->
           // given
           setUp ()
@@ -112,6 +223,48 @@ let tests =
           let enrollStudentToEnglish = courseManager.EnrollStudentToCourse student.StudentId english.CourseId
           Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
           let enrollStudentToPhysics = courseManager.EnrollStudentToCourse student.StudentId physics.CourseId
+          Expect.isOk enrollStudentToPhysics "Student not enrolled to physics"
+          
+          // then
+          let studentDetails = courseManager.GetStudentDetails student.StudentId
+          Expect.isOk studentDetails "Student details not retrieved"
+          let studentDetailsValue: StudentDetails = studentDetails.OkValue
+          Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
+          Expect.equal studentDetailsValue.Courses.Length 3 "Student courses not retrieved"
+
+       testCase "enroll a student in some courses and retrieve the details of the student - Async" <| fun _ ->
+          // given
+          setUp ()
+          let math = Course.MkCourse ("math", 10)
+          let english = Course.MkCourse ("english", 10)
+          let physics = Course.MkCourse ("physics", 10)
+          let courseAdded = 
+            courseManager.AddMultipleCoursesAsync [|math; english; physics|] None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+          Expect.isOk courseAdded "Courses not created"
+          let student = Student.MkStudent ("Jack", 3)
+          let addStudent = 
+            courseManager.AddStudentAsync student None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+          Expect.isOk addStudent "Student not created"
+          
+          // when
+          let enrollStudentToMath = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId math.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+          Expect.isOk enrollStudentToMath "Student not enrolled to math"
+          let enrollStudentToEnglish = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId english.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+          Expect.isOk enrollStudentToEnglish "Student non enrolled to english"
+          let enrollStudentToPhysics = 
+            courseManager.EnrollStudentToCourseAsync student.StudentId physics.CourseId None
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
           Expect.isOk enrollStudentToPhysics "Student not enrolled to physics"
           
           // then

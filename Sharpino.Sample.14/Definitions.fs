@@ -1,6 +1,10 @@
 namespace Sharpino.Sample._14
+
 open System
+open System.Threading
 open System.Text.Json.Serialization
+open FsToolkit.ErrorHandling
+open Sharpino.Definitions
 
 module Definitions =
         
@@ -21,3 +25,5 @@ module Definitions =
     let jsonOptions =
         JsonFSharpOptions.Default()
             .ToJsonSerializerOptions()
+
+    type AggregateViewerAsync<'A> = Guid -> Option<CancellationToken> ->  TaskResult<EventId * 'A,string>
