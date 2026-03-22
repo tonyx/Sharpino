@@ -1,10 +1,12 @@
 namespace Sharpino
 
 open System
+open System.Threading
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Console
+open FsToolkit.ErrorHandling
 open FSharp.Core
 open Sharpino.Definitions
 
@@ -18,6 +20,7 @@ module Core =
         ()
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
+    type AggregateViewerAsync<'A> = AggregateId -> Option<CancellationToken> -> TaskResult<EventId * 'A,string>
    
     [<Obsolete("no need for aggregates interface")>]
     type Aggregate<'F> =

@@ -163,45 +163,41 @@ module CourseManager =
             let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
             StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
 
-        // member this.GetStudentDetailsAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
-        //     let detailsBuilder =
-        //         fun () ->
-        //             let refresher =
-        //                 fun () ->
-        //                     taskResult {
-        //                         let! student = 
-        //                             this.GetStudentAsync id cancellationToken
-        //                             // |> Async.AwaitTask
-        //                             // |> Async.RunSynchronously
+        member this.GetStudentDetailsAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
+            let detailsBuilder =
+                fun () ->
+                    let refresher =
+                        fun () ->
+                            result {
+                                let! student = 
+                                    this.GetStudentAsync id cancellationToken
+                                    |> Async.AwaitTask
+                                    |> Async.RunSynchronously
 
-        //                         let! courses = 
-        //                             this.GetCoursesAsync (student.Courses |> Array.ofList) cancellationToken
-        //                             // |> Async.AwaitTask
-        //                             // |> Async.RunSynchronously
-        //                         return
-        //                             student, courses
-        //                     }
-        //             taskResult
-        //                 {
-        //                     let! student, courses = refresher ()
-        //                     return (
-        //                         {
-        //                             Student = student
-        //                             Courses = courses
-        //                             Refresher = 
-        //                                 fun () ->
-        //                                     refresher ()
-        //                                     |> Async.AwaitTask
-        //                                     |> Async.RunSynchronously
-        //                         } :> Refreshable<_>
-        //                         ,
-        //                         id.Id:: (courses |> List.map _.CourseId.Id)
-        //                     )
-        //                 }
-        //     let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
-        //     StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
+                                let! courses = 
+                                    this.GetCoursesAsync (student.Courses |> Array.ofList) cancellationToken
+                                    |> Async.AwaitTask
+                                    |> Async.RunSynchronously
 
-            
+                                return
+                                    student, courses
+                            }
+                    result
+                        {
+                            let! student, courses = refresher ()
+                            return (
+                                {
+                                    Student = student
+                                    Courses = courses
+                                    Refresher = refresher
+                                } :> Refreshable<_>
+                                ,
+                                id.Id:: (courses |> List.map _.CourseId.Id)
+                            )
+                        }
+            let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
+            StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
+
         member this.GetStudents (ids: List<StudentId>) =
             result
                 {

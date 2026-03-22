@@ -25,6 +25,7 @@ open Microsoft.Extensions.Options
 open ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson
 open System.Text.Json
 open System.Text.Json.Serialization
+open FsToolkit.ErrorHandling
 open MQTTnet
 
 module Cache =
@@ -59,9 +60,8 @@ module Cache =
     type Refreshable<'A> =
         abstract member Refresh: unit -> Result<'A, string>
 
-    // todo: wip
     type RefreshableAsync<'A> =
-        abstract member Refresh: unit -> Task<Result<'A, string>>
+        abstract member RefreshAsync: Option<CancellationToken> -> TaskResult<'A, string>
    
     type DetailsCacheKey =
         | DetailsCacheKey of string * Guid  // string = type name (not System.Type, for JSON-serializability)
@@ -273,6 +273,22 @@ module Cache =
                 logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
                 statesDetails.Clear()
                 ()
+
+        member private this.TryCacheAsync (key: string, value: RefreshableAsync<_>) =
+            try
+                statesDetails.Set<obj>(key, value, detailsEntryOptions)
+                if _backplane.IsSome then
+                    let fullKey = "statesDetails:" + key
+                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
+                        statesDetails.InstanceId, 
+                        fullKey, 
+                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    )
+                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
+            with e ->
+                logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
+                statesDetails.Clear()
+                ()
                     
         member this.Memoize (f: unit -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
             let v = statesDetails.GetOrDefault<obj>(key.Value, null)
@@ -289,22 +305,23 @@ module Cache =
                     Error e
 
         // todo:
-        // member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<RefreshableAsync<_>*List<AggregateId>, string>>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
-        //     let v = statesDetails.GetOrDefault<obj>(key.Value, null)
-        //     if not (obj.ReferenceEquals(v, null)) then
-        //         v |> Ok
-        //     else
-        //         let res = 
-        //             f ct
-        //             |> Async.AwaitTask
-        //             |> Async.RunSynchronously
-        //         match res with
-        //         | Ok (result, dependendIds) ->
-        //             this.TryCache (key.Value, result)
-        //             this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
-        //             Ok (result |> unbox)
-        //         | Error e ->
-        //             Error e
+
+        member this.MemoizeAsync (f: Option<CancellationToken> -> TaskResult<RefreshableAsync<_>*List<AggregateId>, string>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
+            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
+            if not (obj.ReferenceEquals(v, null)) then
+                v |> Ok
+            else
+                let res = 
+                    f ct
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                match res with
+                | Ok (result, dependendIds) ->
+                    this.TryCacheAsync (key.Value, result)
+                    this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
+                    Ok (result |> unbox)
+                | Error e ->
+                    Error e
         
         member this.Clear () =
             statesDetails.Clear()

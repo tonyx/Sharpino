@@ -467,7 +467,6 @@ module StateView =
                 return (eventId, unboxedState)
             }
 
-
     let inline getRefreshableDetails<'A>
         (refreshableDetailsBuilder: unit -> Result<Refreshable<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) =
@@ -478,11 +477,12 @@ module StateView =
         | Ok res -> unboxCacheState<'A> res
 
     // todo:
-    // let inline getRefreshableDetailsAsync<'A>
-    //     (refreshableDetailsBuilder: Option<CancellationToken> -> Task<Result<RefreshableAsync<'A> * List<Guid>, string>> )
-    //     (key: DetailsCacheKey) 
-    //     (ct: Option<CancellationToken>)
-    //     =
+    let inline getRefreshableDetailsAsync<'A>
+        (refreshableDetailsBuilder: Option<CancellationToken> -> TaskResult<RefreshableAsync<'A> * List<Guid>, string>)
+        (key: DetailsCacheKey) 
+        (ct: Option<CancellationToken>)
+        =
+        ()
         
     //     let result = DetailsCache.Instance.MemoizeAsync refreshableDetailsBuilder key ct
     //     match result with

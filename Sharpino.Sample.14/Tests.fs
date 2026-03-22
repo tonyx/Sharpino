@@ -232,7 +232,7 @@ let tests =
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
           Expect.equal studentDetailsValue.Courses.Length 3 "Student courses not retrieved"
 
-       testCase "enroll a student in some courses and retrieve the details of the student - Async" <| fun _ ->
+       ftestCase "enroll a student in some courses and retrieve the details of the student - Async" <| fun _ ->
           // given
           setUp ()
           let math = Course.MkCourse ("math", 10)
@@ -268,7 +268,7 @@ let tests =
           Expect.isOk enrollStudentToPhysics "Student not enrolled to physics"
           
           // then
-          let studentDetails = courseManager.GetStudentDetails student.StudentId
+          let studentDetails = courseManager.GetStudentDetailsAsync student.StudentId None
           Expect.isOk studentDetails "Student details not retrieved"
           let studentDetailsValue: StudentDetails = studentDetails.OkValue
           Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
