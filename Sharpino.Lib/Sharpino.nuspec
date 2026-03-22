@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>4.8.6</version>
+    <version>4.8.7</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>F# Event Sourcing Library</description>
@@ -19,33 +19,33 @@
             <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
             <dependency id="FsPickler" version="5.3.2" />
             <dependency id="FsPickler.Json" version="5.3.2" />
-            <dependency id="Microsoft.Extensions.Configuration" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Hosting" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Logging" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Caching.SqlServer" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.4" />
-            <dependency id="Microsoft.Extensions.Options" version="10.0.4" />
+            <dependency id="Microsoft.Extensions.Configuration" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Hosting" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Logging" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Caching.SqlServer" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Options" version="10.0.5" />
+            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.5" />
             
-            <dependency id="Sharpino.Core" version="4.7.9" />
+            <dependency id="Sharpino.Core" version="4.8.8" />
 
             <dependency id="System.Data.Common" version="4.3.0" />
             <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
             <dependency id="Microsoft.NET.Test.Sdk" version="18.*" />
 
             <dependency id="Farmer" version="1.9.26" />
-            <dependency id="FSharp.Control.AsyncSeq" version="4.8.0" />
-            <dependency id="FSharp.Data" version="8.1.0" />
+            <dependency id="FSharp.Control.AsyncSeq" version="4.10.0" />
+            <dependency id="FSharp.Data" version="8.1.2" />
             <dependency id="FSharpPlus" version="1.9.1" />
             <dependency id="Newtonsoft.Json" version="13.0.4" />
-            <dependency id="Npgsql" version="10.0.1" />
+            <dependency id="Npgsql" version="10.0.2" />
             <dependency id="Npgsql.FSharp" version="8.0.0" />
             <dependency id="System.collections" version="4.3.0" />
             <dependency id="FSharp.SystemTextJson" version="1.4.36" />
-            <dependency id="ZiggyCreatures.FusionCache" version="2.5.0" />
-            <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.5.0" />
+            <dependency id="ZiggyCreatures.FusionCache" version="2.6.0" />
+            <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.6.0" />
 
             <dependency id="Azure.Messaging.ServiceBus" version="7.20.1" />
             <dependency id="RabbitMQ.Client" version="7.2.1" />
@@ -67,26 +67,27 @@
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="9.0.14" />
         <dependency id="Microsoft.Extensions.Logging" version="9.0.14" />
         <dependency id="Microsoft.Extensions.Caching.SqlServer" version="9.0.14" />
-        <dependency id="Microsoft.Extensions.Caching.Memory" version="9.0.14" />
+
+        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.5" />
+        <dependency id="Microsoft.Extensions.Options" version="10.0.5" />
           
-        <dependency id="Sharpino.Core" version="4.7.9" />
+        <dependency id="Sharpino.Core" version="4.8.8" />
 
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
         <dependency id="Microsoft.NET.Test.Sdk" version="18.*" />
 
         <dependency id="Farmer" version="1.9.26" />
-        <dependency id="FSharp.Control.AsyncSeq" version="4.8.0" />
-        <dependency id="FSharp.Data" version="8.1.0" />
+        <dependency id="FSharp.Control.AsyncSeq" version="4.10.0" />
+        <dependency id="FSharp.Data" version="8.1.2" />
         <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="Newtonsoft.Json" version="13.0.4" />
         <dependency id="Npgsql" version="9.0.4" />
         <dependency id="Npgsql.FSharp" version="8.0.0" />
         <dependency id="System.collections" version="4.3.0" />
         <dependency id="FSharp.SystemTextJson" version="1.4.36" />
-        <dependency id="Microsoft.Extensions.Options" version="9.0.14" />
-        <dependency id="ZiggyCreatures.FusionCache" version="2.5.0" />
-        <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.5.0" />
+        <dependency id="ZiggyCreatures.FusionCache" version="2.6.0" />
+        <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.6.0" />
 
         <dependency id="Azure.Messaging.ServiceBus" version="7.20.1" />
         <dependency id="RabbitMQ.Client" version="7.2.1" />
@@ -108,26 +109,28 @@
         <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Logging" version="8.0.1" />
         <dependency id="Microsoft.Extensions.Caching.SqlServer" version="8.0.25" />
-        <dependency id="Microsoft.Extensions.Caching.Memory" version="8.0.1" />
+
+        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.5" />
+        <dependency id="Microsoft.Extensions.Options" version="10.0.5" />
           
-        <dependency id="Sharpino.Core" version="4.7.9" />
+        <dependency id="Sharpino.Core" version="4.8.8" />
         
         <dependency id="System.Data.Common" version="4.3.0" />
         <dependency id="YoloDev.Expecto.TestSdk" version="0.15.5" />
         <dependency id="Microsoft.NET.Test.Sdk" version="18.*" />
 
         <dependency id="Farmer" version="1.9.26" />
-        <dependency id="FSharp.Control.AsyncSeq" version="4.8.0" />
-        <dependency id="FSharp.Data" version="8.1.0" />
+        <dependency id="FSharp.Control.AsyncSeq" version="4.10.0" />
+        <dependency id="FSharp.Data" version="8.1.2" />
         <dependency id="FSharpPlus" version="1.9.1" />
         <dependency id="Newtonsoft.Json" version="13.0.4" />
         <dependency id="Npgsql" version="8.0.8" />
         <dependency id="Npgsql.FSharp" version="8.0.0" />
         <dependency id="System.collections" version="4.3.0" />
         <dependency id="FSharp.SystemTextJson" version="1.4.36" />
-        <dependency id="Microsoft.Extensions.Options" version="8.0.2" />
-        <dependency id="ZiggyCreatures.FusionCache" version="2.5.0" />
-        <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.5.0" />
+
+        <dependency id="ZiggyCreatures.FusionCache" version="2.6.0" />
+        <dependency id="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" version="2.6.0" />
 
         <dependency id="Azure.Messaging.ServiceBus" version="7.20.1" />
         <dependency id="RabbitMQ.Client" version="7.2.1" />

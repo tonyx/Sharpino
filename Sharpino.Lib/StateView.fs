@@ -478,17 +478,15 @@ module StateView =
 
     // todo:
     let inline getRefreshableDetailsAsync<'A>
-        (refreshableDetailsBuilder: Option<CancellationToken> -> TaskResult<RefreshableAsync<'A> * List<Guid>, string>)
+        (refreshableDetailsBuilder: Option<CancellationToken> -> Result<Refreshable<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) 
         (ct: Option<CancellationToken>)
         =
-        ()
         
-    //     let result = DetailsCache.Instance.MemoizeAsync refreshableDetailsBuilder key ct
-    //     match result with
-    //     | Error e -> Error e
-    //     | Ok res -> unboxCacheState<'A> res
-    
+        let result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct) key ct
+        match result with
+        | Error e -> Error e
+        | Ok res -> unboxCacheState<'A> res
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>

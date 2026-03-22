@@ -306,18 +306,16 @@ module Cache =
 
         // todo:
 
-        member this.MemoizeAsync (f: Option<CancellationToken> -> TaskResult<RefreshableAsync<_>*List<AggregateId>, string>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
+        member this.MemoizeAsync (f: Option<CancellationToken> -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
             let v = statesDetails.GetOrDefault<obj>(key.Value, null)
             if not (obj.ReferenceEquals(v, null)) then
                 v |> Ok
             else
                 let res = 
                     f ct
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
                 match res with
                 | Ok (result, dependendIds) ->
-                    this.TryCacheAsync (key.Value, result)
+                    this.TryCache (key.Value, result)
                     this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
                     Ok (result |> unbox)
                 | Error e ->

@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>4.8.6</Version>
+    <Version>4.8.7</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -56,29 +56,28 @@
 
         <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.4" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.5" />
 
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
-
-        <!-- <PackageReference Include="Sharpino.Core" Version="4.7.9" /> -->
+        <PackageReference Include="Sharpino.Core" Version="4.8.8" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
         <PackageReference Include="Farmer" Version="1.9.26" />
-        <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
-        <PackageReference Include="FSharp.Data" Version="8.1.0" />
+        <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.10.0" />
+        <PackageReference Include="FSharp.Data" Version="8.1.2" />
         <PackageReference Include="FSharpPlus" Version="1.9.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="Npgsql" Version="10.0.1" />
+        <PackageReference Include="Npgsql" Version="10.0.2" />
         <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -101,18 +100,18 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.14" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.14" />
 
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
     
-    <!-- <PackageReference Include="Sharpino.Core" Version="4.7.9" /> -->
+    <PackageReference Include="Sharpino.Core" Version="4.8.8" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
     <PackageReference Include="Farmer" Version="1.9.26" />
-    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
-    <PackageReference Include="FSharp.Data" Version="8.1.0" />
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.10.0" />
+    <PackageReference Include="FSharp.Data" Version="8.1.2" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Npgsql" Version="9.0.4" />
@@ -139,19 +138,18 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
 
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.4" />
-
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.5" />
     
-    <!-- <PackageReference Include="Sharpino.Core" Version="4.7.9" /> -->
+    <PackageReference Include="Sharpino.Core" Version="4.8.8" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 
     <PackageReference Include="Farmer" Version="1.9.26" />
-    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.8.0" />
-    <PackageReference Include="FSharp.Data" Version="8.1.0" />
+    <PackageReference Include="FSharp.Control.AsyncSeq" Version="4.10.0" />
+    <PackageReference Include="FSharp.Data" Version="8.1.2" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Npgsql" Version="8.0.8" />
@@ -165,15 +163,15 @@
 
     <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
-    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.5.0" />
-    <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.5.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.6.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.6.0" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
 <!--    -->
     
- <ItemGroup>
+ <!-- <ItemGroup>
   <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
- </ItemGroup>
+ </ItemGroup> -->
 
 </Project>

@@ -165,17 +165,17 @@ module CourseManager =
 
         member this.GetStudentDetailsAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
             let detailsBuilder =
-                fun () ->
+                fun (ct: Option<CancellationToken>) ->
                     let refresher =
                         fun () ->
                             result {
                                 let! student = 
-                                    this.GetStudentAsync id cancellationToken
+                                    this.GetStudentAsync id ct
                                     |> Async.AwaitTask
                                     |> Async.RunSynchronously
 
                                 let! courses = 
-                                    this.GetCoursesAsync (student.Courses |> Array.ofList) cancellationToken
+                                    this.GetCoursesAsync (student.Courses |> Array.ofList) ct
                                     |> Async.AwaitTask
                                     |> Async.RunSynchronously
 
@@ -196,7 +196,7 @@ module CourseManager =
                             )
                         }
             let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
-            StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
+            StateView.getRefreshableDetailsAsync<StudentDetails> (fun ct -> detailsBuilder ct) key cancellationToken
 
         member this.GetStudents (ids: List<StudentId>) =
             result
@@ -205,6 +205,16 @@ module CourseManager =
                         students =
                             ids
                             |> List.traverseResultM (fun id -> studentViewer id.Id |> Result.map snd)
+                    return students
+                }
+
+        member this.GetStudentsAsync (ids: List<StudentId>) (cancellationToken: Option<CancellationToken>) =
+            taskResult
+                {
+                    let!
+                        students =
+                            ids
+                            |> List.traverseTaskResultM (fun id -> studentViewerAsync id.Id cancellationToken) 
                     return students
                 }
         
