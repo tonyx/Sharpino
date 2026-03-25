@@ -258,6 +258,20 @@ let tests =
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
                 printfn "Inserting 10000 students in batch took %d ms" stopwatch.ElapsedMilliseconds   
+
+            testCase "filtered students retrieval" <| fun _ ->
+                setUp ()
+                let students = [|
+                    Student.MkStudent ("Jack", 3)
+                    Student.MkStudent ("John", 5)
+                    Student.MkStudent ("James", 3)
+                |]
+                courseManagerAsync.AddMultipleStudents students |> ignore
+                let filtered = courseManagerAsync.GetStudentsFilteredAsync (fun s -> s.MaxNumberOfCourses = 5) |> Async.AwaitTask |> Async.RunSynchronously
+                Expect.isOk filtered "Filtered results should be ok"
+                let result = filtered.OkValue
+                Expect.equal result.Length 1 "Should find only one student"
+                Expect.equal (result.[0] |> snd).Name "John" "Should be John"
         ]
         |> testSequenced
     

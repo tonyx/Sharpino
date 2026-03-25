@@ -1201,7 +1201,6 @@ module CommandHandler =
                         |>> fun x -> x.Serialize
                     let! ids = 
                         storage.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, initialInstance.Id, 'A2.Version, 'A2.StorageName, aggregateId, initialInstance.Serialize, 'A1.Version, 'A1.StorageName, md, events', ct)
-                        
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
                     DetailsCache.Instance.RefreshDependentDetails aggregateId

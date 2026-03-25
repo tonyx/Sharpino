@@ -908,6 +908,31 @@ module StateView =
                     return result
                 }
 
+    let inline getAllFilteredAggregateStates<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (predicate: 'A -> bool)
+        (eventStore: IEventStore<'F>) =
+            logger.LogDebug (sprintf "getAllFilteredAggregateStates %A - %s - %s" id 'A.Version 'A.StorageName)
+            result
+                {
+                    let! ids =
+                        eventStore.GetUndeletedAggregateIds 'A.Version 'A.StorageName
+                    let allStates =
+                        ids
+                        |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    let result =
+                        allStates 
+                        |> List.filter _.IsOk
+                        |> List.map (fun x -> x.OkValue)
+                        |> List.filter (fun (_, x) -> predicate x)
+                    return result
+                }
+
     // A valid reason for throwing errors is that theoretically if you have an id of an "undeleted" aggregate, it could be possible that later you cannot retrieve it anymore because, for example, in the mean time it becomes "deleted"
     let inline getAllAggregateStatesAsync<'A, 'E, 'F
         when 'E :> Event<'A>
@@ -937,6 +962,38 @@ module StateView =
                         results
                         |> Array.toList
                         |> List.choose (function | Ok x -> Some x | Error _ -> None)
+                    return result    
+                }
+
+    let inline getAllFilteredAggregateStatesAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (predicate: 'A -> bool)
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "getAllFilteredAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
+                    cts.CancelAfter cancellationTokenSourceExpiration
+                    let! (ids: Guid list) =
+                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
+                    
+                    let! (results: Result<EventId * 'A, string> array) = 
+                         ids 
+                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some cts.Token))
+                         |> Task.WhenAll
+                         |> Task.map Ok
+                    
+                    let result =
+                        results
+                        |> Array.toList
+                        |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
                     return result    
                 }
     

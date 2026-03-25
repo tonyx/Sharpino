@@ -128,7 +128,7 @@ let tests =
                 stopwatch.Stop()
                 printfn "Inserting 5000 students took %d ms" stopwatch.ElapsedMilliseconds
                 
-            ftestCase "insert 10000 students and retrieve them" <| fun _ ->
+            testCase "insert 10000 students and retrieve them" <| fun _ ->
                 setUp ()
                 let students = Array.init 10000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
                 let stopwatch = Stopwatch()

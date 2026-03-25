@@ -93,6 +93,20 @@ module CourseManager =
                     return students
                 }
         
+        member this.GetCoursesFilteredAsync (predicate: Course -> bool) =
+            taskResult
+                {
+                    let! courses = StateView.getAllFilteredAggregateStatesAsync<Course, CourseEvents, byte[]> predicate eventStore None
+                    return courses
+                }
+        
+        member this.GetStudentsFilteredAsync (predicate: Student -> bool) =
+            taskResult
+                {
+                    let! students = StateView.getAllFilteredAggregateStatesAsync<Student, StudentEvents, byte[]> predicate eventStore None
+                    return students
+                }
+        
         member this.SubscribeStudentToCourse (studentId: Guid) (courseId: Guid) =
             result
                 {
