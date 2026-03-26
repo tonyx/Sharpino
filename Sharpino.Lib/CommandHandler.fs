@@ -1881,7 +1881,7 @@ module CommandHandler =
                     let! ids =
                         storage.AddAggregateEventsMdAsync(eventId, 'A.Version, 'A.StorageName, aggregateId, md, events |>> _.Serialize, ct)
                    
-                    AggregateCache3.Instance.Memoize2 (eventId, newState |> box) aggregateId
+                    AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (newState |> unbox) (ids |> List.last)
 
                     let _ =
