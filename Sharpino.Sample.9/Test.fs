@@ -105,6 +105,21 @@ let tests =
             Async.Sleep (delay |> int) |> Async.RunSynchronously
             let retrieveItem = itemManger.GetItem item.Id
             Expect.isError retrieveItem "should be error"
+            
+        multipleTestCase "create and delete an Item - Async" instances <| fun (setUp, itemManger, delay) ->
+            setUp()
+            let item = Item.MkItem ("name", "description")
+            let addItem = itemManger.AddItem item
+            Expect.isOk addItem "should be ok"
+            
+            Async.Sleep (delay |> int) |> Async.RunSynchronously
+            let tryGetItem = itemManger.GetItem item.Id
+            Expect.isOk tryGetItem "should be ok"
+            let deleteItem = itemManger.DeleteItemAsync item.Id |> Async.AwaitTask |> Async.RunSynchronously
+            Expect.isOk deleteItem "should be ok"
+            Async.Sleep (delay |> int) |> Async.RunSynchronously
+            let retrieveItem = itemManger.GetItem item.Id
+            Expect.isError retrieveItem "should be error"
         
         // placeholder to investigate the unneeded "resync" issue in rabbitmq message sending infrastructure
         multipleTestCase "create an item and open a reservation. The counter should be 1" instances <| fun (setUp, itemManger, delay) ->

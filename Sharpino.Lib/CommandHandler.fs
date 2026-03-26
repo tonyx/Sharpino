@@ -545,6 +545,43 @@ module CommandHandler =
                   
                 return ()
             }
+            
+    let inline runDeleteAsync<'A1, 'E, 'F
+        when 'E :> Event<'A1>
+        and 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        >
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders) 
+        (id: AggregateId)
+        (predicate: 'A1 -> bool)
+        (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "runDeleteAsync %A" 'A1.StorageName)
+            taskResult {
+                let! eventId, state =
+                    StateView.getAggregateFreshStateAsync<'A1, 'E, 'F> id eventStore ct
+                do!
+                    predicate (state |> unbox)
+                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
+                
+                let serializedState =
+                    state.Serialize
+               
+                let! _ = eventStore.SnapshotAndMarkDeletedAsync('A1.Version, 'A1.StorageName, eventId, id, serializedState, ct |> Option.defaultValue CancellationToken.None)
+                AggregateCache3.Instance.Clean id
+                DetailsCache.Instance.RefreshDependentDetails id
+                 
+                let _ =
+                    let queueName = 'A1.Version + 'A1.StorageName
+                    optionallySendDeleteMessageAsync<'A1> queueName messageSenders id
+                  
+                return ()
+            }
    
     // from here and beyond the techniques are to try to pass commands that mixes different objects
     // the convoluted sequence of generics is to help the static checking being effective

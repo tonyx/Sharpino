@@ -41,6 +41,12 @@ type ItemManager (eventStore: IEventStore<string>, itemViewer: AggregateViewer<I
             return!
                 runDelete<Item, ItemEvent, string> eventStore messageSender id (fun item -> item.ReferencesCounter = 0)
         }
+    
+    member this.DeleteItemAsync (id: Guid) =
+        taskResult {
+            return!
+                runDeleteAsync<Item, ItemEvent, string> eventStore messageSender id (fun item -> item.ReferencesCounter = 0) None
+        }
         
     member this.AddReservation (reservation: Reservation.Reservation) =
         result {

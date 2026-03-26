@@ -164,6 +164,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 4.8.9: added runDeleteAsync
 - Version 4.8.8: added getAllFilteredAggregateStatesAsync which uses a predicate to filter the results
 - Version 4.8.6: added runTwoNAggregateCommandsMdAsync. Added (under comments) track of future async version of details (with cache interaction)
 - Version 4.8.5: fix on optmistic lock control in SetInitialAggregateStateAndAddEventsMdAsync (issue #58). Add SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync. (note: those kind of multi-streams function bring complexity that will be abandoned and replaced with more standard approaches, including single streams with compensation events, projections, and "details").
