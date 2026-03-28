@@ -462,8 +462,8 @@ module CommandHandler =
         (ct: Option<CancellationToken>) =
             taskResult {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
-                              (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                cts.CancelAfter(cancellationTokenSourceExpiration)
+                              (defaultArg ct CancellationToken.None)
+                cts.CancelAfter(eventStoreTimeout)
                 
                 let idWithserializedAggregates =
                     initialInstances
@@ -495,8 +495,8 @@ module CommandHandler =
         (ct: Option<CancellationToken>) =
             taskResult {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
-                              (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                cts.CancelAfter(cancellationTokenSourceExpiration)
+                              (defaultArg ct CancellationToken.None)
+                cts.CancelAfter(eventStoreTimeout)
 
                 let! res = eventStore.SetInitialAggregateStateAsync(initialInstance.Id, 'A1.Version, 'A1.StorageName, initialInstance.Serialize, cts.Token)
                 let _ = AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
@@ -1882,10 +1882,10 @@ module CommandHandler =
                         storage.AddAggregateEventsMdAsync(eventId, 'A.Version, 'A.StorageName, aggregateId, md, events |>> _.Serialize, ct)
                    
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
-                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (newState |> unbox) (ids |> List.last)
 
-                    let _ =
-                        optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (newState |> unbox) (ids |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
                     
                     return ()
                 }
@@ -2525,6 +2525,9 @@ module CommandHandler =
                     
                     AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[0] |> List.last, newState1 |> box) aggregateId1
                     AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[1] |> List.last, newState2 |> box) aggregateId2
+
+                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId2
                     
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)

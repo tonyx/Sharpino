@@ -95,8 +95,8 @@ module PgBinaryStore =
             task {
                 try
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                 
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -127,8 +127,8 @@ module PgBinaryStore =
 
             task {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                cts.CancelAfter(cancellationTokenSourceExpiration)
+                            (defaultArg ct CancellationToken.None)
+                cts.CancelAfter(eventStoreTimeout)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -187,8 +187,8 @@ module PgBinaryStore =
 
             task {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                cts.CancelAfter(cancellationTokenSourceExpiration)
+                            (defaultArg ct CancellationToken.None)
+                cts.CancelAfter(eventStoreTimeout)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -198,7 +198,7 @@ module PgBinaryStore =
                     events 
                     |>> 
                     fun (_, _, version, name, aggrId) -> 
-                        ((this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
+                        (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggrId 
                     
                 let eventIds =
                     events
@@ -263,8 +263,8 @@ module PgBinaryStore =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                                      (defaultArg ct CancellationToken.None)
+                        cts.CancelAfter(eventStoreTimeout)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
@@ -301,8 +301,8 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -334,10 +334,10 @@ module PgBinaryStore =
                 task
                     {
                        try
-                           use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                           cts.CancelAfter(cancellationTokenSourceExpiration)
                            use conn = new NpgsqlConnection(connection)
+                           use cts = CancellationTokenSource.CreateLinkedTokenSource
+                                          (defaultArg ct CancellationToken.None)
+                           cts.CancelAfter(eventStoreTimeout)
                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -365,8 +365,8 @@ module PgBinaryStore =
                 logger.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                  (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
                     use conn = new NpgsqlConnection(connection)
@@ -399,8 +399,8 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                  (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
@@ -441,8 +441,8 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                  (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let transaction = conn.BeginTransaction() 
@@ -543,8 +543,8 @@ module PgBinaryStore =
                 task {
                     use cts = 
                         CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                            (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     use command = new NpgsqlCommand(query, conn)
@@ -883,8 +883,8 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                  (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
@@ -912,8 +912,8 @@ module PgBinaryStore =
                 task {
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                                  (defaultArg ct CancellationToken.None)
+                    cts.CancelAfter(eventStoreTimeout)
                     let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                     let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                     try
@@ -1375,8 +1375,8 @@ module PgBinaryStore =
                 task
                     {
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                                      (defaultArg ct CancellationToken.None)
+                        cts.CancelAfter(eventStoreTimeout)
                         
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1438,8 +1438,8 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1569,12 +1569,12 @@ module PgBinaryStore =
             member this.GetAggregateIdsAsync (version, name, ?ct) =
                 logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
-                taskResult
+                task
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1590,23 +1590,23 @@ module PgBinaryStore =
                                     return ()
                             }
                             do! loop ()
-                            return results |> Seq.toList
+                            return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return! Error ex.Message
+                            return Error ex.Message
                     }
                     
             member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
                 logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
                 let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
 
-                taskResult
+                task
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1622,22 +1622,22 @@ module PgBinaryStore =
                                     return ()
                             }
                             do! loop ()
-                            return results |> Seq.toList
+                            return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return! Error ex.Message
+                            return Error ex.Message
                     }
              
             member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
                 logger.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
                 let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
-                taskResult
+                task
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1655,11 +1655,11 @@ module PgBinaryStore =
                                     return ()
                             }
                             do! loop ()
-                            return results |> Seq.toList
+                            return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return! Error ex.Message
+                            return Error ex.Message
                     }
                     
             member this.TryGetLastSnapshotId version name =
@@ -1767,8 +1767,8 @@ module PgBinaryStore =
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
+                                          (defaultArg ct CancellationToken.None)
+                            cts.CancelAfter(eventStoreTimeout)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1976,8 +1976,8 @@ module PgBinaryStore =
                 task {
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token)
-                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                                      (defaultArg ct CancellationToken.None)
+                        cts.CancelAfter(eventStoreTimeout)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)

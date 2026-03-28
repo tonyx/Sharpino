@@ -19,7 +19,6 @@ open FsToolkit.ErrorHandling
 open System
 
 module StateView =
-    let cancellationTokenSourceExpiration = 100000
 
     let inline private unboxCacheState<'A> (stateValue: obj) : Result<'A, string> =
         match stateValue with
@@ -315,11 +314,23 @@ module StateView =
                         getLastAggregateSnapshotAsync<'A, 'F> id 'A.Version 'A.StorageName eventStore ct
                     match eventIdAndState with
                     | Some eventId, (state: 'A) ->
-                        let! events = eventStore.GetAggregateEventsAfterIdAsync ('A.Version, 'A.StorageName, id, eventId, ct |> Option.defaultValue CancellationToken.None)
+                        // todo: the Async.Await here must be a temporary workaround to be investigated
+                        let events =
+                             eventStore.GetAggregateEventsAfterIdAsync ('A.Version, 'A.StorageName, id, eventId, ct |> Option.defaultValue CancellationToken.None)
+                             |> Async.AwaitTask
+                             |> Async.RunSynchronously
+                        let! events = events
+
                         let result = (Some eventId, state, events)
                         return result
                     | None, (state: 'A) ->
-                        let! events = eventStore.GetAggregateEventsAsync ('A.Version, 'A.StorageName, id, ct |> Option.defaultValue CancellationToken.None)
+                        // todo: the Async.Await here must be a temporary workaround to be investigated
+                        let events = 
+                            eventStore.GetAggregateEventsAsync ('A.Version, 'A.StorageName, id, ct |> Option.defaultValue CancellationToken.None)
+                            |> Async.AwaitTask
+                            |> Async.RunSynchronously
+
+                        let! events = events
                         let result = (None, state, events)
                         return result
                 }
@@ -444,9 +455,11 @@ module StateView =
         (eventStore: IEventStore<'F>)
         (ct: Option<CancellationToken>) : TaskResult<EventId * 'A, string> =
             logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
+
             let computeNewStateAndLatestEventId (token: Option<CancellationToken>) =
                 taskResult {
                     let! (eventId, state, events) = snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore token
+
                     let! deserEvents =
                         events 
                         |>> snd 
@@ -476,7 +489,6 @@ module StateView =
         | Error e -> Error e
         | Ok res -> unboxCacheState<'A> res
 
-    // todo:
     let inline getRefreshableDetailsAsync<'A>
         (refreshableDetailsBuilder: Option<CancellationToken> -> Result<Refreshable<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) 
@@ -871,7 +883,7 @@ module StateView =
                 {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter cancellationTokenSourceExpiration
+                    cts.CancelAfter(Commons.generalAsyncTimeOut)
                     let! ids =
                         eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, cts.Token)
                     let allStates =
@@ -948,7 +960,7 @@ module StateView =
                 {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter cancellationTokenSourceExpiration
+                    cts.CancelAfter(Commons.generalAsyncTimeOut)
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
                     
@@ -980,7 +992,7 @@ module StateView =
                 {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter cancellationTokenSourceExpiration
+                    cts.CancelAfter(Commons.generalAsyncTimeOut)
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
                     
