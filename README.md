@@ -164,7 +164,8 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-- Version 4.9.1: fixed getAggregateFreshStateAsync (temporary async workaround)
+- Version 4.9.2: added few async version of multiple aggregate commands run, started eliminating the checks static NapshotsInterval definition (to be eliminated in the very next future)
+- Version 4.9.1: fixed getAggregateFreshStateAsync (temporary async workaround, not too bad as we stay in the async way of chain of calls)
 - Version 4.9.0: fixes issue #60. https://github.com/tonyx/Sharpino/issues/60
 - Version 4.8.9: added runDeleteAsync
 - Version 4.8.8: added getAllFilteredAggregateStatesAsync which uses a predicate to filter the results

@@ -580,7 +580,7 @@ let tests =
             let (Ok courseDetails2) = courseManager.GetCourse math.CourseId
             Expect.equal courseDetails2.Students.Length 0 "students enrolled should be len 0"
 
-        ftestCase "Add two students and retrieve both in one shot, async " <| fun _ ->
+        testCase "Add two students and retrieve both in one shot, async " <| fun _ ->
             setUp ()
             Expect.isTrue true "true"
 

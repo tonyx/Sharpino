@@ -216,7 +216,6 @@ module CommandHandler =
         and 'A : (member Serialize : 'F)
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
         and 'A : (static member StorageName: string)
-        and 'A : (static member SnapshotsInterval : int)
         and 'A : (static member Version: string) 
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'E : (member Serialize: 'F)
@@ -599,7 +598,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -766,7 +764,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval: int)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)>
@@ -863,7 +860,7 @@ module CommandHandler =
                         fun () ->
                             for i in 0 .. (uniqueAggregateIds1.Length - 1) do
                                 AggregateCache3.Instance.Memoize2 (dbNewStatesEventIds.[i] |> List.last, newStates1.[i] |> box) aggregateIds1.[i]
-                                mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds1.[i] newStates1.[i] 'A1.SnapshotsInterval |> ignore
+                                mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore uniqueAggregateIds1.[i] newStates1.[i] |> ignore
                             
                     doCacheResults ()
                     
@@ -905,7 +902,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval: int)
         and 'E1 :> Event<'A1>
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
@@ -914,7 +910,6 @@ module CommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2: (static member SnapshotsInterval: int)
         and 'E2 :> Event<'A2>
         and 'E2 :(static member Deserialize: 'F -> Result<'E2, string>)
         and 'E2 : (member Serialize: 'F)>
@@ -1150,7 +1145,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -1207,7 +1201,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -1258,7 +1251,213 @@ module CommandHandler =
         #else
             command ()
         #endif
-    
+
+    let inline runInitAndTwoAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F, 'A3
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1:> Event<'A1>
+        and 'E1: (member Serialize: 'F)
+        and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2:> Event<'A2>
+        and 'E2: (member Serialize: 'F)
+        and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
+        and 'A3: (static member StorageName: string)
+        and 'A3: (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders
+         )
+        (initialInstance: 'A3)
+        (md: Metadata)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runInitAndTwoAggregateCommandsMdAsync %A %A" 'A1.StorageName command1)
+            let command = fun () ->
+                taskResult {
+                    let ct = 
+                        match ct with
+                        | Some c -> c
+                        | None -> CancellationToken.None
+                    let! eventId1, state1 = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId1 eventStore (Some ct)
+                    let! eventId2, state2 = getAggregateFreshStateAsync<'A2, 'E2, 'F> aggregateId2 eventStore (Some ct)
+                    let! newState1, events1 =
+                        state1
+                        |> unbox
+                        |> command1.Execute
+                    let! newState2, events2 =
+                        state2
+                        |> unbox
+                        |> command2.Execute
+                    let events1' =
+                        events1 
+                        |>> fun x -> x.Serialize
+                    let events2' =
+                        events2 
+                        |>> fun x -> x.Serialize
+
+                    let multiEvents =
+                        [
+                            (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                        ]
+
+                    let! ids = 
+                        eventStore.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(initialInstance.Id, 'A3.Version, 'A3.StorageName, initialInstance.Serialize, md, multiEvents, ct)
+
+                    AggregateCache3.Instance.Memoize2 (ids.[0] |> List.last, newState1 |> box) aggregateId1
+                    AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
+                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
+
+                    let _ =
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                        
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
+                    
+                    let _ = optionallySendInitialInstanceAsync<'A3, _> ('A3.Version + 'A3.StorageName) messageSenders aggregateId1 initialInstance
+                    
+                    let _ = optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId1 events1 (ids.[0] |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateId2 events2 (ids.[1] |> List.last)
+
+                    return ()    
+                }
+        #if USING_MAILBOXPROCESSOR        
+            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+        #else    
+            command()
+        #endif
+
+    // todo: few test case to be added
+    let inline runInitAndThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1:> Event<'A1>
+        and 'E1: (member Serialize: 'F)
+        and 'E1: (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2:> Event<'A2>
+        and 'E2: (member Serialize: 'F)
+        and 'E2: (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
+        and 'E3:> Event<'A3>
+        and 'E3: (member Serialize: 'F)
+        and 'E3: (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3: (static member StorageName: string)
+        and 'A3: (static member Version: string)
+        and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A4 : (member Id: Guid)
+        and 'A4: (member Serialize: 'F)
+        and 'A4: (static member StorageName: string)
+        and 'A4: (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (aggregateId3: Guid)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (initialInstance: 'A4)
+        (md: Metadata)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (command3: AggregateCommand<'A3, 'E3>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runInitAndThreeAggregateCommandsMdAsync %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
+            let command = fun () ->
+                taskResult {
+                    let ct =
+                        match ct with
+                        | Some c -> c
+                        | None -> CancellationToken.None
+                    let! eventId1, state1 = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId1 eventStore (Some ct)
+                    let! eventId2, state2 = getAggregateFreshStateAsync<'A2, 'E2, 'F> aggregateId2 eventStore (Some ct)
+                    let! eventId3, state3 = getAggregateFreshStateAsync<'A3, 'E3, 'F> aggregateId3 eventStore (Some ct)
+                    let! newState1, events1 =
+                        state1
+                        |> unbox
+                        |> command1.Execute
+                    let! newState2, events2 =
+                        state2
+                        |> unbox
+                        |> command2.Execute
+                    let! newState3, events3 =
+                        state3
+                        |> unbox
+                        |> command3.Execute
+                    let events1' =
+                        events1 
+                        |>> fun x -> x.Serialize
+                    let events2' =
+                        events2 
+                        |>> fun x -> x.Serialize
+                    let events3' =
+                        events3 
+                        |>> fun x -> x.Serialize
+
+                    let multiEvents =
+                        [
+                            (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                            (eventId3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
+                        ]
+
+                    let! ids = 
+                        eventStore.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(initialInstance.Id, 'A4.Version, 'A4.StorageName, initialInstance.Serialize, md, multiEvents, ct)
+
+                    AggregateCache3.Instance.Memoize2 (ids.[0] |> List.last, newState1 |> box) aggregateId1
+                    AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
+                    AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, newState3 |> box) aggregateId3
+                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
+
+                    let _ =
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId3
+                        
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (ids.[2] |> List.last)
+                    
+                    let _ = optionallySendInitialInstanceAsync<'A4, _> ('A4.Version + 'A4.StorageName) messageSenders aggregateId1 initialInstance
+                    
+                    let _ = optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId1 events1 (ids.[0] |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateId2 events2 (ids.[1] |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A3, 'E3> ('A3.Version + 'A3.StorageName) messageSenders aggregateId3 events3 (ids.[2] |> List.last)
+
+                    return ()    
+                }
+        #if USING_MAILBOXPROCESSOR        
+            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+        #else    
+            command()
+        #endif
+
+
     let inline runInitAndNAggregateCommandsMd<'A1, 'E1, 'A2, 'F
         when 'A1: (member Id: Guid)
         and 'A1: (member Serialize: 'F)
@@ -1268,7 +1467,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (member Id: Guid)
         and 'A2: (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -1362,7 +1560,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2: (member Id: Guid)
         and 'A2: (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -1447,7 +1644,111 @@ module CommandHandler =
         #else
             command ()
         #endif
-    
+
+    let inline runThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
+        and 'E3 :> Event<'A3>
+        and 'E3 : (member Serialize: 'F)
+        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A3 : (static member StorageName: string)
+        and 'A3 : (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (aggregateId3: Guid)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (metadata: Metadata)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (command3: AggregateCommand<'A3, 'E3>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runThreeAggregateCommandsMdAsync %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            let command = fun () ->
+                taskResult {
+                    let! eventId1, state1 = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId1 eventStore (Some ct)
+                    let! eventId2, state2 = getAggregateFreshStateAsync<'A2, 'E2, 'F> aggregateId2 eventStore (Some ct)
+                    let! eventId3, state3 = getAggregateFreshStateAsync<'A3, 'E3, 'F> aggregateId3 eventStore (Some ct)
+
+                    let! newState1, events1 =
+                        state1
+                        |> unbox
+                        |> command1.Execute
+                    let! newState2, events2 =
+                        state2
+                        |> unbox
+                        |> command2.Execute
+                    let! newState3, events3 =
+                        state3
+                        |> unbox
+                        |> command3.Execute
+
+                    let events1' =
+                        events1 
+                        |>> fun x -> x.Serialize
+                    let events2' =
+                        events2 
+                        |>> fun x -> x.Serialize
+                    let events3' =
+                        events3 
+                        |>> fun x -> x.Serialize
+                    
+                    let multiEvents =
+                        [
+                            (eventId1, events1', 'A1.Version, 'A1.StorageName, aggregateId1)
+                            (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
+                            (eventId3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
+                        ]
+                    let! ids =
+                        eventStore.MultiAddAggregateEventsMdAsync (multiEvents, metadata, ct)
+
+                    AggregateCache3.Instance.Memoize2 (ids.[0] |> List.last, newState1 |> box) aggregateId1
+                    AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
+                    AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, newState3 |> box) aggregateId3
+
+                    let _ =
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                        DetailsCache.Instance.RefreshDependentDetails aggregateId3
+
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (ids.[2] |> List.last)
+
+                    let _ = optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId1 events1 (ids.[0] |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateId2 events2 (ids.[1] |> List.last)
+                    let _ = optionallySendAggregateEventsAsync<'A3, 'E3> ('A3.Version + 'A3.StorageName) messageSenders aggregateId3 events3 (ids.[2] |> List.last)
+                    
+                    return ()
+                }
+                    
+        #if USING_MAILBOXPROCESSOR        
+            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
+        #else    
+            command()
+        #endif
+
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -1457,7 +1758,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'A2: (static member StorageName: string)
@@ -1481,7 +1781,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'E2:> Event<'A2>
@@ -1490,7 +1789,6 @@ module CommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2: (static member SnapshotsInterval : int)
         and 'A3 : (member Id: Guid)
         and 'A3 : (member Serialize: 'F)
         and 'A3: (static member StorageName: string)
@@ -1562,7 +1860,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2: (member Serialize: 'F)
         and 'E2:> Event<'A2>
@@ -1571,7 +1868,6 @@ module CommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2: (static member SnapshotsInterval : int)
         and 'A3 : (member Id: Guid)
         and 'A3: (member Serialize: 'F)
         and 'A3: (static member StorageName: string)
@@ -1597,7 +1893,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2 : (member Serialize: 'F)
         and 'E2:> Event<'A2>
@@ -1606,7 +1901,6 @@ module CommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2: (static member SnapshotsInterval : int)
         and 'A3 : (member Id: Guid)
         and 'A3 : (member Serialize: 'F)
         and 'E3:> Event<'A3>
@@ -1615,7 +1909,6 @@ module CommandHandler =
         and 'A3: (static member StorageName: string)
         and 'A3: (static member Version: string)
         and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3: (static member SnapshotsInterval : int)
         and 'A4 : (member Id: Guid)
         and 'A4: (member Serialize: 'F)
         and 'A4: (static member StorageName: string)
@@ -1663,6 +1956,7 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids.[0] |> List.last, newState1 |> box) aggregateId1
                     AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
                     AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, newState3 |> box) aggregateId3
+                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     
                     let _ =
                         DetailsCache.Instance.RefreshDependentDetails aggregateId1
@@ -1696,7 +1990,6 @@ module CommandHandler =
         and 'A1: (static member StorageName: string)
         and 'A1: (static member Version: string)
         and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1: (static member SnapshotsInterval : int)
         and 'A2 : (member Id: Guid)
         and 'A2: (member Serialize: 'F)
         and 'E2:> Event<'A2>
@@ -1705,7 +1998,6 @@ module CommandHandler =
         and 'A2: (static member StorageName: string)
         and 'A2: (static member Version: string)
         and 'A2: (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2: (static member SnapshotsInterval : int)
         and 'A3 : (member Id: Guid)
         and 'A3: (member Serialize: 'F)
         and 'E3:> Event<'A3>
@@ -1714,7 +2006,6 @@ module CommandHandler =
         and 'A3: (static member StorageName: string)
         and 'A3: (static member Version: string)
         and 'A3: (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3: (static member SnapshotsInterval : int)
         and 'A4 : (member Id: Guid)
         and 'A4: (member Serialize: 'F)
         and 'A4: (static member StorageName: string)
@@ -1857,7 +2148,6 @@ module CommandHandler =
         and 'A : (member Serialize: 'F) 
         and 'A : (static member StorageName: string) 
         and 'A : (static member Version: string)
-        and 'A : (static member SnapshotsInterval: int)
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
         and 'E : (member Serialize: 'F)
         >
@@ -1926,7 +2216,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -2036,7 +2325,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -2055,7 +2343,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -2148,7 +2435,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -2241,7 +2527,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         >
@@ -2475,7 +2760,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -2484,7 +2768,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)>
         
@@ -2584,7 +2867,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -2593,7 +2875,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -2781,7 +3062,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -2790,7 +3070,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -2977,7 +3256,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -2986,7 +3264,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -3007,7 +3284,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3016,7 +3292,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -3156,7 +3431,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3165,7 +3439,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -3304,7 +3577,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3313,7 +3585,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         >
@@ -3334,7 +3605,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3343,7 +3613,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         and 'A3 : (member Id: Guid)
@@ -3352,7 +3621,6 @@ module CommandHandler =
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
         and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
         and 'A3 : (static member StorageName: string)
         and 'A3 : (static member Version: string)
         >
@@ -3585,7 +3853,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3594,7 +3861,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         and 'A3 : (member Id: Guid)
@@ -3603,7 +3869,6 @@ module CommandHandler =
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
         and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
         and 'A3 : (static member StorageName: string)
         and 'A3 : (static member Version: string)
         >
@@ -3839,7 +4104,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3848,7 +4112,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         and 'A3 : (member Id: Guid)
@@ -3857,7 +4120,6 @@ module CommandHandler =
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
         and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
         and 'A3 : (static member StorageName: string)
         and 'A3 : (static member Version: string)
         >
@@ -3880,7 +4142,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -3889,7 +4150,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         and 'A3 : (member Id: Guid)
@@ -3898,7 +4158,6 @@ module CommandHandler =
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
         and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
         and 'A3 : (static member StorageName: string)
         and 'A3 : (static member Version: string)
         >
@@ -4078,7 +4337,6 @@ module CommandHandler =
         and 'E1 : (member Serialize: 'F)
         and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
         and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A1 : (static member SnapshotsInterval: int)
         and 'A1 : (static member StorageName: string)
         and 'A1 : (static member Version: string)
         and 'A2 : (member Id: Guid)
@@ -4087,7 +4345,6 @@ module CommandHandler =
         and 'E2 : (member Serialize: 'F)
         and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
         and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
-        and 'A2 : (static member SnapshotsInterval: int)
         and 'A2 : (static member StorageName: string)
         and 'A2 : (static member Version: string)
         and 'A3 : (member Id: Guid)
@@ -4096,7 +4353,6 @@ module CommandHandler =
         and 'E3 : (member Serialize: 'F)
         and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
         and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
-        and 'A3 : (static member SnapshotsInterval: int)
         and 'A3 : (static member StorageName: string)
         and 'A3 : (static member Version: string)
         >
