@@ -42,8 +42,6 @@ module PgStorage =
 
     // todo: should set the logger from outside or, better (next release), use the dependency injection infrastructure
 
-
-
     
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
@@ -297,18 +295,13 @@ module PgStorage =
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let eventId = reader.GetInt32(0)
-                                    let event = reader.GetFieldValue<string>(1)
-                                    results.Add(eventId, event)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let eventId = reader.GetInt32(0)
+                                let event = reader.GetFieldValue<string>(1)
+                                results.Add(eventId, event)
                             return results |> Seq.toList |> Ok
+
                         with ex ->
                             logger.LogError (sprintf "GetAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
                             return Error ex.Message
@@ -334,18 +327,13 @@ module PgStorage =
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                            let results = ResizeArray<_>()
-                           let rec loop () = task {
-                               let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                               if hasRow then
-                                   let eventId = reader.GetInt32(0)
-                                   let eventJson = reader.GetFieldValue<string>(1)
-                                   results.Add(eventId, eventJson)
-                                   return! loop ()
-                               else
-                                   return ()
-                           }
-                           do! loop ()
+
+                           while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                               let eventId = reader.GetInt32(0)
+                               let eventJson = reader.GetFieldValue<string>(1)
+                               results.Add(eventId, eventJson)
                            return results |> Seq.toList |> Ok
+
                        with ex ->
                            logger.LogError (sprintf "GetAggregateEventsAfterIdAsync. an error occurred: %A" ex.Message)
                            return Error ex.Message
@@ -548,20 +536,14 @@ module PgStorage =
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                     use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                    let results = ResizeArray<_>()
-                    let rec loop() = task {
-                        let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                        if hasRows then
-                            let id = reader.GetInt32(0)
-                            let eventId = reader.GetInt32(1)
-                            let snapshot = reader.GetString(2)
-                            results.Add((id, eventId, snapshot))
-                            return! loop()
-                        else
-                            return results |> List.ofSeq
-                    }
-                    let! snapshot = loop()
-                    return snapshot |> Seq.tryHead
+                    let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                    if hasRows then
+                        let id = reader.GetInt32(0)
+                        let eventId = reader.GetInt32(1)
+                        let snapshot = reader.GetString(2)
+                        return Some (id, eventId, snapshot)
+                    else
+                        return None
                 }
 
             member this.TryGetLastEventId version name =
@@ -947,35 +929,57 @@ module PgStorage =
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct CancellationToken.None)
                     cts.CancelAfter(eventStoreTimeout)
+                    do! conn.OpenAsync(cts.Token)
+                    let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
-                        do! conn.OpenAsync(cts.Token)
-                        use! transaction = conn.BeginTransactionAsync(cts.Token)
-                        let rec loop index =
-                            task {
-                                if index < idsAndSnapshots.Length then
-                                    let (aggregateId, json) = idsAndSnapshots.[index]
-                                    use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn, transaction)
-                                    insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                                    insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
-                                    insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
-                                    insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
-                                    let! _ = insertSnapshot'.ExecuteNonQueryAsync(cts.Token)
+                        for (aggregateId, json) in idsAndSnapshots do
+                            use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn, transaction)
+                            insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                            insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
+                            insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
+                            let! _ = insertSnapshot'.ExecuteNonQueryAsync(cts.Token)
 
-                                    use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn, transaction)
-                                    firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                                    firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
-                                    let! _ = firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token)
-                                    return! loop (index + 1)
-                                else
-                                    return ()
-                            }
-                        do! loop 0
+                            use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn, transaction)
+                            firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                            firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                            do! firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
                         do! transaction.CommitAsync(cts.Token)
                         return Ok ()
                     with e ->
-                        logger.LogError (sprintf "SetInitialAggregateStatesAsync Error occurred %A" e.Message)
+                        do! transaction.RollbackAsync(cts.Token)
                         return Error e.Message
                 }
+
+
+
+
+                //         let rec loop index =
+                //             task {
+                //                 if index < idsAndSnapshots.Length then
+                //                     let (aggregateId, json) = idsAndSnapshots.[index]
+                //                     use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn, transaction)
+                //                     insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                //                     insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                //                     insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
+                //                     insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
+                //                     let! _ = insertSnapshot'.ExecuteNonQueryAsync(cts.Token)
+
+                //                     use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn, transaction)
+                //                     firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                //                     firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                //                     let! _ = firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token)
+                //                     return! loop (index + 1)
+                //                 else
+                //                     return ()
+                //             }
+                //         do! loop 0
+                //         do! transaction.CommitAsync(cts.Token)
+                //         return Ok ()
+                //     with e ->
+                //         logger.LogError (sprintf "SetInitialAggregateStatesAsync Error occurred %A" e.Message)
+                //         return Error e.Message
+                // }
            
             member this.SetInitialAggregateStates version name idsAndSnapshots =
                 logger.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)
@@ -1368,17 +1372,11 @@ module PgStorage =
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let eventJson = reader.GetFieldValue<string>(1)
-                                results.Add(eventId, eventJson)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let eventJson = reader.GetFieldValue<string>(1)
+                            results.Add((eventId, eventJson))
                         return results |> Seq.toList |> Ok
                     with ex ->
                         logger.LogError (sprintf "GetEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
@@ -1457,19 +1455,15 @@ module PgStorage =
                             command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let eventId = reader.GetInt32(0)
-                                    let aggregateId = reader.GetGuid(1)
-                                    let eventJson = reader.GetFieldValue<string>(2)
-                                    results.Add(eventId, aggregateId, eventJson)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let eventId = reader.GetInt32(0)
+                                let aggregateId = reader.GetGuid(1)
+                                let eventJson = reader.GetFieldValue<string>(2)
+                                results.Add(eventId, aggregateId, eventJson)
+
                             return results |> Seq.toList |> Ok
+
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
@@ -1519,19 +1513,14 @@ module PgStorage =
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let aggregateId = reader.GetGuid(1)
-                                let eventJson = reader.GetFieldValue<string>(2)
-                                results.Add(eventId, aggregateId, eventJson)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let aggregateId = reader.GetGuid(1)
+                            let eventJson = reader.GetFieldValue<string>(2)
+                            results.Add(eventId, aggregateId, eventJson)
                         return results |> Ok
+
                     }
 
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
@@ -1900,18 +1889,13 @@ module PgStorage =
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let eventJson = reader.GetFieldValue<string>(1)
-                                results.Add(eventId, eventJson)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let eventJson = reader.GetFieldValue<string>(1)
+                            results.Add(eventId, eventJson)
                         return results |> Seq.toList |> Ok
+
                     with ex ->
                         logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
@@ -2012,17 +1996,12 @@ module PgStorage =
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+                            
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList |> Ok
+
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -2089,16 +2068,10 @@ module PgStorage =
                             use command = new NpgsqlCommand(query, conn)
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList
                         with
                         | _ as ex ->
@@ -2121,35 +2094,17 @@ module PgStorage =
                             use command = new NpgsqlCommand(query, conn)
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return! Error ex.Message
                     }         
-                // take note: should implement something like following where executeAsync will use the token
-                // taskResult
-                //     {
-                //         return!
-                //             connection
-                //             |> Sql.connect
-                //             |> Sql.query query
-                //             |> Sql.executeAsyncWithToken ( fun read ->
-                //                 (
-                //                     read.uuid "aggregate_id"
-                //                 )
-                //             )
-                //     }
+
           
             member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
                 logger.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)

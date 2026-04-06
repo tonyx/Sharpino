@@ -273,18 +273,14 @@ module PgBinaryStore =
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let eventBytes = reader.GetFieldValue<byte[]>(1)
-                                results.Add(eventId, eventBytes)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
-                        return results |> Seq.toList |> Ok
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let eventBytes = reader.GetFieldValue<byte[]>(1)
+                            results.Add(eventId, eventBytes)
+
+                        return results |> Seq.toList |> Ok 
+
                     with ex ->
                         logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
@@ -311,19 +307,16 @@ module PgBinaryStore =
                             command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let eventId = reader.GetInt32(0)
-                                    let event = reader.GetFieldValue<byte[]>(1)
-                                    results.Add(eventId, event)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let eventId = reader.GetInt32(0)
+                                let event = reader.GetFieldValue<byte[]>(1)
+                                results.Add(eventId, event)
+
                             return results |> Seq.toList |> Ok
+
                         with ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
                             return Error ex.Message
@@ -345,18 +338,14 @@ module PgBinaryStore =
                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                            let results = ResizeArray<_>()
-                           let rec loop () = task {
-                               let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                               if hasRow then
-                                   let eventId = reader.GetInt32(0)
-                                   let eventJson = reader.GetFieldValue<byte[]>(1)
-                                   results.Add(eventId, eventJson)
-                                   return! loop ()
-                               else
-                                   return ()
-                           }
-                           do! loop ()
+
+                           while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                               let eventId = reader.GetInt32(0)
+                               let eventJson = reader.GetFieldValue<byte[]>(1)
+                               results.Add(eventId, eventJson)
+
                            return results |> Seq.toList |> Ok
+
                        with ex ->
                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
                            return Error ex.Message
@@ -550,20 +539,14 @@ module PgBinaryStore =
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                     use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                    let results = ResizeArray<_>()
-                    let rec loop() = task {
-                        let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                        if hasRows then
-                            let id = reader.GetInt32(0)
-                            let eventId = reader.GetInt32(1)
-                            let snapshot = reader.GetFieldValue<byte[]>(2)
-                            results.Add((id, eventId, snapshot))
-                            return! loop()
-                        else
-                            return results |> List.ofSeq
-                    }
-                    let! snapshot = loop()
-                    return snapshot |> Seq.tryHead
+                    let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                    if hasRows then
+                        let id = reader.GetInt32(0)
+                        let eventId = reader.GetInt32(1)
+                        let snapshot = reader.GetFieldValue<byte[]>(2)
+                        return Some (id, eventId, snapshot)
+                    else
+                        return None
                 }
             member this.TryGetLastEventId version name =
                 logger.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
@@ -894,7 +877,7 @@ module PgBinaryStore =
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
-                            do! insertSnapshot'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
+                            let! _ =  insertSnapshot'.ExecuteNonQueryAsync(cts.Token) 
 
                             use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn)
                             firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -1386,18 +1369,12 @@ module PgBinaryStore =
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let aggregateId = reader.GetGuid(1)
-                                let eventJson = reader.GetFieldValue<byte[]>(2)
-                                results.Add(eventId, aggregateId, eventJson)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let aggregateId = reader.GetGuid(1)
+                            let eventJson = reader.GetFieldValue<byte[]>(2)
+                            results.Add(eventId, aggregateId, eventJson)
                         return results |> Ok
                     }
                     
@@ -1449,19 +1426,15 @@ module PgBinaryStore =
                             command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let eventId = reader.GetInt32(0)
-                                    let aggregateId = reader.GetGuid(1)
-                                    let eventJson = reader.GetFieldValue<byte[]>(2)
-                                    results.Add(eventId, aggregateId, eventJson)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let eventId = reader.GetInt32(0)
+                                let aggregateId = reader.GetGuid(1)
+                                let event = reader.GetFieldValue<byte[]>(2)
+                                results.Add(eventId, aggregateId, event)
+
                             return results |> Seq.toList |> Ok
+
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1580,16 +1553,10 @@ module PgBinaryStore =
                             use command = new NpgsqlCommand(query, conn)
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
@@ -1612,16 +1579,10 @@ module PgBinaryStore =
                             use command = new NpgsqlCommand(query, conn)
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList |> Ok
                         with
                         | _ as ex ->
@@ -1645,17 +1606,11 @@ module PgBinaryStore =
                             command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
                             use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                             let results = ResizeArray<_>()
-                            let rec loop () = task {
-                                let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                                if hasRow then
-                                    let aggregateId = reader.GetGuid(0)
-                                    results.Add(aggregateId)
-                                    return! loop ()
-                                else
-                                    return ()
-                            }
-                            do! loop ()
+                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                                let aggregateId = reader.GetGuid(0)
+                                results.Add(aggregateId)
                             return results |> Seq.toList |> Ok
+
                         with
                         | _ as ex ->
                             logger.LogError (sprintf "an error occurred: %A" ex.Message)
@@ -1664,7 +1619,6 @@ module PgBinaryStore =
                     
             member this.TryGetLastSnapshotId version name =
                 logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
-                // log.Debug (sprintf "TryGetLastSnapshotId %s %s" version name)
                 let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
                 try
                     Async.RunSynchronously
@@ -1985,18 +1939,13 @@ module PgBinaryStore =
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
-                        let rec loop () = task {
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventId = reader.GetInt32(0)
-                                let eventBytes = reader.GetFieldValue<byte[]>(1)
-                                results.Add(eventId, eventBytes)
-                                return! loop ()
-                            else
-                                return ()
-                        }
-                        do! loop ()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let eventBytes = reader.GetFieldValue<byte[]>(1)
+                            results.Add(eventId, eventBytes)
                         return results |> Seq.toList |> Ok
+
                     with ex ->
                         logger.LogError (sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
