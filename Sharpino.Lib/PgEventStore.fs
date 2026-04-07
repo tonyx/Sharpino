@@ -23,7 +23,7 @@ module PgStorage =
 
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
-    let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 10000)
+    let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 100000)
     let distanceBetweenSnapshots = config.GetValue<int>("DistanceBetweenSnapshots", 100)
     let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
     let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
@@ -115,7 +115,7 @@ module PgStorage =
                 try
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                 (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                 
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -148,7 +148,7 @@ module PgStorage =
             task {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                             (defaultArg ct CancellationToken.None)
-                cts.CancelAfter(eventStoreTimeout)
+                cts.CancelAfter(cancellationTokenSourceExpiration)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -208,7 +208,7 @@ module PgStorage =
             task {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                             (defaultArg ct CancellationToken.None)
-                cts.CancelAfter(eventStoreTimeout)
+                cts.CancelAfter(cancellationTokenSourceExpiration)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -285,7 +285,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -319,7 +319,7 @@ module PgStorage =
                            use conn = new NpgsqlConnection(connection)
                            use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                           cts.CancelAfter(eventStoreTimeout)
+                           cts.CancelAfter(cancellationTokenSourceExpiration)
                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                            use command = new NpgsqlCommand(query, conn)
                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -344,7 +344,7 @@ module PgStorage =
                 task {
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
                     let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
                     use conn = new NpgsqlConnection(connection)
@@ -372,7 +372,7 @@ module PgStorage =
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let transaction = conn.BeginTransaction() 
@@ -459,7 +459,7 @@ module PgStorage =
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
                                       (defaultArg ct CancellationToken.None)
-                        cts.CancelAfter(eventStoreTimeout)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
@@ -530,7 +530,7 @@ module PgStorage =
                     use cts = 
                         CancellationTokenSource.CreateLinkedTokenSource
                             (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     use command = new NpgsqlCommand(query, conn)
@@ -851,7 +851,7 @@ module PgStorage =
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
                     let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
                     try
@@ -928,7 +928,7 @@ module PgStorage =
                     use conn = new NpgsqlConnection(connection)
                     use cts = CancellationTokenSource.CreateLinkedTokenSource
                                   (defaultArg ct CancellationToken.None)
-                    cts.CancelAfter(eventStoreTimeout)
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
                     do! conn.OpenAsync(cts.Token)
                     let! transaction = conn.BeginTransactionAsync(cts.Token)
                     try
@@ -1363,7 +1363,7 @@ module PgStorage =
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
                                       (defaultArg ct CancellationToken.None)
-                        cts.CancelAfter(eventStoreTimeout)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
@@ -1445,7 +1445,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1504,7 +1504,7 @@ module PgStorage =
                     {
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
                                       (defaultArg ct CancellationToken.None)
-                        cts.CancelAfter(eventStoreTimeout)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
@@ -1687,7 +1687,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -1881,7 +1881,7 @@ module PgStorage =
                     try
                         use cts = CancellationTokenSource.CreateLinkedTokenSource
                                       (defaultArg ct CancellationToken.None)
-                        cts.CancelAfter(eventStoreTimeout)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
@@ -1988,7 +1988,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -2062,7 +2062,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)
@@ -2088,7 +2088,7 @@ module PgStorage =
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
                                           (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(eventStoreTimeout)
+                            cts.CancelAfter(cancellationTokenSourceExpiration)
                             use conn = new NpgsqlConnection(connection)
                             do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                             use command = new NpgsqlCommand(query, conn)

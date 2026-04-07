@@ -4,6 +4,7 @@ open MBrace.FsPickler
 
 module Commons =
 
+    // deprecated: should use configuragion EventStoreTimeout
     let generalAsyncTimeOut = 10000
     type Serialization<'F> =
         abstract member Deserialize<'A> : 'F -> Result<'A, string>

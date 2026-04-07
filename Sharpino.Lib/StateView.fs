@@ -9,7 +9,9 @@ open FSharpPlus
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
+open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging.Abstractions
+open Microsoft.Extensions.Configuration
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Storage
@@ -19,6 +21,9 @@ open FsToolkit.ErrorHandling
 open System
 
 module StateView =
+    let builder = Host.CreateApplicationBuilder()
+    let config = builder.Configuration
+    let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 100000)
 
     let inline private unboxCacheState<'A> (stateValue: obj) : Result<'A, string> =
         match stateValue with
@@ -72,7 +77,7 @@ module StateView =
                         | None ->
                             Error (sprintf "snapshot not found. Stream %A %A, aggregate id %A" 'A.Version 'A.StorageName aggregateId)
                     return result
-                }, Commons.generalAsyncTimeOut)
+                }, eventStoreTimeout)
    
     let inline private getLastSnapshot<'A, 'F 
         when 'A: (static member Zero: 'A) 
@@ -113,7 +118,7 @@ module StateView =
                                     getLastSnapshot<'A, 'F> storage
                             return! state
                         }
-                    }, Commons.generalAsyncTimeOut)
+                    }, eventStoreTimeout)
                             
 
     let inline  getLastAggregateSnapshot<'A, 'F 
@@ -142,7 +147,7 @@ module StateView =
                                 | Error e -> return! Error e
                             | Error e -> return! Error e
                         }
-                }, Commons.generalAsyncTimeOut)
+                }, eventStoreTimeout)
                 
     let inline  getLastAggregateSnapshotAsync<'A, 'F 
         when 
@@ -208,7 +213,7 @@ module StateView =
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
                                     return (eventId, snapshot) |> Some 
                         }
-                }, Commons.generalAsyncTimeOut)
+                }, eventStoreTimeout)
                 
     let inline private getLastHistoryAggregateSnapshotOrStateCache<'A, 'F 
         when 
@@ -242,7 +247,7 @@ module StateView =
                                         tryGetAggregateSnapshot<'A, 'F > aggregateId lastSnapshotId version storageName storage 
                                     return (eventId, snapshot) |> Some 
                         }
-                }, Commons.generalAsyncTimeOut)
+                }, eventStoreTimeout)
 
     let inline snapEventIdStateAndEvents<'A, 'E, 'F
         when 'A: (static member Zero: 'A)
@@ -266,7 +271,7 @@ module StateView =
                             (eventId, state, events)
                         return res
                     }
-            }, Commons.generalAsyncTimeOut)
+            }, eventStoreTimeout)
 
     let inline snapAggregateEventIdStateAndEvents<'A, 'E, 'F
         when 'E :> Event<'A> and
@@ -402,7 +407,7 @@ module StateView =
                             logger.LogError (sprintf "getState: %A" e)
                             Error e
                     return result
-                }, Commons.generalAsyncTimeOut)
+                }, eventStoreTimeout)
 
     let inline getAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>
@@ -881,11 +886,10 @@ module StateView =
             logger.LogDebug (sprintf "getAggregateStatesInATimeInterval %A - %s - %s" id 'A.Version 'A.StorageName)
             taskResult
                 {
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter(Commons.generalAsyncTimeOut)
+                    let ct = ct |> Option.defaultValue CancellationToken.None
+
                     let! ids =
-                        eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, cts.Token)
+                        eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, ct)
                     let allStates =
                         ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
                         
@@ -958,15 +962,15 @@ module StateView =
             logger.LogDebug (sprintf "getAllAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
             taskResult
                 {
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter(Commons.generalAsyncTimeOut)
+
+                    let ct = ct |> Option.defaultValue CancellationToken.None
+
                     let! (ids: Guid list) =
-                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
+                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
                     
                     let! (results: Result<EventId * 'A, string> array) = 
                          ids 
-                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some cts.Token))
+                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct))
                          |> Task.WhenAll
                          |> Task.map Ok
                     
@@ -990,15 +994,14 @@ module StateView =
             logger.LogDebug (sprintf "getAllFilteredAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
             taskResult
                 {
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct (new CancellationTokenSource(Commons.generalAsyncTimeOut)).Token)
-                    cts.CancelAfter(Commons.generalAsyncTimeOut)
+                    let ct = ct |> Option.defaultValue CancellationToken.None
+
                     let! (ids: Guid list) =
-                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, cts.Token)
+                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
                     
                     let! (results: Result<EventId * 'A, string> array) = 
                          ids 
-                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some cts.Token))
+                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct))
                          |> Task.WhenAll
                          |> Task.map Ok
                     
