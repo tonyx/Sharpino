@@ -164,6 +164,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- A tech stack blue print meant to feed A.I. agents to help code generation with a blazor+sharpino architecture [blazorBookLibrary](https://github.com/tonyx/blazorBookLibrary/blob/main/Docs/Tech_Stack_Blueprint.md). Note: the book library has to be used just as an example, A.I. agents should be able to generate the code for whatever domain you give them, by using the tech stack and the constraints described in the blue print.
 - [New example](https://github.com/tonyx/blazorBookLibrary), with link to a live demo: a book library management system (WIP)
 - Version 4.9.4: rearranged cancellation token handling in aggregate state retrieval functions to depend only on config files, make sure that you can substantially prevent timeout if you want to.
 - Version 4.9.3: changed some loops in EventStore to be non recursive
