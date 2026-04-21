@@ -425,7 +425,7 @@ module CommandHandler =
         (eventStore: IEventStore<'F>)
         (messageSenders: MessageSenders)
         (initialInstances: ('A1)[]) =
-            logger.LogDebug (sprintf "runInit %A" 'A1.StorageName)
+            logger.LogDebug (sprintf "runMultipleInit %A" 'A1.StorageName)
             result {
                 
                 let idWithserializedAggregates =
@@ -1343,7 +1343,6 @@ module CommandHandler =
             command()
         #endif
 
-    // todo: few test case to be added
     let inline runInitAndThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)

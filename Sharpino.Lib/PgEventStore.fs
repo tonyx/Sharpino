@@ -2080,10 +2080,9 @@ module PgStorage =
                     }         
                 
             member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
-                logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
+                logger.LogDebug (sprintf "GetUndeletedAggregateIdsAsync %s %s" version name)
                 let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
-
-                taskResult
+                taskResult 
                     {
                         try
                             use cts = CancellationTokenSource.CreateLinkedTokenSource
@@ -2098,10 +2097,10 @@ module PgStorage =
                             while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
                                 let aggregateId = reader.GetGuid(0)
                                 results.Add(aggregateId)
-                            return results |> Seq.toList
+                            return results |> List.ofSeq
                         with
                         | _ as ex ->
-                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                            logger.LogError (sprintf "GetUndeletedAggregateIdsAsync. An error occurred: %A" ex.Message)
                             return! Error ex.Message
                     }         
 

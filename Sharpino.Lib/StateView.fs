@@ -981,6 +981,7 @@ module StateView =
                     return result    
                 }
 
+    // there may be some issues in this function which need necessary to use the equivalent non async function
     let inline getAllFilteredAggregateStatesAsync<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
