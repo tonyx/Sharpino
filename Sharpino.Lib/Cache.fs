@@ -62,6 +62,14 @@ module Cache =
 
     type RefreshableAsync<'A> =
         abstract member RefreshAsync: Option<CancellationToken> -> TaskResult<'A, string>
+
+    let mkRefreshableAsync (refresher: Option<CancellationToken> -> TaskResult<'A, string>) =
+        { new RefreshableAsync<'A> with
+            member this.RefreshAsync ct = refresher ct }
+
+    let mkRefreshableAsyncFromSync (refresher: unit -> Result<'A, string>) =
+        { new RefreshableAsync<'A> with
+            member this.RefreshAsync _ = refresher () |> Task.FromResult }
    
     type DetailsCacheKey =
         | DetailsCacheKey of string * Guid  // string = type name (not System.Type, for JSON-serializability)
@@ -71,7 +79,7 @@ module Cache =
                 | DetailsCacheKey (typeName, id) -> sprintf "%s:%A" typeName id
             static member OfType (t: Type) (id: Guid) =
                 DetailsCacheKey (t.Name, id)
-        
+    
     type DetailsCache private () =
         let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
         let detailsOptions = FusionCacheOptions(
@@ -175,32 +183,36 @@ module Cache =
                 objectDetailsAssociationsCache.Set(aggregateId.ToString(), updatedKeys, detailsDependenciesEntryOptions)
             ()
         
-        member this.Refresh (key: DetailsCacheKey) =
-            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
-            if (obj.ReferenceEquals(v, null)) then
-                Error "not found"
-            else 
-                let interfaces = v.GetType().GetInterfaces()
-                let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<Refreshable<_>>)
-                
-                if not (obj.ReferenceEquals(v, null)) then
+        member this.RefreshAsync (key: DetailsCacheKey, ct: Option<CancellationToken>) =
+            task {
+                let v = statesDetails.GetOrDefault<obj>(key.Value, null)
+                if (obj.ReferenceEquals(v, null)) then
+                    return Error "not found"
+                else 
+                    let interfaces = v.GetType().GetInterfaces()
+                    let refreshableInterface = interfaces |> Array.tryFind (fun i -> i.IsGenericType && i.GetGenericTypeDefinition() = typedefof<RefreshableAsync<_>>)
+                    
                     match refreshableInterface with
-                    | Some _ ->
-                        let refreshMethod = v.GetType().GetMethod("Refresh")
-                        let refreshed = refreshMethod.Invoke(v, [||])
-                        let resultType = refreshableInterface.Value.GetGenericArguments().[0]
+                    | Some ri ->
+                        let refreshMethod = v.GetType().GetMethod("RefreshAsync")
+                        let refreshedTask = refreshMethod.Invoke(v, [| ct |]) :?> Task
+                        
+                        do! refreshedTask.ContinueWith(ignore) |> Async.AwaitTask
+                        
+                        let refreshed = refreshedTask.GetType().GetProperty("Result").GetValue(refreshedTask)
+                        let resultType = ri.GetGenericArguments().[0]
                         let result = 
                             try
                                 // Create a Result<obj, string> from the refreshed object
-                                let resultType = typedefof<Result<_, _>>.MakeGenericType([| resultType; typeof<string> |])
-                                let okValue = resultType.GetProperty("IsOk").GetValue(refreshed)
+                                let resultFullType = typedefof<Result<_, _>>.MakeGenericType([| resultType; typeof<string> |])
+                                let okValue = resultFullType.GetProperty("IsOk").GetValue(refreshed)
                                 if unbox<bool> okValue then
-                                    let value = resultType.GetProperty("ResultValue").GetValue(refreshed)
+                                    let value = resultFullType.GetProperty("ResultValue").GetValue(refreshed)
                                     Ok value
                                 else
                                     // I assume that if an element is not refreshable anymore it means that it should be evicted
                                     this.Evict key
-                                    let error = resultType.GetProperty("ErrorValue").GetValue(refreshed) :?> string
+                                    let error = resultFullType.GetProperty("ErrorValue").GetValue(refreshed) :?> string
                                     Error error
                             with ex ->
                                 Error (sprintf "Error processing refresh result: %s" ex.Message)
@@ -219,15 +231,14 @@ module Cache =
                                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                                     )
                                     _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-                                Ok resultObj
+                                return Ok resultObj
                             with e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
                                 statesDetails.Clear()
-                                Error "Failed to update cache"
-                        | Error e -> Error e
-                    | _ -> Error "Object does not implement Refreshable interface"
-                else
-                    Error "not found"
+                                return Error "Failed to update cache"
+                        | Error e -> return Error e
+                    | _ -> return Error "Object does not implement RefreshableAsync interface"
+            }
                 
         
         member this.Evict (key: DetailsCacheKey)  =
@@ -241,15 +252,22 @@ module Cache =
                     System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 )
                 _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-        
+
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
-                    let refreshed =
-                        this.Refresh key
-                    ()    
-            ()
+                    let! _ = this.RefreshAsync (key, None)
+                    ()
+
+        member this.RefreshDependentDetailsAsync (aggregateId: AggregateId, ct: Option<CancellationToken>) =
+            task {
+                let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
+                if not (obj.ReferenceEquals(keys, null)) then
+                    for key in keys do
+                        let! _ = this.RefreshAsync (key, ct)
+                        ()
+            }
         
         member this.evictDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
@@ -258,22 +276,6 @@ module Cache =
                     this.Evict key
                 ()
         
-        member private this.TryCache (key: string, value: Refreshable<_>) =
-            try
-                statesDetails.Set<obj>(key, value, detailsEntryOptions)
-                if _backplane.IsSome then
-                    let fullKey = "statesDetails:" + key
-                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
-                        statesDetails.InstanceId, 
-                        fullKey, 
-                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    )
-                    _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-            with e ->
-                logger.LogError (sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                statesDetails.Clear()
-                ()
-
         member private this.TryCacheAsync (key: string, value: RefreshableAsync<_>) =
             try
                 statesDetails.Set<obj>(key, value, detailsEntryOptions)
@@ -290,36 +292,35 @@ module Cache =
                 statesDetails.Clear()
                 ()
                     
-        member this.Memoize (f: unit -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
+        member this.Memoize (f: unit -> Result<RefreshableAsync<_>*List<AggregateId>, string>) (key: DetailsCacheKey) =
             let v = statesDetails.GetOrDefault<obj>(key.Value, null)
             if not (obj.ReferenceEquals(v, null)) then
-                v |> Ok
+                v |> unbox |> Ok
             else
                 let res = f()
                 match res with
                 | Ok (result, dependendIds) ->
-                    this.TryCache (key.Value, result)
+                    this.TryCacheAsync (key.Value, result)
                     this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
-                    Ok (result |> unbox)
+                    Ok result
                 | Error e ->
                     Error e
 
-        // todo:
-
-        member this.MemoizeAsync (f: Option<CancellationToken> -> Result<Refreshable<_>*List<AggregateId>, string>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
-            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
-            if not (obj.ReferenceEquals(v, null)) then
-                v |> Ok
-            else
-                let res = 
-                    f ct
-                match res with
-                | Ok (result, dependendIds) ->
-                    this.TryCache (key.Value, result)
-                    this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
-                    Ok (result |> unbox)
-                | Error e ->
-                    Error e
+        member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<RefreshableAsync<_>*List<AggregateId>, string>>) (key: DetailsCacheKey) (ct: Option<CancellationToken>) =
+            task {
+                let v = statesDetails.GetOrDefault<obj>(key.Value, null)
+                if not (obj.ReferenceEquals(v, null)) then
+                    return v |> unbox |> Ok
+                else
+                    let! res = f ct
+                    match res with
+                    | Ok (result, dependendIds) ->
+                        this.TryCacheAsync (key.Value, result)
+                        this.UpdateMultipleAggregateIdAssociation (dependendIds |> List.toArray) key 
+                        return Ok result
+                    | Error e ->
+                        return Error e
+            }
         
         member this.Clear () =
             statesDetails.Clear()
@@ -332,7 +333,7 @@ module Cache =
         member this.ClearL2 () =
             statesDetails.Clear(false)
             objectDetailsAssociationsCache.Clear(false)
-    
+
     type AggregateCache3 private () =
         let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
         let aggregateOptions = FusionCacheOptions(
@@ -356,8 +357,9 @@ module Cache =
         static member Instance = instance
         
         member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
-            if dc.IsSome && ser.IsSome then
-                (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+            // We do NOT configure L2 Cache because this cache stores Task objects which cannot be serialized
+            // if dc.IsSome && ser.IsSome then
+            //     (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
             if bp.IsSome then
                 let backplane = bp.Value
                 _backplane <- Some backplane
@@ -395,17 +397,17 @@ module Cache =
 
                                 let (isGuid, guidKey) = Guid.TryParse(key)
                                 if isGuid then
-                                    DetailsCache.Instance.RefreshDependentDetails(guidKey)
+                                    DetailsCache.Instance.RefreshDependentDetailsAsync(guidKey, Some CancellationToken.None) |> ignore
                                 else
                                     logger.LogWarning (sprintf "[Cache Event] AggregateCache3: Could not parse Guid from key %s" key)
                                 logger.LogDebug (sprintf "[Cache Event] AggregateCache3 manually removed L1 entry for %s" key)
                 ))
             ()
 
-        member private this.TryCache (aggregateId, eventId: EventId, resultState: obj) =
+        member private this.TryCacheTask (aggregateId: AggregateId, tsk: Task<Result<EventId * obj, string>>) =
             try
                 let key = aggregateId.ToString()
-                statePerAggregate.Set<(EventId * obj)>(key, (eventId, resultState), entryOptions)
+                statePerAggregate.Set<Task<Result<EventId * obj, string>>>(key, tsk, entryOptions)
                 
                 // Manually notify backplane if FusionCache skips it
                 if _backplane.IsSome then
@@ -423,38 +425,51 @@ module Cache =
                 () 
    
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
-            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
+            let key = aggregateId.ToString()
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) then
-                v |> Ok
+                v.GetAwaiter().GetResult()
             else
                 let res = f()
                 match res with
                 | Ok (eventId, state) ->
-                    this.TryCache (aggregateId, eventId, state)
+                    this.TryCacheTask (aggregateId, task { return res } )
                     Ok (eventId, state)
                 | Error e ->
                     Error e
 
         member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<EventId * obj, string>>) (aggregateId: AggregateId) (ct: Option<CancellationToken>): Task<Result<EventId * obj, string>> =
-            let ct = ct |> Option.defaultValue CancellationToken.None
-            task {
-                let key = aggregateId.ToString()
-                let! v = statePerAggregate.GetOrDefaultAsync<(EventId * obj)>(key, token = ct)
-                if not (obj.ReferenceEquals(v, null)) then
-                    return v |> Ok
-                else
-                    let! res = f (Some ct)
-                    match res with
-                    | Ok (eventId, state) ->
-                        this.TryCache (aggregateId, eventId, state)
-                        return Ok (eventId, state)
-                    | Error e ->
-                        return Error e
-            }
+            let key = aggregateId.ToString()
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
+            if not (obj.ReferenceEquals(v, null)) then
+                v
+            else
+                let factory = System.Func<ZiggyCreatures.Caching.Fusion.FusionCacheFactoryExecutionContext<Task<Result<EventId * obj, string>>>, System.Threading.CancellationToken, Task<Result<EventId * obj, string>>>(fun ctx token ->
+                    let tsk = task {
+                        let! res = f ct
+                        match res with
+                        | Ok _ -> ()
+                        | Error _ -> statePerAggregate.Remove(key) |> ignore
+                        return res
+                    }
+                    tsk
+                )
+                let tsk = statePerAggregate.GetOrSet<Task<Result<EventId * obj, string>>>(key, factory, entryOptions)
+                
+                if _backplane.IsSome then
+                    let fullKey = "statePerAggregate:" + key
+                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
+                        statePerAggregate.InstanceId, 
+                        fullKey, 
+                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    )
+                    _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
+                tsk
               
         member this.Memoize2 (eventId: EventId, x:'A) (aggregateId: AggregateId) =
             this.Clean aggregateId
-            this.TryCache (aggregateId, eventId, x)
+            let tsk = Task.FromResult(Ok(eventId, box x))
+            this.TryCacheTask (aggregateId, tsk)
         
         member this.Clean (aggregateId: AggregateId)  =
             let key = aggregateId.ToString()
@@ -478,13 +493,34 @@ module Cache =
             statePerAggregate.Clear(false)
         
         member this.LastEventId (aggregateId: AggregateId) =
-            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
-            if not (obj.ReferenceEquals(v, null)) then v |> fst |> Some else None
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            if not (obj.ReferenceEquals(v, null)) && v.IsCompletedSuccessfully then 
+                match v.Result with
+                | Ok (eventId, _) -> Some eventId
+                | _ -> None
+            else None
         
         member this.GetState (aggregateId: AggregateId) =
-            let v = statePerAggregate.GetOrDefault<(EventId * obj)>(aggregateId.ToString(), null)
-            if not (obj.ReferenceEquals(v, null)) then v |> snd |> Ok else Error "aggregate not found"        
-     
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            if not (obj.ReferenceEquals(v, null)) then 
+                match v.GetAwaiter().GetResult() with
+                | Ok (_, state) -> Ok state
+                | Error e -> Error e
+            else Error "aggregate not found"        
+
+        member this.GetStateAsync (aggregateId: AggregateId) (ct: Option<CancellationToken>) =
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            if not (obj.ReferenceEquals(v, null)) then 
+                task {
+                    let! res = v
+                    match res with
+                    | Ok (_, state) -> return Ok state
+                    | Error e -> return Error e
+                }
+            else task {
+                return Error "aggregate not found"
+            }
+
     type StateCache2<'A> private () =
         let mutable cachedValue: 'A option = None
         let mutable eventId: EventId = 0
@@ -602,3 +638,8 @@ module Cache =
     let setupMqttBackplane (options: MqttClientOptions) (topicPrefix: string) =
         let bp = new MqttBackplane(options, topicPrefix)
         bp :> IFusionCacheBackplane
+
+
+
+
+

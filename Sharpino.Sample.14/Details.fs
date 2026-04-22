@@ -4,6 +4,9 @@ open Sharpino.Cache
 open Sharpino.Sample._14.Course
 open Sharpino.Sample._14.Student
 open Sharpino.Sample._14.Definitions
+open System.Threading
+open System.Threading.Tasks
+open FsToolkit.ErrorHandling
 
 module Details =
     
@@ -18,10 +21,12 @@ module Details =
                     let! student, courses = this.Refresher ()
                     return { this with Student = student; Courses = courses }
                 }
-           
-            interface Refreshable<StudentDetails> with
-                member this.Refresh () =
-                    this.Refresh ()
+            member this.RefreshAsync (_: Option<CancellationToken>) =
+                this.Refresh() |> Task.FromResult
+
+            interface RefreshableAsync<StudentDetails> with
+                member this.RefreshAsync ct =
+                    this.RefreshAsync ct
         
     type CourseDetails =
         {
@@ -35,7 +40,9 @@ module Details =
                     let! course, students = this.Refresher ()
                     return { this with Course = course; Students = students }
                 }
-                
-            interface Refreshable<CourseDetails> with
-                member this.Refresh () =
-                    this.Refresh ()
+            member this.RefreshAsync (_: Option<CancellationToken>) =
+                this.Refresh() |> Task.FromResult
+
+            interface RefreshableAsync<CourseDetails> with
+                member this.RefreshAsync ct =
+                    this.RefreshAsync ct

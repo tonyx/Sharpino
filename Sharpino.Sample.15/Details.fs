@@ -1,6 +1,8 @@
 namespace Sharpino.Sample._15
 
 open System
+open System.Threading
+open System.Threading.Tasks
 open Expecto
 open DotNetEnv
 open Sharpino
@@ -36,9 +38,12 @@ module Details =
                 let! studentDetails = this.Refresher()
                 return { this with StudentDetails = studentDetails }
             }
-        interface Refreshable<RefreshableStudentDetails> with
-            member this.Refresh () =
-                this.Refresh ()
+        member this.RefreshAsync (_: Option<CancellationToken>) =
+            this.Refresh() |> Task.FromResult
+
+        interface RefreshableAsync<RefreshableStudentDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
     
     type RefreshableCourseDetails =
         {
@@ -50,7 +55,10 @@ module Details =
                 let! courseDetails = this.Refresher()
                 return { this with CourseDetails = courseDetails }
             }
-        interface Refreshable<CourseDetails> with
-            member this.Refresh () =
-                this.Refresher ()     
+        member this.RefreshAsync (_: Option<CancellationToken>) =
+            this.Refresh() |> Task.FromResult
+
+        interface RefreshableAsync<RefreshableCourseDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
         

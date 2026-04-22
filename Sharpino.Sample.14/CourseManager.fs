@@ -20,6 +20,7 @@ open Sharpino.Storage
 open Sharpino
 open System
 open System.Threading
+open System.Threading.Tasks
 
 module CourseManager =
     type CourseManager
@@ -128,7 +129,7 @@ module CourseManager =
                                     Course = course
                                     Students = students
                                     Refresher = refresher
-                                } :> Refreshable<_>
+                                } :> RefreshableAsync<_>
                                 ,
                                 id.Id:: (students |> List.map _.StudentId.Id)
                             )
@@ -155,7 +156,7 @@ module CourseManager =
                                     Student = student
                                     Courses = courses
                                     Refresher = refresher
-                                } :> Refreshable<_>
+                                } :> RefreshableAsync<_>
                                 ,
                                 id.Id:: (courses |> List.map _.CourseId.Id)
                             )
@@ -190,7 +191,7 @@ module CourseManager =
                                     Student = student
                                     Courses = courses
                                     Refresher = refresher
-                                } :> Refreshable<_>
+                                } :> RefreshableAsync<_>
                                 ,
                                 id.Id:: (courses |> List.map _.CourseId.Id)
                             )
@@ -362,6 +363,3 @@ module CourseManager =
                             [addStudentToCourseEnrollments]
                             cancellationToken
                 }
-        
-        
-                

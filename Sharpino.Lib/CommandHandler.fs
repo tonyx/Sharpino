@@ -5,6 +5,7 @@ open System
 
 open System.Reflection
 open System.Threading
+open System.Threading.Tasks
 open FSharp.Core
 open FSharpPlus
 
@@ -536,7 +537,7 @@ module CommandHandler =
                
                 let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
                 AggregateCache3.Instance.Clean id
-                DetailsCache.Instance.RefreshDependentDetails id
+                DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
                  
                 let _ =
                     let queueName = 'A1.Version + 'A1.StorageName
@@ -573,7 +574,7 @@ module CommandHandler =
                
                 let! _ = eventStore.SnapshotAndMarkDeletedAsync('A1.Version, 'A1.StorageName, eventId, id, serializedState, ct |> Option.defaultValue CancellationToken.None)
                 AggregateCache3.Instance.Clean id
-                DetailsCache.Instance.RefreshDependentDetails id
+                let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(id, ct) |> Task.map Ok
                  
                 let _ =
                     let queueName = 'A1.Version + 'A1.StorageName
@@ -643,8 +644,8 @@ module CommandHandler =
                         (events |>> _.Serialize)
                         
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) streamAggregateId
-                DetailsCache.Instance.RefreshDependentDetails id
-                DetailsCache.Instance.RefreshDependentDetails streamAggregateId
+                DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
+                DetailsCache.Instance.RefreshDependentDetailsAsync(streamAggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                
                 let _ =
                     optionallySendDeleteMessageAsync<'A1> ('A1.Version + 'A1.StorageName) messageSenders id
@@ -710,9 +711,9 @@ module CommandHandler =
                     |> unbox
                     |> command2.Execute
                
-                DetailsCache.Instance.RefreshDependentDetails aggregateId
-                DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
+                DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
                 
                 AggregateCache3.Instance.Clean aggregateId
                 let! newLastStateIdsList =
@@ -851,10 +852,10 @@ module CommandHandler =
                             (toBeDeleted |> unbox<'A>).Serialize
                             allPacked
                             
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                     let _ =
                         for id in aggregateIds1 do
-                            DetailsCache.Instance.RefreshDependentDetails id
+                            DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let doCacheResults =
                         fun () ->
@@ -1083,14 +1084,14 @@ module CommandHandler =
                             AggregateCache3.Instance.Clean id
                         )
                    
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ =
                         aggregateIds1
-                        |> List.iter  (fun id -> DetailsCache.Instance.RefreshDependentDetails id)
+                        |> List.iter  (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                     let _ =
                         aggregateIds2
-                        |> List.iter  (fun id -> DetailsCache.Instance.RefreshDependentDetails id)
+                        |> List.iter  (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                     
                     let _ = optionallySendDeleteMessageAsync<'A> ('A.Version + 'A.StorageName) messageSenders aggregateId
                         
@@ -1173,7 +1174,7 @@ module CommandHandler =
                         
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ =
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
@@ -1233,7 +1234,7 @@ module CommandHandler =
                         storage.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, initialInstance.Id, 'A2.Version, 'A2.StorageName, aggregateId, initialInstance.Serialize, 'A1.Version, 'A1.StorageName, md, events', ct)
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ =
                         mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
@@ -1322,10 +1323,9 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
 
-                    let _ =
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
-                        
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some ct) |> Task.map Ok
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some ct) |> Task.map Ok
+                    
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
                     
@@ -1432,11 +1432,10 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, newState3 |> box) aggregateId3
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
 
-                    let _ =
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId3
-                        
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some ct) |> Task.map Ok
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some ct) |> Task.map Ok
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId3, Some ct) |> Task.map Ok
+                    
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A3, 'E3, 'F> eventStore aggregateId3 newState3 (ids.[2] |> List.last)
@@ -1525,7 +1524,7 @@ module CommandHandler =
                     
                     let _ =
                         aggregateIds
-                        |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetails id)
+                        |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                     
                     let _ =
                         optionallySendInitialInstanceAsync<'A2, _> snapshotStreamName messageSenders initialInstance.Id initialInstance
@@ -1619,7 +1618,7 @@ module CommandHandler =
                     
                     let _ =
                         aggregateIds
-                        |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetails id)
+                        |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                     
                     let _ =
                         optionallySendInitialInstanceAsync<'A2, _> snapshotStreamName messageSenders initialInstance.Id initialInstance
@@ -1726,9 +1725,9 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, newState3 |> box) aggregateId3
 
                     let _ =
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId3
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId3, Some CancellationToken.None).GetAwaiter().GetResult()
 
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
@@ -1830,8 +1829,8 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     
                     let _ =
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
@@ -1958,9 +1957,9 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
                     
                     let _ =
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId2
-                        DetailsCache.Instance.RefreshDependentDetails aggregateId3
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId3, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (ids.[1] |> List.last)
@@ -2131,8 +2130,7 @@ module CommandHandler =
                 let! ids = storeEvents storage messageSenders executedCommand
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
                  
-                let _ =
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId
+                DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
                 let _ =
                     mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
                 let _ =
@@ -2172,7 +2170,7 @@ module CommandHandler =
                    
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
 
-                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some ct) |> Task.map Ok
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (newState |> unbox) (ids |> List.last)
                     let _ = optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
                     
@@ -2301,7 +2299,7 @@ module CommandHandler =
                     
                     let _ =
                         aggregateIds
-                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some CancellationToken.None).GetAwaiter().GetResult())
                      
                     let _ =
                         optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateIdInitialEventIdEndEventIdAndEvents
@@ -2406,7 +2404,7 @@ module CommandHandler =
                     let _ =
                         aggregateIds
                         |> List.distinct
-                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some CancellationToken.None).GetAwaiter().GetResult())
                      
                     let aggregateIdAndInitialEventIdEndEventIdAndEvents =
                         let initialEventIdEndEventIdAndEvents =
@@ -2501,10 +2499,9 @@ module CommandHandler =
                     duplicatedIds
                     |> List.iter (fun x -> AggregateCache3.Instance.Clean x)
                 
-                let _ =
-                    aggregateIds
-                    |> List.distinct
-                    |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                for x in (aggregateIds |> List.distinct) do
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some ct) |> Task.map Ok
+                    ()
                     
                 let aggregateIdAndInitialEventIdEndEventIdAndEvents =
                     let initialEventIdEndEventIdAndEvents =
@@ -2591,9 +2588,9 @@ module CommandHandler =
                 let queueNameA2 = 'A2.Version + 'A2.StorageName
                 
                 let _ =
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId1
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
                 let _ =
-                    DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
                
                 
                 let serializeProperty1 = firstExecutedCommand.NewState.GetType().GetProperty("Serialize")
@@ -2642,7 +2639,7 @@ module CommandHandler =
                 AggregateCache3.Instance.Memoize2 (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].NewState |> box) preExecutedAggregateCommands.[i].AggregateId
                 
             for i in 0 .. (preExecutedAggregateCommands.Length - 1) do
-                DetailsCache.Instance.RefreshDependentDetails preExecutedAggregateCommands.[i].AggregateId
+                DetailsCache.Instance.RefreshDependentDetailsAsync(preExecutedAggregateCommands.[i].AggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
                 let serializeProperty = preExecutedAggregateCommands.[i].NewState.GetType().GetProperty("Serialize") 
@@ -2703,7 +2700,7 @@ module CommandHandler =
                 AggregateCache3.Instance.Memoize2 (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].NewState |> box) preExecutedAggregateCommands.[i].AggregateId
                 
             for i in 0 .. (preExecutedAggregateCommands.Length - 1) do
-                DetailsCache.Instance.RefreshDependentDetails preExecutedAggregateCommands.[i].AggregateId
+                DetailsCache.Instance.RefreshDependentDetailsAsync(preExecutedAggregateCommands.[i].AggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
             
             for i in 0..(preExecutedAggregateCommands.Length - 1) do
                 let serializeProperty = preExecutedAggregateCommands.[i].NewState.GetType().GetProperty("Serialize") 
@@ -2808,8 +2805,8 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[0] |> List.last, newState1 |> box) aggregateId1
                     AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[1] |> List.last, newState2 |> box) aggregateId2
 
-                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId1
-                    let _ = DetailsCache.Instance.RefreshDependentDetails aggregateId2
+                    let _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                    let _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
                     
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
@@ -3029,7 +3026,7 @@ module CommandHandler =
                     let _ =    
                         allIds
                         |> List.distinct
-                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some CancellationToken.None).GetAwaiter().GetResult())
                        
                     // todo introduce snapshot mechanism here back only when any consistency issue is carefually checked
                     
@@ -3226,10 +3223,9 @@ module CommandHandler =
                     duplicatedIds
                     |> List.iter AggregateCache3.Instance.Clean
                     
-                let _ =    
-                    allIds
-                    |> List.distinct
-                    |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                for x in (allIds |> List.distinct) do
+                    let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(x, ct |> Some) |> Task.map Ok
+                    ()
                     
                 // rather not snapshotting
                 
@@ -3395,7 +3391,7 @@ module CommandHandler =
                         
                     let _ =    
                         aggregateIds1 @ aggregateIds2
-                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some CancellationToken.None).GetAwaiter().GetResult())
                 
                     let aggregateIdInitialEventIdEndEventIdAndEventsA1 =
                         let initialEventIdEndEventIdAndEventsA1 =
@@ -3546,9 +3542,9 @@ module CommandHandler =
                         AggregateCache3.Instance.Memoize2 (eventIds2'.[i] |> List.last, newStates2.[i] |> box) aggregateIds2.[i]
                         mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateIds2.[i] newStates2.[i] (eventIds2'.[i] |> List.last) |> ignore
                         
-                    let _ =    
-                        aggregateIds1 @ aggregateIds2
-                        |> List.iter (fun x -> DetailsCache.Instance.RefreshDependentDetails x)
+                    for x in (aggregateIds1 @ aggregateIds2) do
+                        let! _ = DetailsCache.Instance.RefreshDependentDetailsAsync(x, Some ct') |> Task.map Ok
+                        ()
                 
                     let aggregateIdInitialEventIdEndEventIdAndEventsA1 =
                         let initialEventIdEndEventIdAndEventsA1 =
@@ -3804,7 +3800,7 @@ module CommandHandler =
                         aggregateIds1 @ aggregateIds2 @ aggregateIds3
                         |> List.distinct
                         |> List.iter (fun id ->
-                            DetailsCache.Instance.RefreshDependentDetails id
+                            DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
                         )
                     
                     // quick fix: avoid this computation if there are no message senders
@@ -4056,7 +4052,7 @@ module CommandHandler =
                         aggregateIds1 @ aggregateIds2 @ aggregateIds3
                         |> List.distinct
                         |> List.iter (fun id ->
-                            DetailsCache.Instance.RefreshDependentDetails id
+                            DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
                         )
                     
                     // quick fix: avoid this computation if there are no message senders
@@ -4319,7 +4315,7 @@ module CommandHandler =
                         let _ =
                             aggregateIds1 @ aggregateIds2 @ aggregateIds3
                             |> List.distinct
-                            |> List.iter DetailsCache.Instance.RefreshDependentDetails
+                            |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                          
                         return ()
                     }
@@ -4423,7 +4419,7 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids.[2] |> List.last, a3ExecutedCommand.NewState |> box) aggregateId3
                     
                     [aggregateId1; aggregateId2; aggregateId3]
-                    |> List.iter DetailsCache.Instance.RefreshDependentDetails
+                    |> List.iter (fun id -> DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult())
                     
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 (a1ExecutedCommand.NewState |> unbox) (ids.[0] |> List.last)
                     let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 (a2ExecutedCommand.NewState |> unbox) (ids.[1] |> List.last)

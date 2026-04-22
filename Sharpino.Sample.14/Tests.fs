@@ -2,6 +2,7 @@ module Tests
 
 open System
 open System.Threading
+open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 open Expecto
 open Sharpino
@@ -269,6 +270,8 @@ let tests =
             // then
             let studentDetails = 
               courseManager.GetStudentDetailsAsync student.StudentId None
+              |> Async.AwaitTask
+              |> Async.RunSynchronously
 
             Expect.isTrue true "true "
             Expect.isOk studentDetails "Student details not retrieved"
@@ -316,8 +319,9 @@ let tests =
             // then
             let studentDetails = 
               courseManager.GetStudentDetailsAsync student.StudentId None
+              |> Async.AwaitTask
+              |> Async.RunSynchronously
 
-            Expect.isTrue true "true "
             Expect.isOk studentDetails "Student details not retrieved"
 
             let studentDetailsValue: StudentDetails = studentDetails.OkValue

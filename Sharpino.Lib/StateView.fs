@@ -28,6 +28,8 @@ module StateView =
     let inline private unboxCacheState<'A> (stateValue: obj) : Result<'A, string> =
         match stateValue with
         | :? 'A as state -> Ok state
+        | :? Cache.Refreshable<'A> as r -> r.Refresh()
+        | :? Cache.RefreshableAsync<'A> as r -> r.RefreshAsync(None).GetAwaiter().GetResult()
         | :? System.Text.Json.JsonElement as jsonElement ->
             try
                 System.Text.Json.JsonSerializer.Deserialize<'A>(jsonElement, Cache.jsonOptions) |> Ok
@@ -486,7 +488,7 @@ module StateView =
             }
 
     let inline getRefreshableDetails<'A>
-        (refreshableDetailsBuilder: unit -> Result<Refreshable<'A> * List<Guid>, string>)
+        (refreshableDetailsBuilder: unit -> Result<Cache.RefreshableAsync<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) =
         
         let result = DetailsCache.Instance.Memoize refreshableDetailsBuilder key
@@ -495,15 +497,28 @@ module StateView =
         | Ok res -> unboxCacheState<'A> res
 
     let inline getRefreshableDetailsAsync<'A>
-        (refreshableDetailsBuilder: Option<CancellationToken> -> Result<Refreshable<'A> * List<Guid>, string>)
+        (refreshableDetailsBuilder: Option<CancellationToken> -> Result<Cache.RefreshableAsync<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) 
         (ct: Option<CancellationToken>)
         =
-        
-        let result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct) key ct
-        match result with
-        | Error e -> Error e
-        | Ok res -> unboxCacheState<'A> res
+        task {
+            let! result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct |> Task.FromResult) key ct
+            match result with
+            | Error e -> return Error e
+            | Ok res -> return unboxCacheState<'A> res
+        }
+
+    let inline getRefreshableDetailsTaskResultAsync<'A>
+        (refreshableDetailsBuilder: Option<CancellationToken> -> TaskResult<Cache.RefreshableAsync<'A> * List<Guid>, string>)
+        (key: DetailsCacheKey) 
+        (ct: Option<CancellationToken>)
+        =
+        task {
+            let! result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct) key ct
+            match result with
+            | Error e -> return Error e
+            | Ok res -> return unboxCacheState<'A> res
+        }
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>

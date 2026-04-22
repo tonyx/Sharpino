@@ -98,18 +98,16 @@ module PubSystem =
                             {
                                 let! course, ingredients = refresher ()
                                 return
-                                    (
-                                        {
-                                            Dish = course
-                                            Ingredients = ingredients
-                                            Refresher = refresher
-                                        }
-                                    ) :> Refreshable<_>
+                                    {
+                                        Dish = course
+                                        Ingredients = ingredients
+                                        Refresher = refresher
+                                    } :> RefreshableAsync<_>
                                     ,
                                     id:: (ingredients |> List.map _.Id)
                             }
                 let key = DetailsCacheKey.OfType typeof<DishDetails> id
-                StateView.getRefreshableDetails<DishDetails> detailsBuilder key 
+                StateView.getRefreshableDetails<DishDetails> detailsBuilder key
                 
             member this.GetIngredient ( guid: Guid ) =
                 result {

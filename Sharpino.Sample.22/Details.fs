@@ -7,6 +7,8 @@ open Sharpino
 open System.Text.Json
 open FsToolkit.ErrorHandling
 open System
+open System.Threading
+open System.Threading.Tasks
 
 module Details = 
 
@@ -21,9 +23,12 @@ module Details =
                 let! user, todos = this.Refresher ()
                 return { this with User = user; Todos = todos }
             }
-        interface Refreshable<UserDetails> with
-            member this.Refresh () =
-                this.Refresh ()
+        member this.RefreshAsync (_: Option<CancellationToken>) =
+            this.Refresh() |> Task.FromResult
+
+        interface RefreshableAsync<UserDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
     
     type TodoDetails = 
         { 
@@ -36,7 +41,10 @@ module Details =
                 let! todo, user = this.Refresher ()
                 return { this with Todo = todo; User = user }
             }
-        interface Refreshable<TodoDetails> with
-            member this.Refresh () =
-                this.Refresh ()
+        member this.RefreshAsync (_: Option<CancellationToken>) =
+            this.Refresh() |> Task.FromResult
+
+        interface RefreshableAsync<TodoDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
 

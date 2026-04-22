@@ -98,12 +98,12 @@ module TodosManager =
                                 Todos = todos
                                 Refresher = refresher
                             } 
-                            :> Refreshable<UserDetails>
+                            :> RefreshableAsync<UserDetails>
                             ,
                             userId.Value:: (todos |> List.map _.Id)
                     }
             let key = DetailsCacheKey.OfType typeof<UserDetails> userId.Value 
-            StateView.getRefreshableDetails<UserDetails> detailsBuilder key 
+            StateView.getRefreshableDetails<UserDetails> detailsBuilder key
 
         member this.RenameTodo (id: TodoId) (newName: string) =
             result

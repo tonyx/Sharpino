@@ -186,7 +186,7 @@ module CourseManager =
                                 {
                                     StudentDetails = studentDetails
                                     Refresher =  refresher
-                                } :> Refreshable<_>
+                                } :> RefreshableAsync<_>
                                 ,
                                 studentId.Id :: Enrollment.enrollmentId.Id ::  (studentDetails.EnrolledInCourses |> Array.toList |>> _.CourseId.Id)
                         }
@@ -194,10 +194,8 @@ module CourseManager =
             StateView.getRefreshableDetails<RefreshableStudentDetails> detailsBuilder key
 
         member this.GetDetails (studentId: StudentId) =
-            result {
-                let! details = this.GetRefreshableDetails studentId
-                return details.StudentDetails
-            }
+            this.GetRefreshableDetails studentId
+            |> Result.map (fun details -> details.StudentDetails)
             
         member this.CreateEnrollment (studentId: StudentId) (courseId: CourseId) =
             result {

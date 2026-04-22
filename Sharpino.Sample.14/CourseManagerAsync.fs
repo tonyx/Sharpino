@@ -83,11 +83,7 @@ module CourseManagerAsync =
                         let! course, students = refresher ()
                         return
                             (
-                                {
-                                    Course = course
-                                    Students = students
-                                    Refresher = refresher
-                                } :> Refreshable<_>
+                                { Course = course; Students = students; Refresher = refresher }
                                 ,
                                 id.Id:: (students |> List.map _.StudentId.Id)
                             )
@@ -110,11 +106,7 @@ module CourseManagerAsync =
                         {
                             let! student, courses = refresher ()
                             return (
-                                {
-                                    Student = student
-                                    Courses = courses
-                                    Refresher = refresher
-                                } :> Refreshable<_>
+                                { Student = student; Courses = courses; Refresher = refresher }
                                 ,
                                 id.Id:: (courses |> List.map _.CourseId.Id)
                             )

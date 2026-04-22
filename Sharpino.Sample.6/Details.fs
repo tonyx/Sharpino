@@ -12,7 +12,8 @@ open Sharpino.Lib.Core.Commons
 open Sharpino.Storage
 open Sharpino.Core
 open Sharpino.Utils
-open System
+open System.Threading
+open System.Threading.Tasks
 
 module Details =
     type DishDetails =
@@ -26,10 +27,12 @@ module Details =
                 let! dish, ingredients = this.Refresher()
                 return { this with Dish = dish; Ingredients = ingredients }
             }
-            
-        interface Refreshable<DishDetails> with
-            member this.Refresh () =
-                this.Refresh ()
+        member this.RefreshAsync (_: Option<CancellationToken>) =
+            this.Refresh() |> Task.FromResult
+
+        interface RefreshableAsync<DishDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
                 
                 
                 
