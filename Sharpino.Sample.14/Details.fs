@@ -14,15 +14,13 @@ module Details =
         {
             Student: Student
             Courses: List<Course>
-            Refresher: unit -> Result<Student * List<Course>, string>
+            Refresher: Option<CancellationToken> -> TaskResult<Student * List<Course>, string>
         }
-            member this.Refresh () =
-                result {
-                    let! student, courses = this.Refresher ()
+            member this.RefreshAsync ct =
+                taskResult {
+                    let! student, courses = this.Refresher ct
                     return { this with Student = student; Courses = courses }
                 }
-            member this.RefreshAsync (_: Option<CancellationToken>) =
-                this.Refresh() |> Task.FromResult
 
             interface RefreshableAsync<StudentDetails> with
                 member this.RefreshAsync ct =
@@ -32,16 +30,14 @@ module Details =
         {
             Course: Course
             Students: List<Student>
-            Refresher: unit -> Result<Course * List<Student>, string>
+            Refresher: Option<CancellationToken> -> TaskResult<Course * List<Student>, string>
         }
           
-            member this.Refresh () =
-                result {
-                    let! course, students = this.Refresher ()
+            member this.RefreshAsync ct =
+                taskResult {
+                    let! course, students = this.Refresher ct 
                     return { this with Course = course; Students = students }
                 }
-            member this.RefreshAsync (_: Option<CancellationToken>) =
-                this.Refresh() |> Task.FromResult
 
             interface RefreshableAsync<CourseDetails> with
                 member this.RefreshAsync ct =

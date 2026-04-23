@@ -181,42 +181,42 @@ module Tests =
                 
                 Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
 
-            testCase "increment many counters async and retrieve them"   <| fun _ ->
-                let eventStore = PgBinaryStore connection
-                setUp eventStore
-                let api = counterApi ()
-                let counters =
-                    [
-                        Counter.Initial; Counter.Initial; Counter.Initial; Counter.Initial
-                    ]
-                let createCounters =
-                    counters
-                    |> List.map (fun c -> api.CreateCounter c)
-                Expect.isTrue (createCounters |> List.forall (fun x -> x.IsOk)) "should be all Ok"
-                
-                Async.Sleep timeout |> Async.RunSynchronously
-                let incrementCounters =
-                    api.IncrementManyCountersAsync (counters |> List.map _.Id)
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously
-                
-                Expect.isTrue (incrementCounters.IsOk) "should be Ok"
-                
-                Async.Sleep timeout |> Async.RunSynchronously
-                let retrievedCounters =
-                    counters
-                    |> List.map (fun c -> api.GetCounter c.Id)
-                
-                Expect.isTrue (retrievedCounters |> List.forall (fun x -> x.IsOk)) "should be all Ok"
-                
-                let retrievedCounters' =
-                    retrievedCounters
-                    |> List.map _.OkValue
-                
-                Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
+            ftestCaseTask "increment many counters async and retrieve them"   <| fun _ ->
+                task {
+                    let eventStore = PgBinaryStore connection
+                    setUp eventStore
+                    let api = counterApi ()
+                    let counters =
+                        [
+                            Counter.Initial; Counter.Initial; Counter.Initial; Counter.Initial
+                        ]
+                    let createCounters =
+                        counters
+                        |> List.map (fun c -> api.CreateCounter c)
+                    Expect.isTrue (createCounters |> List.forall (fun x -> x.IsOk)) "should be all Ok"
+                    
+                    Async.Sleep timeout |> Async.RunSynchronously
+                    let! incrementCounters =
+                        api.IncrementManyCountersAsync (counters |> List.map _.Id)
+                    
+                    Expect.isTrue (incrementCounters.IsOk) "should be Ok"
+                    
+                    Async.Sleep timeout |> Async.RunSynchronously
+                    let retrievedCounters =
+                        counters
+                        |> List.map (fun c -> api.GetCounter c.Id)
+                    
+                    Expect.isTrue (retrievedCounters |> List.forall (fun x -> x.IsOk)) "should be all Ok"
+                    
+                    let retrievedCounters' =
+                        retrievedCounters
+                        |> List.map _.OkValue
+                    
+                    Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
+                }
 
-            ftestCaseAsync "increment many counters async and retrieve them - async" (
-                async {
+            ftestCaseTask "increment many counters async and retrieve them - async" <| fun _ ->
+                task {
                     let eventStore = PgBinaryStore connection
                     setUp eventStore
                     let api = counterApi ()
@@ -232,7 +232,6 @@ module Tests =
                     do! Async.Sleep timeout
                     let! incrementCounters =
                         api.IncrementManyCountersAsync (counters |> List.map _.Id)
-                        |> Async.AwaitTask
                     
                     Expect.isTrue (incrementCounters.IsOk) "should be Ok"
                     
@@ -248,7 +247,7 @@ module Tests =
                         |> List.map _.OkValue
                     
                     Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
-                })
+                }
                 
             testCase "create counters and accounts and execute commands on them in sparse order (type independent way of running any command)"   <| fun _ ->
                 // given

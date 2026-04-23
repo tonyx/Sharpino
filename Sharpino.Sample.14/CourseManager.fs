@@ -111,18 +111,23 @@ module CourseManager =
                     return student
                 }
         
-        member this.GetCourseDetails (id: CourseId) =
+        member this.GetCourseDetails (id: CourseId) : Result<CourseDetails, string> =
+            this.GetCourseDetailsAsync id None 
+            |> Async.AwaitTask 
+            |> Async.RunSynchronously
+
+        member this.GetCourseDetailsAsync (id: CourseId) (cancellationToken: Option<CancellationToken>) : Task<Result<CourseDetails, string>> =
             let detailsBuilder =
-                fun () ->
+                fun (ct: option<CancellationToken>) ->
                     let refresher =
-                        fun () ->
-                            result {
-                                let! course = this.GetCourse id
-                                let! students = this.GetStudents course.Students
+                        fun (ct: Option<CancellationToken>) ->
+                            taskResult {
+                                let! (course: Course) = this.GetCourseAsync id ct
+                                let! (students: List<Student>) = this.GetStudentsAsync course.Students ct
                                 return course, students
                             }
-                    result {
-                        let! course, students = refresher ()
+                    taskResult {
+                        let! course, students = refresher ct
                         return
                             (
                                 {
@@ -135,57 +140,32 @@ module CourseManager =
                             )
                     }
             let key = DetailsCacheKey.OfType typeof<CourseDetails> id.Id
-            StateView.getRefreshableDetails<CourseDetails> detailsBuilder key
+            StateView.getRefreshableDetailsTaskResultAsync<CourseDetails> detailsBuilder key cancellationToken
         
         member this.GetStudentDetails (id: StudentId) =
-            let detailsBuilder =
-                fun () ->
-                    let refresher =
-                        fun () ->
-                            result {
-                                let! student = this.GetStudent id
-                                let! courses = this.GetCourses (student.Courses |> Array.ofList)
-                                return
-                                    student, courses
-                            }
-                    result
-                        {
-                            let! student, courses = refresher ()
-                            return (
-                                {
-                                    Student = student
-                                    Courses = courses
-                                    Refresher = refresher
-                                } :> RefreshableAsync<_>
-                                ,
-                                id.Id:: (courses |> List.map _.CourseId.Id)
-                            )
-                        }
-            let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
-            StateView.getRefreshableDetails<StudentDetails> detailsBuilder key
+            this.GetStudentDetailsAsync id None 
+            |> Async.AwaitTask 
+            |> Async.RunSynchronously
 
         member this.GetStudentDetailsAsync (id: StudentId) (cancellationToken: Option<CancellationToken>) =
             let detailsBuilder =
+                // todo: femove the need to pass a ct that is not even used as here. 
                 fun (ct: Option<CancellationToken>) ->
                     let refresher =
-                        fun () ->
-                            result {
+                        fun (ct: Option<CancellationToken>) ->
+                            taskResult {
                                 let! student = 
                                     this.GetStudentAsync id ct
-                                    |> Async.AwaitTask
-                                    |> Async.RunSynchronously
 
                                 let! courses = 
                                     this.GetCoursesAsync (student.Courses |> Array.ofList) ct
-                                    |> Async.AwaitTask
-                                    |> Async.RunSynchronously
 
                                 return
                                     student, courses
                             }
-                    result
+                    taskResult
                         {
-                            let! student, courses = refresher ()
+                            let! student, courses = refresher ct
                             return (
                                 {
                                     Student = student
@@ -197,7 +177,7 @@ module CourseManager =
                             )
                         }
             let key = DetailsCacheKey.OfType typeof<StudentDetails> id.Id
-            StateView.getRefreshableDetailsAsync<StudentDetails> (fun ct -> detailsBuilder ct) key cancellationToken
+            StateView.getRefreshableDetailsTaskResultAsync<StudentDetails> detailsBuilder key cancellationToken
 
         member this.GetStudents (ids: List<StudentId>) =
             result
@@ -209,13 +189,13 @@ module CourseManager =
                     return students
                 }
 
-        member this.GetStudentsAsync (ids: List<StudentId>) (cancellationToken: Option<CancellationToken>) =
+        member this.GetStudentsAsync (ids: List<StudentId>) (cancellationToken: Option<CancellationToken>) : Task<Result<List<Student>, string>> =
             taskResult
                 {
                     let!
-                        students =
+                        (students: List<Student>) =
                             ids
-                            |> List.traverseTaskResultM (fun id -> studentViewerAsync id.Id cancellationToken) 
+                            |> List.traverseTaskResultM (fun id -> studentViewerAsync id.Id cancellationToken |> TaskResult.map snd) 
                     return students
                 }
         
@@ -253,10 +233,10 @@ module CourseManager =
                     return course
                 }
 
-        member this.GetCourseAsync (id: CourseId) (cancellationToken: Option<CancellationToken>) =
+        member this.GetCourseAsync (id: CourseId) (cancellationToken: Option<CancellationToken>) : Task<Result<Course, string>> =
             taskResult
                 {
-                    let! _, course = courseViewerAsync id.Id cancellationToken
+                    let! (_, course: Course) = courseViewerAsync id.Id cancellationToken
                     return course
                 }
         

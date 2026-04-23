@@ -166,8 +166,16 @@ module StateView =
             let ct = ct |> Option.defaultValue CancellationToken.None
             taskResult
                 {
+                    // todo: verify this possibility under comment (hint: something goes wrong with it)
+                    // let! (eventId, snapshot ) =  
+                    //     storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
+
+                    // let! deserialized = 'A.Deserialize snapshot
+                    // return (eventId, deserialized) 
+
+
                     let result =
-                        let found = 
+                        let! found = 
                             storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
                             |> Async.AwaitTask
                             |> Async.RunSynchronously
@@ -509,6 +517,7 @@ module StateView =
         }
 
     let inline getRefreshableDetailsTaskResultAsync<'A>
+        // todo: remove the need to pass a ct that is not even used as here.
         (refreshableDetailsBuilder: Option<CancellationToken> -> TaskResult<Cache.RefreshableAsync<'A> * List<Guid>, string>)
         (key: DetailsCacheKey) 
         (ct: Option<CancellationToken>)
