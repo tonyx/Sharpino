@@ -199,86 +199,81 @@ let tests =
             Expect.contains coursesList course2 "Student should be enrolled in Science"
         }
         
-        testCase "get courses for a student, async version" <| fun _ ->
-            setUp()
-            let course1 = Course.MkCourse "Math" 10
-            let course2 = Course.MkCourse "Science" 10
-            let student = Student.MkStudent "John" 3
-            let _ =
-                courseManager.AddCourseAsync course1
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-            let _ =
-                courseManager.AddCourseAsync course2
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-            let _ =
-                courseManager.AddStudentAsync student
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
+        testCaseTask "get courses for a student, async version" <| fun _ ->
+            task {
+                setUp()
+                let course1 = Course.MkCourse "Math" 10
+                let course2 = Course.MkCourse "Science" 10
+                let student = Student.MkStudent "John" 3
+                let! addCourse1 =
+                    courseManager.AddCourseAsync course1
+                Expect.isOk addCourse1 "Could not add course"
+                let! addCourse2 =
+                    courseManager.AddCourseAsync course2
+                Expect.isOk addCourse2 "Could not add course"
+                let! addStudent =
+                    courseManager.AddStudentAsync student
+                Expect.isOk addStudent "Could not add student"
 
-            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
-            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
+                let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+                let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.StudentId
-            Expect.isOk courses "Could not get courses for student"
+                let courses = courseManager.GetCourses student.StudentId
+                Expect.isOk courses "Could not get courses for student"
 
-            let coursesList = courses.OkValue
-            Expect.hasLength coursesList 2 "Expected two courses"
-            Expect.contains coursesList course1 "Student should be enrolled in Math"
-            Expect.contains coursesList course2 "Student should be enrolled in Science"
+                let coursesList = courses.OkValue
+                Expect.hasLength coursesList 2 "Expected two courses"
+                Expect.contains coursesList course1 "Student should be enrolled in Math"
+                Expect.contains coursesList course2 "Student should be enrolled in Science"
+            }
         
-        testCaseAsync "get courses for a student, async version 2" <| async {
-            setUp()
-            let course1 = Course.MkCourse "Math" 10
-            let course2 = Course.MkCourse "Science" 10
-            let student = Student.MkStudent "John" 3
-            let! _ =
-                courseManager.AddCourseAsync course1
-                |> Async.AwaitTask
-            let! _ =
-                courseManager.AddCourseAsync course2
-                |> Async.AwaitTask
-            let! _ =
-                courseManager.AddStudentAsync student
-                |> Async.AwaitTask
+        testCaseTask "get courses for a student, async version 2" <| fun _ -> 
+            task {
+                setUp()
+                let course1 = Course.MkCourse "Math" 10
+                let course2 = Course.MkCourse "Science" 10
+                let student = Student.MkStudent "John" 3
+                let! _ = courseManager.AddCourseAsync course1
+                let! _ = courseManager.AddCourseAsync course2
+                let! _ = courseManager.AddStudentAsync student
 
-            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
-            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
+                let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
+                let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
 
-            let courses = courseManager.GetCourses student.StudentId
-            Expect.isOk courses "Could not get courses for student"
+                let courses = courseManager.GetCourses student.StudentId
+                Expect.isOk courses "Could not get courses for student"
 
-            let coursesList = courses.OkValue
-            Expect.hasLength coursesList 2 "Expected two courses"
-            Expect.contains coursesList course1 "Student should be enrolled in Math"
-            Expect.contains coursesList course2 "Student should be enrolled in Science"
-        }
+                let coursesList = courses.OkValue
+                Expect.hasLength coursesList 2 "Expected two courses"
+                Expect.contains coursesList course1 "Student should be enrolled in Math"
+                Expect.contains coursesList course2 "Student should be enrolled in Science"
+            }
         
-        testCaseAsync "get courses for a student, async version 3" <| async {
-            setUp()
-            let course1 = Course.MkCourse "Math" 10
-            let course2 = Course.MkCourse "Science" 10
-            let student = Student.MkStudent "John" 3
-            let _ =
-                courseManager.AddCoursesAsync [|course1; course2|]
-                |> Async.AwaitTask
-                
-            let! _ =
-                courseManager.AddStudentAsync student
-                |> Async.AwaitTask
+        testCaseTask "get courses for a student, async version 3" <| fun _ -> 
+            task {
+                setUp()
+                let course1 = Course.MkCourse "Math" 10
+                let course2 = Course.MkCourse "Science" 10
+                let student = Student.MkStudent "John" 3
+                let! addCourses = courseManager.AddCoursesAsync [|course1; course2|]
+                Expect.isOk addCourses "Could not add courses"
+                let! addStudent = courseManager.AddStudentAsync student
+                Expect.isOk addStudent "Could not add student"
 
-            let _ = courseManager.CreateEnrollment student.StudentId course1.CourseId
-            let _ = courseManager.CreateEnrollment student.StudentId course2.CourseId
+                let createFirstEnrollment = courseManager.CreateEnrollment student.StudentId course1.CourseId
+                Expect.isOk createFirstEnrollment "Could not create first enrollment"
 
-            let courses = courseManager.GetCourses student.StudentId
-            Expect.isOk courses "Could not get courses for student"
+                let createSecondEnrollment = courseManager.CreateEnrollment student.StudentId course2.CourseId
+                Expect.isOk createSecondEnrollment "Could not create second enrollment"
 
-            let coursesList = courses.OkValue
-            Expect.hasLength coursesList 2 "Expected two courses"
-            Expect.contains coursesList course1 "Student should be enrolled in Math"
-            Expect.contains coursesList course2 "Student should be enrolled in Science"
-        }
+                let courses = courseManager.GetCourses student.StudentId
+                Expect.isOk courses "Could not get courses for student"
+
+                let coursesList = courses.OkValue
+                Expect.hasLength coursesList 2 "Expected two courses"
+                Expect.contains coursesList course1 "Student should be enrolled in Math"
+                Expect.contains coursesList course2 "Student should be enrolled in Science"
+            }
 
         testCaseAsync "get students enrolled in a course" <| async {
             setUp()
@@ -361,98 +356,96 @@ let tests =
             Expect.equal recordedEnrollment.StudentId student.StudentId "Student ID does not match"
             Expect.equal recordedEnrollment.CourseId course.CourseId "Course ID does not match"
         
-        testCase "enroll a student to a course and retrieve the related enrollment events" <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let student = Student.MkStudent"John" 3
-            let courseCreated = courseManager.AddCourse course
-            let studentCreated = courseManager.AddStudent student
-            
-            Expect.isOk courseCreated "Course creation failed"
-            Expect.isOk studentCreated "Student creation failed"
+        testCaseTask "enroll a student to a course and retrieve the related enrollment events" <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let student = Student.MkStudent"John" 3
+                let courseCreated = courseManager.AddCourse course
+                let studentCreated = courseManager.AddStudent student
+                
+                Expect.isOk courseCreated "Course creation failed"
+                Expect.isOk studentCreated "Student creation failed"
 
-            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+                let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
 
-            let events =
-                courseManager.GetAllEnrollmentEvents()
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
+                let! events =
+                    courseManager.GetAllEnrollmentEvents()
+                
+                Expect.isOk events "Could not get enrollment events"
+                
+                let eventsList = events.OkValue
+                Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+                
+                let actualEvent = List.head eventsList
+                let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
+                Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+            }
             
-            Expect.isOk events "Could not get enrollment events"
-            
-            let eventsList = events.OkValue
-            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
-            
-            let actualEvent = List.head eventsList
-            let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.StudentId "Student ID does not match"
-            Expect.equal item.CourseId course.CourseId "Course ID does not match"
-            
-        testCase "enroll a student to a course and retrieve the related enrollment events 2" <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let student = Student.MkStudent"John" 3
-            let courseCreated = courseManager.AddCourse course
-            let studentCreated = courseManager.AddStudent student
-            
-            Expect.isOk courseCreated "Course creation failed"
-            Expect.isOk studentCreated "Student creation failed"
+        testCaseTask "enroll a student to a course and retrieve the related enrollment events 2" <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let student = Student.MkStudent"John" 3
+                let courseCreated = courseManager.AddCourse course
+                let studentCreated = courseManager.AddStudent student
+                
+                Expect.isOk courseCreated "Course creation failed"
+                Expect.isOk studentCreated "Student creation failed"
 
-            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+                let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
 
-            let events =
-                courseManager.GetAllEnrollmentEvents2()
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
+                let! events =
+                    courseManager.GetAllEnrollmentEvents2()
+                
+                Expect.isOk events "Could not get enrollment events"
+                
+                let eventsList = events.OkValue
+                Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+                
+                let actualEvent = List.head eventsList
+                let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
+                Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+            }
             
-            Expect.isOk events "Could not get enrollment events"
+        testCaseTask "enroll a student to a course and retrieve the related enrollment events 3" <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let student = Student.MkStudent"John" 3
+                let courseCreated = courseManager.AddCourse course
+                let studentCreated = courseManager.AddStudent student
+                
+                Expect.isOk courseCreated "Course creation failed"
+                Expect.isOk studentCreated "Student creation failed"
+                
+                let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+
+                let! events = courseManager.GetAllEnrollmentEvents3()
             
-            let eventsList = events.OkValue
-            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
-            
-            let actualEvent = List.head eventsList
-            let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.StudentId "Student ID does not match"
-            Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
+                Expect.isOk events "Could not get enrollment events"
+                
+                let eventsList = events.OkValue
+                Expect.hasLength eventsList 1 "Enrollment event was not recorded"
+                
+                let (_, _, actualEvent) = eventsList.Item 0
+                let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
+                Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+            }
         
-        testCase "enroll a student to a course and retrieve the related enrollment events 3" <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let student = Student.MkStudent"John" 3
-            let courseCreated = courseManager.AddCourse course
-            let studentCreated = courseManager.AddStudent student
+        testCaseTask "create a course and then retrieve the related snapshot by means of eventStore direct access"  <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let courseCreated = courseManager.AddCourse course
             
-            Expect.isOk courseCreated "Course creation failed"
-            Expect.isOk studentCreated "Student creation failed"
-            
-            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
-
-            let events =
-                courseManager.GetAllEnrollmentEvents3()
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-        
-            let enrollmentResult = courseManager.CreateEnrollment student.StudentId course.CourseId
-            Expect.isOk events "Could not get enrollment events"
-            
-            let eventsList = events.OkValue
-            Expect.hasLength eventsList 1 "Enrollment event was not recorded"
-             
-            let (_, _, actualEvent) = eventsList.Item 0
-            let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-            Expect.equal item.StudentId student.StudentId "Student ID does not match"
-            Expect.equal item.CourseId course.CourseId "Course ID does not match"
-        
-        testCase "create a course and then retrieve the related snapshot by means of eventStore direct access"  <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let courseCreated = courseManager.AddCourse course
-           
-            let snapshot =
-                pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.CourseId.Id)
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-            Expect.isOk snapshot "Could not get snapshot"
+                let! snapshot = pgEventStore.TryGetLastAggregateSnapshotAsync (Course.Version, Course.StorageName, course.CourseId.Id)
+                Expect.isOk snapshot "Could not get snapshot"
+            }
        
         testCase "create a course and get the relate aggregateId from the EventStore" <| fun _ ->
             setUp ()
@@ -462,55 +455,51 @@ let tests =
             let ids = pgEventStore.GetAggregateIds Course.Version Course.StorageName |> Result.get
             Expect.equal ids [course.CourseId.Id] "should be equal"
         
-        testCase "create a course and get the related aggregateid from the EventStore Async" <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let addCourse = courseManager.AddCourse course
-            let ids =
-                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName) 
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Result.get
-            Expect.equal ids [course.CourseId.Id] "should be equal"
+        testCaseTask "create a course and get the related aggregateid from the EventStore Async" <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let addCourse = courseManager.AddCourse course
+                let! ids = pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName) 
+                Expect.isOk ids "Could not get aggregate ids"
+                Expect.equal ids.OkValue [course.CourseId.Id] "should be equal"
+            }
             
-        testCase "create two courses and get the related aggregateIds from the EventStore Async" <| fun _ ->
-            setUp ()
-            let math = Course.MkCourse "Math" 10
-            let english = Course.MkCourse "English" 10
-            let addCourses = courseManager.AddCourses [|math; english|]
-            let ids =
-                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Result.get
-            Expect.equal ids.Length 2 "should be true"
-            Expect.isTrue (ids.Contains math.CourseId.Id) "should be true"
-            Expect.isTrue (ids.Contains english.CourseId.Id) "should be true"
+        testCaseTask "create two courses and get the related aggregateIds from the EventStore Async" <| fun _ ->
+            task {
+                setUp ()
+                let math = Course.MkCourse "Math" 10
+                let english = Course.MkCourse "English" 10
+                let addCourses = courseManager.AddCourses [|math; english|]
+                let! ids = pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
+                Expect.isOk ids "Could not get aggregate ids"
+                Expect.equal ids.OkValue.Length 2 "should be true"
+                Expect.isTrue (ids.OkValue |> List.contains math.CourseId.Id) "should be true"
+                Expect.isTrue (ids.OkValue |> List.contains english.CourseId.Id) "should be true"
+            }
             
-        testCase "there are no courses and therefore the aggregateIds returned is empty" <| fun _ ->
-            setUp ()
-            let ids =
-                pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Result.get
-            Expect.isEmpty ids "should be empty"    
+        testCaseTask "there are no courses and therefore the aggregateIds returned is empty" <| fun _ ->
+            task {
+                setUp ()
+                let! ids =
+                    pgEventStore.GetAggregateIdsAsync (Course.Version, Course.StorageName)
+                Expect.isOk ids "Could not get aggregate ids"
+                Expect.isEmpty ids.OkValue "should be empty"    
+            }
             
-        testCase "create a course and get the related aggregateid from StateView Async" <| fun _ ->
-            setUp ()
-            let course = Course.MkCourse "Math" 10
-            let addCourse = courseManager.AddCourse course
-            let states =
-                StateView.getAggregateStatesInATimeIntervalAsync<Course, CourseEvents, string> 
-                    pgEventStore
-                    DateTime.MinValue
-                    DateTime.MaxValue
-                    None
-                |>
-                Async.AwaitTask
-                |> Async.RunSynchronously
-                |> Result.get
-                
-            Expect.equal states.Length 1 "should be 1"
+        testCaseTask "create a course and get the related aggregateid from StateView Async" <| fun _ ->
+            task {
+                setUp ()
+                let course = Course.MkCourse "Math" 10
+                let addCourse = courseManager.AddCourse course
+                let! states =
+                    StateView.getAggregateStatesInATimeIntervalAsync<Course, CourseEvents, string> 
+                        pgEventStore
+                        DateTime.MinValue
+                        DateTime.MaxValue
+                        None
+                Expect.isOk states  "Could not get aggregate states"   
+                Expect.equal states.OkValue.Length 1 "should be 1"
+            }
     ]
     |> testSequenced
