@@ -166,28 +166,11 @@ module StateView =
             let ct = ct |> Option.defaultValue CancellationToken.None
             taskResult
                 {
-                    // todo: verify this possibility under comment (hint: something goes wrong with it)
-                    // let! (eventId, snapshot ) =  
-                    //     storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
+                    let! (eventId, snapshot ) =  
+                        storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
 
-                    // let! deserialized = 'A.Deserialize snapshot
-                    // return (eventId, deserialized) 
-
-
-                    let result =
-                        let! found = 
-                            storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
-                            
-                        match found with
-                        | Ok (eventId, snapshot) ->
-                            let deserialized = 'A.Deserialize snapshot
-                            match deserialized with
-                            | Ok deserialized ->  (eventId , deserialized) |> Ok
-                            | Error e ->  Error e 
-                        | Error e ->  Error e
-                    return! result
+                    let! deserialized = 'A.Deserialize snapshot
+                    return (eventId, deserialized) 
                 }
                 
     // todo: it's safe to remove
@@ -329,23 +312,14 @@ module StateView =
                         getLastAggregateSnapshotAsync<'A, 'F> id 'A.Version 'A.StorageName eventStore ct
                     match eventIdAndState with
                     | Some eventId, (state: 'A) ->
-                        // todo: the Async.Await here must be a temporary workaround to be investigated
-                        let events =
+                        let! events =
                              eventStore.GetAggregateEventsAfterIdAsync ('A.Version, 'A.StorageName, id, eventId, ct |> Option.defaultValue CancellationToken.None)
-                             |> Async.AwaitTask
-                             |> Async.RunSynchronously
-                        let! events = events
-
                         let result = (Some eventId, state, events)
                         return result
                     | None, (state: 'A) ->
-                        // todo: the Async.Await here must be a temporary workaround to be investigated
-                        let events = 
-                            eventStore.GetAggregateEventsAsync ('A.Version, 'A.StorageName, id, ct |> Option.defaultValue CancellationToken.None)
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
 
-                        let! events = events
+                        let! events =
+                            eventStore.GetAggregateEventsAsync ('A.Version, 'A.StorageName, id, ct |> Option.defaultValue CancellationToken.None)
                         let result = (None, state, events)
                         return result
                 }
@@ -973,7 +947,7 @@ module StateView =
                     return result
                 }
 
-    // A valid reason for throwing errors is that theoretically if you have an id of an "undeleted" aggregate, it could be possible that later you cannot retrieve it anymore because, for example, in the mean time it becomes "deleted"
+    // A valid reason for filtering out errors at the end is that theoretically if you have an id of an "undeleted" aggregate, it could be possible that later you cannot retrieve it anymore because, for example, in the mean time it becomes "deleted"
     let inline getAllAggregateStatesAsync<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'E : (static member Deserialize: 'F -> Result<'E, string>)
@@ -986,23 +960,23 @@ module StateView =
             logger.LogDebug (sprintf "getAllAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
             taskResult
                 {
-
                     let ct = ct |> Option.defaultValue CancellationToken.None
-
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
-                    
-                    let! (results: Result<EventId * 'A, string> array) = 
-                         ids 
-                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct))
-                         |> Task.WhenAll
-                         |> Task.map Ok
-                    
-                    let result =
-                        results
-                        |> Array.toList
-                        |> List.choose (function | Ok x -> Some x | Error _ -> None)
-                    return result    
+
+                    // todo: stay on 50 or make a config parameter and tune it
+                    use semaphore = new SemaphoreSlim 50
+                    let tasks =
+                        ids |> List.map (fun id ->
+                            task {
+                                let! _ = semaphore.WaitAsync(ct)
+                                try
+                                    return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
+                                finally
+                                    semaphore.Release() |> ignore
+                            })
+                    let! results = Task.WhenAll(tasks)
+                    return results |> Array.toList |> List.choose (function | Ok x -> Some x | Error _ -> None)
                 }
 
     // there may be some issues in this function which need necessary to use the equivalent non async function
@@ -1023,18 +997,25 @@ module StateView =
 
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
-                    
-                    let! (results: Result<EventId * 'A, string> array) = 
-                         ids 
-                         |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct))
-                         |> Task.WhenAll
-                         |> Task.map Ok
-                    
-                    let result =
-                        results
+
+                    // todo: stay on 50 or make a config parameter and tune it
+                    use semaphore = new SemaphoreSlim 50
+                    let tasks =
+                        ids |> List.map (fun id ->
+                            task {
+                                let! _ = semaphore.WaitAsync(ct)
+                                try
+                                    return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
+                                finally
+                                    semaphore.Release() |> ignore
+                            })
+
+                    let! results = Task.WhenAll(tasks) 
+
+                    return 
+                        results 
                         |> Array.toList
                         |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
-                    return result    
                 }
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]

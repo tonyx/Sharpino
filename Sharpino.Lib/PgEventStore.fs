@@ -1847,7 +1847,7 @@ module PgStorage =
                     Error ex.Message
                     
             member this.GetAggregateEventsAsync (version, name, aggregateId, ?ct:CancellationToken): Task<Result<List<EventId * Json>,string>> =
-                logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                logger.LogDebug (sprintf "GetAggregateEventsAsync %s %s %A" version name aggregateId)
                 let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
                 task {
                     try

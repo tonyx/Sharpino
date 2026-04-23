@@ -226,24 +226,20 @@ module CommandHandler =
         (state: 'A)
         (eventId: int)
         =
-            logger.LogDebug "mkAggregateSnapshotIfIntervalPassed"
-            Async.RunSynchronously
-                (async {
-                    return
-                        result
-                            {
-                                let distanceFromLatestSnapshot = 
-                                    storage.GetDistanceFromLatestSnapshotAsync ('A.Version, 'A.StorageName, aggregateId)
-                                    |> Async.AwaitTask
-                                    |> Async.RunSynchronously
-                                let result =
-                                    if distanceFromLatestSnapshot = 0
-                                        then storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, state.Serialize) 'A.StorageName
-                                    else
-                                        () |> Ok
-                                return! result
-                            }
-                }, Commons.generalAsyncTimeOut)
+            logger.LogDebug "mkAggregateSnapshotIfIntervalPassed2"
+            task
+                {
+                    let! distanceFromLatestSnapshot = 
+                        storage.GetDistanceFromLatestSnapshotAsync ('A.Version, 'A.StorageName, aggregateId)
+                    
+                    if distanceFromLatestSnapshot = 0
+                        then
+                            let _ = storage.SetAggregateSnapshot 'A.Version (aggregateId, eventId, state.Serialize) 'A.StorageName
+                            return Ok ()
+                        else
+                            return Ok ()
+
+                }
                 
     // this looks the same as mkAggregateSnapshotIfIntervalPassed2 but it will avoid  generic
     let inline mkAggregateSnapshotIfIntervalPassed3<'F>
@@ -254,26 +250,18 @@ module CommandHandler =
         (eventId: EventId)
         (snapshotInterval: int)
         (state: 'F)  =
-            logger.LogDebug "mkAggregateSnapshotIfIntervalPassed"
-            Async.RunSynchronously
-                (async {
-                    return
-                        result
-                            {
+            logger.LogDebug "mkAggregateSnapshotIfIntervalPassed3"
+            task 
+                {   
+                    let! distanceFromLatestSnapshot = 
+                        storage.GetDistanceFromLatestSnapshotAsync (storageVersion, storageName, aggregateId)
 
-                                let distanceFromLatestSnapshot = 
-                                    storage.GetDistanceFromLatestSnapshotAsync (storageVersion, storageName, aggregateId)
-                                    |> Async.AwaitTask
-                                    |> Async.RunSynchronously
-                                let result =
-                                    if distanceFromLatestSnapshot = 0
-                                        then storage.SetAggregateSnapshot storageVersion (aggregateId, eventId, state) storageName
-                                    else
-                                        () |> Ok
-                                return! result
-                            }
-                }, Commons.generalAsyncTimeOut)
-        
+                    if distanceFromLatestSnapshot = 0 then
+                        let _ = storage.SetAggregateSnapshot storageVersion (aggregateId, eventId, state) storageName
+                        return Ok ()    
+                    else
+                        return Ok () 
+                }
            
     // eventBroker is not considered as at the moment there is no message sending infrastracture for single instance (i.e. context) aggregates       
     let inline runCommandMd<'A, 'E, 'F 
