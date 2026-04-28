@@ -1,6 +1,6 @@
-\restrict xSkOpbEJMEnwk25epg2gY5taGLFRKyfGyCDKCQTMVmhZROWWSlOsUZpJnSbgnti
+\restrict rgWCgaxNA47qOOVfQIXrUf5x56ffbYbQCyzIogKCdpA89O4UY3CSA3fQJmDX8TV
 
--- Dumped from database version 14.4
+-- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_seatrow_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -78,26 +71,6 @@ $$;
 
 
 --
--- Name: insert_md_01_seatrow_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_md_01_seatrow_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_md_01_seatrow_event_and_return_id(event_in, aggregate_id, md);
-
-INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
-
---
 -- Name: insert_md_01_seatrow_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -113,23 +86,6 @@ BEGIN
 INSERT INTO aggregate_events_01_seatrow(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
-END;
-$$;
-
-
---
--- Name: insert_md_01_seatrow_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_md_01_seatrow_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-BEGIN
-INSERT INTO events_01_seatrow(event, aggregate_id, timestamp, md)
-VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
-return inserted_id;
 END;
 $$;
 
@@ -206,8 +162,8 @@ CREATE TABLE public.events_01_seatrow (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text,
-    distance_from_latest_snapshot integer
+    distance_from_latest_snapshot integer,
+    md text
 );
 
 
@@ -312,6 +268,14 @@ CREATE TABLE public.snapshots_01_stadium (
 
 
 --
+-- Name: aggregate_events_01_seatrow aggregate_events_01_seatrow_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_seatrow
+    ADD CONSTRAINT aggregate_events_01_seatrow_event_id_key UNIQUE (event_id);
+
+
+--
 -- Name: aggregate_events_01_seatrow aggregate_events_01_seatrow_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -374,10 +338,38 @@ CREATE INDEX ix_01_events_seatrow_id ON public.events_01_seatrow USING btree (ag
 
 
 --
+-- Name: ix_01_events_seatrow_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_seatrow_timestamp ON public.events_01_seatrow USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshot_seatrow_aggregate_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_seatrow_aggregate_id_and_id ON public.snapshots_01_seatrow USING btree (aggregate_id, id DESC);
+
+
+--
+-- Name: ix_01_snapshot_seatrow_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_seatrow_event_id ON public.snapshots_01_seatrow USING btree (event_id);
+
+
+--
 -- Name: ix_01_snapshot_seatrow_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_snapshot_seatrow_id ON public.snapshots_01_seatrow USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_snapshots_seatrow_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_seatrow_timestamp ON public.snapshots_01_seatrow USING btree ("timestamp");
 
 
 --
@@ -408,7 +400,7 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xSkOpbEJMEnwk25epg2gY5taGLFRKyfGyCDKCQTMVmhZROWWSlOsUZpJnSbgnti
+\unrestrict rgWCgaxNA47qOOVfQIXrUf5x56ffbYbQCyzIogKCdpA89O4UY3CSA3fQJmDX8TV
 
 
 --

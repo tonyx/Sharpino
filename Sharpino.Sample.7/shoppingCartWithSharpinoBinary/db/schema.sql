@@ -1,6 +1,6 @@
-\restrict SzXmRA0Hj85DXXzgJaWoe5bsLtmbwMbz7x7csBChnBlsODfrGNk2Z9FONvam7EX
+\restrict L5uKIepUwlkKncSUK17dCm4yYGo5qy7eB1s07JUgdakju6gUOkjhakWWCkIDRRi
 
--- Dumped from database version 14.4
+-- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_cart_aggregate_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -658,7 +651,7 @@ ALTER TABLE ONLY public.snapshots_01_goodscontainer
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SzXmRA0Hj85DXXzgJaWoe5bsLtmbwMbz7x7csBChnBlsODfrGNk2Z9FONvam7EX
+\unrestrict L5uKIepUwlkKncSUK17dCm4yYGo5qy7eB1s07JUgdakju6gUOkjhakWWCkIDRRi
 
 
 --

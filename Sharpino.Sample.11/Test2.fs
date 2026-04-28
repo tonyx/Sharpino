@@ -20,12 +20,7 @@ open Sharpino.Sample._11.StudentManager2
 open Sharpino.Storage
 
 Env.Load() |> ignore
-let password = Environment.GetEnvironmentVariable("password")
-let connection =
-    "Server=127.0.0.1;"+
-    "Database=sharpino_coursemanager;" +
-    "User Id=safe;"+
-    $"Password={password}"
+let connection  = Environment.GetEnvironmentVariable("CONNECTION_STRING")
     
 let pgEventStore:IEventStore<string> = PgStorage.PgEventStore connection
 

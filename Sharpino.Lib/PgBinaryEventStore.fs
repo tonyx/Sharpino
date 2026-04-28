@@ -395,10 +395,10 @@ module PgBinaryStore =
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
-                        let currentDistanceFromLastestSnapshot = 
+
+                        let! currentDistanceFromLastestSnapshot = 
                             this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token) 
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
+
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
                                 let ids = ResizeArray<int>()

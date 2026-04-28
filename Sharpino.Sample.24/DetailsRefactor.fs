@@ -12,29 +12,29 @@ open System.Threading.Tasks
 
 module DetailsRefactor = 
 
-    type UserDetailsRef = 
-        { 
-            User: User
-            Todos: List<Todo>
-        }
+    // type UserDetailsRef = 
+    //     { 
+    //         User: User
+    //         Todos: List<Todo>
+    //     }
 
-    type RefreshableUserDetailsRef = 
-        { 
-            UserDetailsRef: UserDetailsRef
-            Refresher: Option<CancellationToken>  -> TaskResult<UserDetailsRef, string>
-        }
-        member this.RefreshAsync ct = 
-            taskResult {
-                let! userDetailsRef = this.Refresher ct
-                return 
-                    { 
-                        this with 
-                            UserDetailsRef = userDetailsRef 
-                    }
-            }
-        interface RefreshableAsync<RefreshableUserDetailsRef> with
-            member this.RefreshAsync ct = 
-                this.RefreshAsync ct
+    // type RefreshableUserDetailsRef = 
+    //     { 
+    //         UserDetailsRef: UserDetailsRef
+    //         Refresher: Option<CancellationToken>  -> TaskResult<UserDetailsRef, string>
+    //     }
+    //     member this.RefreshAsync ct = 
+    //         taskResult {
+    //             let! userDetailsRef = this.Refresher ct
+    //             return 
+    //                 { 
+    //                     this with 
+    //                         UserDetailsRef = userDetailsRef 
+    //                 }
+    //         }
+    //     interface RefreshableAsync<RefreshableUserDetailsRef> with
+    //         member this.RefreshAsync ct = 
+    //             this.RefreshAsync ct
                 
     type TodoDetailsRef =
         {

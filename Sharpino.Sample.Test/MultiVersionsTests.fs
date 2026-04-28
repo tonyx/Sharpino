@@ -30,12 +30,8 @@ open log4net
 
 let allVersions =
     [
-
-
         (currentPostgresApp,        currentPostgresApp,     ((fun () -> () |> Result.Ok): unit -> Result<unit, string>), (pgStorage :> IEventStore<string>))
-        
         (currentMemoryApp,          currentMemoryApp,       ((fun () -> () |> Result.Ok): unit -> Result<unit, string>) , (memoryStorage :> IEventStore<string>))
-
     ]
 
 let currentTestConfs = allVersions

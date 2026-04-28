@@ -1,7 +1,7 @@
-\restrict f4zn2mbxmbwdcomaQ8xo2x1HAlwh8q0aEB3l3zxo7UAAvsuUVWV5ZgUSSyC0GCX
+\restrict diar0nb0nzMiTG6AgujhScyrKEdK92jZmCtFsQGcANYWnsPqehza7vcA9xA03Cu
 
--- Dumped from database version 14.4
--- Dumped by pg_dump version 18.0
+-- Dumped from database version 17.9 (Homebrew)
+-- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_account_aggregate_event_and_return_id(bytea, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -470,19 +463,19 @@ ALTER TABLE ONLY public.snapshots_01_counter
 
 
 --
--- Name: aggregate_events_01_counter aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.aggregate_events_01_counter
-    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_counter(id) MATCH FULL ON DELETE CASCADE;
-
-
---
 -- Name: aggregate_events_01_account aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.aggregate_events_01_account
     ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_account(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
+-- Name: aggregate_events_01_counter aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_counter
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_counter(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -505,7 +498,7 @@ ALTER TABLE ONLY public.snapshots_01_counter
 -- PostgreSQL database dump complete
 --
 
-\unrestrict f4zn2mbxmbwdcomaQ8xo2x1HAlwh8q0aEB3l3zxo7UAAvsuUVWV5ZgUSSyC0GCX
+\unrestrict diar0nb0nzMiTG6AgujhScyrKEdK92jZmCtFsQGcANYWnsPqehza7vcA9xA03Cu
 
 
 --

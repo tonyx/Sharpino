@@ -29,7 +29,30 @@ module Details =
         interface RefreshableAsync<UserDetails> with
             member this.RefreshAsync ct =
                 this.RefreshAsync ct
-    
+
+    type UserDetails' =
+        {
+            User: User
+            Todos: List<Todo>
+        }
+        
+    type RefreshableUserDetailsAsync =
+        {
+            UserDetails: UserDetails'
+            RefresherAsync: Option<CancellationToken> -> TaskResult<UserDetails', string>
+        }
+        member this.RefreshAsync ct =
+            taskResult {
+                let! userDetails = this.RefresherAsync ct
+                return 
+                    { 
+                        this with UserDetails = userDetails 
+                    }
+            }
+        interface RefreshableAsync<RefreshableUserDetailsAsync> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
+
     type TodoDetails = 
         { 
             Todo: Todo
@@ -45,6 +68,29 @@ module Details =
             this.Refresh() |> Task.FromResult
 
         interface RefreshableAsync<TodoDetails> with
+            member this.RefreshAsync ct =
+                this.RefreshAsync ct
+
+    type TodoDetails' =
+        {
+            Todo: Todo
+            User: User
+        }
+        
+    type RefreshableTodoDetailsAsync =
+        {
+            TodoDetails: TodoDetails'
+            RefresherAsync: Option<CancellationToken> -> TaskResult<TodoDetails', string>
+        }
+        member this.RefreshAsync ct =
+            taskResult {
+                let! todoDetails = this.RefresherAsync ct
+                return 
+                    { 
+                        this with TodoDetails = todoDetails 
+                    }
+            }
+        interface RefreshableAsync<RefreshableTodoDetailsAsync> with
             member this.RefreshAsync ct =
                 this.RefreshAsync ct
 

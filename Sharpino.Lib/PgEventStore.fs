@@ -1,4 +1,3 @@
-
 namespace Sharpino
 
 open System
@@ -136,7 +135,6 @@ module PgStorage =
                     // return Error ex.Message
                     return 1
             }
-
 
         member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId: EventId, aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, secondAggregateId: AggregateId, json: string, version: Version, name: Name, md: Metadata, events: List<string>, ?ct:CancellationToken) =
             logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
@@ -465,11 +463,8 @@ module PgStorage =
                         use transaction = conn.BeginTransaction()
                         let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
 
-                        // todo : wrap into a let! with no sync calls
-                        let currentDistanceFromLastestSnapshot = 
-                            this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)  
-                            |> Async.AwaitTask
-                            |> Async.RunSynchronously
+                        let! currentDistanceFromLastestSnapshot = 
+                             this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)  
 
                         if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
                             try
@@ -492,6 +487,7 @@ module PgStorage =
                                 return Error ex.Message
                         else
                             do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
+
                             return Error (sprintf "EventId is not the last one version %s name %s eventId %A lastEventId %A" version name eventId lastEventId.Value)
                     with ex ->
                         logger.LogError (sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)

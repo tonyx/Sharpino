@@ -22,13 +22,7 @@ open FsToolkit.ErrorHandling
 
 // Load environment variables from .env file
 Env.Load() |> ignore
-let password = Environment.GetEnvironmentVariable("password")
-let connection =
-    "Server=127.0.0.1;" +
-    "Database=sharpino_sample15;" +
-    "User Id=safe;" +
-    $"Password={password}"
-
+let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 let pgEventStore: IEventStore<string> = PgStorage.PgEventStore connection
 
 let setUp () =

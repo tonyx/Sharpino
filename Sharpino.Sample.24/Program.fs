@@ -1,6 +1,11 @@
 module Main
 
 open System
+open System.Threading
+open System.Threading.Tasks
+
+open FsToolkit.ErrorHandling
+
 open Sharpino.Template.Models
 open Sharpino.Template.Commons
 open Sharpino.Template.TodosManager
@@ -9,6 +14,7 @@ open Sharpino.Storage
 open Sharpino.EventBroker
 open Sharpino.CommandHandler
 open DotNetEnv
+
 
 [<EntryPoint>]
 let main argv =
@@ -28,7 +34,10 @@ let main argv =
     let todoViewer = getAggregateStorageFreshStateViewer<Todo, TodoEvents, string> pgEventStore
     let userViewer = getAggregateStorageFreshStateViewer<User, UserEvents, string> pgEventStore
 
-    let manager = TodoManager(MessageSenders.NoSender, pgEventStore, todoViewer, userViewer)
+    let todoViewerAsync = getAggregateStorageFreshStateViewerAsync<Todo, TodoEvents, string> pgEventStore
+    let userViewerAsync = getAggregateStorageFreshStateViewerAsync<User, UserEvents, string> pgEventStore
+
+    let manager = TodoManager(MessageSenders.NoSender, pgEventStore, todoViewer, userViewer, todoViewerAsync, userViewerAsync)
 
     printfn "======================================="
     printfn " Sharpino.Sample.22 - Todo interactive demo"
@@ -66,8 +75,25 @@ let main argv =
                     printfn "  %d) [%s] %s (Todos: %d)" (i + 1) (u.Id.ToString("D").Substring(0, 8)) u.Name todoCount)
             userList
 
-    let listTodos () : Todo list =
+    // old version here
+    let listTodosBack () : Todo list =
         match manager.GetAllTodos() with
+        | Error err ->
+            printfn "Error fetching todos: %s" err
+            []
+        | Ok (todos: Todo list) ->
+            if todos.IsEmpty then
+                printfn "  (no todos yet)"
+            else
+                todos
+                |> List.iteri (fun i (t: Todo) ->
+                    printfn "  %d) [%s] %s" (i + 1) (t.Id.ToString("D").Substring(0, 8)) t.Text)
+            todos
+
+    let listTodos () =
+        let todos = 
+            (manager.GetAllTodosAsync None).Result
+        match todos with
         | Error err ->
             printfn "Error fetching todos: %s" err
             []

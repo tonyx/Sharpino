@@ -23,12 +23,7 @@ open DotNetEnv
 
 
 Env.Load() |> ignore
-let password = Environment.GetEnvironmentVariable("password")
-let connection =
-    "Server=127.0.0.1;"+
-    "Database=sharpino_sample14;" +
-    "User Id=safe;"+
-    $"Password={password}"
+let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 
 let pgEventStore:IEventStore<string> = PgStorage.PgEventStore connection
 
@@ -262,8 +257,8 @@ let tests =
                 Expect.equal studentDetailsValue.Student.Name "Jack" "Student name not retrieved"
                 Expect.equal studentDetailsValue.Courses.Length 3 "Student courses not retrieved"
             }
-      
-        ftestCase "enroll a student in a course, then retrieve the details, then enroll it in another course and finally refresh the details using warmup ()" <| fun _ ->
+
+        testCase "enroll a student in a course, then retrieve the details, then enroll it in another course and finally refresh the details using warmup ()" <| fun _ ->
             setUp ()
             let math = Course.MkCourse ("math", 10)
             let english = Course.MkCourse ("english", 10)
@@ -286,9 +281,12 @@ let tests =
             Expect.isOk enrollStudentToMath "Student not enrolled to math"
           
             // then
+            printf "studentId: %A\n" student.StudentId
+            printf "courseId: %A\n" math.CourseId
           
             let studentDetailsRefreshed = courseManager.GetStudentDetails student.StudentId
             Expect.isOk studentDetailsRefreshed "Student details not refreshed"
+            Thread.Sleep 1000
             Expect.equal studentDetailsRefreshed.OkValue.Student.Name "Jack" "Student name not refreshed"
             Expect.equal studentDetailsRefreshed.OkValue.Courses.Length 1 "Student courses not refreshed"
       

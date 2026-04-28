@@ -1,8 +1,8 @@
 -- migrate:up
 
-ALTER TABLE public.events_01_sampleOBject ADD COLUMN distance_from_latest_snapshot int;
+ALTER TABLE public.events_01_sampleobject ADD COLUMN distance_from_latest_snapshot int;
 
-CREATE OR REPLACE FUNCTION insert_md_01_sampleObject_event_and_return_id(
+CREATE OR REPLACE FUNCTION insert_md_01_sampleobject_event_and_return_id(
     IN event_in text,
     IN aggregate_id uuid,
     IN distance_from_latest_snapshot int,

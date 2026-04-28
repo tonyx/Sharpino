@@ -1,7 +1,7 @@
-\restrict ors0TzNqySxAF5meSNshjbJiHLe39oOBMWwH3twtwYTw9priVX2gVvNLPt6UYY7
+\restrict XWlHmcqQPZvFxa9x4UdcKMfp1gjEWWw9mRfZ4djG9f6BvGMd1QCmlTd1lPefViJ
 
--- Dumped from database version 14.4
--- Dumped by pg_dump version 18.0
+-- Dumped from database version 17.9 (Homebrew)
+-- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_dish_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -746,19 +739,19 @@ CREATE INDEX ix_01_snapshots_supplier_id ON public.snapshots_01_supplier USING b
 
 
 --
--- Name: aggregate_events_01_ingredient aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.aggregate_events_01_ingredient
-    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_ingredient(id) MATCH FULL ON DELETE CASCADE;
-
-
---
 -- Name: aggregate_events_01_dish aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.aggregate_events_01_dish
     ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_dish(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
+-- Name: aggregate_events_01_ingredient aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_ingredient
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_ingredient(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -797,7 +790,7 @@ ALTER TABLE ONLY public.snapshots_01_supplier
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ors0TzNqySxAF5meSNshjbJiHLe39oOBMWwH3twtwYTw9priVX2gVvNLPt6UYY7
+\unrestrict XWlHmcqQPZvFxa9x4UdcKMfp1gjEWWw9mRfZ4djG9f6BvGMd1QCmlTd1lPefViJ
 
 
 --

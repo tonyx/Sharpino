@@ -35,15 +35,10 @@ let setUp (eventStore: IEventStore<'F>) =
     eventStore.Reset Site.Version Site.StorageName
     eventStore.Reset Transporter.Version Transporter.StorageName
     AggregateCache3.Instance.Clear ()
-          
-let connection = 
-        Env.Load() |> ignore
-        let password = Environment.GetEnvironmentVariable("password")
 
-        "Server=127.0.0.1;" +
-        "Database=transport_tycoon;" +
-        "User Id=safe;"+
-        $"Password={password};"
+Env.Load()
+let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    
 
 let eventStoreMemory: IEventStore<string> = MemoryStorage ()
 let eventStorePg: IEventStore<string> = PgEventStore connection

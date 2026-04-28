@@ -35,11 +35,7 @@ let emptyMessageSenders =
         fun message ->
             ValueTask.CompletedTask
             
-let connection =
-    "Server=127.0.0.1;"+
-    "Database=es_seat_booking;" +
-    "User Id=safe;"+
-    $"Password={password};"
+let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 let memoryStorage = MemoryStorage.MemoryStorage()
 let pgEventStore = PgEventStore(connection)
 let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, MessageSenders.NoSender)

@@ -1,7 +1,7 @@
-\restrict bxfGdio74PxfAB8kTGmdE8sUTO5TMBl8oZg2iZ3n65EDmhkBpcwWY2mgOubpCtV
+\restrict TFujhmLuzAtEc9bBrcSW4f6XA3eteaTsDa2Hrb3GDK9gZ6J2EzdFmPKpwGF0bQ8
 
--- Dumped from database version 14.4
--- Dumped by pg_dump version 18.0
+-- Dumped from database version 17.9 (Homebrew)
+-- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_site_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -547,7 +540,7 @@ ALTER TABLE ONLY public.snapshots_01_truck
 -- PostgreSQL database dump complete
 --
 
-\unrestrict bxfGdio74PxfAB8kTGmdE8sUTO5TMBl8oZg2iZ3n65EDmhkBpcwWY2mgOubpCtV
+\unrestrict TFujhmLuzAtEc9bBrcSW4f6XA3eteaTsDa2Hrb3GDK9gZ6J2EzdFmPKpwGF0bQ8
 
 
 --

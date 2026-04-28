@@ -27,12 +27,7 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
 Env.Load() |> ignore
-let password = Environment.GetEnvironmentVariable("password")
-let connection =
-    "Server=127.0.0.1;"+
-    "Database=sharpino_item;" +
-    "User Id=safe;"+
-    $"Password={password}"
+let connection  = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 
 #if RABBITMQ
 let hostBuilder =

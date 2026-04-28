@@ -24,12 +24,7 @@ open Microsoft.Extensions.Hosting
 open Tonyx.Sharpino.Pub.SupplierConsumer
 
 Env.Load()
-let password = Environment.GetEnvironmentVariable("password")
-let connection =
-    "Server=127.0.0.1;"+
-    "Database=es_pub_system;" +
-    "User Id=safe;"+
-    $"Password={password};"
+let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 
 let memEventStore: IEventStore<string> = MemoryStorage()
 let pgEventStore: IEventStore<string> = PgEventStore(connection)

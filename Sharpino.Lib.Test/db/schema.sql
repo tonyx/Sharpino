@@ -1,6 +1,6 @@
-\restrict s17HRGIghFKlvoK0eZuTRwhbSFoJS9iNFHxhkVjeksEldWxO8wB5k8VSmuFIcLH
+\restrict nnuChLcn7bg3Yr4FlEv6R0N525rThtNolmjqaQ3mn8tYDgZsus8iH1o1D5fBicY
 
--- Dumped from database version 14.4
+-- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_samplecontext_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
@@ -387,7 +380,7 @@ ALTER TABLE ONLY public.snapshots_01_sampleobject
 -- PostgreSQL database dump complete
 --
 
-\unrestrict s17HRGIghFKlvoK0eZuTRwhbSFoJS9iNFHxhkVjeksEldWxO8wB5k8VSmuFIcLH
+\unrestrict nnuChLcn7bg3Yr4FlEv6R0N525rThtNolmjqaQ3mn8tYDgZsus8iH1o1D5fBicY
 
 
 --

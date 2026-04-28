@@ -239,7 +239,6 @@ module Cache =
                         | Error e -> return Error e
                     | _ -> return Error "Object does not implement RefreshableAsync interface"
             }
-                
         
         member this.Evict (key: DetailsCacheKey)  =
             let keyStr = key.Value
@@ -268,6 +267,21 @@ module Cache =
                         let! _ = this.RefreshAsync (key, ct)
                         ()
             }
+
+        member this.RefreshDependentDetailsSafeFireAndForget (aggregateIds: seq<AggregateId>) =
+            Task.Run(fun () ->
+                task {
+                    try
+                        let tasks = 
+                            aggregateIds 
+                            |> Seq.map (fun id -> this.RefreshDependentDetailsAsync(id, Some CancellationToken.None))
+                            |> Seq.toArray
+                        if tasks.Length > 0 then
+                            do! Task.WhenAll tasks :> Task
+                    with ex ->
+                        logger.LogError(sprintf "Error in RefreshDependentDetailsSafeFireAndForget: %s" ex.Message)
+                } :> Task
+            ) |> ignore
         
         member this.evictDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)

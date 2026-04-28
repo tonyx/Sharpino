@@ -1,6 +1,6 @@
-\restrict kCIKTIRK1cpnVaUckXSpSWN1wSvz3jMCKB1DPQjtbclsnNtgqdA5K7FkoBmLf5t
+\restrict vNgy3giY74lTmexx3sHGT7dQd5zL7pAlo1xktPE5vk3rZU5OQO8K95ujgjjD752
 
--- Dumped from database version 14.4
+-- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 18.0
 
 SET statement_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_course_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -801,7 +794,7 @@ ALTER TABLE ONLY public.snapshots_01_student
 -- PostgreSQL database dump complete
 --
 
-\unrestrict kCIKTIRK1cpnVaUckXSpSWN1wSvz3jMCKB1DPQjtbclsnNtgqdA5K7FkoBmLf5t
+\unrestrict vNgy3giY74lTmexx3sHGT7dQd5zL7pAlo1xktPE5vk3rZU5OQO8K95ujgjjD752
 
 
 --

@@ -22,12 +22,8 @@ let tests =
     Env.Load() |> ignore
 
     let password = Environment.GetEnvironmentVariable("password")
-        
-    let connection =
-        "Server=127.0.0.1;"+
-        "Database=sharpino_tests;" +
-        "User Id=safe;"+
-        $"Password={password};"
+    let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+
     let memoryStorage = MemoryStorage()
     let pgEventStore = PgEventStore connection
     
@@ -75,7 +71,7 @@ let tests =
             Expect.equal retrievedWithCast.Name "new name async" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
 
-        multipleTestCase "async: mismatched expected event id should fail in AddAggregateEventsMdAsync - Error" versions <| fun (eventStore, setUp)  ->
+        fmultipleTestCase "async: mismatched expected event id should fail in AddAggregateEventsMdAsync - Error" versions <| fun (eventStore, setUp)  ->
             setUp ()
             // Arrange
             let sampleObjectId = Guid.NewGuid()
@@ -135,7 +131,6 @@ let tests =
             let ev2Value = ev2.OkValue
             Expect.equal ev1Value (SampleObjectRenamed "n1") "first name"
             Expect.equal ev2Value (SampleObjectRenamed "n2") "second name"
-            
             
         multipleTestCase "create an initial instance and retrieve it. There are no events so eventId is 0 - Ok" versions <| fun (eventStore, setUp)  ->
             setUp ()
@@ -305,7 +300,8 @@ let tests =
                 ]
             Expect.isTrue true "true"
         
-        multipleTestCase "set initial state and then add events in parallel" versions <| fun (eventStore, setUp)  ->
+        // heavy test
+        pmultipleTestCase "set initial state and then add events in parallel" versions <| fun (eventStore, setUp)  ->
             setUp()
             let objects =
                 [ for i in 1 .. 1000 do

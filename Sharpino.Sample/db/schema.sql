@@ -1,6 +1,12 @@
+\restrict h4KpXyIzNjM7zVSgwcA2uOnXqK3QKgVAW6kavs0mH5H248vawk5cmxeJQgS9g4v
+
+-- Dumped from database version 17.9 (Homebrew)
+-- Dumped by pg_dump version 17.9 (Homebrew)
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -8,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_tags_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
@@ -484,6 +483,8 @@ ALTER TABLE ONLY public.snapshots_02_todo
 --
 -- PostgreSQL database dump complete
 --
+
+\unrestrict h4KpXyIzNjM7zVSgwcA2uOnXqK3QKgVAW6kavs0mH5H248vawk5cmxeJQgS9g4v
 
 
 --

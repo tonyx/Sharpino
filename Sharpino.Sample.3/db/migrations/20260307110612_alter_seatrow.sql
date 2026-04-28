@@ -1,7 +1,5 @@
 -- migrate:up
 
-ALTER TABLE public.events_01_SeatRow ADD COLUMN distance_from_latest_snapshot integer;
-
 
 CREATE OR REPLACE FUNCTION insert_md_01_seatrow_event_and_return_id(
     IN event_in text,

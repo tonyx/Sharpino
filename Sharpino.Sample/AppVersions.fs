@@ -24,12 +24,13 @@ module AppVersions =
     Env.Load() |> ignore
     // set the password=password in .env file 
     let password = Environment.GetEnvironmentVariable("password"); 
-    let connection = 
-        "Server=127.0.0.1;"+
-        "Database=es_01;" +
-        "User Id=safe;"+
-        $"Password={password};
-        Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100;"
+    let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING"); 
+    // let connection = 
+    //     "Server=127.0.0.1;"+
+    //     "Database=es_01;" +
+    //     "User Id=safe;"+
+    //     $"Password={password};
+    //     Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100;"
         
         // let connectionString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase;Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100;"
 

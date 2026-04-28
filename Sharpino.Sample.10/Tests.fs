@@ -28,17 +28,11 @@ open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
-
 module Tests =
     
     Env.Load()
-    let password = Environment.GetEnvironmentVariable("password")
+    let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
     
-    let connection =
-        "Server=127.0.0.1;"+
-        "Database=sharpino_sample_10;" +
-        "User Id=safe;"+
-        $"Password={password}"
     let hostBuilder =
         Host.CreateDefaultBuilder()
             .ConfigureServices (fun (services: IServiceCollection) ->
@@ -181,7 +175,7 @@ module Tests =
                 
                 Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
 
-            ftestCaseTask "increment many counters async and retrieve them"   <| fun _ ->
+            testCaseTask "increment many counters async and retrieve them"   <| fun _ ->
                 task {
                     let eventStore = PgBinaryStore connection
                     setUp eventStore
@@ -215,7 +209,7 @@ module Tests =
                     Expect.isTrue (retrievedCounters' |> List.forall (fun x -> x.Value = 1)) "should be all 1"
                 }
 
-            ftestCaseTask "increment many counters async and retrieve them - async" <| fun _ ->
+            testCaseTask "increment many counters async and retrieve them - async" <| fun _ ->
                 task {
                     let eventStore = PgBinaryStore connection
                     setUp eventStore
