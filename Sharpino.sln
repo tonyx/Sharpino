@@ -57,6 +57,10 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoSample17", "Sharpin
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Sharpino.Sample.22", "Sharpino.Sample.22\Sharpino.Sample.22.fsproj", "{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sharpino.Sample.25", "Sharpino.Sample.25", "{CCCE08F9-B34F-BFF8-D81A-9C6D0DB77F76}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "sharpinoSample25", "Sharpino.Sample.25\sharpinoSample25.fsproj", "{25B51384-7E87-44A8-80C3-19BD17E3A90D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -367,6 +371,18 @@ Global
 		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x64.Build.0 = Release|Any CPU
 		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x86.ActiveCfg = Release|Any CPU
 		{FDCE5167-4F2B-46A8-9EDA-D65C7380E892}.Release|x86.Build.0 = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|x64.Build.0 = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Debug|x86.Build.0 = Debug|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|x64.ActiveCfg = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|x64.Build.0 = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|x86.ActiveCfg = Release|Any CPU
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -374,5 +390,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{19CCA717-64CD-4B0A-8868-732C3AF098F1} = {A2529508-8D30-DDF8-7A0A-35ADBC47E969}
 		{75147B44-1D0D-4EE5-8207-ACD29A601BCB} = {2821FB42-6FEA-43FC-7726-1FBC61A0D5C1}
+		{25B51384-7E87-44A8-80C3-19BD17E3A90D} = {CCCE08F9-B34F-BFF8-D81A-9C6D0DB77F76}
 	EndGlobalSection
 EndGlobal
