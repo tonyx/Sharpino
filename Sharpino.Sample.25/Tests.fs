@@ -11,6 +11,7 @@ open Sharpino.CommandHandler
 open Sharpino.Template
 open Sharpino.Template.Commons
 open FsToolkit.ErrorHandling
+open Sharpino.Storage
 
 Env.Load() |> ignore
 let password = Environment.GetEnvironmentVariable("password")
@@ -118,7 +119,8 @@ let tests =
                     | _ -> ""
                 Expect.equal privateData "Updated private data" "error in updating private data"
             }
-        ptestCaseTask "replace sensible events" <| fun _ ->
+
+        testCaseTask "replace sensible events" <| fun _ ->
             task {
                 setUp ()
                 let todoManager = TodoManager (MessageSenders.NoSender, pgEventStore, todoViewer)
@@ -147,6 +149,31 @@ let tests =
                     Expect.equal privateData "dummy data" "error in updating private data"
                 | _ -> 
                     failwith "error in updating private data"
+            }
+
+        testCaseTask "sensible data in snapshots" <| fun _ ->
+            task {
+                setUp ()
+                let todoManager = TodoManager (MessageSenders.NoSender, pgEventStore, todoViewer)
+                let todoWithSensibleData = 
+                    {
+                        (Todo.New "Learn F#")
+                            with
+                                PrivateData = "some private data"
+                    }
+                let addTodoWithPersonalData = todoManager.AddTodo todoWithSensibleData
+                let sensibleDataSubstitution =
+                    fun (s: string) ->
+                        result {
+                            let! deserSnapshot = s |> Todo.Deserialize  
+                            let replaced = { deserSnapshot with PrivateData = "hidden by GDPR" } 
+                            return  replaced.Serialize 
+                        }
+                let obfuscateSnapshots = (pgEventStore:> IEventStore<string>).GDPRPartialUpdateSnapshots Todo.Version Todo.StorageName todoWithSensibleData.Id sensibleDataSubstitution
+                let cacheInvalidated = AggregateCache3.Instance.Clean todoWithSensibleData.Id
+                let state = todoManager.GetTodo todoWithSensibleData.TodoId
+                Expect.isOk state "should be ok"
+                Expect.equal state.OkValue.PrivateData "hidden by GDPR" "error in updating private data"
             }
 
     ] 

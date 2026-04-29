@@ -908,3 +908,20 @@ module MemoryStorage =
                 task {
                     return (this :> IEventStore<string>).GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo
                 }
+            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement = 
+                Ok ()
+
+            member this.GDPRPartialUpdateSnapshots version name aggregateId updateFunction =
+                if (aggregate_snapshots_dic.ContainsKey version) && 
+                   (aggregate_snapshots_dic.[version].ContainsKey name) && 
+                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId) then
+                    let snapshots = aggregate_snapshots_dic.[version].[name].[aggregateId]
+                    let updatedSnapshots =
+                        snapshots
+                        |> List.map (fun s ->
+                            match updateFunction s.Snapshot with
+                            | Ok newSnapshot -> { s with Snapshot = newSnapshot }
+                            | Error _ -> s
+                        )
+                    aggregate_snapshots_dic.[version].[name].[aggregateId] <- updatedSnapshots
+                Ok ()

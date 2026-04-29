@@ -146,6 +146,8 @@ module Storage =
         abstract member GetUndeletedAggregateIdsAsync: Version * Name * ?ct:CancellationToken -> Task<Result<List<AggregateId>, string>>
         
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate: Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
+        abstract member GDPRReplaceEventsByPredicate: Version -> Name -> AggregateId -> ('F -> Result<bool, string>) -> 'F -> Result<unit, string>
+        abstract member GDPRPartialUpdateSnapshots: Version -> Name -> AggregateId -> ('F -> Result<'F, string>)  -> Result<unit, string>
         
     
     // this must be deleted

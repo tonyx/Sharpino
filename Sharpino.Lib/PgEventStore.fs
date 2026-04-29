@@ -2183,7 +2183,87 @@ module PgStorage =
                             Error ex.Message
                     else
                         Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}. LastStreamEventId: {lastStreamEventId}. StreamEventid: {streamEventId}"
-                    
+
+            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement = 
+                let sqlUpdate = sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
+                Async.RunSynchronously
+                    (asyncResult {
+                        let! events = (this:> IEventStore<string>).GetAggregateEvents version name aggregateId
+                        let eventsIdsMatchingPredicate =
+                            events
+                            |> List.filter (fun (_, x) -> (predicate x).IsOk && (predicate x).OkValue)
+                            |>> fst
+                        try
+                            connection
+                            |> Sql.connect
+                            |> Sql.executeTransaction
+                                [
+                                    sqlUpdate,
+                                        [
+                                            [
+                                                ("replacement", sqlJson replacement)
+                                                ("ids", Sql.intArray (eventsIdsMatchingPredicate |> List.toArray))
+                                            ]
+                                        ]
+                                ] 
+                                |> ignore
+                            return ()
+                        with ex ->
+                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                            return! Error (ex.Message) 
+                                
+                    }, eventStoreTimeout)
+
+            member this.GDPRPartialUpdateSnapshots version name aggregateId updateFunction =
+                let query = sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
+                let updateCommand = sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE id = @id" version name
+                Async.RunSynchronously
+                    (asyncResult {
+                        let! snapshots = 
+                            try
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
+                                |> Sql.execute (fun read ->
+                                    (
+                                        read.int "id",
+                                        readAsText read "snapshot"
+                                    )
+                                )
+                                |> Seq.toList
+                                |> Ok
+                            with ex ->
+                                logger.LogError (sprintf "an error occurred in GDPRPartialUpdateSnapshots while fetching snapshots: %A" ex.Message)
+                                Error ex.Message
+                        
+                        let updates =
+                            snapshots
+                            |> List.choose (fun (id, snap) ->
+                                match updateFunction snap with
+                                | Ok newSnap -> Some (id, newSnap)
+                                | Error _ -> None
+                            )
+                        
+                        try
+                            if not updates.IsEmpty then
+                                connection
+                                |> Sql.connect
+                                |> Sql.executeTransaction
+                                    [
+                                        updateCommand,
+                                            [
+                                                for (id, newSnap) in updates do
+                                                    yield [ ("snapshot", sqlJson newSnap); ("id", Sql.int id) ]
+                                            ]
+                                    ] 
+                                |> ignore
+                            return ()
+                        with ex ->
+                            logger.LogError (sprintf "an error occurred in GDPRPartialUpdateSnapshots while updating snapshots: %A" ex.Message)
+                            return! Error (ex.Message)
+                    }, eventStoreTimeout)
+
             member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
                 md
                 s1Version

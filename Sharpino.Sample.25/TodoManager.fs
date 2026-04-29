@@ -85,8 +85,8 @@ type TodoManager (messageSenders: MessageSenders, eventStore: IEventStore<string
     member this.ReplaceSensibleDataEvents (id: TodoId) (dummyData: string) =
         taskResult
             {
-                let updatePrivateData = TodoEvents.PrivateDataUpdated dummyData
-                let serializedUpdatePrivateData = updatePrivateData.Serialize
+                let replacement = TodoEvents.PrivateDataUpdated dummyData
+                let serializedUpdatePrivateData = replacement.Serialize
                 let replacementPredicate = fun (x: TodoEvents) -> x.IsPrivateDataUpdated
                 let composedReplacementPredicate =
                     fun (event: string) -> 
@@ -94,5 +94,7 @@ type TodoManager (messageSenders: MessageSenders, eventStore: IEventStore<string
                             let! deserialized = TodoEvents.Deserialize event
                             return replacementPredicate deserialized
                         }
+                let! replaceSensibleData =
+                    eventStore.GDPRReplaceEventsByPredicate Todo.Version Todo.StorageName id.Value composedReplacementPredicate serializedUpdatePrivateData
                 return ()
             }
