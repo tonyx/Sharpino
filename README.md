@@ -164,6 +164,9 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 5.0.3: GDPR Partial Update Snapshots, events replace for snapshots and events containing sensible data. 
+  Is preferrable to keep sensible data away from the event store, but if they are there for watever reasons, then they must be also replecable somehow.
+  Technical constraints. 1: Any event replaced must return an Ok (applied on the state related to the event that is immediately preceeding it in the event stream). 2: The partial snapshot replacement must be consistent with the event stream. 3. The AggregateCache3 entry related to the involved aggregate must be cleared. This applies also to any details cache (projections based on that aggregate). 
 - Version 5.0.2: fixes 5.0.1 and 5.0.0
 - Version 5.0.1: removed Async.AwaitTask in many task based operations for better performance: it may require adjusting the database pool size. Example: `Maximum Pool Size=60` on the connectionString.
 - Version 5.0.0: Adjust the details cache by using `RefreshableAsync<'A>` interface instead of `Refreshable<'A>`. __Not backward compatible__ for the details cache part. Hint: The upgrade consist mainly in using taskResult  c.e. instead of Result to wrap the refresher function and  getting rid of Async.AwaitTask inside it. Some examples follow the new interface (even some more comprehensive ones with better explanations will follow).
