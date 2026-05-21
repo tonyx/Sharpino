@@ -1,4 +1,3 @@
-
 namespace Sharpino
 
 open System.Runtime.CompilerServices
@@ -17,30 +16,59 @@ open Microsoft.Extensions.Logging.Abstractions
 open Microsoft.Extensions.Configuration
 open Sharpino.Definitions
 
-// should be called like InMemoryEventStore 
+// should be called like InMemoryEventStore
 module MemoryStorage =
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
+
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
-    let setLogger (newLogger: ILogger) =
-        ()
+    let setLogger (newLogger: ILogger) = ()
 
     type MemoryStorage() =
-        let event_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
-        let event_aggregate_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,Generic.Dictionary<AggregateId,int>>>()
-        let snapshot_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name,int>>()
-        let events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StoragePgEvent<_>>>>()
-        let aggregate_events_dic = Generic.Dictionary<Version, Generic.Dictionary<string, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>>()
-        let snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageSnapshot>>>()
-        let aggregate_snapshots_dic = Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>>>()
-        let aggregate_undo_command_buffer = Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>>()
-        let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<MemoryStorage>>()
-        
+        let event_id_seq_dic = Generic.Dictionary<Version, Generic.Dictionary<Name, int>>()
+
+        let event_aggregate_id_seq_dic =
+            Generic.Dictionary<Version, Generic.Dictionary<Name, Generic.Dictionary<AggregateId, int>>>()
+
+        let snapshot_id_seq_dic =
+            Generic.Dictionary<Version, Generic.Dictionary<Name, int>>()
+
+        let events_dic =
+            Generic.Dictionary<Version, Generic.Dictionary<string, List<StoragePgEvent<_>>>>()
+
+        let aggregate_events_dic =
+            Generic.Dictionary<
+                Version,
+                Generic.Dictionary<string, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>
+             >()
+
+        let snapshots_dic =
+            Generic.Dictionary<Version, Generic.Dictionary<string, List<StorageSnapshot>>>()
+
+        let aggregate_snapshots_dic =
+            Generic.Dictionary<
+                Version,
+                Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>>
+             >()
+
+        let aggregate_undo_command_buffer =
+            Generic.Dictionary<
+                Version,
+                Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>
+             >()
+
+        let logger =
+            builder.Services.BuildServiceProvider().GetRequiredService<ILogger<MemoryStorage>>()
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_event_id version name =
-            logger.LogDebug (sprintf "next_event_id %s %s" version name)
+            logger.LogDebug(sprintf "next_event_id %s %s" version name)
+
             let event_id_seq =
-                if (event_id_seq_dic.ContainsKey version |> not) || (event_id_seq_dic.[version].ContainsKey name |> not) then
+                if
+                    (event_id_seq_dic.ContainsKey version |> not)
+                    || (event_id_seq_dic.[version].ContainsKey name |> not)
+                then
                     1
                 else
                     event_id_seq_dic.[version].[name]
@@ -51,20 +79,28 @@ module MemoryStorage =
                 event_id_seq_dic.Add(version, dic)
             else
                 let dic = event_id_seq_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     dic.Add(name, event_id_seq + 1)
                 else
                     dic.[name] <- event_id_seq + 1
+
             event_id_seq
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_aggregate_event_id version name aggregateId =
-            logger.LogDebug (sprintf "next_aggregate_event_id %s %s %A" version name aggregateId)
+            logger.LogDebug(sprintf "next_aggregate_event_id %s %s %A" version name aggregateId)
+
             let event_id_seq =
-                if (event_aggregate_id_seq_dic.ContainsKey version |> not) || (event_aggregate_id_seq_dic.[version].ContainsKey name |> not) || (event_aggregate_id_seq_dic.[version].[name].ContainsKey aggregateId |> not) then
+                if
+                    (event_aggregate_id_seq_dic.ContainsKey version |> not)
+                    || (event_aggregate_id_seq_dic.[version].ContainsKey name |> not)
+                    || (event_aggregate_id_seq_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
                     1
                 else
                     event_aggregate_id_seq_dic.[version].[name].[aggregateId]
+
             if (event_aggregate_id_seq_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<Name, Generic.Dictionary<AggregateId, int>>()
                 let dic2 = Generic.Dictionary<AggregateId, int>()
@@ -73,24 +109,30 @@ module MemoryStorage =
                 event_aggregate_id_seq_dic.Add(version, dic)
             else
                 let dic = event_aggregate_id_seq_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     let dic2 = Generic.Dictionary<AggregateId, int>()
                     dic2.Add(aggregateId, event_id_seq + 1)
                     dic.Add(name, dic2)
                 else
                     let dic2 = dic.[name]
+
                     if (dic2.ContainsKey aggregateId |> not) then
                         dic2.Add(aggregateId, event_id_seq + 1)
                     else
                         dic2.[aggregateId] <- event_id_seq + 1
+
             event_id_seq
-           
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let next_snapshot_id version name =
-            logger.LogDebug (sprintf "next_snapshot_id %s %s" version name)
+            logger.LogDebug(sprintf "next_snapshot_id %s %s" version name)
 
             let snapshot_id_seq =
-                if (snapshot_id_seq_dic.ContainsKey version |> not) || (snapshot_id_seq_dic.[version].ContainsKey name |> not) then
+                if
+                    (snapshot_id_seq_dic.ContainsKey version |> not)
+                    || (snapshot_id_seq_dic.[version].ContainsKey name |> not)
+                then
                     1
                 else
                     snapshot_id_seq_dic.[version].[name]
@@ -101,43 +143,52 @@ module MemoryStorage =
                 snapshot_id_seq_dic.Add(version, dic)
             else
                 let dic = snapshot_id_seq_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     dic.Add(name, snapshot_id_seq + 1)
                 else
                     dic.[name] <- snapshot_id_seq + 1
+
             snapshot_id_seq
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeEvents version name events =
-            logger.LogDebug (sprintf "storeEvents %s %s" version name)
+            logger.LogDebug(sprintf "storeEvents %s %s" version name)
+
             if (events_dic.ContainsKey version |> not) then
                 let dic = new Generic.Dictionary<string, List<StoragePgEvent<_>>>()
                 dic.Add(name, events)
                 events_dic.Add(version, dic)
             else
                 let dic = events_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     dic.Add(name, events)
                 else
                     dic.[name] <- events
-        
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeAggregateEvents version name aggregateId events =
-            logger.LogDebug (sprintf "storeAggregateEvents %s %s %A" version name aggregateId)
+            logger.LogDebug(sprintf "storeAggregateEvents %s %s %A" version name aggregateId)
+
             if (aggregate_events_dic.ContainsKey version |> not) then
-                let dic = Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>()
+                let dic =
+                    Generic.Dictionary<Name, Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>>()
+
                 let dic2 = Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>()
                 dic2.Add(aggregateId, events)
                 dic.Add(name, dic2)
                 aggregate_events_dic.Add(version, dic)
-            else 
+            else
                 let dic = aggregate_events_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     let dic2 = Generic.Dictionary<AggregateId, List<StorageEventJsonRef>>()
                     dic2.Add(aggregateId, events)
                     dic.Add(name, dic2)
                 else
                     let dic2 = dic.[name]
+
                     if (dic2.ContainsKey aggregateId |> not) then
                         dic2.Add(aggregateId, events)
                     else
@@ -145,437 +196,584 @@ module MemoryStorage =
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
-            logger.LogDebug (sprintf "storeSnapshots %s %s" version name)
+            logger.LogDebug(sprintf "storeSnapshots %s %s" version name)
+
             if (snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<string, List<StorageSnapshot>>()
                 dic.Add(name, snapshots)
                 snapshots_dic.Add(version, dic)
             else
                 let dic = snapshots_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     dic.Add(name, snapshots)
                 else
                     dic.[name] <- snapshots
-                    
+
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let addAggregateSnapshots version name aggregateId snapshot =
-            logger.LogDebug (sprintf "AddAggregateSnapshots %s %s" version name)
+            logger.LogDebug(sprintf "AddAggregateSnapshots %s %s" version name)
+
             if (aggregate_snapshots_dic.ContainsKey version |> not) then
-                let dic = Generic.Dictionary<Name, Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>>()
+                let dic =
+                    Generic.Dictionary<Name, Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>>()
+
                 let aggregateDic = Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>()
-                aggregateDic.Add(aggregateId, [snapshot])
+                aggregateDic.Add(aggregateId, [ snapshot ])
                 dic.Add(name, aggregateDic)
                 aggregate_snapshots_dic.Add(version, dic)
-            else 
+            else
                 let dic = aggregate_snapshots_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     let aggregateDic = Generic.Dictionary<Guid, List<StorageAggregateSnapshot>>()
-                    aggregateDic.Add(aggregateId, [snapshot])
+                    aggregateDic.Add(aggregateId, [ snapshot ])
                     dic.Add(name, aggregateDic)
+                else if (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                    aggregate_snapshots_dic.[version].[name].Add(aggregateId, [ snapshot ])
                 else
-                    if (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
-                        aggregate_snapshots_dic.[version].[name].Add(aggregateId, [snapshot])
-                    else
-                        aggregate_snapshots_dic.[version].[name].[aggregateId] <- [snapshot]
-                    
+                    aggregate_snapshots_dic.[version].[name].[aggregateId] <- [ snapshot ]
+
         let getExistingSnapshots version name =
-            logger.LogDebug (sprintf "getExistingSnapshots %s %s" version name)
-            if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+            logger.LogDebug(sprintf "getExistingSnapshots %s %s" version name)
+
+            if
+                (snapshots_dic.ContainsKey version |> not)
+                || (snapshots_dic.[version].ContainsKey name |> not)
+            then
                 []
             else
                 snapshots_dic.[version].[name]
+
         let getExistingAggregateSnapshots version name aggregateId =
-            logger.LogDebug (sprintf "getExistingAggregateSnapshots %s %s %A" version name aggregateId)
-            if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+            logger.LogDebug(sprintf "getExistingAggregateSnapshots %s %s %A" version name aggregateId)
+
+            if
+                (aggregate_snapshots_dic.ContainsKey version |> not)
+                || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+            then
                 []
             else
                 aggregate_snapshots_dic.[version].[name].[aggregateId]
 
         let getExistingEvents version name =
-            logger.LogDebug (sprintf "getExistingEvents %s %s" version name)
-            if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+            logger.LogDebug(sprintf "getExistingEvents %s %s" version name)
+
+            if
+                (events_dic.ContainsKey version |> not)
+                || (events_dic.[version].ContainsKey name |> not)
+            then
                 []
             else
                 events_dic.[version].[name]
-        
+
         let getExistingAggregateEvents version name aggregateId =
-            logger.LogDebug (sprintf "getExistingAggregateEvents %s %s %A" version name aggregateId)
-            if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
+            logger.LogDebug(sprintf "getExistingAggregateEvents %s %s %A" version name aggregateId)
+
+            if
+                (aggregate_events_dic.ContainsKey version |> not)
+                || (aggregate_events_dic.[version].ContainsKey name |> not)
+                || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not)
+            then
                 []
             else
-                aggregate_events_dic.[version].[name].[aggregateId]       
+                aggregate_events_dic.[version].[name].[aggregateId]
 
         [<MethodImpl(MethodImplOptions.Synchronized)>]
         let storeSnapshots version name snapshots =
-            logger.LogDebug (sprintf "storeSnapshots %s %s" version name)
+            logger.LogDebug(sprintf "storeSnapshots %s %s" version name)
+
             if (snapshots_dic.ContainsKey version |> not) then
                 let dic = Generic.Dictionary<string, List<StorageSnapshot>>()
                 dic.Add(name, snapshots)
                 snapshots_dic.Add(version, dic)
             else
                 let dic = snapshots_dic.[version]
+
                 if (dic.ContainsKey name |> not) then
                     dic.Add(name, snapshots)
                 else
                     dic.[name] <- snapshots
 
         let getExistingSnapshots version name =
-            logger.LogDebug (sprintf "getExistingSnapshots %s %s" version name)
-            if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+            logger.LogDebug(sprintf "getExistingSnapshots %s %s" version name)
+
+            if
+                (snapshots_dic.ContainsKey version |> not)
+                || (snapshots_dic.[version].ContainsKey name |> not)
+            then
                 []
             else
                 snapshots_dic.[version].[name]
 
         let getExistingEvents version name =
-            logger.LogDebug (sprintf "getExistingEvents %s %s" version name)
-            if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+            logger.LogDebug(sprintf "getExistingEvents %s %s" version name)
+
+            if
+                (events_dic.ContainsKey version |> not)
+                || (events_dic.[version].ContainsKey name |> not)
+            then
                 []
             else
                 events_dic.[version].[name]
 
         member this.Reset version name =
-            logger.LogDebug (sprintf "Reset %s %s" version name)
+            logger.LogDebug(sprintf "Reset %s %s" version name)
             events_dic.Clear()
             snapshots_dic.Clear()
             event_id_seq_dic.Clear()
             snapshot_id_seq_dic.Clear()
             aggregate_events_dic.Clear()
             aggregate_snapshots_dic.Clear()
-            
+
         interface IEventStore<string> with
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.Reset version name =
-                this.Reset version name
-            member this.ResetAggregateStream version name =
-                this.Reset version name
-                
+            member this.Reset version name = this.Reset version name
+
+            member this.ResetAggregateStream version name = this.Reset version name
+
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<string>, ?ct: CancellationToken) =
-                taskResult
-                    {
-                        let newEvents =
-                            [
-                                for e in events do
-                                    yield {
-                                        AggregateId = aggregateId
-                                        Id = next_aggregate_event_id version name aggregateId
-                                        JsonEvent = e
-                                        KafkaOffset = None
-                                        KafkaPartition = None
-                                        Timestamp = DateTime.UtcNow
-                                    }
-                            ]
-                        let events' = getExistingAggregateEvents version name aggregateId @ newEvents
-                        storeAggregateEvents version name aggregateId events'
-                        let ids = newEvents |>> (fun x -> x.Id)
-                        return ids
-                    }
+            member this.AddAggregateEventsMdAsync
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    ?ct: CancellationToken
+                ) =
+                taskResult {
+                    let newEvents =
+                        [ for e in events do
+                              yield
+                                  { AggregateId = aggregateId
+                                    Id = next_aggregate_event_id version name aggregateId
+                                    JsonEvent = e
+                                    KafkaOffset = None
+                                    KafkaPartition = None
+                                    Timestamp = DateTime.UtcNow } ]
 
-            member this.GetDistanceFromLatestSnapshotAsync (arg: Version, arg_1: Name, arg_2: AggregateId, ct: CancellationToken option): Tasks.Task<int> = 
-                task
-                    {
-                        return 1
-                    }
+                    let events' = getExistingAggregateEvents version name aggregateId @ newEvents
+                    storeAggregateEvents version name aggregateId events'
+                    let ids = newEvents |>> (fun x -> x.Id)
+                    return ids
+                }
 
-            // not handling metadata in memory storage      
-            member this.AddEventsMd _ version name md xs: Result<List<int>, string> =
-                logger.LogDebug (sprintf "AddEvents %s %s" version name)
+            member this.GetDistanceFromLatestSnapshotAsync
+                (arg: Version, arg_1: Name, arg_2: AggregateId, ct: CancellationToken option)
+                : Tasks.Task<int> =
+                task { return 1 }
+
+            // not handling metadata in memory storage
+            member this.AddEventsMd _ version name md xs : Result<List<int>, string> =
+                logger.LogDebug(sprintf "AddEvents %s %s" version name)
+
                 let newEvents =
                     [ for e in xs do
-                        yield {
-                            Id = next_event_id version name
-                            JsonEvent = e
-                            Timestamp = DateTime.UtcNow
-                        }
-                    ]
+                          yield
+                              { Id = next_event_id version name
+                                JsonEvent = e
+                                Timestamp = DateTime.UtcNow } ]
+
                 let events = getExistingEvents version name @ newEvents
                 storeEvents version name events
                 let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
-                
-            member this.SetInitialAggregateStateAndAddEventsMd _ aggregateId aggregateVersion aggregatename json contextVersion contextName _ events =
-                let initialState =
-                    {
-                        Id = next_snapshot_id aggregateVersion aggregatename
-                        AggregateId = aggregateId
-                        Snapshot = json
-                        TimeStamp = DateTime.UtcNow
-                        EventId = None
-                        Deleted = false
-                    }
-                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
-                snapshots.Add (aggregateId, [initialState])
-                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
-                (this:> IEventStore<string>).AddEventsMd 0 contextVersion contextName "" events
-                
-            member this.SetInitialAggregateStateAndAddAggregateEventsMd _ aggregateId aggregateVersion aggregatename secondAggregateId json contextVersion contextName _ events  =
-                let initialState =
-                    {
-                        Id = next_snapshot_id aggregateVersion aggregatename
-                        AggregateId = aggregateId
-                        Snapshot = json
-                        TimeStamp = DateTime.UtcNow
-                        EventId = None
-                        Deleted = false
-                    }
-                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
-                snapshots.Add (aggregateId, [initialState])
-                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
-                (this:> IEventStore<string>).AddAggregateEventsMd 0 contextVersion contextName secondAggregateId "" events
 
-            member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId,  aggregateId, version,  name, secondAggregateId, json, contextVersion, contextName, md, events, ?ct:CancellationToken) =
-                taskResult
-                    {
-                        let res = (this:> IEventStore<string>).SetInitialAggregateStateAndAddAggregateEventsMd 0 aggregateId version name secondAggregateId "" version name md events 
-                        return! res    
-                    }
-
-            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId Version Name jsonSnapshot md events =
+            member this.SetInitialAggregateStateAndAddEventsMd
+                _
+                aggregateId
+                aggregateVersion
+                aggregatename
+                json
+                contextVersion
+                contextName
+                _
+                events
+                =
                 let initialState =
-                    {
-                        Id = next_snapshot_id Version Name
-                        AggregateId = aggregateId
-                        Snapshot = jsonSnapshot
-                        TimeStamp = DateTime.UtcNow
-                        EventId = None
-                        Deleted = false
-                    }
+                    { Id = next_snapshot_id aggregateVersion aggregatename
+                      AggregateId = aggregateId
+                      Snapshot = json
+                      TimeStamp = DateTime.UtcNow
+                      EventId = None
+                      Deleted = false }
+
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
-                snapshots.Add (aggregateId, [initialState])
+                snapshots.Add(aggregateId, [ initialState ])
+                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
+                (this :> IEventStore<string>).AddEventsMd 0 contextVersion contextName "" events
+
+            member this.SetInitialAggregateStateAndAddAggregateEventsMd
+                _
+                aggregateId
+                aggregateVersion
+                aggregatename
+                secondAggregateId
+                json
+                contextVersion
+                contextName
+                _
+                events
+                =
+                let initialState =
+                    { Id = next_snapshot_id aggregateVersion aggregatename
+                      AggregateId = aggregateId
+                      Snapshot = json
+                      TimeStamp = DateTime.UtcNow
+                      EventId = None
+                      Deleted = false }
+
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add(aggregateId, [ initialState ])
+                addAggregateSnapshots aggregateVersion aggregatename aggregateId initialState
+
+                (this :> IEventStore<string>).AddAggregateEventsMd
+                    0
+                    contextVersion
+                    contextName
+                    secondAggregateId
+                    ""
+                    events
+
+            member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync
+                (
+                    eventId,
+                    aggregateId,
+                    version,
+                    name,
+                    secondAggregateId,
+                    json,
+                    contextVersion,
+                    contextName,
+                    md,
+                    events,
+                    ?ct: CancellationToken
+                ) =
+                taskResult {
+                    let res =
+                        (this :> IEventStore<string>).SetInitialAggregateStateAndAddAggregateEventsMd
+                            0
+                            aggregateId
+                            version
+                            name
+                            secondAggregateId
+                            ""
+                            version
+                            name
+                            md
+                            events
+
+                    return! res
+                }
+
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd
+                aggregateId
+                Version
+                Name
+                jsonSnapshot
+                md
+                events
+                =
+                let initialState =
+                    { Id = next_snapshot_id Version Name
+                      AggregateId = aggregateId
+                      Snapshot = jsonSnapshot
+                      TimeStamp = DateTime.UtcNow
+                      EventId = None
+                      Deleted = false }
+
+                let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
+                snapshots.Add(aggregateId, [ initialState ])
                 addAggregateSnapshots Version Name aggregateId initialState
-                (this:> IEventStore<string>).MultiAddAggregateEventsMd md events
-                
-            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: string, md: Metadata, events: List<EventId * List<string> * Version * Name * AggregateId>, ?ct:CancellationToken) =
-                taskResult
-                    {
-                        let res = (this:> IEventStore<string>).SetInitialAggregateStateAndMultiAddAggregateEventsMd aggregateId aggregateVersion aggregatename json md events 
-                        return! res    
-                    }
+                (this :> IEventStore<string>).MultiAddAggregateEventsMd md events
+
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync
+                (
+                    aggregateId: AggregateId,
+                    aggregateVersion: Version,
+                    aggregatename: Name,
+                    json: string,
+                    md: Metadata,
+                    events: List<EventId * List<string> * Version * Name * AggregateId>,
+                    ?ct: CancellationToken
+                ) =
+                taskResult {
+                    let res =
+                        (this :> IEventStore<string>).SetInitialAggregateStateAndMultiAddAggregateEventsMd
+                            aggregateId
+                            aggregateVersion
+                            aggregatename
+                            json
+                            md
+                            events
+
+                    return! res
+                }
+
             member this.GetEventsAfterId version id name =
-                logger.LogDebug (sprintf "GetEventsAfterId %s %A %s" version id name)
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetEventsAfterId %s %A %s" version id name)
+
+                if
+                    (events_dic.ContainsKey version |> not)
+                    || (events_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
-                    events_dic.[version].[name]
-                    |> List.filter (fun x -> x.Id > id)
+                    events_dic.[version].[name] |> List.filter (fun x -> x.Id > id)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-                
-            member this.MultiAddEventsMd md (arg: List< _ * List<Json> * Version * Name>) =
-                logger.LogDebug (sprintf "MultiAddEvents %A" arg)
+
+            member this.MultiAddEventsMd md (arg: List<_ * List<Json> * Version * Name>) =
+                logger.LogDebug(sprintf "MultiAddEvents %A" arg)
+
                 let cmds =
-                    arg 
-                    |> List.map 
-                        (fun (_, xs, version, name) ->
-                            (this :> IEventStore<string>).AddEventsMd 0 version name "" xs |> Result.get
-                        ) 
+                    arg
+                    |> List.map (fun (_, xs, version, name) ->
+                        (this :> IEventStore<string>).AddEventsMd 0 version name "" xs |> Result.get)
+
                 cmds |> Ok
-                
-            member this.SetSnapshot  version (id, snapshot) name =
-                logger.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
+
+            member this.SetSnapshot version (id, snapshot) name =
+                logger.LogDebug(sprintf "SetSnapshot %s %A %s" version id name)
+
                 let newSnapshot: StorageSnapshot =
-                    {
-                        Id = next_snapshot_id version name
-                        Snapshot = snapshot 
-                        TimeStamp = DateTime.UtcNow
-                        EventId = id
-                    }
-                let snapshots = getExistingSnapshots version name @ [newSnapshot]
+                    { Id = next_snapshot_id version name
+                      Snapshot = snapshot
+                      TimeStamp = DateTime.UtcNow
+                      EventId = id }
+
+                let snapshots = getExistingSnapshots version name @ [ newSnapshot ]
                 storeSnapshots version name snapshots
                 () |> Ok
 
             member this.TryGetEvent version id name =
-                logger.LogDebug (sprintf "TryGetEvent %s %A %s" version id name)
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "TryGetEvent %s %A %s" version id name)
+
+                if
+                    (events_dic.ContainsKey version |> not)
+                    || (events_dic.[version].ContainsKey name |> not)
+                then
                     None
                 else
-                    let res =
-                        events_dic.[version].[name]
-                        |> List.tryFind (fun x -> x.Id = id)
+                    let res = events_dic.[version].[name] |> List.tryFind (fun x -> x.Id = id)
                     res
 
             member this.SetInitialAggregateState aggregateId version name snapshot =
                 let initialState =
-                    {
-                        Id = next_snapshot_id version name
-                        AggregateId = aggregateId
-                        Snapshot = snapshot
-                        TimeStamp = DateTime.UtcNow
-                        EventId = None 
-                        Deleted = false
-                    }
+                    { Id = next_snapshot_id version name
+                      AggregateId = aggregateId
+                      Snapshot = snapshot
+                      TimeStamp = DateTime.UtcNow
+                      EventId = None
+                      Deleted = false }
+
                 let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
-                snapshots.Add(aggregateId, [initialState])
+                snapshots.Add(aggregateId, [ initialState ])
                 addAggregateSnapshots version name aggregateId initialState
                 () |> Ok
-          
-            member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct: CancellationToken) =
-                task {
-                    return (this :> IEventStore<string>).SetInitialAggregateState aggregateId version name json
-                }
-            
-            member this.SetInitialAggregateStatesAsync (version, name, idsAndSnapshots, ?ct: CancellationToken) =
-                task {
-                    return (this :> IEventStore<string>).SetInitialAggregateStates version name idsAndSnapshots
-                }    
-             
+
+            member this.SetInitialAggregateStateAsync(aggregateId, version, name, json, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).SetInitialAggregateState aggregateId version name json }
+
+            member this.SetInitialAggregateStatesAsync(version, name, idsAndSnapshots, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).SetInitialAggregateStates version name idsAndSnapshots }
+
             member this.SetInitialAggregateStates version name idsAndSnapshots =
-                logger.LogDebug (sprintf "SetInitialAggregateStates %s %s" version name)
+                logger.LogDebug(sprintf "SetInitialAggregateStates %s %s" version name)
+
                 idsAndSnapshots
                 |> List.ofArray
                 |> List.iter (fun (aggregateId, snapshot) ->
                     let initialState =
-                        {
-                            Id = next_snapshot_id version name
-                            AggregateId = aggregateId
-                            Snapshot = snapshot
-                            TimeStamp = DateTime.UtcNow
-                            EventId = None 
-                            Deleted = false
-                        }
+                        { Id = next_snapshot_id version name
+                          AggregateId = aggregateId
+                          Snapshot = snapshot
+                          TimeStamp = DateTime.UtcNow
+                          EventId = None
+                          Deleted = false }
+
                     let snapshots = Generic.Dictionary<AggregateId, List<StorageAggregateSnapshot>>()
-                    snapshots.Add(aggregateId, [initialState])
-                    addAggregateSnapshots version name aggregateId initialState
-                )
+                    snapshots.Add(aggregateId, [ initialState ])
+                    addAggregateSnapshots version name aggregateId initialState)
+
                 () |> Ok
-                
-            member this.TryGetLastEventId  version  name =
-                logger.LogDebug (sprintf "TryGetLastEventId %s %s" version name)
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+
+            member this.TryGetLastEventId version name =
+                logger.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
+
+                if
+                    (events_dic.ContainsKey version |> not)
+                    || (events_dic.[version].ContainsKey name |> not)
+                then
                     None
                 else
-                    events_dic.[version].[name]
-                    |> List.tryLast
-                    |>> (fun x -> x.Id)
+                    events_dic.[version].[name] |> List.tryLast |>> (fun x -> x.Id)
+
             member this.TryGetLastSnapshot version name =
-                logger.LogDebug (sprintf "TryGetLastSnapshot %s %s" version name)
-                if (snapshots_dic.ContainsKey version |> not)|| (snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "TryGetLastSnapshot %s %s" version name)
+
+                if
+                    (snapshots_dic.ContainsKey version |> not)
+                    || (snapshots_dic.[version].ContainsKey name |> not)
+                then
                     None
                 else
-                    let res =
-                        snapshots_dic.[version].[name]
-                        |> List.tryLast
+                    let res = snapshots_dic.[version].[name] |> List.tryLast
+
                     match res with
                     | None -> None
-                    | Some x ->
-                        Some (x.Id, x.EventId, x.Snapshot)
+                    | Some x -> Some(x.Id, x.EventId, x.Snapshot)
 
-            member this.TryGetLastSnapshotAsync(version,name, ?ct:CancellationToken) =
-                logger.LogDebug (sprintf "TryGetLastSnapshotAsync %s %s" version name)
-                task {
-                    return (this :> IEventStore<string>).TryGetLastSnapshot version name
-                }
+            member this.TryGetLastSnapshotAsync(version, name, ?ct: CancellationToken) =
+                logger.LogDebug(sprintf "TryGetLastSnapshotAsync %s %s" version name)
+                task { return (this :> IEventStore<string>).TryGetLastSnapshot version name }
+
             member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || 
-                   (aggregate_snapshots_dic.[version].ContainsKey name |> not) || 
-                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
-                        None
-                else
-                    let result =
-                        aggregate_snapshots_dic.[version].[name].[aggregateId]
-                        |> List.tryLast
-                        |>> (fun x -> (x.EventId, x.Id, x.Deleted))
-                    match result with
-                    | None -> None
-                    | Some (_, _, true) -> None
-                    | Some (eventId, id, false) -> Some (eventId, id)
-                    
-            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId  = 
-                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || 
-                   (aggregate_snapshots_dic.[version].ContainsKey name |> not) || 
-                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
-                        None
-                else
-                    let result =
-                        aggregate_snapshots_dic.[version].[name].[aggregateId]
-                        |> List.tryLast
-                        |>> (fun x -> (x.EventId, x.Id))
-                    result    
+                logger.LogDebug(sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
 
-            member this.TryGetLastSnapshotEventId version name =
-                logger.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
-                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                    || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
                     None
                 else
-                    snapshots_dic.[version].[name]
-                    |> List.tryLast
-                    |>> (fun x -> x.EventId)
-                    
-            member this.TryGetLastAggregateSnapshot version name aggregateId =
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
-                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
-                        Error "not found"
+                    let result =
+                        aggregate_snapshots_dic.[version].[name].[aggregateId] |> List.tryLast
+                        |>> (fun x -> (x.EventId, x.Id, x.Deleted))
+
+                    match result with
+                    | None -> None
+                    | Some(_, _, true) -> None
+                    | Some(eventId, id, false) -> Some(eventId, id)
+
+            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
+                logger.LogDebug(sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                    || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
+                    None
                 else
                     let result =
-                        aggregate_snapshots_dic.[version].[name].[aggregateId]
-                        |> List.tryLast
+                        aggregate_snapshots_dic.[version].[name].[aggregateId] |> List.tryLast
+                        |>> (fun x -> (x.EventId, x.Id))
+
+                    result
+
+            member this.TryGetLastSnapshotEventId version name =
+                logger.LogDebug(sprintf "TryGetLastSnapshotEventId %s %s" version name)
+
+                if
+                    (snapshots_dic.ContainsKey version |> not)
+                    || (snapshots_dic.[version].ContainsKey name |> not)
+                then
+                    None
+                else
+                    snapshots_dic.[version].[name] |> List.tryLast |>> (fun x -> x.EventId)
+
+            member this.TryGetLastAggregateSnapshot version name aggregateId =
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                    || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
+                    Error "not found"
+                else
+                    let result =
+                        aggregate_snapshots_dic.[version].[name].[aggregateId] |> List.tryLast
                         |>> (fun x -> (x.EventId, x.Id, x.Deleted, x.Snapshot))
+
                     match result with
                     | None -> Error "not found"
-                    | Some (_, _, true, _) -> Error "was deleted"
-                    | Some (eventId, id, _, json) -> Ok (eventId, json)
-           
-            member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct: CancellationToken) =
-                task {
-                    return (this :> IEventStore<string>).TryGetLastAggregateSnapshot version name aggregateId
-                }
-                    
+                    | Some(_, _, true, _) -> Error "was deleted"
+                    | Some(eventId, id, _, json) -> Ok(eventId, json)
+
+            member this.TryGetLastAggregateSnapshotAsync(version, name, aggregateId, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).TryGetLastAggregateSnapshot version name aggregateId }
+
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) ||
-                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                    || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
                     None
                 else
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryLast
                     |> tryLast
-                    |>> (fun x -> x.EventId) 
+                    |>> (fun x -> x.EventId)
                     |> Option.bind (fun x -> x)
-                
+
             member this.TryGetLastSnapshotId version name =
-                logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
-                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "TryGetLastSnapshotId %s %s" version name)
+
+                if
+                    (snapshots_dic.ContainsKey version |> not)
+                    || (snapshots_dic.[version].ContainsKey name |> not)
+                then
                     None
                 else
-                    snapshots_dic.[version].[name]
-                    |> List.tryLast
-                    |>> (fun x -> x.EventId, x.Id)
+                    snapshots_dic.[version].[name] |> List.tryLast |>> (fun x -> x.EventId, x.Id)
 
             member this.TryGetFirstSnapshot version name aggregateId =
-                logger.LogDebug (sprintf "TryGetFirstSnapshot %s %s %A" version name aggregateId)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
+                logger.LogDebug(sprintf "TryGetFirstSnapshot %s %s %A" version name aggregateId)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                    || (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
                     Error "not found"
-                else     
+                else
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryHead
                     |> Result.ofOption (sprintf "aggregate %s%s id %A not found" version name aggregateId)
                     >>= (fun x -> (x.Id, x.Snapshot) |> Ok)
-            
+
             member this.TryGetSnapshotById version name id =
-                logger.LogDebug  (sprintf "TryGetSnapshotById %s %s %A" version name id)
-                if (snapshots_dic.ContainsKey version |> not) || (snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "TryGetSnapshotById %s %s %A" version name id)
+
+                if
+                    (snapshots_dic.ContainsKey version |> not)
+                    || (snapshots_dic.[version].ContainsKey name |> not)
+                then
                     None
                 else
-                    snapshots_dic.[version].[name]
-                    |> List.tryFind (fun x -> x.Id = id)
+                    snapshots_dic.[version].[name] |> List.tryFind (fun x -> x.Id = id)
                     |>> (fun x -> (x.EventId, x.Snapshot))
 
             member this.TryGetAggregateSnapshotById version name aggregateId id =
-                if (aggregate_snapshots_dic.ContainsKey version |> not
-                    || aggregate_snapshots_dic.[version].ContainsKey name |> not
-                    || aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
-                    then
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not
+                     || aggregate_snapshots_dic.[version].ContainsKey name |> not
+                     || aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not)
+                then
                     None
                 else
                     aggregate_snapshots_dic.[version].[name].[aggregateId]
                     |> List.tryFind (fun x -> x.Id = id)
                     |>> (fun x -> (x.EventId, x.Snapshot))
-                    
+
             // Issue: it will not survive after a version migration because the timestamps will be different
-            member this.GetEventsInATimeInterval (version: Version) (name: Name) (dateFrom: DateTime) (dateTo: DateTime) =
-                logger.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+            member this.GetEventsInATimeInterval
+                (version: Version)
+                (name: Name)
+                (dateFrom: DateTime)
+                (dateTo: DateTime)
+                =
+                logger.LogDebug(sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                if
+                    (events_dic.ContainsKey version |> not)
+                    || (events_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     events_dic.[version].[name]
@@ -584,28 +782,39 @@ module MemoryStorage =
                     |>> (fun (id, event) -> id, event)
                     |> Ok
 
-            member this.GetEventsInATimeIntervalAsync (version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+            member this.GetEventsInATimeIntervalAsync
+                (version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken)
+                =
+                logger.LogDebug(sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
                 let _ = defaultArg ct CancellationToken.None
+
                 task {
                     try
-                        if (events_dic.ContainsKey version |> not) || (events_dic.[version].ContainsKey name |> not) then
+                        if
+                            (events_dic.ContainsKey version |> not)
+                            || (events_dic.[version].ContainsKey name |> not)
+                        then
                             return [] |> Ok
                         else
-                            return events_dic.[version].[name]
-                                   |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
-                                   |>> (fun x -> x.Id, x.JsonEvent)
-                                   |>> (fun (id, event) -> id, event)
-                                   |> Ok
+                            return
+                                events_dic.[version].[name]
+                                |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
+                                |>> (fun x -> x.Id, x.JsonEvent)
+                                |>> (fun (id, event) -> id, event)
+                                |> Ok
                     with ex ->
-                        logger.LogError (sprintf "An error occurred in GetEventsInATimeIntervalAsync: %A" ex.Message)
+                        logger.LogError(sprintf "An error occurred in GetEventsInATimeIntervalAsync: %A" ex.Message)
                         return Error ex.Message
                 }
 
-            
+
             member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     aggregate_snapshots_dic.[version].[name]
@@ -616,10 +825,14 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.TimeStamp >= dateFrom && x.TimeStamp <= dateTo)
                     |>> (fun x -> x.Id, x.AggregateId, x.TimeStamp, x.Snapshot)
                     |> Ok
-                    
+
             member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetAggregateIdsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     aggregate_snapshots_dic.[version].[name]
@@ -631,20 +844,25 @@ module MemoryStorage =
                     |>> (fun x -> x.AggregateId)
                     |> List.distinct
                     |> Ok
-            
+
             member this.GetAggregateIds version name =
-                logger.LogDebug (sprintf "GetAggregateIds %s %s" version name)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetAggregateIds %s %s" version name)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
-                    aggregate_snapshots_dic.[version].[name]
-                    |> Dictionary.keys
-                    |> Seq.toList
-                    |> Ok
-                    
+                    aggregate_snapshots_dic.[version].[name] |> Dictionary.keys |> Seq.toList |> Ok
+
             member this.GetUndeletedAggregateIds version name =
-                logger.LogDebug (sprintf "GetAggregateIds %s %s" version name)
-                if (aggregate_snapshots_dic.ContainsKey version |> not) || (aggregate_snapshots_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetAggregateIds %s %s" version name)
+
+                if
+                    (aggregate_snapshots_dic.ContainsKey version |> not)
+                    || (aggregate_snapshots_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     aggregate_snapshots_dic.[version].[name]
@@ -654,31 +872,34 @@ module MemoryStorage =
                     |> List.last
                     |> List.filter (fun x -> x.Deleted = false)
                     |> List.map (fun x -> x.AggregateId)
-                    |> Ok        
-            
-            member this.GetAggregateIdsAsync (version, name, ?ct) =
-                task
-                    {
-                        return (this:>IEventStore<string>).GetAggregateIds version name
-                    }
-            member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
-                task
-                    {
-                        return (this:>IEventStore<string>).GetUndeletedAggregateIds version name
-                    }
-           
-            member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
-                task
-                    {
-                        return (this :> IEventStore<string>).GetAggregateIdsInATimeInterval version name dateFrom dateTo
-                    }
-             
-            member this.GetAggregateEventsInATimeInterval (version: Version) (name: Name) (aggregateId: AggregateId) (dateFrom: DateTime) (dateTo: DateTime) =
-                logger.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
+                    |> Ok
+
+            member this.GetAggregateIdsAsync(version, name, ?ct) =
+                task { return (this :> IEventStore<string>).GetAggregateIds version name }
+
+            member this.GetUndeletedAggregateIdsAsync(version, name, ?ct) =
+                task { return (this :> IEventStore<string>).GetUndeletedAggregateIds version name }
+
+            member this.GetAggregateIdsInATimeIntervalAsync(version, name, dateFrom, dateTo, ?ct) =
+                task {
+                    return (this :> IEventStore<string>).GetAggregateIdsInATimeInterval version name dateFrom dateTo
+                }
+
+            member this.GetAggregateEventsInATimeInterval
+                (version: Version)
+                (name: Name)
+                (aggregateId: AggregateId)
+                (dateFrom: DateTime)
+                (dateTo: DateTime)
+                =
+                logger.LogDebug(
+                    sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo
+                )
+
                 if
-                    ( aggregate_events_dic.ContainsKey version |> not)
+                    (aggregate_events_dic.ContainsKey version |> not)
                     || (aggregate_events_dic.[version].ContainsKey name |> not)
-                    || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not )
+                    || (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not)
                 then
                     [] |> Ok
                 else
@@ -687,11 +908,15 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |>> (fun (id, event) -> id, event)
                     |> Ok
-                    
-            
+
+
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAllaggregateEventsInAtimeInterval %s %s %A %A" version name dateFrom dateTo)
-                if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(sprintf "GetAllaggregateEventsInAtimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                if
+                    (aggregate_events_dic.ContainsKey version |> not)
+                    || (aggregate_events_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     aggregate_events_dic.[version].[name]
@@ -702,11 +927,17 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
-                    
-            member this.GetAllAggregateEventsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct:CancellationToken) =
+
+            member this.GetAllAggregateEventsInATimeIntervalAsync
+                (version, name, dateFrom, dateTo, ?ct: CancellationToken)
+                =
                 taskResult {
                     let results = ResizeArray<EventId * AggregateId * string>()
-                    if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+
+                    if
+                        (aggregate_events_dic.ContainsKey version |> not)
+                        || (aggregate_events_dic.[version].ContainsKey name |> not)
+                    then
                         return results
                     else
                         let res =
@@ -717,13 +948,26 @@ module MemoryStorage =
                             |> List.collect (fun x -> x)
                             |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                             |>> (fun x -> x.Id, x.AggregateId, x.JsonEvent)
-                        results.AddRange(res)    
+
+                        results.AddRange(res)
                         return results
                 }
-           
+
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
-                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
-                if (aggregate_events_dic.ContainsKey version |> not) || (aggregate_events_dic.[version].ContainsKey name |> not) then
+                logger.LogDebug(
+                    sprintf
+                        "GetMultipleAggregateEventsInATimeInterval %s %s %A %A %A"
+                        version
+                        name
+                        aggregateIds
+                        dateFrom
+                        dateTo
+                )
+
+                if
+                    (aggregate_events_dic.ContainsKey version |> not)
+                    || (aggregate_events_dic.[version].ContainsKey name |> not)
+                then
                     [] |> Ok
                 else
                     aggregate_events_dic.[version].[name]
@@ -735,110 +979,123 @@ module MemoryStorage =
                     |> List.filter (fun x -> x.Timestamp >= dateFrom && x.Timestamp <= dateTo)
                     |>> (fun x -> x.Id, x.AggregateId, x.JsonEvent)
                     |> Ok
-                
-            member this.MultiAddAggregateEventsMd md (arg: List< _* List<Json> * Version * Name * AggregateId>) =
-                logger.LogDebug (sprintf "MultiAddAggregateEvents %A" arg)
+
+            member this.MultiAddAggregateEventsMd md (arg: List<_ * List<Json> * Version * Name * AggregateId>) =
+                logger.LogDebug(sprintf "MultiAddAggregateEvents %A" arg)
+
                 let cmds =
                     arg
-                    |> List.map
-                        (fun (_, xs, version, name, aggregateId) ->
-                            (this :> IEventStore<string>).AddAggregateEventsMd 0 version name aggregateId "" xs |> Result.get
-                        )
-                cmds |> Ok        
-                
+                    |> List.map (fun (_, xs, version, name, aggregateId) ->
+                        (this :> IEventStore<string>).AddAggregateEventsMd 0 version name aggregateId "" xs
+                        |> Result.get)
+
+                cmds |> Ok
+
             [<MethodImpl(MethodImplOptions.Synchronized)>]
             member this.AddAggregateEventsMd _ version name aggregateId _ events =
-                logger.LogDebug (sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
+                logger.LogDebug(sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
+
                 let newEvents =
-                    [
-                        for e in events do
-                            yield {
-                                AggregateId = aggregateId
+                    [ for e in events do
+                          yield
+                              { AggregateId = aggregateId
                                 Id = next_aggregate_event_id version name aggregateId
                                 JsonEvent = e
                                 KafkaOffset = None
                                 KafkaPartition = None
-                                Timestamp = DateTime.UtcNow
-                            }
-                    ]
+                                Timestamp = DateTime.UtcNow } ]
+
                 let events' = getExistingAggregateEvents version name aggregateId @ newEvents
                 storeAggregateEvents version name aggregateId events'
                 let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
-                    
-            member this.TryGetLastAggregateEventId(version: Version) (name: Name) (aggregateId: AggregateId): Option<EventId> =
-                logger.LogDebug (sprintf "TryGetLastAggregateEventId %s %s %A" version name aggregateId)
-                if (aggregate_events_dic.ContainsKey version |> not) then 
+
+            member this.TryGetLastAggregateEventId
+                (version: Version)
+                (name: Name)
+                (aggregateId: AggregateId)
+                : Option<EventId> =
+                logger.LogDebug(sprintf "TryGetLastAggregateEventId %s %s %A" version name aggregateId)
+
+                if (aggregate_events_dic.ContainsKey version |> not) then
                     None
+                else if (aggregate_events_dic.[version].ContainsKey name |> not) then
+                    None
+                else if (aggregate_events_dic.[version].[name].ContainsKey aggregateId) then
+                    aggregate_events_dic.[version].[name].[aggregateId] |> List.tryLast
+                    |>> (fun x -> x.Id) //, x.KafkaOffset, x.KafkaPartition ))
                 else
-                    if (aggregate_events_dic.[version].ContainsKey name |> not) then
-                        None
-                    else
-                        if (aggregate_events_dic.[version].[name].ContainsKey aggregateId) then
-                            aggregate_events_dic.[version].[name].[aggregateId]
-                            |> List.tryLast
-                            |>> (fun x ->  x.Id) //, x.KafkaOffset, x.KafkaPartition ))
-                        else
-                            None 
-                
+                    None
+
             member this.GetAggregateEventsAfterId version name aggregateId id =
                 if (aggregate_events_dic.ContainsKey version |> not) then
                     [] |> Ok
-                else
-                    if (aggregate_events_dic.[version].ContainsKey name |> not) then
-                        [] |> Ok
-                    else
-                        if (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
-                            [] |> Ok
-                        else
-                            aggregate_events_dic.[version].[name].[aggregateId]
-                            |> List.filter (fun x -> x.Id > id)
-                            |>> (fun x -> x.Id, x.JsonEvent)
-                            |> Ok
-            member this.GetAggregateEvents version name aggregateId: Result<List<EventId * Json>,string> =
-                logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
-                if (aggregate_events_dic.ContainsKey version |> not) then
+                else if (aggregate_events_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else if (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
                     [] |> Ok
                 else
-                    if (aggregate_events_dic.[version].ContainsKey name |> not) then
-                        [] |> Ok
-                    else
-                        if (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
-                            [] |> Ok
-                        else
-                            aggregate_events_dic.[version].[name].[aggregateId]
-                            |>> (fun x -> (x.Id, x.JsonEvent))
-                            |> Ok
+                    aggregate_events_dic.[version].[name].[aggregateId]
+                    |> List.filter (fun x -> x.Id > id)
+                    |>> (fun x -> x.Id, x.JsonEvent)
+                    |> Ok
+
+            member this.GetAggregateEvents version name aggregateId : Result<List<EventId * Json>, string> =
+                logger.LogDebug(sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+
+                if (aggregate_events_dic.ContainsKey version |> not) then
+                    [] |> Ok
+                else if (aggregate_events_dic.[version].ContainsKey name |> not) then
+                    [] |> Ok
+                else if (aggregate_events_dic.[version].[name].ContainsKey aggregateId |> not) then
+                    [] |> Ok
+                else
+                    aggregate_events_dic.[version].[name].[aggregateId]
+                    |>> (fun x -> (x.Id, x.JsonEvent))
+                    |> Ok
 
             member this.SetAggregateSnapshot version (aggregateId, eventId, snapshot) name =
                 let state =
-                    {
-                        Id = next_snapshot_id version name
-                        AggregateId = aggregateId
-                        Snapshot = snapshot
-                        TimeStamp = DateTime.UtcNow
-                        EventId = eventId |> Some
-                        Deleted = false
-                    }
+                    { Id = next_snapshot_id version name
+                      AggregateId = aggregateId
+                      Snapshot = snapshot
+                      TimeStamp = DateTime.UtcNow
+                      EventId = eventId |> Some
+                      Deleted = false }
+
                 addAggregateSnapshots version name aggregateId state
                 () |> Ok
-                
+
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
-                logger.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
+                logger.LogDebug(
+                    sprintf
+                        "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A"
+                        version
+                        name
+                        aggregateId
+                        snapshot
+                        event
+                )
+
                 () |> Ok
+
+            member this.GDPRPartialUpdateSnapshotsAsync
+                (version, name, aggregateId, updateFunciton, ct: Option<CancellationToken>)
+                =
+                taskResult { return () }
 
             member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
                 let newSnapshot: StorageAggregateSnapshot =
-                    {
-                        Id = next_snapshot_id version name
-                        AggregateId = aggregateId
-                        Snapshot = snapshot 
-                        TimeStamp = DateTime.UtcNow
-                        EventId = None 
-                        Deleted = true
-                    }
+                    { Id = next_snapshot_id version name
+                      AggregateId = aggregateId
+                      Snapshot = snapshot
+                      TimeStamp = DateTime.UtcNow
+                      EventId = None
+                      Deleted = true }
+
                 addAggregateSnapshots version name aggregateId newSnapshot
                 () |> Ok
+
             member this.SnapshotMarkDeletedAndAddAggregateEventsMd
                 s1Version
                 s1name
@@ -850,78 +1107,124 @@ module MemoryStorage =
                 streamAggregateName
                 streamAggregateId
                 metaData
-                events =
-                    
-                (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
-                (this:> IEventStore<string>).AddAggregateEventsMd streamEventId streamAggregateVersion streamAggregateName streamAggregateId metaData events
-                
-            member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd 
+                events
+                =
+
+                (this :> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot
+                |> ignore
+
+                (this :> IEventStore<string>).AddAggregateEventsMd
+                    streamEventId
+                    streamAggregateVersion
+                    streamAggregateName
+                    streamAggregateId
+                    metaData
+                    events
+
+            member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
                 md
                 s1Version
                 s1name
                 s1EventId
                 s1AggregateId
                 s1Snapshot
-                (arg: List<EventId * List<string> * Version * Name * AggregateId>) =
-                    (this:> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot |> ignore
-                    (this:> IEventStore<string>).MultiAddAggregateEventsMd md arg
+                (arg: List<EventId * List<string> * Version * Name * AggregateId>)
+                =
+                (this :> IEventStore<string>).SnapshotAndMarkDeleted s1Version s1name s1EventId s1AggregateId s1Snapshot
+                |> ignore
+
+                (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
 
             member this.MultiAddAggregateEventsMdAsync(arg, md, ct) =
                 taskResult {
-                    let! result =
-                        (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
-                    return result    
-                }     
-                
+                    let! result = (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
+                    return result
+                }
+
             member this.SnapshotAndMarkDeletedAsync(version, name, eventId, aggregateId, napshot, ?ct) =
                 taskResult {
                     let! result =
                         (this :> IEventStore<string>).SnapshotAndMarkDeleted version name eventId aggregateId napshot
-                    return result    
+
+                    return result
                 }
 
             member this.GetAggregateEventsAfterIdAsync(version, name, aggregateId, eventId, ?ct) =
                 taskResult {
                     let! result =
                         (this :> IEventStore<string>).GetAggregateEventsAfterId version name aggregateId eventId
-                    return result    
+
+                    return result
                 }
 
             member this.GetAggregateEventsAsync(version, name, aggregateId, ?ct) =
                 taskResult {
-                    let! result =
-                        (this :> IEventStore<string>).GetAggregateEvents version name aggregateId
+                    let! result = (this :> IEventStore<string>).GetAggregateEvents version name aggregateId
                     return result
                 }
 
             member this.GetAggregateEventsInATimeIntervalAsync(version, name, aggregateId, dateFrom, dateTo, ct) =
-                logger.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
-                taskResult
-                    {
-                        let! result  =
-                            (this :> IEventStore<string>).GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo
-                        return result    
-                    }
+                logger.LogDebug(
+                    sprintf "GetAggregateEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo
+                )
 
-            member this.GetMultipleAggregateEventsInATimeIntervalAsync(version, name, aggregateIds, dateFrom, dateTo, ct) =
-                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A %A" version name aggregateIds dateFrom dateTo)
-                task {
-                    return (this :> IEventStore<string>).GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo
+                taskResult {
+                    let! result =
+                        (this :> IEventStore<string>).GetAggregateEventsInATimeInterval
+                            version
+                            name
+                            aggregateId
+                            dateFrom
+                            dateTo
+
+                    return result
                 }
-            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement = 
-                Ok ()
+
+            member this.GetMultipleAggregateEventsInATimeIntervalAsync
+                (version, name, aggregateIds, dateFrom, dateTo, ct)
+                =
+                logger.LogDebug(
+                    sprintf
+                        "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A %A"
+                        version
+                        name
+                        aggregateIds
+                        dateFrom
+                        dateTo
+                )
+
+                task {
+                    return
+                        (this :> IEventStore<string>).GetMultipleAggregateEventsInATimeInterval
+                            version
+                            name
+                            aggregateIds
+                            dateFrom
+                            dateTo
+                }
+
+            member this.GDPRReplaceEventsByPredicateAsync
+                (version, name, aggregateId, updateFunciton, event, ?ct: CancellationToken)
+                =
+                taskResult { return () }
+
+            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement = Ok()
 
             member this.GDPRPartialUpdateSnapshots version name aggregateId updateFunction =
-                if (aggregate_snapshots_dic.ContainsKey version) && 
-                   (aggregate_snapshots_dic.[version].ContainsKey name) && 
-                   (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId) then
+                if
+                    (aggregate_snapshots_dic.ContainsKey version)
+                    && (aggregate_snapshots_dic.[version].ContainsKey name)
+                    && (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId)
+                then
                     let snapshots = aggregate_snapshots_dic.[version].[name].[aggregateId]
+
                     let updatedSnapshots =
                         snapshots
                         |> List.map (fun s ->
                             match updateFunction s.Snapshot with
                             | Ok newSnapshot -> { s with Snapshot = newSnapshot }
-                            | Error _ -> s
-                        )
+                            | Error _ -> s)
+
                     aggregate_snapshots_dic.[version].[name].[aggregateId] <- updatedSnapshots
-                Ok ()
+
+                Ok()

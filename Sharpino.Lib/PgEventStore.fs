@@ -24,10 +24,14 @@ module PgStorage =
     let config = builder.Configuration
     let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 100000)
     let distanceBetweenSnapshots = config.GetValue<int>("DistanceBetweenSnapshots", 100)
-    let cancellationTokenSourceExpiration = config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
+
+    let cancellationTokenSourceExpiration =
+        config.GetValue<int>("CancellationTokenSourceExpiration", 100000)
+
     let isTestEnv = config.GetValue<bool>("IsTestEnv", false)
-    
+
     let confJsonFormat = config.GetValue<string>("PgSqlJsonFormat", "PlainText")
+
     let sqlJson =
         match confJsonFormat with
         | "PlainText" -> Sql.text
@@ -36,116 +40,152 @@ module PgStorage =
 
     let sqlBinary = Sql.bytea
 
-    let readAsText<'F> = fun (r: RowReader) -> r.text 
-    let readAsBinary:RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
+    let readAsText<'F> = fun (r: RowReader) -> r.text
+    let readAsBinary: RowReaderByFormat<'F> = fun (r: RowReader) -> r.bytea
 
     // todo: should set the logger from outside or, better (next release), use the dependency injection infrastructure
 
-    
+
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
-    let setLogger (newLogger: ILogger) =
-        ()
-    
+    let setLogger (newLogger: ILogger) = ()
+
     type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
-        let logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgEventStore>>()
-        new (connection: string) =
-            PgEventStore(connection, readAsText)
+        let logger =
+            builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgEventStore>>()
+
+        new(connection: string) = PgEventStore(connection, readAsText)
 
         member this.Reset version name =
             if isTestEnv then
                 try
-                    Async.RunSynchronously
-                        (connection
+                    Async.RunSynchronously(
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
-                        |> Async.AwaitTask
-                        ,
-                        eventStoreTimeout)
-                        |> ignore
-                            
-                    Async.RunSynchronously
-                        (connection
+                        |> Async.AwaitTask,
+                        eventStoreTimeout
+                    )
+                    |> ignore
+
+                    Async.RunSynchronously(
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
                         |> Sql.executeNonQueryAsync
-                        |> Async.AwaitTask
-                        ,
-                        eventStoreTimeout)
-                    
-                with 
-                    | _ as e -> failwith (e.ToString())
+                        |> Async.AwaitTask,
+                        eventStoreTimeout
+                    )
+
+                with _ as e ->
+                    failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
-                
+
         member this.ResetAggregateStream version name =
             if isTestEnv then
                 try
-                    
-                    Async.RunSynchronously
-                        (connection
+
+                    Async.RunSynchronously(
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
                         |> Sql.executeNonQueryAsync
-                        |> Async.AwaitTask
-                        ,
-                        eventStoreTimeout)
-                        |> ignore
-                    
-                    Async.RunSynchronously
-                        (connection
+                        |> Async.AwaitTask,
+                        eventStoreTimeout
+                    )
+                    |> ignore
+
+                    Async.RunSynchronously(
+                        connection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
-                        |> Async.AwaitTask
-                        ,
-                        eventStoreTimeout)
-                        |> ignore 
-                    ()    
-                with
-                    | _ as e -> failwith (e.ToString())
+                        |> Async.AwaitTask,
+                        eventStoreTimeout
+                    )
+                    |> ignore
+
+                    ()
+                with _ as e ->
+                    failwith (e.ToString())
             else
                 failwith "operation allowed only in test db"
 
 
-        member this.GetDistanceFromLatestSnapshotAsync(version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken) =
-            let query = sprintf "SELECT distance_from_latest_snapshot FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+        member this.GetDistanceFromLatestSnapshotAsync
+            (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken)
+            =
+            let query =
+                sprintf
+                    "SELECT distance_from_latest_snapshot FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1"
+                    version
+                    name
+
             task {
                 try
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                (defaultArg ct CancellationToken.None)
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
-                
+
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                
+
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                     command.Parameters.AddWithValue("@aggregateId", aggregateId) |> ignore
-                
+
                     let! result = command.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
-                
+
                     if result = null || result = DBNull.Value then
                         return 1 // Or whatever your default is if no events exist
                     else
                         return (unbox<int> result)
                 with ex ->
-                    logger.LogError (sprintf "GetDistanceFromLatestSnapshotAsync error: %s" ex.Message)
+                    logger.LogError(sprintf "GetDistanceFromLatestSnapshotAsync error: %s" ex.Message)
                     // verify if better do error
                     // return Error ex.Message
                     return 1
             }
 
-        member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId: EventId, aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, secondAggregateId: AggregateId, json: string, version: Version, name: Name, md: Metadata, events: List<string>, ?ct:CancellationToken) =
+        member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync
+            (
+                eventId: EventId,
+                aggregateId: AggregateId,
+                aggregateVersion: Version,
+                aggregatename: Name,
+                secondAggregateId: AggregateId,
+                json: string,
+                version: Version,
+                name: Name,
+                md: Metadata,
+                events: List<string>,
+                ?ct: CancellationToken
+            ) =
             logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
 
-            let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
-            let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
-            let insertEvents = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" (version + name)
+            let insertSnapshot =
+                sprintf
+                    "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)"
+                    aggregateVersion
+                    aggregatename
+
+            let insertFirstEmptyAggregateEvent =
+                sprintf
+                    "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)"
+                    aggregateVersion
+                    aggregatename
+
+            let insertEvents =
+                sprintf
+                    "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                    (version + name)
 
             task {
-                use cts = CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct CancellationToken.None)
+                use cts =
+                    CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
                 use conn = new NpgsqlConnection(connection)
@@ -153,201 +193,380 @@ module PgStorage =
 
                 use transaction = conn.BeginTransaction()
 
-                let distanceFromLatestSnapshot = (this :> IEventStore<string>).GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, cts.Token).GetAwaiter().GetResult()
-                let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
-                let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name secondAggregateId
+                let distanceFromLatestSnapshot =
+                    (this :> IEventStore<string>)
+                        .GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, cts.Token)
+                        .GetAwaiter()
+                        .GetResult()
 
-                if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
+
+                let lastEventId =
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId version name secondAggregateId
+
+                if
+                    (lastEventId.IsNone && eventId = 0)
+                    || (lastEventId.IsSome && lastEventId.Value = eventId)
+                then
 
                     let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
-                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                    |> ignore
+
                     insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
-                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow) |> ignore
 
-                    let! insertSnapshotTask = 
-                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow)
+                    |> ignore
 
-                    let insertFirstEmptyAggregateEventCommand = new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
-                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                    let! insertFirstEmptyAggregateEventTask = 
-                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    let! insertSnapshotTask =
+                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
+
+                    let insertFirstEmptyAggregateEventCommand =
+                        new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
+
+                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                    |> ignore
+
+                    let! insertFirstEmptyAggregateEventTask =
+                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
 
                     let insertEventsCommand = new NpgsqlCommand(insertEvents, conn, transaction)
                     insertEventsCommand.Parameters.AddWithValue("@event", json) |> ignore
-                    insertEventsCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                    insertEventsCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
+
+                    insertEventsCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                    |> ignore
+
+                    insertEventsCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                    |> ignore
+
                     insertEventsCommand.Parameters.AddWithValue("@md", md) |> ignore
 
                     let results = ResizeArray<_>()
+
                     for event in events do
                         let insertEventCommand = new NpgsqlCommand(insertEvents, conn, transaction)
                         insertEventCommand.Parameters.AddWithValue("@event", event) |> ignore
-                        insertEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                        insertEventCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
+
+                        insertEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                        |> ignore
+
+                        insertEventCommand.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                        |> ignore
+
                         insertEventCommand.Parameters.AddWithValue("@md", md) |> ignore
-                        let! ids =
-                            insertEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
+                        let! ids = insertEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
                         results.Add(ids)
 
                     do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
 
-                    return Ok (results |> Seq.toList) 
+                    return Ok(results |> Seq.toList)
 
                 else
                     do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                     return Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
             }
 
-        member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: string, md: Metadata, events: List<EventId * List<string> * Version * Name * AggregateId>, ?ct:CancellationToken) = 
+        member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync
+            (
+                aggregateId: AggregateId,
+                aggregateVersion: Version,
+                aggregatename: Name,
+                json: string,
+                md: Metadata,
+                events: List<EventId * List<string> * Version * Name * AggregateId>,
+                ?ct: CancellationToken
+            ) =
             logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
-            let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
-            let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+
+            let insertSnapshot =
+                sprintf
+                    "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)"
+                    aggregateVersion
+                    aggregatename
+
+            let insertFirstEmptyAggregateEvent =
+                sprintf
+                    "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)"
+                    aggregateVersion
+                    aggregatename
 
             task {
-                use cts = CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct CancellationToken.None)
+                use cts =
+                    CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
                 use conn = new NpgsqlConnection(connection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
+
                 let lastEventIds =
-                    events 
-                    |>> 
-                    fun (_, _, version, name, aggrId) -> 
-                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
-                    
-                let eventIds =
                     events
-                    |>> fun (eventId, _, _, _, _) -> eventId
-                
+                    |>> fun (_, _, version, name, aggrId) ->
+                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
+
+                let eventIds = events |>> fun (eventId, _, _, _, _) -> eventId
+
                 let checks =
                     List.zip lastEventIds eventIds
-                    |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || (lastEventId.IsSome && lastEventId.Value = eventId))
-                
+                    |> List.forall (fun (lastEventId, eventId) ->
+                        lastEventId.IsNone && eventId = 0
+                        || (lastEventId.IsSome && lastEventId.Value = eventId))
+
                 let errors =
                     List.zip lastEventIds eventIds
-                    |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                    |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
+                    |> List.filter (fun (lastEventId, eventId) ->
+                        lastEventId.IsNone && eventId <> 0
+                        || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                    |> List.map (fun (lastEventId, eventId) ->
+                        sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
 
                 if not checks then
-                    return Error (errors |> List.reduce (fun acc x -> acc + "\n" + x)) 
+                    return Error(errors |> List.reduce (fun acc x -> acc + "\n" + x))
                 else
                     let insertSnapshotCommand = new NpgsqlCommand(insertSnapshot, conn, transaction)
-                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                    insertSnapshotCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                    |> ignore
+
                     insertSnapshotCommand.Parameters.AddWithValue("@snapshot", json) |> ignore
-                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow) |> ignore
 
-                    let! insertSnapshotTask = 
-                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    insertSnapshotCommand.Parameters.AddWithValue("@timestamp", DateTime.UtcNow)
+                    |> ignore
 
-                    let insertFirstEmptyAggregateEventCommand = new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
-                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                    let! insertFirstEmptyAggregateEventTask = 
-                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false) 
+                    let! insertSnapshotTask =
+                        insertSnapshotCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
 
-                    let ids = 
-                        events  
-                        |>> fun (eventId, events, version, name, aggId) -> 
-                            let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggId, CancellationToken.None).GetAwaiter().GetResult()
+                    let insertFirstEmptyAggregateEventCommand =
+                        new NpgsqlCommand(insertFirstEmptyAggregateEvent, conn, transaction)
+
+                    insertFirstEmptyAggregateEventCommand.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                    |> ignore
+
+                    let! insertFirstEmptyAggregateEventTask =
+                        insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
+
+                    let ids =
+                        events
+                        |>> fun (eventId, events, version, name, aggId) ->
+                            let distanceFromLatestSnapshot =
+                                this
+                                    .GetDistanceFromLatestSnapshotAsync(version, name, aggId, CancellationToken.None)
+                                    .GetAwaiter()
+                                    .GetResult()
+
                             let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
                             let stream_name = version + name
-                            events
-                            |>> 
 
-                                fun x ->
-                                    let command' = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
-                                    command'.Parameters.AddWithValue("event", x ) |> ignore
-                                    command'.Parameters.AddWithValue("@aggregate_id", aggId ) |> ignore
-                                    command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                    command'.Parameters.AddWithValue("md", md ) |> ignore
-                                    let result = command'.ExecuteScalar()
-                                    result  :?> int
+                            events
+                            |>>
+
+                            fun x ->
+                                let command' =
+                                    new NpgsqlCommand(
+                                        sprintf
+                                            "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                                            stream_name,
+                                        conn
+                                    )
+
+                                command'.Parameters.AddWithValue("event", x) |> ignore
+                                command'.Parameters.AddWithValue("@aggregate_id", aggId) |> ignore
+
+                                command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                                |> ignore
+
+                                command'.Parameters.AddWithValue("md", md) |> ignore
+                                let result = command'.ExecuteScalar()
+                                result :?> int
+
                     do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
-                    return Ok ids 
+                    return Ok ids
             }
 
-        interface IEventStore<string> with 
-            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, json: string, md: Metadata, events: List<EventId * List<string> * Version * Name * AggregateId>, ?ct:CancellationToken) = 
+        interface IEventStore<string> with
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync
+                (
+                    aggregateId: AggregateId,
+                    aggregateVersion: Version,
+                    aggregatename: Name,
+                    json: string,
+                    md: Metadata,
+                    events: List<EventId * List<string> * Version * Name * AggregateId>,
+                    ?ct: CancellationToken
+                ) =
                 let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
-                this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(aggregateId, aggregateVersion, aggregatename, json, md, events, ct)
-            member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId: EventId, aggregateId: AggregateId, aggregateVersion: Version, aggregatename: Name, secondAggregateId: AggregateId, json: string, version: Version, name: Name, md: Metadata, events: List<string>, ?ct:CancellationToken) =
+
+                this.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync(
+                    aggregateId,
+                    aggregateVersion,
+                    aggregatename,
+                    json,
+                    md,
+                    events,
+                    ct
+                )
+
+            member this.SetInitialAggregateStateAndAddAggregateEventsMdAsync
+                (
+                    eventId: EventId,
+                    aggregateId: AggregateId,
+                    aggregateVersion: Version,
+                    aggregatename: Name,
+                    secondAggregateId: AggregateId,
+                    json: string,
+                    version: Version,
+                    name: Name,
+                    md: Metadata,
+                    events: List<string>,
+                    ?ct: CancellationToken
+                ) =
                 let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
-                this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, aggregateId, aggregateVersion, aggregatename, secondAggregateId, json, version, name, md, events, ct)
-            member this.GetAggregateEventsInATimeIntervalAsync(version: Version, name: Name, aggregateId: AggregateId, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and timestamp >= @dateFrom and timestamp <= @dateTo ORDER BY id"  version name
-                task
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
-                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let results = ResizeArray<_>()
 
-                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                                let eventId = reader.GetInt32(0)
-                                let event = reader.GetFieldValue<string>(1)
-                                results.Add(eventId, event)
-                            return results |> Seq.toList |> Ok
+                this.SetInitialAggregateStateAndAddAggregateEventsMdAsync(
+                    eventId,
+                    aggregateId,
+                    aggregateVersion,
+                    aggregatename,
+                    secondAggregateId,
+                    json,
+                    version,
+                    name,
+                    md,
+                    events,
+                    ct
+                )
 
-                        with ex ->
-                            logger.LogError (sprintf "GetAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
-                            return Error ex.Message
-                    }
-            member this.GetDistanceFromLatestSnapshotAsync(version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken) =
-                let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
-                this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, ct) 
-                
-            member this.GetAggregateEventsAfterIdAsync(version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"  version name
-                task
-                    {
-                       try
-                           use conn = new NpgsqlConnection(connection)
-                           use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                           cts.CancelAfter(cancellationTokenSourceExpiration)
-                           do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                           use command = new NpgsqlCommand(query, conn)
-                           command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                           command.Parameters.AddWithValue("id", id) |> ignore
-                           command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                           use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                           let results = ResizeArray<_>()
+            member this.GetAggregateEventsInATimeIntervalAsync
+                (
+                    version: Version,
+                    name: Name,
+                    aggregateId: AggregateId,
+                    dateFrom: DateTime,
+                    dateTo: DateTime,
+                    ?ct: CancellationToken
+                ) =
+                logger.LogDebug(
+                    sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo
+                )
 
-                           while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                               let eventId = reader.GetInt32(0)
-                               let eventJson = reader.GetFieldValue<string>(1)
-                               results.Add(eventId, eventJson)
-                           return results |> Seq.toList |> Ok
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId and timestamp >= @dateFrom and timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
 
-                       with ex ->
-                           logger.LogError (sprintf "GetAggregateEventsAfterIdAsync. an error occurred: %A" ex.Message)
-                           return Error ex.Message
-                    }
-            
-            member this.SnapshotAndMarkDeletedAsync (version: Version, name: Name, eventId: EventId, aggregateId: System.Guid, napshot: string, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
                 task {
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct CancellationToken.None)
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                        command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let event = reader.GetFieldValue<string>(1)
+                            results.Add(eventId, event)
+
+                        return results |> Seq.toList |> Ok
+
+                    with ex ->
+                        logger.LogError(
+                            sprintf "GetAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message
+                        )
+
+                        return Error ex.Message
+                }
+
+            member this.GetDistanceFromLatestSnapshotAsync
+                (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken)
+                =
+                let ct = defaultArg ct (new CancellationTokenSource(eventStoreTimeout)).Token
+                this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, ct)
+
+            member this.GetAggregateEventsAfterIdAsync
+                (version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken)
+                =
+                logger.LogDebug(sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE id > @id and aggregate_id = @aggregateId ORDER BY id"
+                        version
+                        name
+
+                task {
+                    try
+                        use conn = new NpgsqlConnection(connection)
+
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                        command.Parameters.AddWithValue("id", id) |> ignore
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let eventId = reader.GetInt32(0)
+                            let eventJson = reader.GetFieldValue<string>(1)
+                            results.Add(eventId, eventJson)
+
+                        return results |> Seq.toList |> Ok
+
+                    with ex ->
+                        logger.LogError(sprintf "GetAggregateEventsAfterIdAsync. an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.SnapshotAndMarkDeletedAsync
+                (
+                    version: Version,
+                    name: Name,
+                    eventId: EventId,
+                    aggregateId: System.Guid,
+                    napshot: string,
+                    ?ct: CancellationToken
+                ) =
+                logger.LogDebug(sprintf "SnapshotAndMarkDeletedAsync %s %s %A" version name aggregateId)
+
+                task {
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
-                    let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
-                    let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
+
+                    let command =
+                        sprintf
+                            "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)"
+                            version
+                            name
+
+                    let lastEventId =
+                        (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
+
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                    if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+
+                    if
+                        (lastEventId.IsNone && eventId = 0)
+                        || (lastEventId.IsSome && lastEventId.Value = eventId)
+                    then
                         try
                             use command' = new NpgsqlCommand(command, conn)
                             command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -356,147 +575,221 @@ module PgStorage =
                             command'.Parameters.AddWithValue("timestamp", System.DateTime.Now) |> ignore
                             command'.Parameters.AddWithValue("is_deleted", true) |> ignore
                             let! result = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
-                            return Ok ()
-                        with
-                            | _ as e ->
-                               return Error e.Message
+                            return Ok()
+                        with _ as e ->
+                            return Error e.Message
                     else
-                        return Error $"error checking event alignments. eventId passed: {eventId}. Latest event id: {lastEventId}"
+                        return
+                            Error
+                                $"error checking event alignments. eventId passed: {eventId}. Latest event id: {lastEventId}"
                 }
-         
-            member this.MultiAddAggregateEventsMdAsync (arg: List<EventId * List<Json> * Version * Name *  AggregateId>, md: Metadata, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "MultiAddAggregateEventsMd %A" arg )
+
+            member this.MultiAddAggregateEventsMdAsync
+                (arg: List<EventId * List<Json> * Version * Name * AggregateId>, md: Metadata, ?ct: CancellationToken)
+                =
+                logger.LogDebug(sprintf "MultiAddAggregateEventsMd %A" arg)
+
                 task {
                     use conn = new NpgsqlConnection(connection)
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct CancellationToken.None)
+
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
+
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                        let transaction = conn.BeginTransaction() 
+                        let transaction = conn.BeginTransaction()
+
                         let lastEventIds =
-                            arg 
-                            |>> 
-                            fun (_, _, version, name, aggregateId) -> 
+                            arg
+                            |>> fun (_, _, version, name, aggregateId) ->
                                 ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
 
-                        let eventIds = 
-                            arg
-                            |>> fun (eventId, _, _, _, _) -> eventId
+                        let eventIds = arg |>> fun (eventId, _, _, _, _) -> eventId
 
-                        let checks = 
+                        let checks =
                             List.zip lastEventIds eventIds
-                            |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
-                        
+                            |> List.forall (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+
                         let errors =
                             List.zip lastEventIds eventIds
-                            |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                            |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
+                            |> List.filter (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId <> 0
+                                || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                            |> List.map (fun (lastEventId, eventId) ->
+                                sprintf
+                                    "EventId check failed. eventId passed %d. Latest eventId: %A"
+                                    eventId
+                                    lastEventId)
 
                         let result =
                             if checks then
                                 try
                                     let idLists = ResizeArray<ResizeArray<int>>()
-                                    let _ = 
-                                        arg 
-                                        |>>
-                                            fun (_, events, version,  name, aggregateId) ->
-                                                let currentDistanceFromLastestSnapshot = 
-                                                    this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token).GetAwaiter().GetResult()
-                                                let index = (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
-                                                let stream_name = version + name
-                                                let ids = ResizeArray<int>()
-                                                for event in events do
-                                                    let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
-                                                    (
-                                                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                                                        command.Parameters.AddWithValue("event", event ) |> ignore
-                                                        command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                        command.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                                        command.Parameters.AddWithValue("md", md ) |> ignore
-                                                        let scalar = command.ExecuteScalar()
-                                                        ids.Add(unbox<int> scalar)
+
+                                    let _ =
+                                        arg
+                                        |>> fun (_, events, version, name, aggregateId) ->
+                                            let currentDistanceFromLastestSnapshot =
+                                                this
+                                                    .GetDistanceFromLatestSnapshotAsync(
+                                                        version,
+                                                        name,
+                                                        aggregateId,
+                                                        cts.Token
                                                     )
-                                                idLists.Add(ids)
-                                    
+                                                    .GetAwaiter()
+                                                    .GetResult()
+
+                                            let index =
+                                                (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
+
+                                            let stream_name = version + name
+                                            let ids = ResizeArray<int>()
+
+                                            for event in events do
+                                                let command =
+                                                    new NpgsqlCommand(
+                                                        sprintf
+                                                            "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                                                            stream_name,
+                                                        conn
+                                                    )
+
+                                                (command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                                                 command.Parameters.AddWithValue("event", event) |> ignore
+                                                 command.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                                                 command.Parameters.AddWithValue(
+                                                     "@distance_from_latest_snapshot",
+                                                     index
+                                                 )
+                                                 |> ignore
+
+                                                 command.Parameters.AddWithValue("md", md) |> ignore
+                                                 let scalar = command.ExecuteScalar()
+                                                 ids.Add(unbox<int> scalar))
+
+                                            idLists.Add(ids)
+
                                     transaction.Commit()
-                                    let result =
-                                        idLists
-                                        |>> List.ofSeq
-                                    result
-                                    |> List.ofSeq |> Ok
-                                with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "MultiAddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
-                                        transaction.Rollback()
-                                        ex.Message |> Error
+                                    let result = idLists |>> List.ofSeq
+                                    result |> List.ofSeq |> Ok
+                                with _ as ex ->
+                                    logger.LogError(
+                                        sprintf "MultiAddAggregateEventsMdAsync. An error occurred: %A" ex.Message
+                                    )
+
+                                    transaction.Rollback()
+                                    ex.Message |> Error
                             else
                                 transaction.Rollback()
-                                Error ("eventids check failed " + (errors |> String.concat ", "))
+                                Error("eventids check failed " + (errors |> String.concat ", "))
+
                         try
                             return result
                         finally
                             conn.Close()
-                    with
-                    | _  as ex ->
-                        logger.LogError (sprintf "MultiAddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
+                    with _ as ex ->
+                        logger.LogError(sprintf "MultiAddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
                         return (Error ex.Message)
                 }
-         
+
             // only test db should be resettable (erasable)
-            member this.Reset(version: Version) (name: Name): unit =
-                this.Reset version name |> ignore
-            member this.ResetAggregateStream(version: Version) (name: Name): unit =
+            member this.Reset (version: Version) (name: Name) : unit = this.Reset version name |> ignore
+
+            member this.ResetAggregateStream (version: Version) (name: Name) : unit =
                 this.ResetAggregateStream version name
-                
-            member this.AddAggregateEventsMdAsync (eventId: EventId, version: Version, name: Name, aggregateId: System.Guid, md: Metadata, events: List<string>, ?ct: CancellationToken) : Task<Result<List<int>, string>> =
+
+            member this.AddAggregateEventsMdAsync
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    ?ct: CancellationToken
+                ) : Task<Result<List<int>, string>> =
                 task {
-                    logger.LogDebug (sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
+                    logger.LogDebug(
+                        sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md
+                    )
+
                     let stream_name = version + name
-                    let commandText = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name
+
+                    let commandText =
+                        sprintf
+                            "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                            stream_name
+
                     try
-                        use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct CancellationToken.None)
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
-                        let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
 
-                        let! currentDistanceFromLastestSnapshot = 
-                             this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)  
+                        let lastEventId =
+                            (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
 
-                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                        let! currentDistanceFromLastestSnapshot =
+                            this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)
+
+                        if
+                            (lastEventId.IsNone && eventId = 0)
+                            || (lastEventId.IsSome && lastEventId.Value = eventId)
+                        then
                             try
                                 let ids = ResizeArray<int>()
                                 let index = (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
+
                                 for x in events do
                                     use command' = new NpgsqlCommand(commandText, conn, transaction)
                                     command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                     command'.Parameters.AddWithValue("event", x) |> ignore
                                     command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
-                                    command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index ) |> ignore
+
+                                    command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                                    |> ignore
+
                                     command'.Parameters.AddWithValue("md", md) |> ignore
                                     let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                     ids.Add(unbox<int> scalar)
+
                                 do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
-                                return Ok (List.ofSeq ids)
+                                return Ok(List.ofSeq ids)
                             with ex ->
-                                logger.LogError (sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
+                                logger.LogError(sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
                                 do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
                                 return Error ex.Message
                         else
                             do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
 
-                            return Error (sprintf "EventId is not the last one version %s name %s eventId %A lastEventId %A" version name eventId lastEventId.Value)
+                            return
+                                Error(
+                                    sprintf
+                                        "EventId is not the last one version %s name %s eventId %A lastEventId %A"
+                                        version
+                                        name
+                                        eventId
+                                        lastEventId.Value
+                                )
                     with ex ->
-                        logger.LogError (sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
+                        logger.LogError(sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
-                
+
             member this.TryGetLastSnapshot version name =
                 logger.LogDebug("TryGetLastSnapshot")
-                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+
+                let query =
+                    sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+
                 try
                     Async.RunSynchronously(
                         async {
@@ -505,28 +798,30 @@ module PgStorage =
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read ->
-                                    (
-                                        read.int "id",
-                                        read.int "event_id",
-                                        readAsText read "snapshot"
-                                    )
-                                )
+                                    (read.int "id", read.int "event_id", readAsText read "snapshot"))
                                 |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogInformation (sprintf "TryGetLastSnapshot. An error occurred in retrieving snapshot: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogInformation(
+                        sprintf "TryGetLastSnapshot. An error occurred in retrieving snapshot: %A" ex.Message
+                    )
+
                     None
 
-            member this.TryGetLastSnapshotAsync(version, name, ?ct:CancellationToken) =
+            member this.TryGetLastSnapshotAsync(version, name, ?ct: CancellationToken) =
                 logger.LogDebug("TryGetLastSnapshotAsync")
-                let query = sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+
+                let query =
+                    sprintf "SELECT id, event_id, snapshot FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+
                 let timeout = max 1 (eventStoreTimeout / 1000)
 
                 task {
-                    use cts = 
-                        CancellationTokenSource.CreateLinkedTokenSource
-                            (defaultArg ct CancellationToken.None)
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     use conn = new NpgsqlConnection(connection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -534,803 +829,1009 @@ module PgStorage =
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                     use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                     let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+
                     if hasRows then
                         let id = reader.GetInt32(0)
                         let eventId = reader.GetInt32(1)
                         let snapshot = reader.GetString(2)
-                        return Some (id, eventId, snapshot)
+                        return Some(id, eventId, snapshot)
                     else
                         return None
                 }
 
             member this.TryGetLastEventId version name =
                 logger.LogDebug(sprintf "TryXGetLastEventId %s %s" version name)
-                let query = sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
-                let result = 
+
+                let query =
+                    sprintf "SELECT id FROM events%s%s ORDER BY id DESC LIMIT 1" version name
+
+                let result =
                     fun () ->
-                        Async.RunSynchronously
-                            (async {
+                        Async.RunSynchronously(
+                            async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.execute (fun read -> read.int "id")
                                     |> Seq.tryHead
-                                }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetLastEventId. An error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetLastEventId. An error occurred: %A" ex.Message)
                     None
 
             member this.TryGetLastSnapshotEventId version name =
-                logger.LogDebug (sprintf "TryGetLastSnapshotEventId %s %s" version name)
-                let query = sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            return 
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query 
-                                |> Sql.execute  (fun read -> read.int "event_id")
-                                |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
-                    None
+                logger.LogDebug(sprintf "TryGetLastSnapshotEventId %s %s" version name)
 
-            member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, id, is_deleted FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                
-                let result = 
-                    Async.RunSynchronously
-                        (async {
-                            return 
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId ]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.intOrNone "event_id",
-                                        read.int "id",
-                                        read.bool "is_deleted"
-                                    )
-                                )
-                                |> Seq.tryHead
-                        }, eventStoreTimeout)
-                match result with
-                | None -> None
-                | Some (eventId, id, false) -> Some (eventId, id)
-                | _ -> None
+                let query =
+                    sprintf "SELECT event_id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
 
-            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1" version name
-                
-                let result =
-                    fun () ->     
-                        Async.RunSynchronously
-                            (async {
-                                return 
-                                    connection
-                                    |> Sql.connect
-                                    |> Sql.query query
-                                    |> Sql.parameters ["aggregate_id", Sql.uuid aggregateId ]
-                                    |> Sql.execute (fun read ->
-                                        (
-                                            read.intOrNone "event_id",
-                                            read.int "id"
-                                        )
-                                    )
-                                    |> Seq.tryHead
-                            }, eventStoreTimeout)
-                try              
-                    result ()
-                with
-                | _ as ex ->
-                    logger.LogError (ex.Message)
-                    None
-                    
-            member this.TryGetEvent version id name =
-                logger.LogDebug (sprintf "TryGetEvent %s %s" version name)
-                let query = sprintf "SELECT * from events%s%s where id = @id" version name
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
-                                |> Sql.query query 
-                                |> Sql.parameters ["id", Sql.int id]
-                                |> Sql.execute
-                                    (
-                                        fun read ->
-                                        {
-                                            Id = read.int "id"
-                                            JsonEvent = readAsText read "event"
-                                            Timestamp = read.dateTime "timestamp"
-                                        }
-                                    )
+                                |> Sql.query query
+                                |> Sql.execute (fun read -> read.int "event_id")
+                                |> Seq.tryHead
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetLastSnapshotEventId: an error occurred: %A" ex.Message)
+                    None
+
+            member this.TryGetLastSnapshotIdByAggregateId version name aggregateId =
+                logger.LogDebug(sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT event_id, id, is_deleted FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
+                let result =
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
+                                |> Sql.execute (fun read ->
+                                    (read.intOrNone "event_id", read.int "id", read.bool "is_deleted"))
+                                |> Seq.tryHead
+                        },
+                        eventStoreTimeout
+                    )
+
+                match result with
+                | None -> None
+                | Some(eventId, id, false) -> Some(eventId, id)
+                | _ -> None
+
+            member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
+                logger.LogDebug(sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT event_id, id FROM snapshots%s%s WHERE aggregate_id = @aggregate_id ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
+                let result =
+                    fun () ->
+                        Async.RunSynchronously(
+                            async {
+                                return
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.query query
+                                    |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
+                                    |> Sql.execute (fun read -> (read.intOrNone "event_id", read.int "id"))
                                     |> Seq.tryHead
-                        }
-                        , eventStoreTimeout)
-                with    
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetEvent. an error occurred: %A" ex.Message)
-                    None     
-                    
+                            },
+                            eventStoreTimeout
+                        )
+
+                try
+                    result ()
+                with _ as ex ->
+                    logger.LogError(ex.Message)
+                    None
+
+            member this.TryGetEvent version id name =
+                logger.LogDebug(sprintf "TryGetEvent %s %s" version name)
+                let query = sprintf "SELECT * from events%s%s where id = @id" version name
+
+                try
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters [ "id", Sql.int id ]
+                                |> Sql.execute (fun read ->
+                                    { Id = read.int "id"
+                                      JsonEvent = readAsText read "event"
+                                      Timestamp = read.dateTime "timestamp" })
+                                |> Seq.tryHead
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetEvent. an error occurred: %A" ex.Message)
+                    None
+
             member this.AddEventsMd eventId version name metadata events =
-                logger.LogDebug (sprintf "AddEventsMd %s %s %A %s" version name events metadata)
+                logger.LogDebug(sprintf "AddEventsMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
-                let command = sprintf "SELECT insert_md%s_event_and_return_id(@event,@md);" stream_name
+
+                let command =
+                    sprintf "SELECT insert_md%s_event_and_return_id(@event,@md);" stream_name
+
                 use conn = new NpgsqlConnection(connection)
 
                 let result =
                     fun _ ->
                         conn.Open()
                         let transaction = conn.BeginTransaction()
-                        Async.RunSynchronously
-                            (
-                                async {
-                                    let lastEventId = (this :> IEventStore<string>).TryGetLastEventId version name
-                                    let result =
-                                        if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
-                                            try
-                                                let ids =
-                                                    events
-                                                    |>>
-                                                        fun event -> 
-                                                            let command' = new NpgsqlCommand(command, conn)
-                                                            command'.Parameters.AddWithValue("event", event ) |> ignore
-                                                            command'.Parameters.AddWithValue("md", metadata ) |> ignore
-                                                            let result = command'.ExecuteScalar() 
-                                                            result :?> int
-                                                transaction.Commit()
-                                                ids |> Ok
-                                            with
-                                                | _ as ex -> 
-                                                    transaction.Rollback()
-                                                    logger.LogError (sprintf "AddEventsMd. an error occurred: %A" ex.Message)
-                                                    ex.Message |> Error
-                                        else
-                                            transaction.Rollback()
-                                            Error $"EventId match conrtrol failed: passed eventId {eventId}. Latest eventId: {lastEventId}"
-                                    try
-                                        return result
-                                    finally
-                                        conn.Close()
-                                }, eventStoreTimeout
-                            )
-                try
-                    result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "AddEventsMd. An error occurred: %A" ex.Message)
-                    Error ex.Message
-                    
-            member this.MultiAddEventsMd md (arg: List<EventId * List<Json> * Version * Name>) =
-                logger.LogDebug (sprintf "MultiAddEventsMd %A %s" arg md)
-                
-                let result =
-                    fun _ -> 
-                        use conn = new NpgsqlConnection(connection)
-                        conn.Open()
-                        let transaction = conn.BeginTransaction() 
-                        Async.RunSynchronously
-                            (async {
-                                let lastEventIdsPerContext =
-                                    arg |>> (fun (eventId, _, version, name) -> (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
-                                    
-                                let checkIds =
-                                    lastEventIdsPerContext
-                                    |> List.forall (fun (eventId, lastEventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
-                                
-                                // todo: unify with checkIds to avoid redoundancy i.e. check and errors needs to be there at the same time
-                                let checkIdsErrors =
-                                    lastEventIdsPerContext
-                                    |> List.filter (fun (eventId, lastEventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                                    |> List.map (fun (eventId, lastEventId) -> sprintf "EventId %d does not match lastEventId %A" eventId lastEventId)
-                                    
-                                let result =
-                                    if checkIds then
-                                        try
-                                            let cmdList = 
-                                                arg 
-                                                |>>
-                                                    // take this opportunity to evaluate if eventId could be managed by the db function to do the check
-                                                    fun (eventId, events, version,  name) -> 
-                                                        let stream_name = version + name
 
-                                                        events
-                                                        |>> 
-                                                            fun event ->
-                                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" stream_name, conn)
-                                                                command.Parameters.AddWithValue("event", event ) |> ignore
-                                                                command.Parameters.AddWithValue("md", md ) |> ignore
-                                                                let result = command.ExecuteScalar() 
-                                                                result :?> int
-                                                
-                                            transaction.Commit()    
-                                            cmdList |> Ok
-                                        with
-                                            | _ as ex ->
-                                                logger.LogDebug (sprintf "MultiAddEventsMd. An error occurred: %A" ex.Message)
-                                                transaction.Rollback()
-                                                ex.Message |> Error
+                        Async.RunSynchronously(
+                            async {
+                                let lastEventId = (this :> IEventStore<string>).TryGetLastEventId version name
+
+                                let result =
+                                    if
+                                        (lastEventId.IsNone && eventId = 0)
+                                        || (lastEventId.IsSome && lastEventId.Value = eventId)
+                                    then
+                                        try
+                                            let ids =
+                                                events
+                                                |>> fun event ->
+                                                    let command' = new NpgsqlCommand(command, conn)
+                                                    command'.Parameters.AddWithValue("event", event) |> ignore
+                                                    command'.Parameters.AddWithValue("md", metadata) |> ignore
+                                                    let result = command'.ExecuteScalar()
+                                                    result :?> int
+
+                                            transaction.Commit()
+                                            ids |> Ok
+                                        with _ as ex ->
+                                            transaction.Rollback()
+                                            logger.LogError(sprintf "AddEventsMd. an error occurred: %A" ex.Message)
+                                            ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error ("EventId is not the last one " + (checkIdsErrors |> String.concat ", "))
+
+                                        Error
+                                            $"EventId match conrtrol failed: passed eventId {eventId}. Latest eventId: {lastEventId}"
+
                                 try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
-                try             
+                            },
+                            eventStoreTimeout
+                        )
+
+                try
                     result ()
-                with    
-                | _  as ex ->
-                    logger.LogError (sprintf "MultiAddEventsMd. An error occurred: %A" ex.Message)
-                    Error ex.Message 
-                
-            member this.GetEventsAfterId version id name =
-                logger.LogDebug (sprintf "GetEventsAfterId %s %s %d" version name id)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id"  version name
-               
+                with _ as ex ->
+                    logger.LogError(sprintf "AddEventsMd. An error occurred: %A" ex.Message)
+                    Error ex.Message
+
+            member this.MultiAddEventsMd md (arg: List<EventId * List<Json> * Version * Name>) =
+                logger.LogDebug(sprintf "MultiAddEventsMd %A %s" arg md)
+
                 let result =
                     fun _ ->
-                        Async.RunSynchronously
-                            (async {
+                        use conn = new NpgsqlConnection(connection)
+                        conn.Open()
+                        let transaction = conn.BeginTransaction()
+
+                        Async.RunSynchronously(
+                            async {
+                                let lastEventIdsPerContext =
+                                    arg
+                                    |>> (fun (eventId, _, version, name) ->
+                                        (eventId, (this :> IEventStore<string>).TryGetLastEventId version name))
+
+                                let checkIds =
+                                    lastEventIdsPerContext
+                                    |> List.forall (fun (eventId, lastEventId) ->
+                                        lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+
+                                // todo: unify with checkIds to avoid redoundancy i.e. check and errors needs to be there at the same time
+                                let checkIdsErrors =
+                                    lastEventIdsPerContext
+                                    |> List.filter (fun (eventId, lastEventId) ->
+                                        lastEventId.IsNone && eventId <> 0
+                                        || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                                    |> List.map (fun (eventId, lastEventId) ->
+                                        sprintf "EventId %d does not match lastEventId %A" eventId lastEventId)
+
+                                let result =
+                                    if checkIds then
+                                        try
+                                            let cmdList =
+                                                arg
+                                                |>>
+                                                // take this opportunity to evaluate if eventId could be managed by the db function to do the check
+                                                fun (eventId, events, version, name) ->
+                                                    let stream_name = version + name
+
+                                                    events
+                                                    |>> fun event ->
+                                                        let command =
+                                                            new NpgsqlCommand(
+                                                                sprintf
+                                                                    "SELECT insert_md%s_event_and_return_id(@event, @md);"
+                                                                    stream_name,
+                                                                conn
+                                                            )
+
+                                                        command.Parameters.AddWithValue("event", event) |> ignore
+                                                        command.Parameters.AddWithValue("md", md) |> ignore
+                                                        let result = command.ExecuteScalar()
+                                                        result :?> int
+
+                                            transaction.Commit()
+                                            cmdList |> Ok
+                                        with _ as ex ->
+                                            logger.LogDebug(
+                                                sprintf "MultiAddEventsMd. An error occurred: %A" ex.Message
+                                            )
+
+                                            transaction.Rollback()
+                                            ex.Message |> Error
+                                    else
+                                        transaction.Rollback()
+                                        Error("EventId is not the last one " + (checkIdsErrors |> String.concat ", "))
+
+                                try
+                                    return result
+                                finally
+                                    conn.Close()
+                            },
+                            eventStoreTimeout
+                        )
+
+                try
+                    result ()
+                with _ as ex ->
+                    logger.LogError(sprintf "MultiAddEventsMd. An error occurred: %A" ex.Message)
+                    Error ex.Message
+
+            member this.GetEventsAfterId version id name =
+                logger.LogDebug(sprintf "GetEventsAfterId %s %s %d" version name id)
+
+                let query =
+                    sprintf "SELECT id, event FROM events%s%s WHERE id > @id ORDER BY id" version name
+
+                let result =
+                    fun _ ->
+                        Async.RunSynchronously(
+                            async {
                                 return
                                     try
                                         connection
                                         |> Sql.connect
                                         |> Sql.query query
-                                        |> Sql.parameters ["id", Sql.int id]
-                                        |> Sql.execute ( fun read ->
-                                            (
-                                                read.int "id",
-                                                readAsText read "event"
-                                            )
-                                        )
+                                        |> Sql.parameters [ "id", Sql.int id ]
+                                        |> Sql.execute (fun read -> (read.int "id", readAsText read "event"))
                                         |> Seq.toList
                                         |> Ok
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                                    with _ as ex ->
+                                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetEventsAfterId. an error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "GetEventsAfterId. an error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.SetSnapshot version (id: int, snapshot: Json) name =
-                logger.LogDebug (sprintf "SetSnapshot %s %A %s" version id name)
-                let command = sprintf "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)" version name
+                logger.LogDebug(sprintf "SetSnapshot %s %A %s" version id name)
+
+                let command =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (event_id, snapshot, timestamp) VALUES (@event_id, @snapshot, @timestamp)"
+                        version
+                        name
+
                 let tryEvent = ((this :> IEventStore<string>).TryGetEvent version id name)
+
                 match tryEvent with
-                | None -> Error (sprintf "event %d not found" id)
+                | None -> Error(sprintf "event %d not found" id)
                 | Some event ->
                     try
-                        Async.RunSynchronously
-                            (async {
+                        Async.RunSynchronously(
+                            async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
-                                        [
-                                            command,
-                                                [
-                                                    [
-                                                        ("@event_id", Sql.int event.Id);
-                                                        ("snapshot",  sqlJson snapshot);
-                                                        ("timestamp", Sql.timestamp event.Timestamp)
-                                                    ]
-                                                ]
-                                        ]
-                            }, eventStoreTimeout)
+                                        [ command,
+                                          [ [ ("@event_id", Sql.int event.Id)
+                                              ("snapshot", sqlJson snapshot)
+                                              ("timestamp", Sql.timestamp event.Timestamp) ] ] ]
+                            },
+                            eventStoreTimeout
+                        )
                         |> ignore
                         |> Ok
-                    with
-                    | _ as ex ->
-                        logger.LogError (sprintf "Set Snapshot: an error occurred: %A" ex.Message)
+                    with _ as ex ->
+                        logger.LogError(sprintf "Set Snapshot: an error occurred: %A" ex.Message)
                         ex.Message |> Error
 
-            member this.SetInitialAggregateStateAsync (aggregateId, version, name, json, ?ct) =
+            member this.SetInitialAggregateStateAsync(aggregateId, version, name, json, ?ct) =
                 task {
                     use conn = new NpgsqlConnection(connection)
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct CancellationToken.None)
+
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
-                    let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                    let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
+                    let insertSnapshot =
+                        sprintf
+                            "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)"
+                            version
+                            name
+
+                    let firstEmptyAggregateEvent =
+                        sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
                     try
                         do! conn.OpenAsync(cts.Token)
                         use! transaction = conn.BeginTransactionAsync(cts.Token)
-                        
+
                         use insertSnapshot' = new NpgsqlCommand(insertSnapshot, conn, transaction)
                         insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                         insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                         insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
-                        insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
+
+                        insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow)
+                        |> ignore
+
                         let! _ = insertSnapshot'.ExecuteNonQueryAsync(cts.Token)
-                        
-                        use firstEmptyAggregateEvent' = new NpgsqlCommand(firstEmptyAggregateEvent, conn, transaction)
+
+                        use firstEmptyAggregateEvent' =
+                            new NpgsqlCommand(firstEmptyAggregateEvent, conn, transaction)
+
                         firstEmptyAggregateEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                        firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+
+                        firstEmptyAggregateEvent'.Parameters.AddWithValue("aggregate_id", aggregateId)
+                        |> ignore
+
                         let! _ = firstEmptyAggregateEvent'.ExecuteNonQueryAsync(cts.Token)
 
                         do! transaction.CommitAsync(cts.Token)
-                        return Ok ()
+                        return Ok()
                     with e ->
-                        logger.LogError (sprintf "SetInitialAggregateStateAsync Error occurred %A" e.Message)
+                        logger.LogError(sprintf "SetInitialAggregateStateAsync Error occurred %A" e.Message)
                         return Error e.Message
                 }
-            
+
             member this.SetInitialAggregateState aggregateId version name json =
-                logger.LogDebug (sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
-               
+                logger.LogDebug(sprintf "SetInitialAggregateState %A %s %s" aggregateId version name)
+
+                let insertSnapshot =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)"
+                        version
+                        name
+
+                let firstEmptyAggregateEvent =
+                    sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
                 let result =
                     fun _ ->
-                        Async.RunSynchronously
-                            (async {
+                        Async.RunSynchronously(
+                            async {
                                 return
                                     try
                                         let _ =
                                             connection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
-                                                [
-                                                    insertSnapshot,
-                                                        [
-                                                            [
-                                                                ("@aggregate_id", Sql.uuid aggregateId);
-                                                                ("snapshot",  sqlJson json);
-                                                                ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                            ]
-                                                        ]
-                                                    firstEmptyAggregateEvent,
-                                                        [
-                                                            [
-                                                                ("@aggregate_id", Sql.uuid aggregateId)
-                                                            ]
-                                                        ]
-                                                ]
+                                                [ insertSnapshot,
+                                                  [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                                      ("snapshot", sqlJson json)
+                                                      ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ]
+                                                  firstEmptyAggregateEvent,
+                                                  [ [ ("@aggregate_id", Sql.uuid aggregateId) ] ] ]
+
                                         () |> Ok
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "SetInitialAggregateState. an error occurred: %A" ex.Message)
+                                    with _ as ex ->
+                                        logger.LogError(
+                                            sprintf "SetInitialAggregateState. an error occurred: %A" ex.Message
+                                        )
+
                                         ex.Message |> Error
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "SetInitialAggregateState. An error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "SetInitialAggregateState. An error occurred: %A" ex.Message)
                     Error ex.Message
 
             member this.SetInitialAggregateStatesAsync(version, name, idsAndSnapshots: (AggregateId * string)[], ?ct) =
-                let insertSnapshotCmd = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                let firstEmptyEventCmd = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+                let insertSnapshotCmd =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)"
+                        version
+                        name
+
+                let firstEmptyEventCmd =
+                    sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
                 task {
                     use conn = new NpgsqlConnection(connection)
-                    use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                  (defaultArg ct CancellationToken.None)
+
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                     cts.CancelAfter(cancellationTokenSourceExpiration)
                     do! conn.OpenAsync(cts.Token)
                     let! transaction = conn.BeginTransactionAsync(cts.Token)
+
                     try
                         for (aggregateId, json) in idsAndSnapshots do
                             use insertSnapshot' = new NpgsqlCommand(insertSnapshotCmd, conn, transaction)
                             insertSnapshot'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             insertSnapshot'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             insertSnapshot'.Parameters.AddWithValue("snapshot", json) |> ignore
-                            insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow) |> ignore
+
+                            insertSnapshot'.Parameters.AddWithValue("timestamp", System.DateTime.UtcNow)
+                            |> ignore
+
                             let! _ = insertSnapshot'.ExecuteNonQueryAsync(cts.Token)
 
                             use firstEmptyEvent' = new NpgsqlCommand(firstEmptyEventCmd, conn, transaction)
                             firstEmptyEvent'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                             firstEmptyEvent'.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                             // todo: fix the |> Async.AwaitTask |> Async.Ignore
-                            do! firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token) |> Async.AwaitTask |> Async.Ignore
+                            do!
+                                firstEmptyEvent'.ExecuteNonQueryAsync(cts.Token)
+                                |> Async.AwaitTask
+                                |> Async.Ignore
+
                         do! transaction.CommitAsync(cts.Token)
-                        return Ok ()
+                        return Ok()
                     with e ->
                         do! transaction.RollbackAsync(cts.Token)
                         return Error e.Message
                 }
-           
+
             member this.SetInitialAggregateStates version name idsAndSnapshots =
-                logger.LogDebug (sprintf "SetInitialAggregateStates %s %s"  version name)
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)" version name
-                let firstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
-              
-                try  
-                    Async.RunSynchronously
-                        (async {
+                logger.LogDebug(sprintf "SetInitialAggregateStates %s %s" version name)
+
+                let insertSnapshot =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp) VALUES (@aggregate_id, @snapshot, @timestamp)"
+                        version
+                        name
+
+                let firstEmptyAggregateEvent =
+                    sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
+                try
+                    Async.RunSynchronously(
+                        async {
                             return
                                 try
                                     let _ =
                                         connection
                                         |> Sql.connect
                                         |> Sql.executeTransaction
-                                            [
-                                                insertSnapshot,
-                                                    [
-                                                        for (aggregateId, json) in idsAndSnapshots do
-                                                        [
-                                                            ("@aggregate_id", Sql.uuid aggregateId);
-                                                            ("snapshot",  sqlJson json);
-                                                            ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                        ]
-                                                    ]
-                                                firstEmptyAggregateEvent,
-                                                    [
-                                                        for (aggregateId, _) in idsAndSnapshots do
-                                                        [
-                                                            ("@aggregate_id", Sql.uuid aggregateId)
-                                                        ]
-                                                    ]
-                                            ]
+                                            [ insertSnapshot,
+                                              [ for (aggregateId, json) in idsAndSnapshots do
+                                                    [ ("@aggregate_id", Sql.uuid aggregateId)
+                                                      ("snapshot", sqlJson json)
+                                                      ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ]
+                                              firstEmptyAggregateEvent,
+                                              [ for (aggregateId, _) in idsAndSnapshots do
+                                                    [ ("@aggregate_id", Sql.uuid aggregateId) ] ] ]
+
                                     () |> Ok
-                                with
-                                | _ as ex ->
-                                    logger.LogError (sprintf "SetInitialAggregateStates. An error occurred: %A" ex.Message)
+                                with _ as ex ->
+                                    logger.LogError(
+                                        sprintf "SetInitialAggregateStates. An error occurred: %A" ex.Message
+                                    )
+
                                     ex.Message |> Error
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "SetInitialAggregateStates. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "SetInitialAggregateStates. An error occurred: %A" ex.Message)
                     Error ex.Message
 
-            member this.SetInitialAggregateStateAndAddEventsMd eventId aggregateId aggregateVersion aggregatename initInstance contextVersion contextName md events =
+            member this.SetInitialAggregateStateAndAddEventsMd
+                eventId
+                aggregateId
+                aggregateVersion
+                aggregatename
+                initInstance
+                contextVersion
+                contextName
+                md
+                events
+                =
                 logger.LogDebug "entered in setInitialAggregateStateAndAddEvents"
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
-                let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
-                let insertEvents = sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" (contextVersion + contextName)
-                
+
+                let insertSnapshot =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)"
+                        aggregateVersion
+                        aggregatename
+
+                let insertFirstEmptyAggregateEvent =
+                    sprintf
+                        "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)"
+                        aggregateVersion
+                        aggregatename
+
+                let insertEvents =
+                    sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" (contextVersion + contextName)
+
                 let result =
                     fun _ ->
                         use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
-                        Async.RunSynchronously
-                            (async {
-                                let lastEventId = (this :> IEventStore<string>).TryGetLastEventId contextVersion contextName
+
+                        Async.RunSynchronously(
+                            async {
+                                let lastEventId =
+                                    (this :> IEventStore<string>).TryGetLastEventId contextVersion contextName
+
                                 let result =
-                                    if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                                    if
+                                        (lastEventId.IsNone && eventId = 0)
+                                        || (lastEventId.IsSome && lastEventId.Value = eventId)
+                                    then
                                         try
                                             let ids =
                                                 events
-                                                |>>
-                                                    fun event -> 
-                                                        let command' = new NpgsqlCommand(insertEvents, conn)
-                                                        command'.Parameters.AddWithValue("event", event ) |> ignore
-                                                        command'.Parameters.AddWithValue("md", md ) |> ignore
-                                                        let result = command'.ExecuteScalar() 
-                                                        result :?> int
+                                                |>> fun event ->
+                                                    let command' = new NpgsqlCommand(insertEvents, conn)
+                                                    command'.Parameters.AddWithValue("event", event) |> ignore
+                                                    command'.Parameters.AddWithValue("md", md) |> ignore
+                                                    let result = command'.ExecuteScalar()
+                                                    result :?> int
+
                                             let _ =
                                                 connection
                                                 |> Sql.connect
                                                 |> Sql.executeTransaction
-                                                    [
-                                                        insertSnapshot,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId);
-                                                                    ("snapshot",  sqlJson initInstance);
-                                                                    ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                                ]
-                                                            ]
-                                                        insertFirstEmptyAggregateEvent,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId)
-                                                                ]
-                                                            ]
-                                                    ]
+                                                    [ insertSnapshot,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                                          ("snapshot", sqlJson initInstance)
+                                                          ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ]
+                                                      insertFirstEmptyAggregateEvent,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId) ] ] ]
+
                                             transaction.Commit()
                                             ids |> Ok
-                                        with
-                                            | _ as ex ->
-                                                logger.LogError (sprintf "SetInitialAggregateStateAndAddEventsMd. an error occurred: %A" ex.Message)
-                                                transaction.Rollback()
-                                                ex.Message |> Error
+                                        with _ as ex ->
+                                            logger.LogError(
+                                                sprintf
+                                                    "SetInitialAggregateStateAndAddEventsMd. an error occurred: %A"
+                                                    ex.Message
+                                            )
+
+                                            transaction.Rollback()
+                                            ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error $"EventId check failed. EventId passed {eventId}. Latest eventId: {lastEventId}"
+
+                                        Error
+                                            $"EventId check failed. EventId passed {eventId}. Latest eventId: {lastEventId}"
+
                                 try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
-                    
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "SetInitialAggregateStateAndAddEventsMd. An error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "SetInitialAggregateStateAndAddEventsMd. An error occurred: %A" ex.Message)
                     Error ex.Message
-              
-            member this.SetInitialAggregateStateAndAddAggregateEventsMd eventId aggregateId aggregateVersion aggregatename secondAggregateId json version name md events =
+
+            member this.SetInitialAggregateStateAndAddAggregateEventsMd
+                eventId
+                aggregateId
+                aggregateVersion
+                aggregatename
+                secondAggregateId
+                json
+                version
+                name
+                md
+                events
+                =
                 logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
 
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" aggregateVersion aggregatename
-                let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" aggregateVersion aggregatename
+                let insertSnapshot =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)"
+                        aggregateVersion
+                        aggregatename
 
-                let insertEvents = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" (version + name)
+                let insertFirstEmptyAggregateEvent =
+                    sprintf
+                        "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)"
+                        aggregateVersion
+                        aggregatename
 
-                let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, CancellationToken.None).GetAwaiter().GetResult()
+                let insertEvents =
+                    sprintf
+                        "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                        (version + name)
+
+                let distanceFromLatestSnapshot =
+                    this
+                        .GetDistanceFromLatestSnapshotAsync(version, name, secondAggregateId, CancellationToken.None)
+                        .GetAwaiter()
+                        .GetResult()
+
                 let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
-               
+
                 let result =
                     fun _ ->
                         use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
+
                         let lastEventId =
                             (this :> IEventStore<string>).TryGetLastAggregateEventId version name secondAggregateId
-                        
-                        Async.RunSynchronously
-                            (async {
+
+                        Async.RunSynchronously(
+                            async {
                                 let result =
-                                    if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                                    if
+                                        (lastEventId.IsNone && eventId = 0)
+                                        || (lastEventId.IsSome && lastEventId.Value = eventId)
+                                    then
                                         try
                                             let ids =
                                                 events
-                                                |>> 
-                                                    (
-                                                        fun x ->
-                                                            let command' = new NpgsqlCommand(insertEvents, conn)
-                                                            command'.Parameters.AddWithValue("event", x ) |> ignore
-                                                            command'.Parameters.AddWithValue("@aggregate_id", secondAggregateId ) |> ignore
-                                                            command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                                            command'.Parameters.AddWithValue("md", md ) |> ignore
-                                                            let result = command'.ExecuteScalar() 
-                                                            result :?> int
+                                                |>> (fun x ->
+                                                    let command' = new NpgsqlCommand(insertEvents, conn)
+                                                    command'.Parameters.AddWithValue("event", x) |> ignore
+
+                                                    command'.Parameters.AddWithValue(
+                                                        "@aggregate_id",
+                                                        secondAggregateId
                                                     )
+                                                    |> ignore
+
+                                                    command'.Parameters.AddWithValue(
+                                                        "@distance_from_latest_snapshot",
+                                                        index
+                                                    )
+                                                    |> ignore
+
+                                                    command'.Parameters.AddWithValue("md", md) |> ignore
+                                                    let result = command'.ExecuteScalar()
+                                                    result :?> int)
+
                                             let _ =
                                                 connection
                                                 |> Sql.connect
                                                 |> Sql.executeTransaction
-                                                    [
-                                                        insertSnapshot,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId);
-                                                                    ("snapshot",  sqlJson json);
-                                                                    ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                                ]
-                                                            ]
-                                                        insertFirstEmptyAggregateEvent,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId)
-                                                                ]
-                                                            ]
-                                                    ]
+                                                    [ insertSnapshot,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                                          ("snapshot", sqlJson json)
+                                                          ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ]
+                                                      insertFirstEmptyAggregateEvent,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId) ] ] ]
+
                                             transaction.Commit()
                                             ids |> Ok
-                                        with
-                                            | _ as ex ->
-                                                logger.LogError (sprintf "SetInitialAggregateStateAndAddAggregateEventsMd. An error occurred: %A" ex.Message)
-                                                transaction.Rollback()
-                                                ex.Message |> Error
+                                        with _ as ex ->
+                                            logger.LogError(
+                                                sprintf
+                                                    "SetInitialAggregateStateAndAddAggregateEventsMd. An error occurred: %A"
+                                                    ex.Message
+                                            )
+
+                                            transaction.Rollback()
+                                            ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
+
+                                        Error
+                                            $"EventId check failed. eventId passed {eventId}. Latest eventId: {lastEventId}"
+
                                 try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "SetInitialAggregateStateAndAddAggregateEventsMd. An error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(
+                        sprintf "SetInitialAggregateStateAndAddAggregateEventsMd. An error occurred: %A" ex.Message
+                    )
+
                     Error ex.Message
-                            
-            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd  aggregateId version name jsonSnapshot md events =
+
+            member this.SetInitialAggregateStateAndMultiAddAggregateEventsMd
+                aggregateId
+                version
+                name
+                jsonSnapshot
+                md
+                events
+                =
                 logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
-                let insertSnapshot = sprintf "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)" version name
-                let insertFirstEmptyAggregateEvent = sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
-               
+
+                let insertSnapshot =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id,  snapshot, timestamp) VALUES (@aggregate_id,  @snapshot, @timestamp)"
+                        version
+                        name
+
+                let insertFirstEmptyAggregateEvent =
+                    sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
+
                 let result =
                     fun _ ->
                         use conn = new NpgsqlConnection(connection)
                         conn.Open()
-                        
+
                         let transaction = conn.BeginTransaction()
+
                         let lastEventIds =
-                            events 
-                            |>> 
-                            fun (_, _, version, name, aggrId) -> 
-                                ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
-                        
-                        let eventIds =
                             events
-                            |>> fun (eventId, _, _, _, _) -> eventId
-                        
+                            |>> fun (_, _, version, name, aggrId) ->
+                                ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggrId) // |>> (fun x -> x)
+
+                        let eventIds = events |>> fun (eventId, _, _, _, _) -> eventId
+
                         let checks =
                             List.zip lastEventIds eventIds
-                            |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || (lastEventId.IsSome && lastEventId.Value = eventId))
-                        
+                            |> List.forall (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId = 0
+                                || (lastEventId.IsSome && lastEventId.Value = eventId))
+
                         let errors =
                             List.zip lastEventIds eventIds
-                            |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                            |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
-                            
-                        Async.RunSynchronously
-                            (async {
+                            |> List.filter (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId <> 0
+                                || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                            |> List.map (fun (lastEventId, eventId) ->
+                                sprintf
+                                    "EventId check failed. eventId passed %d. Latest eventId: %A"
+                                    eventId
+                                    lastEventId)
+
+                        Async.RunSynchronously(
+                            async {
                                 let result =
                                     if checks then
                                         try
                                             let ids =
                                                 events
-                                                |>> 
-                                                    (
-                                                        fun (_, events, version, name, aggId) ->
-                                                            let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggId, CancellationToken.None).GetAwaiter().GetResult()
-                                                            let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
-                                                            let stream_name = version + name
-                                                            events
-                                                            |>> 
-                                                                (
-                                                                    fun x ->
-                                                                        let command' = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
-                                                                        command'.Parameters.AddWithValue("event", x ) |> ignore
-                                                                        command'.Parameters.AddWithValue("@aggregate_id", aggId ) |> ignore
-                                                                        command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                                                        command'.Parameters.AddWithValue("md", md ) |> ignore
-                                                                        let result = command'.ExecuteScalar()
-                                                                        result  :?> int
-                                                                )
-                                                    )
+                                                |>> (fun (_, events, version, name, aggId) ->
+                                                    let distanceFromLatestSnapshot =
+                                                        this
+                                                            .GetDistanceFromLatestSnapshotAsync(
+                                                                version,
+                                                                name,
+                                                                aggId,
+                                                                CancellationToken.None
+                                                            )
+                                                            .GetAwaiter()
+                                                            .GetResult()
+
+                                                    let index =
+                                                        (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
+
+                                                    let stream_name = version + name
+
+                                                    events
+                                                    |>> (fun x ->
+                                                        let command' =
+                                                            new NpgsqlCommand(
+                                                                sprintf
+                                                                    "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                                                                    stream_name,
+                                                                conn
+                                                            )
+
+                                                        command'.Parameters.AddWithValue("event", x) |> ignore
+
+                                                        command'.Parameters.AddWithValue("@aggregate_id", aggId)
+                                                        |> ignore
+
+                                                        command'.Parameters.AddWithValue(
+                                                            "@distance_from_latest_snapshot",
+                                                            index
+                                                        )
+                                                        |> ignore
+
+                                                        command'.Parameters.AddWithValue("md", md) |> ignore
+                                                        let result = command'.ExecuteScalar()
+                                                        result :?> int))
+
                                             let _ =
                                                 connection
                                                 |> Sql.connect
                                                 |> Sql.executeTransaction
-                                                    [
-                                                        insertSnapshot,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId);
-                                                                    ("snapshot",  sqlJson jsonSnapshot);
-                                                                    ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                                ]
-                                                            ]
-                                                        insertFirstEmptyAggregateEvent,
-                                                            [
-                                                                [
-                                                                    ("@aggregate_id", Sql.uuid aggregateId)
-                                                                ]
-                                                            ]
-                                                    ]
+                                                    [ insertSnapshot,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                                          ("snapshot", sqlJson jsonSnapshot)
+                                                          ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ]
+                                                      insertFirstEmptyAggregateEvent,
+                                                      [ [ ("@aggregate_id", Sql.uuid aggregateId) ] ] ]
+
                                             transaction.Commit()
                                             ids |> Ok
-                                        with
-                                            | _ as ex ->
-                                                logger.LogError (sprintf "SetInitialAggregateStateAndMultiAddAggregateEventsMd. an error occurred: %A" ex.Message)
-                                                transaction.Rollback()
-                                                ex.Message |> Error
+                                        with _ as ex ->
+                                            logger.LogError(
+                                                sprintf
+                                                    "SetInitialAggregateStateAndMultiAddAggregateEventsMd. an error occurred: %A"
+                                                    ex.Message
+                                            )
+
+                                            transaction.Rollback()
+                                            ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error ("EventId is not the last one" + (errors |> String.concat ", "))
-                                try 
+                                        Error("EventId is not the last one" + (errors |> String.concat ", "))
+
+                                try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "SetInitialAggregateStateAndMultiAddAggregateEventsMd. An error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(
+                        sprintf "SetInitialAggregateStateAndMultiAddAggregateEventsMd. An error occurred: %A" ex.Message
+                    )
+
                     Error ex.Message
-                    
+
             member this.SetAggregateSnapshot version (aggregateId: AggregateId, eventId: int, snapshot: Json) name =
                 logger.LogDebug "entered in setAggregateSnapshot"
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)" version name
+
+                let command =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, @event_id, @snapshot, @timestamp)"
+                        version
+                        name
+
                 let tryEvent = ((this :> IEventStore<string>).TryGetEvent version eventId name)
+
                 match (tryEvent, eventId) with
-                | (None, x) when x <> 0 -> Error (sprintf "event %d not found" eventId)
-                | (Some event, _) -> 
+                | (None, x) when x <> 0 -> Error(sprintf "event %d not found" eventId)
+                | (Some event, _) ->
                     try
-                        Async.RunSynchronously (
+                        Async.RunSynchronously(
                             async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
-                                        [
-                                            command,
-                                                [
-                                                    [
-                                                        ("@aggregate_id", Sql.uuid aggregateId);
-                                                        ("@event_id", Sql.int event.Id);
-                                                        ("snapshot",  sqlJson snapshot);
-                                                        ("timestamp", Sql.timestamp event.Timestamp)
-                                                    ]
-                                                ]
-                                        ]
-                            }, eventStoreTimeout)
+                                        [ command,
+                                          [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                              ("@event_id", Sql.int event.Id)
+                                              ("snapshot", sqlJson snapshot)
+                                              ("timestamp", Sql.timestamp event.Timestamp) ] ] ]
+                            },
+                            eventStoreTimeout
+                        )
                         |> ignore
                         |> Ok
-                    with
-                    | _ as ex ->
-                        logger.LogError (sprintf "SetAggregateSnapshot. an error occurred: %A" ex.Message)
+                    with _ as ex ->
+                        logger.LogError(sprintf "SetAggregateSnapshot. an error occurred: %A" ex.Message)
                         ex.Message |> Error
-                | None, 0  ->
-                    let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, null, @snapshot, @timestamp)" version name
+                | None, 0 ->
+                    let command =
+                        sprintf
+                            "INSERT INTO snapshots%s%s (aggregate_id, event_id, snapshot, timestamp) VALUES (@aggregate_id, null, @snapshot, @timestamp)"
+                            version
+                            name
+
                     try
-                        Async.RunSynchronously (
+                        Async.RunSynchronously(
                             async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
-                                        [
-                                            command,
-                                                [
-                                                    [
-                                                        ("@aggregate_id", Sql.uuid aggregateId);
-                                                        ("snapshot",  sqlJson snapshot);
-                                                        ("timestamp", Sql.timestamptz System.DateTime.UtcNow)
-                                                    ]
-                                                ]
-                                        ]
-                            }, eventStoreTimeout)
+                                        [ command,
+                                          [ [ ("@aggregate_id", Sql.uuid aggregateId)
+                                              ("snapshot", sqlJson snapshot)
+                                              ("timestamp", Sql.timestamptz System.DateTime.UtcNow) ] ] ]
+                            },
+                            eventStoreTimeout
+                        )
                         |> ignore
                         |> Ok
-                    with    
-                    | _ as ex ->
-                        logger.LogError (sprintf "SetAggregateSnapshot. An error occurred: %A" ex.Message)
+                    with _ as ex ->
+                        logger.LogError(sprintf "SetAggregateSnapshot. An error occurred: %A" ex.Message)
                         ex.Message |> Error
                 | _ ->
-                    $"SetAggregateSnapshot: an impossible error occurred. AggregateId {aggregateId}, snapshot: {snapshot.Substring(13)}, name: {name}" |> Error
-            
+                    $"SetAggregateSnapshot: an impossible error occurred. AggregateId {aggregateId}, snapshot: {snapshot.Substring(13)}, name: {name}"
+                    |> Error
+
             member this.GetEventsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                logger.LogDebug(sprintf "GetEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.int "id",
-                                        readAsText read "event"
-                                    )
-                                )
+                                |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
+                                |> Sql.execute (fun read -> (read.int "id", readAsText read "event"))
                                 |> Seq.toList
-                            }, eventStoreTimeout)
-                        |> Ok
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetEventsInATimeInterval. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogError(sprintf "GetEventsInATimeInterval. An error occurred: %A" ex.Message)
                     Error ex.Message
-            
-            member this.GetEventsInATimeIntervalAsync (version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken) =
-                logger.LogDebug (sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+
+            member this.GetEventsInATimeIntervalAsync
+                (version: Version, name: Name, dateFrom: DateTime, dateTo: DateTime, ?ct: CancellationToken)
+                =
+                logger.LogDebug(sprintf "GetEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
                 task {
                     try
-                        use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct CancellationToken.None)
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1345,133 +1846,102 @@ module PgStorage =
                             let eventId = reader.GetInt32(0)
                             let eventJson = reader.GetFieldValue<string>(1)
                             results.Add((eventId, eventJson))
+
                         return results |> Seq.toList |> Ok
                     with ex ->
-                        logger.LogError (sprintf "GetEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
+                        logger.LogError(sprintf "GetEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
-            
+
             // todo: will wrap the async version
             member this.GetAggregateEventsInATimeInterval version name aggregateId dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                logger.LogDebug(sprintf "GetAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.int "id",
-                                        readAsText read "event"
-                                    )
-                                )
+                                |> Sql.parameters
+                                    [ "aggregateId", Sql.uuid aggregateId
+                                      "dateFrom", Sql.timestamp dateFrom
+                                      "dateTo", Sql.timestamp dateTo ]
+                                |> Sql.execute (fun read -> (read.int "id", readAsText read "event"))
                                 |> Seq.toList
-                            }, eventStoreTimeout)
-                    |> Ok     
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetAggregateEventsInATimeInterval. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogError(sprintf "GetAggregateEventsInATimeInterval. An error occurred: %A" ex.Message)
                     Error ex.Message
- 
+
             member this.GetMultipleAggregateEventsInATimeInterval version name aggregateIds dateFrom dateTo =
                 let aggregateIdsArray = aggregateIds |> Array.ofList
-                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+
+                logger.LogDebug(
+                    sprintf "GetMultipleAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo
+                )
+
+                let query =
+                    sprintf
+                        "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateIds", Sql.uuidArray aggregateIdsArray; "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.int "id",
-                                        read.uuid "aggregate_id",
-                                        readAsText read "event"
-                                    )
-                                )
+                                |> Sql.parameters
+                                    [ "aggregateIds", Sql.uuidArray aggregateIdsArray
+                                      "dateFrom", Sql.timestamp dateFrom
+                                      "dateTo", Sql.timestamp dateTo ]
+                                |> Sql.execute (fun read ->
+                                    (read.int "id", read.uuid "aggregate_id", readAsText read "event"))
                                 |> Seq.toList
-                            }, eventStoreTimeout)
-                    |> Ok    
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetMultipleAggregateEventsInATimeInterval. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogError(
+                        sprintf "GetMultipleAggregateEventsInATimeInterval. An error occurred: %A" ex.Message
+                    )
+
                     Error ex.Message
-                    
-            member this.GetMultipleAggregateEventsInATimeIntervalAsync (version, name, aggregateIds, dateFrom, dateTo, ?ct) =
-                logger.LogDebug (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
+
+            member this.GetMultipleAggregateEventsInATimeIntervalAsync
+                (version, name, aggregateIds, dateFrom, dateTo, ?ct)
+                =
+                logger.LogDebug(
+                    sprintf "GetMultipleAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo
+                )
+
                 let aggregateIdsArray = aggregateIds |> Array.ofList
-                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
-                task
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
-                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
-                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                            command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let results = ResizeArray<_>()
 
-                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                                let eventId = reader.GetInt32(0)
-                                let aggregateId = reader.GetGuid(1)
-                                let eventJson = reader.GetFieldValue<string>(2)
-                                results.Add(eventId, aggregateId, eventJson)
+                let query =
+                    sprintf
+                        "SELECT id, aggregate_id, event FROM events%s%s WHERE aggregate_id = ANY(@aggregateIds) AND timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
 
-                            return results |> Seq.toList |> Ok
+                task {
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
-                        with
-                        | _ as ex ->
-                            logger.LogError (sprintf "GetMultipleAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message)
-                            return Error ex.Message    
-                    }
-             
-            member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, aggregate_id, timestamp, snapshot FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            return
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.int "id",
-                                        read.uuid "aggregate_id",
-                                        read.dateTime "timestamp",
-                                        readAsText read "snapshot"
-                                    )
-                                )
-                                |> Seq.toList
-                            }, eventStoreTimeout)
-                    |> Ok     
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetAggregateSnapshotsInATimeInterval. An error occurred: %A" ex.Message)
-                    ex.Message |> Error
-            
-            member this.GetAllAggregateEventsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct:CancellationToken) =
-                logger.LogDebug (sprintf "GetAllAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, aggregate_id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
-                task
-                    {
-                        use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct CancellationToken.None)
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1479,6 +1949,7 @@ module PgStorage =
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
                         command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                        command.Parameters.AddWithValue("aggregateIds", aggregateIdsArray) |> ignore
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
                         let results = ResizeArray<_>()
 
@@ -1487,368 +1958,522 @@ module PgStorage =
                             let aggregateId = reader.GetGuid(1)
                             let eventJson = reader.GetFieldValue<string>(2)
                             results.Add(eventId, aggregateId, eventJson)
-                        return results |> Ok
 
-                    }
+                        return results |> Seq.toList |> Ok
+
+                    with _ as ex ->
+                        logger.LogError(
+                            sprintf "GetMultipleAggregateEventsInATimeIntervalAsync. An error occurred: %A" ex.Message
+                        )
+
+                        return Error ex.Message
+                }
+
+            member this.GetAggregateSnapshotsInATimeInterval version name dateFrom dateTo =
+                logger.LogDebug(sprintf "GetAggregateSnapshotsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT id, aggregate_id, timestamp, snapshot FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
+                try
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
+                                |> Sql.execute (fun read ->
+                                    (read.int "id",
+                                     read.uuid "aggregate_id",
+                                     read.dateTime "timestamp",
+                                     readAsText read "snapshot"))
+                                |> Seq.toList
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogError(sprintf "GetAggregateSnapshotsInATimeInterval. An error occurred: %A" ex.Message)
+                    ex.Message |> Error
+
+            member this.GetAllAggregateEventsInATimeIntervalAsync
+                (version, name, dateFrom, dateTo, ?ct: CancellationToken)
+                =
+                logger.LogDebug(
+                    sprintf "GetAllAggregateEventsInATimeIntervalAsync %s %s %A %A" version name dateFrom dateTo
+                )
+
+                let query =
+                    sprintf
+                        "SELECT id, aggregate_id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
+                task {
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
+                    use conn = new NpgsqlConnection(connection)
+                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                    use command = new NpgsqlCommand(query, conn)
+                    command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
+                    command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                    command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                    use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                    let results = ResizeArray<_>()
+
+                    while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                        let eventId = reader.GetInt32(0)
+                        let aggregateId = reader.GetGuid(1)
+                        let eventJson = reader.GetFieldValue<string>(2)
+                        results.Add(eventId, aggregateId, eventJson)
+
+                    return results |> Ok
+
+                }
 
             member this.GetAllAggregateEventsInATimeInterval version name dateFrom dateTo =
-                logger.LogDebug (sprintf "GetAllAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id" version name
+                logger.LogDebug(sprintf "GetAllAggregateEventsInATimeInterval %s %s %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE timestamp >= @dateFrom AND timestamp <= @dateTo ORDER BY id"
+                        version
+                        name
+
                 try
                     let result =
-                        Async.RunSynchronously
-                            (async {
+                        Async.RunSynchronously(
+                            async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.query query
-                                    |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                    |> Sql.execute ( fun read ->
-                                        (
-                                            read.int "id",
-                                            readAsText read "event"
-                                        )
-                                    )
+                                    |> Sql.parameters
+                                        [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
+                                    |> Sql.execute (fun read -> (read.int "id", readAsText read "event"))
                                     |> Seq.toList
-                                }, eventStoreTimeout)
-                    result |> Ok         
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "GetAllAggregateEventsInATimeInterval. An error occurred: %A" ex.Message)
-                    Error (ex.Message)
-                    
+                            },
+                            eventStoreTimeout
+                        )
+
+                    result |> Ok
+                with _ as ex ->
+                    logger.LogError(sprintf "GetAllAggregateEventsInATimeInterval. An error occurred: %A" ex.Message)
+                    Error(ex.Message)
+
             member this.TryGetLastSnapshotId version name =
-                logger.LogDebug (sprintf "TryGetLastSnapshotId %s %s" version name)
-                let query = sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+                logger.LogDebug(sprintf "TryGetLastSnapshotId %s %s" version name)
+
+                let query =
+                    sprintf "SELECT event_id, id FROM snapshots%s%s ORDER BY id DESC LIMIT 1" version name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "event_id",
-                                        read.int "id"
-                                    )
-                                )
+                                |> Sql.execute (fun read -> (read.int "event_id", read.int "id"))
                                 |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetLastSnapshotId. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetLastSnapshotId. An error occurred: %A" ex.Message)
                     None
-          
+
             member this.TryGetFirstSnapshot version name aggregateId =
-                logger.LogDebug (sprintf "TryGetFirstSnapshot %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id ASC LIMIT 1" version name
-                
+                logger.LogDebug(sprintf "TryGetFirstSnapshot %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id ASC LIMIT 1"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "id",
-                                        readAsText read "snapshot"
-                                    )
-                                )
+                                |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
+                                |> Sql.execute (fun read -> (read.int "id", readAsText read "snapshot"))
                                 |> Seq.tryHead
                                 |> Result.ofOption "snapshot not found"
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetFirstSnapshot. an error occurred: %A" ex.Message)
-                    Error (sprintf "TryGetFirstSnapshot. error occurred %A" ex.Message)
-            
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetFirstSnapshot. an error occurred: %A" ex.Message)
+                    Error(sprintf "TryGetFirstSnapshot. error occurred %A" ex.Message)
+
             member this.TryGetSnapshotById version name id =
-                logger.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
-                let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+                logger.LogDebug(sprintf "TryGetSnapshotById %s %s %d" version name id)
+
+                let query =
+                    sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["id", Sql.int id]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "event_id",
-                                        readAsText read "snapshot"
-                                    )
-                                )
+                                |> Sql.parameters [ "id", Sql.int id ]
+                                |> Sql.execute (fun read -> (read.int "event_id", readAsText read "snapshot"))
                                 |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetSnapshotById an error occurred: %A" ex.Message)
                     None
 
             member this.TryGetAggregateSnapshotById version name aggregateId id =
-                logger.LogDebug (sprintf "TryGetSnapshotById %s %s %d" version name id)
-                let query = sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+                logger.LogDebug(sprintf "TryGetSnapshotById %s %s %d" version name id)
+
+                let query =
+                    sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["id", Sql.int id]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.intOrNone "event_id",
-                                        readAsText read "snapshot"
-                                    )
-                                )
+                                |> Sql.parameters [ "id", Sql.int id ]
+                                |> Sql.execute (fun read -> (read.intOrNone "event_id", readAsText read "snapshot"))
                                 |> Seq.tryHead
-                            }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetSnapshotById. An error occurred: %A" ex.Message)
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetSnapshotById. An error occurred: %A" ex.Message)
                     None
-          
+
             member this.TryGetLastAggregateSnapshot version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
-                
-                let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                logger.LogDebug(sprintf "TryGetLastAggregateSnapshot %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
-                            let result =     
+                    Async.RunSynchronously(
+                        async {
+                            let result =
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
+                                |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
                                 |> Sql.execute (fun read ->
-                                    (
-                                        read.intOrNone "event_id",
-                                        readAsText read "snapshot",
-                                        read.bool "is_deleted"
-                                    )
-                                )
+                                    (read.intOrNone "event_id", readAsText read "snapshot", read.bool "is_deleted"))
                                 |> Seq.tryHead
+
                             match result with
-                            | Some (eventId, snapshot, isDeleted) ->
+                            | Some(eventId, snapshot, isDeleted) ->
                                 if isDeleted then
                                     return Error $"object {aggregateId} type {version}{name} previously deleted"
                                 else
-                                    return Ok (eventId, snapshot)
-                            | None -> return Error $"object {aggregateId} type {version}{name} not existing"    
-                        }, eventStoreTimeout)
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "TryGetLastAggregateSnapshot. An error occurred: %A" ex.Message)
-                    Error (sprintf "error occurred %A" ex.Message)
-            
-            member this.TryGetLastAggregateSnapshotAsync (version, name, aggregateId, ?ct) =
-                logger.LogDebug (sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
-                task
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
-                            command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
-                            if hasRow then
-                                let eventIdOpt = if reader.IsDBNull(0) then None else Some (reader.GetInt32(0))
-                                let isDeleted = reader.GetBoolean(1)
-                                let snapshotJson = reader.GetFieldValue<string>(2)
-                                if isDeleted then
-                                    return Error (sprintf "object %A type %s%s is deleted" aggregateId version name)
+                                    return Ok(eventId, snapshot)
+                            | None -> return Error $"object {aggregateId} type {version}{name} not existing"
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
+                    logger.LogError(sprintf "TryGetLastAggregateSnapshot. An error occurred: %A" ex.Message)
+                    Error(sprintf "error occurred %A" ex.Message)
+
+            member this.TryGetLastAggregateSnapshotAsync(version, name, aggregateId, ?ct) =
+                logger.LogDebug(sprintf "TryGetLastAggregateSnapshotAsync %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT event_id, is_deleted, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
+                task {
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                        command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let! hasRow = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+
+                        if hasRow then
+                            let eventIdOpt =
+                                if reader.IsDBNull(0) then
+                                    None
                                 else
-                                    return Ok (eventIdOpt, snapshotJson)
+                                    Some(reader.GetInt32(0))
+
+                            let isDeleted = reader.GetBoolean(1)
+                            let snapshotJson = reader.GetFieldValue<string>(2)
+
+                            if isDeleted then
+                                return Error(sprintf "object %A type %s%s is deleted" aggregateId version name)
                             else
-                                return Error (sprintf "object %A type %s%s not existing" aggregateId version name)
-                        with ex ->
-                            logger.LogError (sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
-                            return Error ex.Message
-                    }
-              
+                                return Ok(eventIdOpt, snapshotJson)
+                        else
+                            return Error(sprintf "object %A type %s%s not existing" aggregateId version name)
+                    with ex ->
+                        logger.LogError(sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
+
             member this.TryGetLastAggregateSnapshotEventId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
-                let query = sprintf "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                logger.LogDebug(sprintf "TryGetLastAggregateSnapshotEventId %s %s" version name)
+
+                let query =
+                    sprintf
+                        "SELECT event_id FROM snapshots%s%s WHERE aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
+                                |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
                                 |> Sql.execute (fun read -> read.int "event_id")
                                 |> Seq.tryHead
-                        }, eventStoreTimeout)
-                with        
-                | _ as ex ->
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
                     // it is not an error anymore
                     // logger.LogError (sprintf "TryGetLastAggregateSnapshotEventId. An error occurred: %A" ex.Message)
-                    None         
+                    None
 
             member this.TryGetLastAggregateEventId version name aggregateId =
-                logger.LogDebug (sprintf "TryGetLastAggregateEventId %s %s" version name)
-                let query = sprintf "SELECT id FROM events%s%s where aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1" version name
+                logger.LogDebug(sprintf "TryGetLastAggregateEventId %s %s" version name)
+
+                let query =
+                    sprintf
+                        "SELECT id FROM events%s%s where aggregate_id = @aggregateId ORDER BY id DESC LIMIT 1"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
-                                |> Sql.query query 
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                |> Sql.execute  (fun read ->
-                                    (
-                                        read.int "id"
-                                    )
-                                )
+                                |> Sql.query query
+                                |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
+                                |> Sql.execute (fun read -> (read.int "id"))
                                 |> Seq.tryHead
-                            }, eventStoreTimeout)
-                with
-                | _ as ex ->
+                        },
+                        eventStoreTimeout
+                    )
+                with _ as ex ->
                     // it is not an error anymore
                     // logger.LogError (sprintf "an error occurred: %A" ex.Message)
                     None
-                    
-            member this.AddAggregateEventsMd (eventId: EventId) (version: Version) (name: Name) (aggregateId: System.Guid) (md: Metadata) (events: List<string>): Result<List<int>,string> =
-                (this :> IEventStore<string>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events).GetAwaiter().GetResult()
-                    
-            member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<Json> * Version * Name *  AggregateId>) =
-                logger.LogDebug (sprintf "MultiAddAggregateEventsMd %A %s" arg md)
+
+            member this.AddAggregateEventsMd
+                (eventId: EventId)
+                (version: Version)
+                (name: Name)
+                (aggregateId: System.Guid)
+                (md: Metadata)
+                (events: List<string>)
+                : Result<List<int>, string> =
+                (this :> IEventStore<string>)
+                    .AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events)
+                    .GetAwaiter()
+                    .GetResult()
+
+            member this.MultiAddAggregateEventsMd md (arg: List<EventId * List<Json> * Version * Name * AggregateId>) =
+                logger.LogDebug(sprintf "MultiAddAggregateEventsMd %A %s" arg md)
+
                 let result =
                     fun _ ->
                         use conn = new NpgsqlConnection(connection)
                         conn.Open()
-                        let transaction = conn.BeginTransaction() 
-                
+                        let transaction = conn.BeginTransaction()
+
                         let lastEventIds =
-                            arg 
-                            |>> 
-                            fun (_, _, version, name, aggregateId) -> 
-                                ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
-                
-                        let eventIds = 
                             arg
-                            |>> fun (eventId, _, _, _, _) -> eventId
-                
-                        let checks = 
+                            |>> fun (_, _, version, name, aggregateId) ->
+                                ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
+
+                        let eventIds = arg |>> fun (eventId, _, _, _, _) -> eventId
+
+                        let checks =
                             List.zip lastEventIds eventIds
-                            |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
-                        
+                            |> List.forall (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+
                         let errors =
                             List.zip lastEventIds eventIds
-                            |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                            |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
-                
-                        Async.RunSynchronously
-                            (async {
+                            |> List.filter (fun (lastEventId, eventId) ->
+                                lastEventId.IsNone && eventId <> 0
+                                || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                            |> List.map (fun (lastEventId, eventId) ->
+                                sprintf
+                                    "EventId check failed. eventId passed %d. Latest eventId: %A"
+                                    eventId
+                                    lastEventId)
+
+                        Async.RunSynchronously(
+                            async {
                                 let result =
                                     if checks then
                                         try
-                                            let cmdList = 
-                                                arg 
-                                                |>>
-                                                    fun (_, events, version,  name, aggregateId) ->
-                                                        let stream_name = version + name
-                                                        events
-                                                        |>> 
-                                                            fun event ->
-                                                                let currentDistanceFromLastestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, CancellationToken.None).GetAwaiter().GetResult()
-                                                                let index = (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
-                                                                let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
-                                                                (
-                                                                    command.Parameters.AddWithValue("event", event ) |> ignore
-                                                                    command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                                    command.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                                                    command.Parameters.AddWithValue("md", md ) |> ignore
-                                                                    let result = command.ExecuteScalar() 
-                                                                    result :?> int
+                                            let cmdList =
+                                                arg
+                                                |>> fun (_, events, version, name, aggregateId) ->
+                                                    let stream_name = version + name
+
+                                                    events
+                                                    |>> fun event ->
+                                                        let currentDistanceFromLastestSnapshot =
+                                                            this
+                                                                .GetDistanceFromLatestSnapshotAsync(
+                                                                    version,
+                                                                    name,
+                                                                    aggregateId,
+                                                                    CancellationToken.None
                                                                 )
-                                                
+                                                                .GetAwaiter()
+                                                                .GetResult()
+
+                                                        let index =
+                                                            (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
+
+                                                        let command =
+                                                            new NpgsqlCommand(
+                                                                sprintf
+                                                                    "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                                                                    stream_name,
+                                                                conn
+                                                            )
+
+                                                        (command.Parameters.AddWithValue("event", event) |> ignore
+
+                                                         command.Parameters.AddWithValue("@aggregate_id", aggregateId)
+                                                         |> ignore
+
+                                                         command.Parameters.AddWithValue(
+                                                             "@distance_from_latest_snapshot",
+                                                             index
+                                                         )
+                                                         |> ignore
+
+                                                         command.Parameters.AddWithValue("md", md) |> ignore
+                                                         let result = command.ExecuteScalar()
+                                                         result :?> int)
+
                                             transaction.Commit()
                                             cmdList |> Ok
-                                        with
-                                            | _ as ex ->
-                                                logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                                                transaction.Rollback()
-                                                ex.Message |> Error
+                                        with _ as ex ->
+                                            logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                                            transaction.Rollback()
+                                            ex.Message |> Error
                                     else
                                         transaction.Rollback()
-                                        Error ("eventids check failed " + (errors |> String.concat ", "))
+                                        Error("eventids check failed " + (errors |> String.concat ", "))
+
                                 try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _  as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
-            member this.GetAggregateEventsAfterId version name aggregateId id: Result<List<EventId * Json>,string> =
-                logger.LogDebug (sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
-                taskResult
-                    {
-                        return! (this :> IEventStore<string>).GetAggregateEventsAfterIdAsync(version, name, aggregateId, id)
-                    }
+            member this.GetAggregateEventsAfterId version name aggregateId id : Result<List<EventId * Json>, string> =
+                logger.LogDebug(sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+
+                taskResult {
+                    return! (this :> IEventStore<string>).GetAggregateEventsAfterIdAsync(version, name, aggregateId, id)
+                }
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
-                 
-                        
-            member this.GetAggregateEvents version name aggregateId: Result<List<EventId * Json>,string> =
-                logger.LogDebug (sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
+
+
+            member this.GetAggregateEvents version name aggregateId : Result<List<EventId * Json>, string> =
+                logger.LogDebug(sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"
+                        version
+                        name
+
                 let result =
                     fun _ ->
-                        Async.RunSynchronously
-                            (async {
+                        Async.RunSynchronously(
+                            async {
                                 return
-                                    try 
+                                    try
                                         connection
                                         |> Sql.connect
                                         |> Sql.query query
-                                        |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                        |> Sql.execute ( fun read ->
-                                            (
-                                                read.int "id",
-                                                readAsText read "event"
-                                            )
-                                        )
+                                        |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
+                                        |> Sql.execute (fun read -> (read.int "id", readAsText read "event"))
                                         |> Seq.toList
                                         |> Ok
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                                    with _ as ex ->
+                                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
                                         ex.Message |> Error
-                            }, eventStoreTimeout)
-                try             
+                            },
+                            eventStoreTimeout
+                        )
+
+                try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
-                    
-            member this.GetAggregateEventsAsync (version, name, aggregateId, ?ct:CancellationToken): Task<Result<List<EventId * Json>,string>> =
-                logger.LogDebug (sprintf "GetAggregateEventsAsync %s %s %A" version name aggregateId)
-                let query = sprintf "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"  version name
+
+            member this.GetAggregateEventsAsync
+                (version, name, aggregateId, ?ct: CancellationToken)
+                : Task<Result<List<EventId * Json>, string>> =
+                logger.LogDebug(sprintf "GetAggregateEventsAsync %s %s %A" version name aggregateId)
+
+                let query =
+                    sprintf
+                        "SELECT id, event FROM events%s%s WHERE aggregate_id = @aggregateId ORDER BY id"
+                        version
+                        name
+
                 task {
                     try
-                        use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                      (defaultArg ct CancellationToken.None)
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
                         cts.CancelAfter(cancellationTokenSourceExpiration)
                         use conn = new NpgsqlConnection(connection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
@@ -1862,247 +2487,282 @@ module PgStorage =
                             let eventId = reader.GetInt32(0)
                             let eventJson = reader.GetFieldValue<string>(1)
                             results.Add(eventId, eventJson)
+
                         return results |> Seq.toList |> Ok
 
                     with ex ->
-                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
-            
+
             member this.GDPRReplaceSnapshotsAndEventsOfAnAggregate version name aggregateId snapshot event =
-                logger.LogDebug (sprintf "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A" version name aggregateId snapshot event)
-                
-                let sqlReplaceAllAggregates = (sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE aggregate_id = @aggregateId" version name)
-                let sqlReplaceAllEvents = (sprintf "UPDATE events%s%s SET event = @event WHERE aggregate_id = @aggregateId" version name)
-                
+                logger.LogDebug(
+                    sprintf
+                        "GDPRReplaceSnapshotsAndEventsOfAnAggregate %s %s %A %A %A"
+                        version
+                        name
+                        aggregateId
+                        snapshot
+                        event
+                )
+
+                let sqlReplaceAllAggregates =
+                    (sprintf
+                        "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE aggregate_id = @aggregateId"
+                        version
+                        name)
+
+                let sqlReplaceAllEvents =
+                    (sprintf "UPDATE events%s%s SET event = @event WHERE aggregate_id = @aggregateId" version name)
+
                 let result =
                     fun _ ->
                         use conn = new NpgsqlConnection(connection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
-                        Async.RunSynchronously
-                            (async {
+
+                        Async.RunSynchronously(
+                            async {
                                 let result =
                                     try
                                         let _ =
                                             connection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
-                                                [
-                                                    sqlReplaceAllAggregates,
-                                                        [
-                                                            [
-                                                                ("@snapshot", sqlJson snapshot);
-                                                                ("@aggregateId", Sql.uuid aggregateId)
-                                                            ]
-                                                        ]
-                                                    sqlReplaceAllEvents,
-                                                        [
-                                                            [
-                                                                ("@event", sqlJson event);
-                                                                ("@aggregateId", Sql.uuid aggregateId)
-                                                            ]
-                                                        ]
-                                                ]
+                                                [ sqlReplaceAllAggregates,
+                                                  [ [ ("@snapshot", sqlJson snapshot)
+                                                      ("@aggregateId", Sql.uuid aggregateId) ] ]
+                                                  sqlReplaceAllEvents,
+                                                  [ [ ("@event", sqlJson event)
+                                                      ("@aggregateId", Sql.uuid aggregateId) ] ] ]
+
                                         transaction.Commit()
-                                        Ok ()
-                                    with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        Ok()
+                                    with _ as ex ->
+                                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
                                         transaction.Rollback()
                                         ex.Message |> Error
+
                                 try
                                     return result
                                 finally
                                     conn.Close()
-                            }, eventStoreTimeout)
+                            },
+                            eventStoreTimeout
+                        )
+
                 try
                     result ()
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                with _ as ex ->
+                    logger.LogError(sprintf "an error occurred: %A" ex.Message)
                     Error ex.Message
 
-            member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo = 
-                logger.LogDebug (sprintf "GetAggregateIdsInATimeInterval %A %A %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
+            member this.GetAggregateIdsInATimeInterval version name dateFrom dateTo =
+                logger.LogDebug(sprintf "GetAggregateIdsInATimeInterval %A %A %A %A" version name dateFrom dateTo)
+
+                let query =
+                    sprintf
+                        "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo"
+                        version
+                        name
+
                 try
-                    Async.RunSynchronously
-                        (async {
+                    Async.RunSynchronously(
+                        async {
                             return
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo]
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.uuid "aggregate_id"
-                                    )
-                                )
+                                |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
+                                |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
                                 |> Seq.toList
-                            }, eventStoreTimeout)
+                        },
+                        eventStoreTimeout
+                    )
                     |> Ok
-                with
-                | _ as ex ->
-                    logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message 
+                with _ as ex ->
+                    logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
 
             // todo: this is questionable as it just takes the state of objects that have a snapshot in the given time interval
-            member this.GetAggregateIdsInATimeIntervalAsync (version, name, dateFrom, dateTo, ?ct) =
-                logger.LogDebug (sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo" version name
-                task
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
-                            command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let results = ResizeArray<_>()
-                            
-                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                                let aggregateId = reader.GetGuid(0)
-                                results.Add(aggregateId)
-                            return results |> Seq.toList |> Ok
+            member this.GetAggregateIdsInATimeIntervalAsync(version, name, dateFrom, dateTo, ?ct) =
+                logger.LogDebug(sprintf "GetAggregateIdsInATimeIntervalAsync %A %A %A %A" version name dateFrom dateTo)
 
-                        with
-                        | _ as ex ->
-                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return Error ex.Message
-                    }         
-            
-            member this.GetAggregateIds version name = 
-                logger.LogDebug (sprintf "GetAggregateIds %A %A" version name)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            return
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.uuid "aggregate_id"
-                                    )
-                                )
-                                |> Seq.toList
-                            }, eventStoreTimeout)
-                    |> Ok
-                with
-                | _ as ex ->
-                    logger.LogDebug (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
-                    
-            member this.GetUndeletedAggregateIds version name = 
-                logger.LogDebug (sprintf "GetAggregateIds %A %A" version name)
-                let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
-                try
-                    Async.RunSynchronously
-                        (async {
-                            return
-                                connection
-                                |> Sql.connect
-                                |> Sql.query query
-                                |> Sql.execute ( fun read ->
-                                    (
-                                        read.uuid "aggregate_id"
-                                    )
-                                )
-                                |> Seq.toList
-                            }, eventStoreTimeout)
-                    |> Ok
-                with
-                | _ as ex ->
-                    logger.LogDebug (sprintf "an error occurred: %A" ex.Message)
-                    Error ex.Message
-             
-            member this.GetAggregateIdsAsync (version, name, ?ct) =
-                logger.LogDebug (sprintf "GetAggregateIdsAsync %s %s" version name)
-                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
-                taskResult
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let results = ResizeArray<_>()
+                let query =
+                    sprintf
+                        "SELECT DISTINCT  aggregate_id FROM snapshots%s%s where timestamp >= @dateFrom AND timestamp <= @dateTo"
+                        version
+                        name
 
-                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                                let aggregateId = reader.GetGuid(0)
-                                results.Add(aggregateId)
-                            return results |> Seq.toList
-                        with
-                        | _ as ex ->
-                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return! Error ex.Message
-                    }         
-                
-            member this.GetUndeletedAggregateIdsAsync (version, name, ?ct) =
-                logger.LogDebug (sprintf "GetUndeletedAggregateIdsAsync %s %s" version name)
-                let query = sprintf "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false" version name version name
-                taskResult 
-                    {
-                        try
-                            use cts = CancellationTokenSource.CreateLinkedTokenSource
-                                          (defaultArg ct CancellationToken.None)
-                            cts.CancelAfter(cancellationTokenSourceExpiration)
-                            use conn = new NpgsqlConnection(connection)
-                            do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                            use command = new NpgsqlCommand(query, conn)
-                            use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                            let results = ResizeArray<_>()
-
-                            while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
-                                let aggregateId = reader.GetGuid(0)
-                                results.Add(aggregateId)
-                            return results |> List.ofSeq
-                        with
-                        | _ as ex ->
-                            logger.LogError (sprintf "GetUndeletedAggregateIdsAsync. An error occurred: %A" ex.Message)
-                            return! Error ex.Message
-                    }         
-
-          
-            member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
-                logger.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
-                let command = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" version name
-                let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
-               
-                if (lastEventId.IsNone && eventId = 0) || (lastEventId.IsSome && lastEventId.Value = eventId) then
+                task {
                     try
-                        Async.RunSynchronously (
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
+                        command.Parameters.AddWithValue("dateTo", dateTo) |> ignore
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let aggregateId = reader.GetGuid(0)
+                            results.Add(aggregateId)
+
+                        return results |> Seq.toList |> Ok
+
+                    with _ as ex ->
+                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.GetAggregateIds version name =
+                logger.LogDebug(sprintf "GetAggregateIds %A %A" version name)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
+
+                try
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
+                                |> Seq.toList
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogDebug(sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
+
+            member this.GetUndeletedAggregateIds version name =
+                logger.LogDebug(sprintf "GetAggregateIds %A %A" version name)
+
+                let query =
+                    sprintf
+                        "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false"
+                        version
+                        name
+                        version
+                        name
+
+                try
+                    Async.RunSynchronously(
+                        async {
+                            return
+                                connection
+                                |> Sql.connect
+                                |> Sql.query query
+                                |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
+                                |> Seq.toList
+                        },
+                        eventStoreTimeout
+                    )
+                    |> Ok
+                with _ as ex ->
+                    logger.LogDebug(sprintf "an error occurred: %A" ex.Message)
+                    Error ex.Message
+
+            member this.GetAggregateIdsAsync(version, name, ?ct) =
+                logger.LogDebug(sprintf "GetAggregateIdsAsync %s %s" version name)
+                let query = sprintf "SELECT DISTINCT  aggregate_id FROM snapshots%s%s" version name
+
+                taskResult {
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let aggregateId = reader.GetGuid(0)
+                            results.Add(aggregateId)
+
+                        return results |> Seq.toList
+                    with _ as ex ->
+                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                        return! Error ex.Message
+                }
+
+            member this.GetUndeletedAggregateIdsAsync(version, name, ?ct) =
+                logger.LogDebug(sprintf "GetUndeletedAggregateIdsAsync %s %s" version name)
+
+                let query =
+                    sprintf
+                        "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false"
+                        version
+                        name
+                        version
+                        name
+
+                taskResult {
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let results = ResizeArray<_>()
+
+                        while! reader.ReadAsync(cts.Token).ConfigureAwait(false) do
+                            let aggregateId = reader.GetGuid(0)
+                            results.Add(aggregateId)
+
+                        return results |> List.ofSeq
+                    with _ as ex ->
+                        logger.LogError(sprintf "GetUndeletedAggregateIdsAsync. An error occurred: %A" ex.Message)
+                        return! Error ex.Message
+                }
+
+
+            member this.SnapshotAndMarkDeleted version name eventId aggregateId snapshot =
+                logger.LogDebug(sprintf "SnapshotAndMarkDeleted %s %s %A" version name aggregateId)
+
+                let command =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)"
+                        version
+                        name
+
+                let lastEventId =
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
+
+                if
+                    (lastEventId.IsNone && eventId = 0)
+                    || (lastEventId.IsSome && lastEventId.Value = eventId)
+                then
+                    try
+                        Async.RunSynchronously(
                             async {
                                 return
                                     connection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
-                                        [
-                                            command,
-                                                [
-                                                    [
-                                                        ("aggregate_id", Sql.uuid aggregateId)
-                                                        ("snapshot",  sqlJson snapshot)
-                                                        ("timestamp", Sql.timestamp System.DateTime.Now)
-                                                        ("is_deleted", Sql.bool true)
-                                                    ]
-                                                ]
-                                        ]
-                            }, eventStoreTimeout)
-                            |> ignore
-                            |> Ok
-                    with
-                    | _ as ex ->
-                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
+                                        [ command,
+                                          [ [ ("aggregate_id", Sql.uuid aggregateId)
+                                              ("snapshot", sqlJson snapshot)
+                                              ("timestamp", Sql.timestamp System.DateTime.Now)
+                                              ("is_deleted", Sql.bool true) ] ] ]
+                            },
+                            eventStoreTimeout
+                        )
+                        |> ignore
+                        |> Ok
+                    with _ as ex ->
+                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         Error ex.Message
                 else
                     Error $"error checking event alignments. eventId passed {eventId}. Latest event id: {lastEventId}"
@@ -2118,151 +2778,275 @@ module PgStorage =
                 streamAggregateName
                 streamAggregateId
                 metaData
-                events =
-                    logger.LogDebug (sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
-                    let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
-                    let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
-                    
-                    let lastStreamEventId =
-                        (this :> IEventStore<string>).TryGetLastAggregateEventId streamAggregateVersion streamAggregateName streamAggregateId
-                    
-                    let stream_name = streamAggregateVersion + streamAggregateName
-                    let command = sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name
+                events
+                =
+                logger.LogDebug(sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
 
-                    let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(streamAggregateVersion, streamAggregateName, streamAggregateId, CancellationToken.None).GetAwaiter().GetResult()
-                    let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
-                    
-                    if
-                        ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) &&
-                        ((lastStreamEventId.IsNone && streamEventId = 0) || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId)) then
-                        try
-                            Async.RunSynchronously (
-                                async {
-                                    use conn = new NpgsqlConnection(connection)
-                                    conn.Open()
-                                    let transaction = conn.BeginTransaction()
-                                    try
-                                        let ids =
-                                            events 
-                                            |>> 
-                                                (
-                                                    fun x ->
-                                                        let command' = new NpgsqlCommand(command, conn)
-                                                        command'.Parameters.AddWithValue("event", x ) |> ignore
-                                                        command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId ) |> ignore
-                                                        command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index) |> ignore
-                                                        command'.Parameters.AddWithValue("md", metaData ) |> ignore
-                                                        let result = command'.ExecuteScalar() 
-                                                        result :?> int
-                                                )
-                                        
-                                        let _ =
-                                            connection
-                                            |> Sql.connect
-                                            |> Sql.executeTransaction
-                                                [
-                                                    snapCommand,
-                                                        [
-                                                            [
-                                                                ("aggregate_id", Sql.uuid s1AggregateId)
-                                                                ("snapshot",  sqlJson s1Snapshot)
-                                                                ("timestamp", Sql.timestamp System.DateTime.Now)
-                                                                ("is_deleted", Sql.bool true)
-                                                            ]
-                                                        ]
-                                                ]
-                                        transaction.Commit()
-                                        return (ids |> Ok)
-                                        finally
-                                            transaction.Dispose()
-                                            conn.Dispose()
-                            }, eventStoreTimeout)
-                        with
-                        | _ as ex ->
-                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            Error ex.Message
-                    else
-                        Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}. LastStreamEventId: {lastStreamEventId}. StreamEventid: {streamEventId}"
+                let snapCommand =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)"
+                        s1Version
+                        s1name
 
-            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement = 
-                let sqlUpdate = sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
-                Async.RunSynchronously
-                    (asyncResult {
-                        let! events = (this:> IEventStore<string>).GetAggregateEvents version name aggregateId
+                let lastEventId =
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
+
+                let lastStreamEventId =
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId
+                        streamAggregateVersion
+                        streamAggregateName
+                        streamAggregateId
+
+                let stream_name = streamAggregateVersion + streamAggregateName
+
+                let command =
+                    sprintf
+                        "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                        stream_name
+
+                let distanceFromLatestSnapshot =
+                    this
+                        .GetDistanceFromLatestSnapshotAsync(
+                            streamAggregateVersion,
+                            streamAggregateName,
+                            streamAggregateId,
+                            CancellationToken.None
+                        )
+                        .GetAwaiter()
+                        .GetResult()
+
+                let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
+
+                if
+                    ((lastEventId.IsNone && s1EventId = 0)
+                     || (lastEventId.IsSome && lastEventId.Value = s1EventId))
+                    && ((lastStreamEventId.IsNone && streamEventId = 0)
+                        || (lastStreamEventId.IsSome && lastStreamEventId.Value = streamEventId))
+                then
+                    try
+                        Async.RunSynchronously(
+                            async {
+                                use conn = new NpgsqlConnection(connection)
+                                conn.Open()
+                                let transaction = conn.BeginTransaction()
+
+                                try
+                                    let ids =
+                                        events
+                                        |>> (fun x ->
+                                            let command' = new NpgsqlCommand(command, conn)
+                                            command'.Parameters.AddWithValue("event", x) |> ignore
+
+                                            command'.Parameters.AddWithValue("@aggregate_id", streamAggregateId)
+                                            |> ignore
+
+                                            command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                                            |> ignore
+
+                                            command'.Parameters.AddWithValue("md", metaData) |> ignore
+                                            let result = command'.ExecuteScalar()
+                                            result :?> int)
+
+                                    let _ =
+                                        connection
+                                        |> Sql.connect
+                                        |> Sql.executeTransaction
+                                            [ snapCommand,
+                                              [ [ ("aggregate_id", Sql.uuid s1AggregateId)
+                                                  ("snapshot", sqlJson s1Snapshot)
+                                                  ("timestamp", Sql.timestamp System.DateTime.Now)
+                                                  ("is_deleted", Sql.bool true) ] ] ]
+
+                                    transaction.Commit()
+                                    return (ids |> Ok)
+                                finally
+                                    transaction.Dispose()
+                                    conn.Dispose()
+                            },
+                            eventStoreTimeout
+                        )
+                    with _ as ex ->
+                        logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                        Error ex.Message
+                else
+                    Error
+                        $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}. LastStreamEventId: {lastStreamEventId}. StreamEventid: {streamEventId}"
+
+            member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement =
+                let sqlUpdate =
+                    sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
+
+                Async.RunSynchronously(
+                    asyncResult {
+                        let! events = (this :> IEventStore<string>).GetAggregateEvents version name aggregateId
+
                         let eventsIdsMatchingPredicate =
                             events
                             |> List.filter (fun (_, x) -> (predicate x).IsOk && (predicate x).OkValue)
                             |>> fst
+
                         try
                             connection
                             |> Sql.connect
                             |> Sql.executeTransaction
-                                [
-                                    sqlUpdate,
-                                        [
-                                            [
-                                                ("replacement", sqlJson replacement)
-                                                ("ids", Sql.intArray (eventsIdsMatchingPredicate |> List.toArray))
-                                            ]
-                                        ]
-                                ] 
-                                |> ignore
+                                [ sqlUpdate,
+                                  [ [ ("replacement", sqlJson replacement)
+                                      ("ids", Sql.intArray (eventsIdsMatchingPredicate |> List.toArray)) ] ] ]
+                            |> ignore
+
                             return ()
                         with ex ->
-                            logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                            return! Error (ex.Message) 
-                                
-                    }, eventStoreTimeout)
+                            logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                            return! Error(ex.Message)
+
+                    },
+                    eventStoreTimeout
+                )
 
             member this.GDPRPartialUpdateSnapshots version name aggregateId updateFunction =
-                let query = sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
-                let updateCommand = sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE id = @id" version name
-                Async.RunSynchronously
-                    (asyncResult {
-                        let! snapshots = 
+                let query =
+                    sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
+
+                let updateCommand =
+                    sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE id = @id" version name
+
+                Async.RunSynchronously(
+                    asyncResult {
+                        let! snapshots =
                             try
                                 connection
                                 |> Sql.connect
                                 |> Sql.query query
-                                |> Sql.parameters ["aggregateId", Sql.uuid aggregateId]
-                                |> Sql.execute (fun read ->
-                                    (
-                                        read.int "id",
-                                        readAsText read "snapshot"
-                                    )
-                                )
+                                |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
+                                |> Sql.execute (fun read -> (read.int "id", readAsText read "snapshot"))
                                 |> Seq.toList
                                 |> Ok
                             with ex ->
-                                logger.LogError (sprintf "an error occurred in GDPRPartialUpdateSnapshots while fetching snapshots: %A" ex.Message)
+                                logger.LogError(
+                                    sprintf
+                                        "an error occurred in GDPRPartialUpdateSnapshots while fetching snapshots: %A"
+                                        ex.Message
+                                )
+
                                 Error ex.Message
-                        
+
                         let updates =
                             snapshots
                             |> List.choose (fun (id, snap) ->
                                 match updateFunction snap with
-                                | Ok newSnap -> Some (id, newSnap)
-                                | Error _ -> None
-                            )
-                        
+                                | Ok newSnap -> Some(id, newSnap)
+                                | Error _ -> None)
+
                         try
                             if not updates.IsEmpty then
                                 connection
                                 |> Sql.connect
                                 |> Sql.executeTransaction
-                                    [
-                                        updateCommand,
-                                            [
-                                                for (id, newSnap) in updates do
-                                                    yield [ ("snapshot", sqlJson newSnap); ("id", Sql.int id) ]
-                                            ]
-                                    ] 
+                                    [ updateCommand,
+                                      [ for (id, newSnap) in updates do
+                                            yield [ ("snapshot", sqlJson newSnap); ("id", Sql.int id) ] ] ]
                                 |> ignore
+
                             return ()
                         with ex ->
-                            logger.LogError (sprintf "an error occurred in GDPRPartialUpdateSnapshots while updating snapshots: %A" ex.Message)
-                            return! Error (ex.Message)
-                    }, eventStoreTimeout)
+                            logger.LogError(
+                                sprintf
+                                    "an error occurred in GDPRPartialUpdateSnapshots while updating snapshots: %A"
+                                    ex.Message
+                            )
+
+                            return! Error(ex.Message)
+                    },
+                    eventStoreTimeout
+                )
+
+            member this.GDPRPartialUpdateSnapshotsAsync
+                (version, name, aggregateId, updateFunciton, ?ct: CancellationToken)
+                =
+                let query =
+                    sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
+
+                let updateCommand =
+                    sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE id = @id" version name
+
+                let getSnapshotsAsync () =
+                    taskResult {
+                        let! snapshots =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query query
+                            |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
+                            |> Sql.executeAsync (fun read -> (read.int "id", readAsText read "snapshot"))
+
+                        return snapshots
+                    }
+
+                taskResult {
+
+                    let! snapshots = getSnapshotsAsync ()
+
+                    let updates =
+                        snapshots
+                        |> List.filter (fun (_, x) -> (updateFunciton x).IsOk)
+                        |> List.map (fun (x, y) -> (x, (updateFunciton y).OkValue))
+
+                    try
+                        if not updates.IsEmpty then
+                            let! _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.executeTransactionAsync
+                                    [ updateCommand,
+                                      [ for (id, newSnap) in updates ->
+                                            [ ("snapshot", sqlJson newSnap); ("id", Sql.int id) ] ] ]
+
+                            return ()
+                    with ex ->
+                        logger.LogError(
+                            sprintf
+                                "an error occurred in GDPRPartialUpdateSnapshots while updating snapshots: %A"
+                                ex.Message
+                        )
+
+                        return! Error ex.Message
+                }
+
+            member this.GDPRReplaceEventsByPredicateAsync
+                (version, name, aggregateId, predicate, replacement, ?ct: CancellationToken)
+                =
+                let sqlUpdate =
+                    sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
+
+                let ct = defaultArg ct CancellationToken.None
+
+                taskResult {
+                    let! events = (this :> IEventStore<string>).GetAggregateEventsAsync(version, name, aggregateId, ct)
+
+                    let eventsIdsMatchingPredicate =
+                        events
+                        |> List.filter (fun (_, x) -> (predicate x).IsOk && (predicate x).OkValue)
+                        |>> fst
+
+                    try
+                        if not eventsIdsMatchingPredicate.IsEmpty then
+                            let! _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.executeTransactionAsync
+                                    [ sqlUpdate,
+                                      [ [ ("replacement", sqlJson replacement)
+                                          ("ids", Sql.intArray (eventsIdsMatchingPredicate |> List.toArray)) ] ] ]
+
+                            return ()
+                    with ex ->
+                        logger.LogError(
+                            sprintf
+                                "an error occurred in GDPRPartialUpdateSnapshots while updating snapshots: %A"
+                                ex.Message
+                        )
+
+                        return! Error ex.Message
+                }
 
             member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
                 md
@@ -2271,84 +3055,112 @@ module PgStorage =
                 s1EventId
                 s1AggregateId
                 s1Snapshot
-                (arg: List<EventId * List<Json> * Version * Name * AggregateId>) =
-                    let snapCommand = sprintf "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)" s1Version s1name
-                    let lastEventId = (this :> IEventStore<string>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
-                    
-                    let lastEventIds =
-                        arg 
-                        |>> 
-                        fun (_, _, version, name, aggregateId) -> 
-                            ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
-                            
-                    let eventIds = 
-                        arg
-                        |>> fun (eventId, _, _, _, _) -> eventId
-                        
-                    let eventIdsMatch = 
-                        List.zip lastEventIds eventIds
-                        |> List.forall (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
-                    
-                    let errors =
-                        List.zip lastEventIds eventIds
-                        |> List.filter (fun (lastEventId, eventId) -> lastEventId.IsNone && eventId <> 0 || (lastEventId.IsSome && lastEventId.Value <> eventId))
-                        |> List.map (fun (lastEventId, eventId) -> sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
-                        
-                    if ((lastEventId.IsNone && s1EventId = 0) || (lastEventId.IsSome && lastEventId.Value = s1EventId)) && eventIdsMatch then
-                        
-                        use conn = new NpgsqlConnection(connection)
-                        conn.Open()
-                        let transaction = conn.BeginTransaction()
-                        
-                        Async.RunSynchronously
-                            (async {
-                                try
-                                    let cmdList = 
-                                        arg 
-                                        |>>
-                                            fun (_, events, version,  name, aggregateId) ->
-                                                let stream_name = version + name
-                                                let distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, CancellationToken.None).GetAwaiter().GetResult()
-                                                let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
-                                                events
-                                                |>> 
-                                                    fun event ->
-                                                        let command = new NpgsqlCommand(sprintf "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);" stream_name, conn)
-                                                        (
-                                                            command.Parameters.AddWithValue("event", event ) |> ignore
-                                                            command.Parameters.AddWithValue("@aggregate_id", aggregateId ) |> ignore
-                                                            command.Parameters.AddWithValue("@distance_from_latest_snapshot", index ) |> ignore
-                                                            command.Parameters.AddWithValue("md", md ) |> ignore
-                                                            let result = command.ExecuteScalar() 
-                                                            result :?> int
-                                                        )
-                                    
-                                    let _ =
-                                        connection
-                                        |> Sql.connect
-                                        |> Sql.executeTransaction
-                                            [
-                                                snapCommand,
-                                                    [
-                                                        [
-                                                            ("aggregate_id", Sql.uuid s1AggregateId)
-                                                            ("snapshot",  sqlJson s1Snapshot)
-                                                            ("timestamp", Sql.timestamp System.DateTime.Now)
-                                                            ("is_deleted", Sql.bool true)
-                                                        ]
-                                                    ]
-                                            ]  
-                                    
-                                    transaction.Commit()
-                                    conn.Close()
-                                    return (cmdList |> Ok)
-                                with
-                                    | _ as ex ->
-                                        logger.LogError (sprintf "an error occurred: %A" ex.Message)
-                                        transaction.Rollback()
-                                        conn.Close()
-                                        return (ex.Message |> Error)
-                        }, eventStoreTimeout) 
-                    else Error ("optimistic lock failure: " + (errors |> String.concat ", ") + $"lastEventId: {lastEventId}, eventId: {s1EventId}")
-                        
-                
+                (arg: List<EventId * List<string> * Version * Name * AggregateId>)
+                =
+                let snapCommand =
+                    sprintf
+                        "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)"
+                        s1Version
+                        s1name
+
+                let lastEventId =
+                    (this :> IEventStore<string>).TryGetLastAggregateEventId s1Version s1name s1AggregateId
+
+                let lastEventIds =
+                    arg
+                    |>> fun (_, _, version, name, aggregateId) ->
+                        ((this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId)
+
+                let eventIds = arg |>> fun (eventId, _, _, _, _) -> eventId
+
+                let checks =
+                    List.zip lastEventIds eventIds
+                    |> List.forall (fun (lastEventId, eventId) ->
+                        lastEventId.IsNone && eventId = 0 || lastEventId.Value = eventId)
+
+                let errors =
+                    List.zip lastEventIds eventIds
+                    |> List.filter (fun (lastEventId, eventId) ->
+                        lastEventId.IsNone && eventId <> 0
+                        || (lastEventId.IsSome && lastEventId.Value <> eventId))
+                    |> List.map (fun (lastEventId, eventId) ->
+                        sprintf "EventId check failed. eventId passed %d. Latest eventId: %A" eventId lastEventId)
+
+                if
+                    ((lastEventId.IsNone && s1EventId = 0)
+                     || (lastEventId.IsSome && lastEventId.Value = s1EventId))
+                    && checks
+                then
+
+                    use conn = new NpgsqlConnection(connection)
+                    conn.Open()
+                    let transaction = conn.BeginTransaction()
+
+                    Async.RunSynchronously(
+                        async {
+                            try
+                                let cmdList =
+                                    arg
+                                    |>> fun (_, events, version, name, aggregateId) ->
+                                        let stream_name = version + name
+
+                                        let distanceFromLatestSnapshot =
+                                            this
+                                                .GetDistanceFromLatestSnapshotAsync(
+                                                    version,
+                                                    name,
+                                                    aggregateId,
+                                                    CancellationToken.None
+                                                )
+                                                .GetAwaiter()
+                                                .GetResult()
+
+                                        let index = distanceFromLatestSnapshot + 1 % distanceBetweenSnapshots
+
+                                        events
+                                        |>> fun event ->
+                                            let command =
+                                                new NpgsqlCommand(
+                                                    sprintf
+                                                        "SELECT insert_md%s_aggregate_event_and_return_id(@event, @aggregate_id, @distance_from_latest_snapshot, @md);"
+                                                        stream_name,
+                                                    conn
+                                                )
+
+                                            (command.Parameters.AddWithValue("event", event) |> ignore
+                                             command.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                                             command.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                                             |> ignore
+
+                                             command.Parameters.AddWithValue("md", md) |> ignore
+                                             let result = command.ExecuteScalar()
+                                             result :?> int)
+
+                                let _ =
+                                    connection
+                                    |> Sql.connect
+                                    |> Sql.executeTransaction
+                                        [ snapCommand,
+                                          [ [ ("aggregate_id", Sql.uuid s1AggregateId)
+                                              ("snapshot", sqlJson s1Snapshot)
+                                              ("timestamp", Sql.timestamp System.DateTime.Now)
+                                              ("is_deleted", Sql.bool true) ] ] ]
+
+                                transaction.Commit()
+                                conn.Close()
+                                return (cmdList |> Ok)
+                            with _ as ex ->
+                                logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                                transaction.Rollback()
+                                conn.Close()
+                                return (ex.Message |> Error)
+                        },
+                        eventStoreTimeout
+                    )
+                else
+                    Error(
+                        "optimistic lock failure: "
+                        + (errors |> String.concat ", ")
+                        + $"lastEventId: {lastEventId}, eventId: {s1EventId}"
+                    )
