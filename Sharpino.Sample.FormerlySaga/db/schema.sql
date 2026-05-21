@@ -1,7 +1,7 @@
-\restrict cinYfhGBa9PiejMVNSmLE3e9B2M1JkA3FChbkfWeaBjWLZKpEe7hEwQdUJYYQeq
+\restrict Jxlm9hjXSOS2khjFm7F8gm5v4LUolqVueW32aAnc80UaOht0PaOiQyD4bZhvI6k
 
--- Dumped from database version 14.4
--- Dumped by pg_dump version 18.0
+-- Dumped from database version 17.9 (Homebrew)
+-- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14,13 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: -
---
-
--- *not* creating schema, since initdb creates it
-
 
 --
 -- Name: insert_01_booking_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -786,19 +779,19 @@ ALTER TABLE ONLY public.snapshots_01_voucher
 
 
 --
--- Name: aggregate_events_01_row aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.aggregate_events_01_row
-    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_row(id) MATCH FULL ON DELETE CASCADE;
-
-
---
 -- Name: aggregate_events_01_booking aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.aggregate_events_01_booking
     ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_booking(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
+-- Name: aggregate_events_01_row aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_row
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_row(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -845,7 +838,7 @@ ALTER TABLE ONLY public.snapshots_01_voucher
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cinYfhGBa9PiejMVNSmLE3e9B2M1JkA3FChbkfWeaBjWLZKpEe7hEwQdUJYYQeq
+\unrestrict Jxlm9hjXSOS2khjFm7F8gm5v4LUolqVueW32aAnc80UaOht0PaOiQyD4bZhvI6k
 
 
 --
@@ -857,7 +850,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20241024083516'),
     ('20241024083748'),
     ('20241201155023'),
-    ('20241224084319'),
     ('20250613072815'),
     ('20260307145730'),
     ('20260307145755'),
