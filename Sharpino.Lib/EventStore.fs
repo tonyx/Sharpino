@@ -294,6 +294,9 @@ module Storage =
             Version * Name * AggregateId * ('F -> Result<bool, string>) * 'F * ?ct: CancellationToken ->
                 Task<Result<unit, string>>
 
+        abstract member BulkSnapshotsUpcast:
+            Version * Name * ('F -> Result<'F, string>) * ?ct: CancellationToken -> Task<Result<int, string>>
+
     // this must be deleted
     type IEventBroker<'F> =
         { notify: Option<Version -> Name -> List<EventId * 'F> -> List<Result<string, 'F>>>

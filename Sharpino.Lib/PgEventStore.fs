@@ -3048,6 +3048,59 @@ module PgStorage =
                         return! Error ex.Message
                 }
 
+            member this.BulkSnapshotsUpcast(version, name, upcastFunction, ?ct: CancellationToken) =
+                let query =
+                    sprintf "SELECT id, snapshot FROM snapshots%s%s" version name
+
+                let updateCommand =
+                    sprintf "UPDATE snapshots%s%s SET snapshot = @snapshot WHERE id = @id" version name
+
+                let getSnapshotsAsync () =
+                    taskResult {
+                        let! snapshots =
+                            connection
+                            |> Sql.connect
+                            |> Sql.query query
+                            |> Sql.executeAsync (fun read -> (read.int "id", readAsText read "snapshot"))
+
+                        return snapshots
+                    }
+
+                taskResult {
+                    let! snapshots = getSnapshotsAsync ()
+
+                    let updates =
+                        snapshots
+                        |> List.choose (fun (id, snap) ->
+                            match upcastFunction snap with
+                            | Ok newSnap -> Some(id, newSnap)
+                            | Error err ->
+                                logger.LogWarning(sprintf "BulkSnapshotsUpcast failed for snapshot id %d: %s" id err)
+                                None)
+
+                    try
+                        if not updates.IsEmpty then
+                            let! _ =
+                                connection
+                                |> Sql.connect
+                                |> Sql.executeTransactionAsync
+                                    [ updateCommand,
+                                      [ for (id, newSnap) in updates ->
+                                            [ ("snapshot", sqlJson newSnap); ("id", Sql.int id) ] ] ]
+
+                            return updates.Length
+                        else
+                            return 0
+                    with ex ->
+                        logger.LogError(
+                            sprintf
+                                "an error occurred in BulkSnapshotsUpcast while updating snapshots: %A"
+                                ex.Message
+                        )
+
+                        return! Error ex.Message
+                }
+
             member this.SnapshotMarkDeletedAndMultiAddAggregateEventsMd
                 md
                 s1Version

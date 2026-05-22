@@ -1228,3 +1228,9 @@ module MemoryStorage =
                     aggregate_snapshots_dic.[version].[name].[aggregateId] <- updatedSnapshots
 
                 Ok()
+
+            member this.BulkSnapshotsUpcast(version, name, upcastFunction, ?ct: CancellationToken) =
+                taskResult {
+                    return 0
+                }
+
