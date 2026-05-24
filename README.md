@@ -164,7 +164,8 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
-- Version 5.0.4: GDPR update snapshots and events async. versions.
+- Version 5.0.5: Big Snapshots upcast at event store level. Upcast an old snapshot means to upcast the snapshot and replace the old snapshot with the equivalent in the new format.
+- Version 5.0.4: GDPR update snapshots and events async versions.
 - Version 5.0.3: GDPR Partial Update Snapshots, events replace for snapshots and events containing sensible data. 
   Is preferrable to keep sensible data away from the event store, but if they are there for watever reasons, then they must be also replecable somehow.
   Technical constraints. 1: Any event replaced must return an Ok (applied on the state related to the event that is immediately preceeding it in the event stream). 2: The partial snapshot replacement must be consistent with the event stream. 3. The AggregateCache3 entry related to the involved aggregate must be cleared. This applies also to any details cache (projections based on that aggregate). 

@@ -164,6 +164,28 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 5.0.6: A fix in optimistic concurrency control (MultiAddAggregateEventsMdAsync)
+- Version 5.0.5: Big Snapshots upcast at event store level. Upcast an old snapshot means to upcast the snapshot and replace the old snapshot with the equivalent in the new format.
+- Version 5.0.4: GDPR update snapshots and events async versions.
+- Version 5.0.3: GDPR Partial Update Snapshots, events replace for snapshots and events containing sensible data. 
+  Is preferrable to keep sensible data away from the event store, but if they are there for watever reasons, then they must be also replecable somehow.
+  Technical constraints. 1: Any event replaced must return an Ok (applied on the state related to the event that is immediately preceeding it in the event stream). 2: The partial snapshot replacement must be consistent with the event stream. 3. The AggregateCache3 entry related to the involved aggregate must be cleared. This applies also to any details cache (projections based on that aggregate). 
+- Version 5.0.2: fixes 5.0.1 and 5.0.0
+- Version 5.0.1: removed Async.AwaitTask in many task based operations for better performance: it may require adjusting the database pool size. Example: `Maximum Pool Size=60` on the connectionString.
+- Version 5.0.0: Adjust the details cache by using `RefreshableAsync<'A>` interface instead of `Refreshable<'A>`. __Not backward compatible__ for the details cache part. Hint: The upgrade consist mainly in using taskResult  c.e. instead of Result to wrap the refresher function and  getting rid of Async.AwaitTask inside it. Some examples follow the new interface (even some more comprehensive ones with better explanations will follow).
+- A tech stack blue print meant to feed A.I. agents to help code generation with a blazor+sharpino architecture [blazorBookLibrary](https://github.com/tonyx/blazorBookLibrary/blob/main/Docs/Tech_Stack_Blueprint.md). Note: the book library has to be used just as an example, A.I. agents should be able to generate the code for whatever domain you give them, by using the tech stack and the constraints described in the blue print.
+- [New example](https://github.com/tonyx/blazorBookLibrary), with link to a live demo: a book library management system (WIP)
+- Version 4.9.4: rearranged cancellation token handling in aggregate state retrieval functions to depend only on config files, make sure that you can substantially prevent timeout if you want to.
+- Version 4.9.3: changed some loops in EventStore to be non recursive
+- Version 4.9.2: added few async version of multiple aggregate commands run, started eliminating the checks static NapshotsInterval definition (to be eliminated in the very next future)
+- Version 4.9.1: fixed getAggregateFreshStateAsync (temporary async workaround, not too bad as we stay in the async way of chain of calls)
+- Version 4.9.0: fixes issue #60. https://github.com/tonyx/Sharpino/issues/60
+- Version 4.8.9: added runDeleteAsync
+- Version 4.8.8: added getAllFilteredAggregateStatesAsync which uses a predicate to filter the results
+- Version 4.8.6: added runTwoNAggregateCommandsMdAsync. Added (under comments) track of future async version of details (with cache interaction)
+- Version 4.8.5: fix on optmistic lock control in SetInitialAggregateStateAndAddEventsMdAsync (issue #58). Add SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync. (note: those kind of multi-streams function bring complexity that will be abandoned and replaced with more standard approaches, including single streams with compensation events, projections, and "details").
+add getAggregateFreshStateAsync. (The "async" versions of existing functions is needed for a modern scalable approach using cancellation tokens and thread pool optimization). This looks a way to proliferate the nasty "multiple streams" commands. That's right: will clean up stuff, by removing the need to use the "multiple streams" commands.
+- Version 4.8.4: add SetInitialAggregateStateAndAddAggregateEventsMdAsync. (The "async" versions of existing functions is needed for a modern scalable approach using cancellation tokens and thread pool optimization). This looks a way to proliferate the nasty "multiple streams" commands. That's right: will clean up stuff, by removing the need to use the "multiple streams" commands.
 - Version 4.8.2: added getAggregateFreshStateAsync.  Some existing tests have their equivalent "async" version as well
 - Version 4.8.1: added more "async" with cancellation token CommandHandler functions. Added a specific expiration time for L2 (Azure Sql) cache, which should be short lived, shorter than L1. Added case of "refreshable details" in example22 to check that details will be in sync with values coming from L1 cache. At the moment it seems to work as expected. More tests are needed to try to break it.
 - Version 4.7.9: some fixes about sql L2 cache + Service bus (see example 22 for setup working example with dockerized pgSql eventstore,  Azure sql l2 cache + service bus for invalidation messages)

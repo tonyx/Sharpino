@@ -296,8 +296,7 @@ module PgBinaryStore =
                 let checks =
                     List.zip lastEventIds eventIds
                     |> List.forall (fun (lastEventId, eventId) ->
-                        lastEventId.IsNone && eventId = 0
-                        || (lastEventId.IsSome && lastEventId.Value = eventId))
+                        lastEventId.IsNone && eventId = 0 || (lastEventId.IsSome && lastEventId.Value = eventId))
 
                 let errors =
                     List.zip lastEventIds eventIds
