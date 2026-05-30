@@ -27,7 +27,8 @@ open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 
 Env.Load() |> ignore
-let connection  = Environment.GetEnvironmentVariable("CONNECTION_STRING")
+let connection  = Environment.GetEnvironmentVariable("CONNECTION_URL")
+
 
 #if RABBITMQ
 let hostBuilder =

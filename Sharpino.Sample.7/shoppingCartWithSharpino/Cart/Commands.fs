@@ -11,6 +11,7 @@ module CartCommands =
     type CartCommands =
     | AddGood of Guid * int
     | RemoveGood of Guid
+    | AddGoods of (Guid * int) list
         interface AggregateCommand<Cart, CartEvents> with
             member this.Execute (cart: Cart) =
                 match this with
@@ -20,6 +21,9 @@ module CartCommands =
                 | RemoveGood goodRef ->
                     cart.RemoveGood goodRef
                     |> Result.map (fun s -> (s, [GoodRemoved goodRef]))
+                | AddGoods goodsList ->
+                    cart.AddGoods goodsList
+                    |> Result.map (fun s -> (s, [GoodsAdded goodsList]))
             member this.Undoer = 
                 match this with
                 | AddGood (goodRef, _) -> 
@@ -62,3 +66,4 @@ module CartCommands =
                                         }
                                 }
                         )
+                | _ -> None

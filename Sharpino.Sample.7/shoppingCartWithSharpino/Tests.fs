@@ -343,7 +343,7 @@ let tests =
             Expect.isOk cartAdded "should be ok"
 
             let apple = Good.MkGood (Guid.NewGuid(), "apple", 10.0m)
-            
+
             let GoodAdded1 = supermarket.AddGood apple
             Expect.isOk GoodAdded1 "should be ok"
 
@@ -356,7 +356,11 @@ let tests =
             let _ = supermarket.AddQuantity (lemon.Id, 10)
 
             Thread.Sleep(timeToWait)
-            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(apple.Id, 1); (lemon.Id, 1)])
+            let addedToCart1 = 
+                supermarket.AddGoodsToCart2 (cartId, [(apple.Id, 1); (lemon.Id, 1)])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
             Expect.isOk addedToCart1 "should be ok"
 
             Thread.Sleep(timeToWait)
@@ -403,7 +407,7 @@ let tests =
 
             Thread.Sleep(timeToWait)
             let addedToCart1 = 
-                supermarket.AddGoodsToCartAsync (cartId, [(apple.Id, 1); (lemon.Id, 1)])
+                supermarket.AddGoodsToCart2 (cartId, [(apple.Id, 1); (lemon.Id, 1)])
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
 

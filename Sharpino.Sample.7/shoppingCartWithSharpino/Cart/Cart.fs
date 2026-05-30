@@ -15,7 +15,20 @@ module Cart =
         static member MkCart (id: Guid) =
             { Id = id; Goods = Map.empty }
         member this.AddGood (goodRef: Guid, quantity: int) =
-            { this with Goods = this.Goods.Add(goodRef, quantity) } |> Ok
+            { 
+                this with Goods = this.Goods.Add(goodRef, quantity) 
+            } 
+            |> Ok
+
+        member this.AddGoods (goods: (Guid * int) list) =
+            result
+                {
+                    let cart1 = 
+                        goods
+                        |> List.fold (fun (acc: Cart) (goodRef, quantity) -> (acc.AddGood(goodRef, quantity) |> Result.get)) this
+                    return cart1
+                }
+        
         member this.GetGoodsQuantity (goodRef: Guid) =
             result {
                 do! 

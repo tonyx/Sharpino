@@ -1,4 +1,4 @@
-\restrict SArTLApYG4NxxOPvnpbivbdsJIqqcwPIol7Y9Hw9H8zI8NwKJtqtSDczQwIfrYN
+\restrict rTurdUzYrQocdEA02JZXBQeiTox69N4AxVcnRxvma1lkHFhxARiawAebIZgbgRd
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -48,6 +48,42 @@ BEGIN
 INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_todo_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_todo_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    found_last_event_id integer;
+BEGIN
+    SELECT id INTO found_last_event_id
+    FROM events_01_Todo
+    WHERE events_01_Todo.aggregate_id = insert_md_01_Todo_aggregate_event_and_return_id_opt_lock.aggregate_id
+    ORDER BY id DESC LIMIT 1;
+
+    IF last_event_id = 0 THEN
+        IF found_last_event_id IS NOT NULL THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
+        END IF;
+    ELSIF last_event_id > 0 THEN
+        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
+        END IF;
+    END IF;
+
+    event_id := insert_md_01_Todo_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
 END;
 $$;
 
@@ -269,7 +305,7 @@ ALTER TABLE ONLY public.snapshots_01_todo
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SArTLApYG4NxxOPvnpbivbdsJIqqcwPIol7Y9Hw9H8zI8NwKJtqtSDczQwIfrYN
+\unrestrict rTurdUzYrQocdEA02JZXBQeiTox69N4AxVcnRxvma1lkHFhxARiawAebIZgbgRd
 
 
 --
@@ -278,4 +314,5 @@ ALTER TABLE ONLY public.snapshots_01_todo
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20260115115559'),
-    ('20260115115952');
+    ('20260115115952'),
+    ('20260529160000');

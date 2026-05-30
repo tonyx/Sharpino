@@ -164,6 +164,48 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 6.0.0: Optimistic lock control switched to psql. Note: any use of forceXXX command group will almost surely fail if repeated ids are passed. A clear non blocking log error is arised. The clean way to face the situation is to transform multiples commands hitting the same aggregate Id with a new single command behaving like repeated execution of more commands on same aggregate. If it ends up in different length of aggregateIds passed as first and second group of aggregate-command it will work anyway. Benefit is that the dirty trick of invalidating the cache will be not necessary anymore.  Example 7 has been enhanced to show such cases. Any sql per stream setup needs the following new script template (sustitute {version} and {AggregateStorageName}):
+```sql
+CREATE OR REPLACE FUNCTION insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock(
+    IN event_in {Format},
+    IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
+    IN md text,   
+    IN last_event_id int
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    found_last_event_id integer;
+BEGIN
+    SELECT id INTO found_last_event_id 
+    FROM events{Version}{AggregateStorageName} 
+    WHERE events{Version}{AggregateStorageName}.aggregate_id = insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock.aggregate_id 
+    ORDER BY id DESC LIMIT 1;
+
+    IF last_event_id = 0 THEN
+        IF found_last_event_id IS NOT NULL THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
+        END IF;
+    ELSIF last_event_id > 0 THEN
+        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
+        END IF;
+    END IF;
+
+    event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events{Version}{AggregateStorageName}(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
+$$;
+
+```
 - Version 5.0.5: Big Snapshots upcast at event store level. Upcast an old snapshot means to upcast the snapshot and replace the old snapshot with the equivalent in the new format.
 - Version 5.0.4: GDPR update snapshots and events async versions.
 - Version 5.0.3: GDPR Partial Update Snapshots, events replace for snapshots and events containing sensible data. 

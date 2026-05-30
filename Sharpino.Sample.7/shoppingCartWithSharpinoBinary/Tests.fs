@@ -341,7 +341,11 @@ let tests =
             let _ = supermarket.AddQuantity (lemon.Id, 10)
 
             Thread.Sleep(delay)
-            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(apple.Id, 1); (lemon.Id, 1)])
+            let addedToCart1 = 
+                supermarket.AddGoodsToCart2 (cartId, [(apple.Id, 1); (lemon.Id, 1)])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
             Expect.isOk addedToCart1 "should be ok"
 
             Thread.Sleep(delay)

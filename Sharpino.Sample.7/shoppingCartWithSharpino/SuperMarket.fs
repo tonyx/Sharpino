@@ -172,6 +172,32 @@ module Supermarket =
                         addToCart
             } 
 
+        member this.AddGoodsToCart2 (cartId: Guid, goods: (Guid * int) list) = 
+            taskResult
+                {
+                    let removeCommands: List<AggregateCommand<Good, GoodEvents>> =
+                        goods
+                        |> List.map (fun (goodId, quantity) ->  GoodCommands.RemoveQuantity quantity)
+                    let cartCommand =
+                        CartCommands.AddGoods goods
+
+                    let goodIds = 
+                        goods
+                        |> List.map fst
+                    
+                    let! result =
+                        forceRunTwoNAggregateCommandsMdAsync
+                            goodIds
+                            [cartId]
+                            eventStore
+                            eventBroker
+                            ""
+                            removeCommands
+                            [cartCommand]
+                            None
+                    return result
+                }
+
         member this.AddGoodsToCartAsync (cartId: Guid, goods: (Guid * int) list) =
             taskResult {
                 let commands = 

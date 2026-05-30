@@ -17,6 +17,16 @@ module Cart =
             { Id = id; Goods = Map.empty }
         member this.AddGood (goodRef: Guid, quantity: int) =
             { this with Goods = this.Goods.Add(goodRef, quantity) } |> Ok
+
+        member this.AddGoods (goods: List<(Guid * int)>) =
+            result
+                {
+                    let cart1 =
+                        goods
+                        |> List.fold (fun (acc: Cart) (goodRef, quantity) ->
+                            (acc.AddGood(goodRef, quantity) |> Result.get)) this
+                    return cart1
+                }
         member this.GetGoodsQuantity (goodRef: Guid) =
             result {
                 do! 
