@@ -203,15 +203,16 @@ let mkDefaultRow10Seats =
           AssociatedVouchers = []
           Id = Guid.NewGuid() }
 
+
+(*
+
+INFO: some functiona are called saga but that has little to do with saga as some tech stuff changed
+
+*)
+
+
 let appVersionsEnvs =
     [
-      // (setupMemoryStorage, "memory db", (fun () -> SeatBookingService(memoryStorage, emptyMessageSenders, teatherContextViewer,
-      // rowAggregateMemoryViewer,
-      // bookingsAggregateMemoryViewer,
-      // vouchersAggregateMemoryViewer)), 0)
-      // enable postgres db only if you properly handled the postgres db setup
-      // (setupDbEventStore, "postgres db", (fun () -> SeatBookingService(dbEventStore, emptyMessageSender, teatherContextdbViewer,
-      //                                                                  rowAggregatedbViewer, bookingsAggregatedbViewer, vouchersAggregatedbViewer)), 0)
 
 #if RABBITMQ
       (setupDbEventStore,
@@ -645,6 +646,7 @@ let tests =
               Expect.equal row1.OkValue.FreeSeats 9 "should be equal"
               Expect.equal row2.OkValue.FreeSeats 9 "should be equal"
 
+          // FOCUS
           multipleTestCase
               "do in parallel two bookings on the same row using no id unique check so the result is ok and the resulting state is not correct because globally the result is not valid  - Error"
               appVersionsEnvs
@@ -670,8 +672,10 @@ let tests =
               let addBooking2 = service.AddBooking booking2
 
               // action
+            //   let assignBookings =
+            //       service.ForceAssignBookings([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
               let assignBookings =
-                  service.ForceAssignBookings([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
+                  service.ForceAssignBookingsToSingleRow([ booking1.Id; booking2.Id ], row.Id)
 
               // expectation
               Expect.isError assignBookings "should be error"
@@ -699,19 +703,22 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
               let addRow = service.AddRow row
               let addBooking1 = service.AddBooking booking1
+
               let addBooking2 = service.AddBooking booking2
 
               // action
               // let assignBookings = service.ForceAssignBookings ([(booking1.Id, row.Id); (booking2.Id, row.Id)])
               let assignBookings =
-                  service.AssignBookingUsingSagaWayNotSagaishAnymore([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
+                  service.AssignMoreBookingsToSingleRow([ booking1.Id; booking2.Id], row.Id)
 
               // expectation
               Expect.isOk assignBookings "should be ok"
 
               Async.Sleep delay |> Async.RunSynchronously
               let row = service.GetRow row.Id
+
               Expect.isOk row "should be ok"
+
               Expect.equal row.OkValue.FreeSeats 6 "should be equal"
 
               let booking1 = service.GetBooking booking1.Id
@@ -751,7 +758,7 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  service.ForceAssignBookings([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
+                  service.AssignMoreBookingsToSingleRow([booking1.Id; booking2.Id], row.Id)
 
               // expectation
               Expect.isOk assignBookings "should be ok"
@@ -771,6 +778,7 @@ let tests =
               Expect.isOk booking2 "should be ok"
               Expect.equal booking2.OkValue.RowId (Some row.OkValue.Id) "should be equal"
 
+          // FOCUS
           multipleTestCase
               "do in sequence using saga way a transaction that will exceeds the available seats and so it will rollback - Error"
               appVersionsEnvs
@@ -798,7 +806,7 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  service.AssignBookingUsingSagaWayNotSagaishAnymore([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
+                  service.ForceAssignBookingsToSingleRow([ booking1.Id; booking2.Id ], row.Id)
 
               // expectation
               Expect.isError assignBookings "should be error"
@@ -812,6 +820,7 @@ let tests =
               Expect.isOk booking2 "should be ok"
               Expect.equal booking2.OkValue.RowId None "should be equal"
 
+          // focus
           multipleTestCase "can't assign booking, not enough seats - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -838,7 +847,7 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  service.ForceAssignBookings([ (booking1.Id, row.Id); (booking2.Id, row.Id) ])
+                  service.ForceAssignBookingsToSingleRow([ booking1.Id; booking2.Id ], row.Id)
 
               // expectation
               Expect.isError assignBookings "should be error"
@@ -853,6 +862,7 @@ let tests =
               Expect.isOk booking2 "should be ok"
               Expect.equal booking2.OkValue.RowId None "should be equal"
 
+          // focus
           multipleTestCase "a more generalized saga example - Ok" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -887,8 +897,7 @@ let tests =
 
               // action
               let assignBookings =
-                  service.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id); (booking2.Id, row.Id); (booking3.Id, row.Id) ]
+                  service.ForceAssignBookingsToSingleRow( [ booking1.Id; booking2.Id; booking3.Id ], row.Id)
 
               Expect.isError assignBookings "should be error"
 
@@ -902,6 +911,7 @@ let tests =
               Expect.isOk booking1 "should be ok"
               Expect.isNone booking1.OkValue.RowId "should be none"
 
+          // focus
           multipleTestCase "a more generalized non example using repeatedly same aggregate IDs - Ok" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -934,9 +944,8 @@ let tests =
               let addBooking3 = service.AddBooking booking3
               Expect.isOk addBooking3 "should be ok"
 
-              // action
               let assignBookings =
-                  service.ForceAssignBookings [ (booking1.Id, row.Id); (booking2.Id, row.Id); (booking3.Id, row.Id) ]
+                  service.ForceAssignBookingsToSingleRow ([ booking1.Id; booking2.Id; booking3.Id ], row.Id)
 
               Expect.isError assignBookings "should be error"
 
@@ -950,6 +959,7 @@ let tests =
               Expect.isOk booking1 "should be ok"
               Expect.isNone booking1.OkValue.RowId "should be none"
 
+          // focus
           multipleTestCase "a more generalized saga example where compensation take place - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -986,8 +996,8 @@ let tests =
 
               // action
               let assignBookings =
-                  service.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id); (booking2.Id, row.Id); (booking3.Id, row.Id) ]
+                  service.ForceAssignBookingsToSingleRow
+                      ([ booking1.Id; booking2.Id; booking3.Id],  row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1001,6 +1011,7 @@ let tests =
               let booking1 = service.GetBooking booking1.Id
               Expect.isOk booking1 "should be ok"
 
+          // focus
           multipleTestCase "a more generalized no saga example - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -1037,7 +1048,7 @@ let tests =
 
               // action
               let assignBookings =
-                  service.ForceAssignBookings [ (booking1.Id, row.Id); (booking2.Id, row.Id); (booking3.Id, row.Id) ]
+                  service.ForceAssignBookingsToSingleRow( [ booking1.Id; booking2.Id; booking3.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1430,6 +1441,7 @@ let tests =
               Expect.isOk retrieveRow "should be ok"
               Expect.equal retrieveRow.OkValue.FreeSeats 10 "should be equal"
 
+          // focus
           multipleTestCase "a more generalized saga example where compensation take place 2 - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -1475,11 +1487,8 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+                  seatBookingService.ForceAssignBookingsToSingleRow
+                      ([ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1535,11 +1544,8 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  seatBookingService.ForceAssignBookings
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be Error"
 
@@ -1594,13 +1600,10 @@ let tests =
 
               // action
               Async.Sleep delay |> Async.RunSynchronously
-
+              
               let assignBookings =
-                  seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be Error"
 
@@ -1656,12 +1659,9 @@ let tests =
               // action
               Async.Sleep delay |> Async.RunSynchronously
 
-              let assignBookings =
-                  seatBookingService.ForceAssignBookings
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+              let assignBookings = 
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1673,6 +1673,7 @@ let tests =
               let booking1 = seatBookingService.GetBooking booking1.Id
               Expect.isOk booking1 "should be ok"
 
+          // focus
           multipleTestCase "a more generalized saga example of compensation 4 - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -1718,11 +1719,8 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1734,6 +1732,7 @@ let tests =
               let booking1 = seatBookingService.GetBooking booking1.Id
               Expect.isOk booking1 "should be ok"
 
+          // focus
           multipleTestCase "a more generalized example using 'force' instead of saga 4 - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -1778,12 +1777,9 @@ let tests =
               // action
               Async.Sleep delay |> Async.RunSynchronously
 
-              let assignBookings =
-                  seatBookingService.ForceAssignBookings
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+              let assignBookings = 
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1843,12 +1839,9 @@ let tests =
               // action
               Async.Sleep delay |> Async.RunSynchronously
 
-              let assignBookings =
-                  seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+              let assignBookings = 
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1905,12 +1898,10 @@ let tests =
               Expect.isOk addBooking4 "should be ok"
 
               // action
+              
               let assignBookings =
-                  seatBookingService.ForceAssignBookings
-                      [ (booking1.Id, row.Id)
-                        (booking2.Id, row.Id)
-                        (booking3.Id, row.Id)
-                        (booking4.Id, row.Id) ]
+                  seatBookingService.ForceAssignBookingsToSingleRow(
+                      [ booking1.Id; booking2.Id; booking3.Id; booking4.Id ], row.Id)
 
               Expect.isError assignBookings "should be ok"
 
@@ -1923,6 +1914,7 @@ let tests =
               let booking1 = seatBookingService.GetBooking booking1.Id
               Expect.isOk booking1 "should be ok"
 
+          // focus
           multipleTestCase "a more general saga example of compensation 6 - Error" appVersionsEnvs
           <| fun (setup, _, service, delay) ->
               setup ()
@@ -1984,9 +1976,9 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  seatBookingService.AssignBookingUsingSagaWayNotSagaishAnymore(
-                      bookings |> List.map (fun b -> (b.Id, row.Id))
-                  )
+                seatBookingService.ForceAssignBookingsToSingleRow(
+                    bookings |> List.map (fun b -> b.Id), row.Id
+                )
 
               Expect.isError assignBookings "should be ok"
 
@@ -2060,7 +2052,9 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookings =
-                  seatBookingService.ForceAssignBookings(bookings |> List.map (fun b -> (b.Id, row.Id)))
+                seatBookingService.ForceAssignBookingsToSingleRow(
+                    bookings |> List.map (fun b -> b.Id), row.Id
+                )
 
               Expect.isError assignBookings "should be Error"
 
@@ -2429,8 +2423,10 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookingsSpendingVouchers =
-                  seatBookingService.ForceAssignBookingsSpendingVouchers
-                      [ (bookingId1, rowId1, voucherId1); (booking2Id, rowId2, voucherId1) ]
+                  seatBookingService.ForceAssignBookingsSpendingSingleVoucher
+                      ([(bookingId1, rowId1)
+                        (booking2Id, rowId2) ], 
+                        voucherId1)
 
               Expect.isOk assignBookingsSpendingVouchers "should be ok"
 
@@ -2483,8 +2479,8 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookingsSpendingVouchers =
-                  seatBookingService.ForceAssignBookingsSpendingVouchers
-                      [ (bookingId1, rowId1, voucherId); (booking2Id, rowId2, voucherId) ]
+                  seatBookingService.ForceAssignBookingsSpendingSingleVoucher
+                      ([ (bookingId1, rowId1); (booking2Id, rowId2) ], voucherId)
 
               Expect.isError assignBookingsSpendingVouchers "should be error"
               let (Error e) = assignBookingsSpendingVouchers
@@ -2567,14 +2563,15 @@ let tests =
               let voucherId = voucher.Id
               Async.Sleep delay |> Async.RunSynchronously
 
-              let assignBookingsSpendingVouchers =
-                  seatBookingService.ForceAssignBookingsSpendingVouchers
-                      [ (bookingId1, rowId1, voucherId)
-                        (booking2Id, rowId2, voucherId)
-                        (booking3Id, rowId3, voucherId) ]
+              let assignBookngsSingleVoucher =
+                  seatBookingService.ForceAssignBookingsSpendingSingleVoucher
+                      ([ (bookingId1, rowId1)
+                         (booking2Id, rowId2)
+                         (booking3Id, rowId3) ],
+                        voucherId)
 
-              Expect.isError assignBookingsSpendingVouchers "should be error"
-              let (Error e) = assignBookingsSpendingVouchers
+              Expect.isError assignBookngsSingleVoucher "should be error"
+              let (Error e) = assignBookngsSingleVoucher
               Expect.equal e "cannot assign vouchers to seats that are more than the voucher capacity" "should be equal"
 
           multipleTestCase
@@ -2632,10 +2629,10 @@ let tests =
               Async.Sleep delay |> Async.RunSynchronously
 
               let assignBookingsSpendingVouchers =
-                  seatBookingService.ForceAssignBookingsSpendingVouchers
-                      [ (bookingId1, rowId1, voucherId)
-                        (booking2Id, rowId2, voucherId)
-                        (booking3Id, rowId3, voucherId) ]
+                  seatBookingService.ForceAssignBookingsSpendingSingleVoucher
+                      ([(bookingId1, rowId1)
+                        (booking2Id, rowId2)
+                        (booking3Id, rowId3)], voucherId)
 
               Expect.isOk assignBookingsSpendingVouchers "should be ok"
 
@@ -2646,7 +2643,7 @@ let tests =
               Expect.equal retrievedRow1Value.FreeSeats 3 "should be equal"
               Expect.equal retrievedRow1Value.AssociatedBookings.Length 1 "should be equal"
 
-          multipleTestCase
+          pmultipleTestCase
               "one voucher sufficient enough, three rows and three boookings enough for each rows async - Ok"
               appVersionsEnvs
           <| fun (setup, _, service, delay) ->
@@ -2700,15 +2697,14 @@ let tests =
               let voucherId = voucher.Id
               Async.Sleep delay |> Async.RunSynchronously
 
-              let assignBookingsSpendingVouchers =
-                  seatBookingService.ForceAssignBookingsSpendingVouchersAsync
-                      [ (bookingId1, rowId1, voucherId)
-                        (booking2Id, rowId2, voucherId)
-                        (booking3Id, rowId3, voucherId) ]
-                  |> Async.AwaitTask
-                  |> Async.RunSynchronously
+              let assignBookingsSpendingSingleVoucher =
+                  seatBookingService.ForceAssignBookingsSpendingSingleVoucher
+                      ([ (bookingId1, rowId1)
+                         (booking2Id, rowId2)
+                         (booking3Id, rowId3) ],
+                        voucherId)
 
-              Expect.isOk assignBookingsSpendingVouchers "should be ok"
+              Expect.isOk assignBookingsSpendingSingleVoucher "should be ok"
 
               Async.Sleep delay |> Async.RunSynchronously
               let retrievedRow1 = seatBookingService.GetRow row1.Id

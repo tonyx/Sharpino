@@ -37,6 +37,19 @@ with
                                 AssociatedBookings = bookingId :: this.AssociatedBookings
                     }
             }
+    member this.AddBookings (bookingIds: List<BookingId>, seatsAsked: int) =
+        result {
+            do! 
+                seatsAsked <= this.FreeSeats
+                |> Result.ofBool "not enough seats"
+            return
+                {
+                    this
+                        with
+                            NumberOfSeatsBooked = this.NumberOfSeatsBooked + seatsAsked
+                            AssociatedBookings = List.append this.AssociatedBookings bookingIds
+                }
+        }
             
     member this.AddSeats (n: int) =
         result

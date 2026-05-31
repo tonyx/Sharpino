@@ -433,7 +433,7 @@ let tests =
             Expect.isOk lemonsQuantity "should be ok"
             Expect.equal lemonsQuantity.OkValue 9 "should be the same quantity"
 
-
+        // FOCUS
         multipleTestCase "add multiple good to a cart, exceeding quantity by one so can't add it. Nothing changes" marketInstances <| fun (supermarket, _, setup, _, _, _, timeToWait) ->
             setup ()
 
@@ -459,7 +459,11 @@ let tests =
             Thread.Sleep(timeToWait)
             let _ = supermarket.AddQuantity (good2.Id, 10)
 
-            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 11); (good2.Id, 1)])
+            // let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 11); (good2.Id, 1)])
+            let addedToCart1 = 
+                supermarket.AddGoodsToCart2 (cartId, [(good1.Id, 11); (good2.Id, 1)])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
             
             Expect.isError addedToCart1 "should be an error"
 

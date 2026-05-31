@@ -7,6 +7,7 @@ open System
 type RowEvents =
     | BookingAdded of Guid * int
     | BookingFreed of Guid * int
+    | BookingsAdded of List<Guid> * int
     | SeatsAdded of int
     | SeatsRemoved of int
     
@@ -16,6 +17,7 @@ type RowEvents =
                 match this with
                 | BookingAdded (id, n) -> x.AddBooking (id, n)
                 | BookingFreed (id, n) -> x.FreeBooking (id, n)
+                | BookingsAdded (ids, n) -> x.AddBookings (ids, n)
                 | SeatsAdded n -> x.AddSeats n
                 | SeatsRemoved n -> x.RemoveSeats n
 

@@ -106,32 +106,32 @@ module SeatBooking =
             if (ns.Length = 0) then
                 Ok ()
             else
+                let totalSeats =
+                    ns |> List.sum
                 result {
                     let! (_, row) = seatsViewer rowId
-                    let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
-                        = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
-                    let rowIds =
-                        [ for i in 1 .. ns.Length -> rowId ]
+                    let removeSeatCommand = RowCommands.RemoveSeats totalSeats 
                         
                     let! result =
-                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
+                        runAggregateCommand<Row, RowEvents, string> rowId eventStore messageSenders removeSeatCommand
                     return result    
                 }
         member this.ForceRemoveSeatsFromRow (rowId: RowId, ns: List<int>) =
-            if (ns.Length = 0) then
-                Ok ()
-            else
-                result {
-                    let! (_, row) = seatsViewer rowId
+            this.RemoveSeatsFromRow (rowId, ns)
+            // if (ns.Length = 0) then
+            //     Ok ()
+            // else
+            //     result {
+            //         let! (_, row) = seatsViewer rowId
                     
-                    let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
-                        = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
-                    let rowIds =
-                        [ for i in 1 .. ns.Length -> rowId ]
-                    let! result =
-                        forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
-                    return result    
-                }
+            //         let removeSeatsCommands: List<AggregateCommand<Row, RowEvents>>
+            //             = ns |> List.map (fun n -> RowCommands.RemoveSeats n)
+            //         let rowIds =
+            //             [ for i in 1 .. ns.Length -> rowId ]
+            //         let! result =
+            //             forceRunNAggregateCommands<Row, RowEvents, string> rowIds eventStore messageSenders removeSeatsCommands
+            //         return result    
+            //     }
                 
         member this.GetBooking (id: BookingId) =
             result {
@@ -213,6 +213,29 @@ module SeatBooking =
                 return!
                     forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands
             }
+
+        member this.ForceAssignBookingsToSingleRow (bookingIds: List<BookingId>, rowId: RowId) =
+            result {
+                let! bookings = bookingIds |> List.traverseResultM (bookingsViewer >> Result.map snd)
+
+                let totalClaimedSeats =
+                    bookings
+                    |> List.sumBy (fun booking -> booking.ClaimedSeats)
+                let assignBookingToRowCommand =
+                    RowCommands.AddBookigngs(bookingIds, totalClaimedSeats)
+
+                let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
+                    List.zip bookingIds bookings
+                    |> List.map (fun (bookingId, booking) -> RowCommands.Book (bookingId, booking.ClaimedSeats)) 
+
+                let assignRowsToBookingsCommands: List<AggregateCommand<Booking, BookingEvents>> =
+                    bookings
+                    |> List.map (fun booking -> BookingCommands.Assign rowId)
+
+                let result =
+                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds [rowId] eventStore messageSenders assignRowsToBookingsCommands [assignBookingToRowCommand]
+                return! result
+            }
             
         member this.AssignBookingsSpendingVouchers (bookingRowsAndVouchers: List<BookingId * RowId * VoucherId>) =
             result {
@@ -280,12 +303,54 @@ module SeatBooking =
                 let seatsPerRows =
                     List.zip rowIds rows
                     |> List.map (fun (rowId, row) -> row.FreeSeats)
-               
+
                 let consumeVouchersCommands: List<AggregateCommand<Voucher, VoucherEvents>> =
                     [ for i in 0 .. bookingRowsAndVouchers.Length - 1 -> VoucherCommands.Consume (seatsPerRows.[i])]
                 
                 return!
                     forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> bookingIds rowIds voucherIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands consumeVouchersCommands
+            }
+
+        member this.ForceAssignBookingsSpendingSingleVoucher (bookingAndRows: List<BookingId * RowId>, voucherId: VoucherId) =
+            result {
+                let bookingIds = bookingAndRows |> List.map  fst
+                let rowIds = bookingAndRows |> List.map snd
+                
+                let! bookings =
+                    bookingIds
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
+                
+                let! rows =
+                    rowIds
+                    |> List.traverseResultM (seatsViewer >> Result.map snd)
+                    
+                let assignBookingsToRowsCommands: List<AggregateCommand<Row, RowEvents>> =
+                    List.zip bookingIds bookings
+                    |> List.map (fun (bookingId, booking) -> RowCommands.Book (bookingId, booking.ClaimedSeats)) 
+                
+                let assignRowsToBookingsCommands: List<AggregateCommand<Booking, BookingEvents>> =
+                    List.zip rowIds rows
+                    |> List.map (fun (rowId, row) -> BookingCommands.Assign rowId)    
+            
+                let seatsPerRows =
+                    List.zip rowIds rows
+                    |> List.map (fun (rowId, row) -> row.FreeSeats)
+
+                let totalRowsSeat =
+                    seatsPerRows
+                    |> List.sum
+                let consumeVoucherCommand = VoucherCommands.Consume totalRowsSeat 
+                
+                return!
+                    forceRunThreeNAggregateCommands<Booking, BookingEvents, Row, RowEvents, Voucher, VoucherEvents, string> 
+                        bookingIds 
+                        rowIds 
+                        [voucherId] 
+                        eventStore 
+                        messageSenders 
+                        assignRowsToBookingsCommands 
+                        assignBookingsToRowsCommands 
+                        [consumeVoucherCommand]
             }
 
         member this.ForceAssignBookingsSpendingVouchersAsync (bookingRowsAndVouchers: List<BookingId * RowId * VoucherId>) =
@@ -349,6 +414,36 @@ module SeatBooking =
                     
                 let! result =
                     forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> bookingIds rowIds eventStore messageSenders assignRowsToBookingsCommands assignBookingsToRowsCommands
+                return result
+            }   
+                
+        member this.AssignMoreBookingsToSingleRow (bookingIds: List<Guid>, rowId: Guid) =
+            result {
+                
+                let! bookings =
+                    bookingIds
+                    |> List.traverseResultM (bookingsViewer >> Result.map snd)
+                let! (_, row) = 
+                    seatsViewer rowId
+
+                let totalClaimedSeats =
+                    bookings
+                    |> List.sumBy (fun b -> b.ClaimedSeats)
+
+                let assignBookingsToRows: List<AggregateCommand<Booking, BookingEvents>> =
+                    [ for b in bookings -> BookingCommands.Assign rowId ]
+
+                let assignRowToBookings = 
+                    RowCommands.AddBookigngs(bookingIds, totalClaimedSeats)
+                    
+                let! result =
+                    forceRunTwoNAggregateCommands<Booking, BookingEvents, Row, RowEvents, string> 
+                        bookingIds 
+                        [rowId] 
+                        eventStore 
+                        messageSenders 
+                        assignBookingsToRows 
+                        [assignRowToBookings]
                 return result
             }   
                 

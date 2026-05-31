@@ -393,7 +393,10 @@ let tests =
             Thread.Sleep(delay)
             let _ = supermarket.AddQuantity (good2.Id, 10)
 
-            let addedToCart1 = supermarket.AddGoodsToCart (cartId, [(good1.Id, 11); (good2.Id, 1)])
+            let addedToCart1 = 
+                supermarket.AddGoodsToCart2 (cartId, [(good1.Id, 11); (good2.Id, 1)])
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
             
             Expect.isError addedToCart1 "should be an error"
 

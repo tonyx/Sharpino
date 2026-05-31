@@ -9,6 +9,7 @@ open FsToolkit.ErrorHandling
 
 type RowCommands =
     | Book of Guid * int
+    | AddBookigngs of List<Guid> * int
     | Free of Guid * int
     | AddSeats of int
     | RemoveSeats of int
@@ -19,6 +20,9 @@ type RowCommands =
             | Book (bookingId, n) ->
                 x.AddBooking (bookingId, n)
                 |> Result.map (fun s -> (s, [RowEvents.BookingAdded (bookingId, n)]))
+            | AddBookigngs (bookingIds, n) ->
+                x.AddBookings (bookingIds, n)
+                |> Result.map (fun s -> (s, [RowEvents.BookingsAdded (bookingIds, n)]))
             | Free (bookingId, n) ->
                 x.FreeBooking (bookingId, n) 
                 |> Result.map (fun s -> (s, [RowEvents.BookingFreed (bookingId, n)]))
@@ -102,3 +106,4 @@ type RowCommands =
                                 }
                         }
                     )        
+            | _ -> None

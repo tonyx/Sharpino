@@ -136,7 +136,7 @@ let courseManager = CourseManager(pgEventStore, courseViewer, studentViewer, Mes
 
 [<Tests>]
 let tests =
-    testList "samples" [
+    ftestList "sample 11 - samples" [
        testCase "add a course and a student" <| fun _ ->
           setUp ()
           let course = Course.MkCourse ("math", 10)

@@ -2181,10 +2181,6 @@ module CommandHandler =
             logger.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command aggregateId)
             runAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders Metadata.Empty command
     
-    // forceRun...Command will relax constraints of the related aggregate commands
-    // allowing aggregateIds to be repeated (i.e. used by different commands in one shot)
-    // Technically forceRun should be able to replace the companion run...Command
-    
     let inline forceRunNAggregateCommandsMd<'A1, 'E1, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -2210,7 +2206,7 @@ module CommandHandler =
             let _ =
                 if aggregateIdsAreNotUnique then
                         logger.LogError
-                                    "aggregateIds contains duplicate ids. The feature is not supported and will 
+                                    $"The runNAggregateommandsMd function received {'A1.StorageName} aggregateIds containing duplicate ids. The feature is not supported and will 
                                     make fail the new pgsql level optimistic check. 
                                     You should rather use a single command involving the same aggregate doing the equivalent of
                                     multiple times a command on the same aggregate.
@@ -2885,17 +2881,25 @@ module CommandHandler =
                 |> fun l -> l.Length <> aggregateIds2.Length
             
             let _ =
-                if (aggregateIds1AreNotUnique || aggregateIds2AreNotUnique) then
+                if aggregateIds1AreNotUnique then
                     logger.LogError
-                                "aggregateIds1 contains duplicate ids. The feature is not supported and will 
+                                $"forceRunTwoNAggregateCommandsMd received in stream {'A1.StorageName} duplicated ids. The feature is not supported and will 
                                 make fail the new pgsql level optimistic check. 
                                 You should rather use a single command involving the same aggregate doing the equivalent of
                                 multiple times a command on the same aggregate.
                                 This will also make it possible to avoid the cache invalidation trick. See example 7.
                                 Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
                                 can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
-            
 
+                if aggregateIds2AreNotUnique then
+                    logger.LogError
+                                $"forceRunTwoNAggregateCommandsMd received in stream {'A2.StorageName} duplicated ids. The feature is not supported and will 
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
+                                can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
 
             logger.LogDebug "forceRunTwoNAggregateCommands"
             let commands = fun () ->
@@ -3110,15 +3114,26 @@ module CommandHandler =
                 |> fun l -> l.Length <> aggregateIds2.Length    
 
             let _ =
-                if (aggregateId1AreNotUnique || aggregateId2AreNotUnique) then
+                if aggregateId1AreNotUnique then
                     logger.LogError 
-                                    "aggregateIds1 or aggregateIds2 contains duplicate ids. The feature is not supported and will 
-                                    make fail the new pgsql level optimistic check. 
-                                    You should rather use a single command involving the same aggregate doing the equivalent of
-                                    multiple times a command on the same aggregate.
-                                    This will also make it possible to avoid the cache invalidation trick. See example 7. Note that
-                                    it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
-                                    can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+                            $"forceRunTwoNAggregateCommandsMdAsync received in stream {'A1.StorageName} duplicated ids. The feature is not supported anymore and may 
+                            make fail the new pgsql level optimistic check. 
+                            You should rather use a single command involving the same aggregate doing the equivalent of
+                            multiple times a command on the same aggregate.
+                            This will also make it possible to avoid the cache invalidation trick. See example 7. Note that
+                            it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
+                            can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+
+                if aggregateId2AreNotUnique then
+                    logger.LogError 
+                            $"forceRunTwoNAggregateCommandsMdAsync received in stream {'A2.StorageName} duplicated ids. The feature is not supported anymore and may 
+                            make fail the new pgsql level optimistic check. 
+                            You should rather use a single command involving the same aggregate doing the equivalent of
+                            multiple times a command on the same aggregate.
+                            This will also make it possible to avoid the cache invalidation trick. See example 7. Note that
+                            it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
+                            can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+
 
             taskResult {
 
@@ -3675,18 +3690,26 @@ module CommandHandler =
                 aggregateIds3
                 |> List.distinct
                 |> fun l -> l.Length <> aggregateIds3.Length
+
             let _ =
-                if (aggregateIds1AreNotUnique || aggregateIds2AreNotUnique || aggregateIds3AreNotUnique) then
-                    logger.LogError 
-                                    "aggregateIds1 or aggregateIds2 or aggregateIds3 contains duplicate ids. This feature is not supported anymore will 
-                                    make fail the new pgsql level optimistic check. 
-                                    You should rather use a single command involving the same aggregate doing the equivalent of
-                                    multiple times a command on the same aggregate.
-                                    This will also make it possible to avoid the cache invalidation trick. See example 7. Note that
-                                    it is not limiting because the length of the three list of aggregateid (and, rispectively, commands) 
-                                    can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+                if aggregateIds1AreNotUnique then
+                    logger.LogError
+                                $"forceRunThreeNAggregateCommandsMd received in stream {'A1.StorageName} duplicated ids. The feature is not supported may
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
+                                can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
 
-
+                if aggregateIds2AreNotUnique then
+                    logger.LogError
+                                $"forceRunTwoNAggregateCommandsMd received in stream {'A2.StorageName} duplicated ids. The feature is not supported and may 
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands)"
 
             let commands = fun () ->
                 result {
@@ -3960,15 +3983,33 @@ module CommandHandler =
                 |> fun l -> l.Length <> aggregateIds3.Length    
 
             let _ =
-                if (aggregateIds1AreNotUnique || aggregateIds2AreNotUnique || aggregateIds3AreNotUnique) then
+                if aggregateIds1AreNotUnique then
                     logger.LogError
-                                    "aggregateIds1 or aggregateIds2 or aggregateIds3 contains duplicate ids. The feature is not supported and will 
-                                    make fail the new pgsql level optimistic check. 
-                                    You should rather use a single command involving the same aggregate doing the equivalent of
-                                    multiple times a command on the same aggregate.
-                                    This will also make it possible to avoid the cache invalidation trick. See example 7. Note that
-                                    it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
-                                    can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+                                $"forceRunThreeNAggregateCommandsMdAsync received in stream {'A1.StorageName} duplicated ids. The feature is not supported and may 
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands) 
+                                can be different so there is no need to repeat some aggregateId only to make the passed lists length equals"
+
+                if aggregateIds2AreNotUnique then
+                    logger.LogError
+                                $"forceRunThreeNAggregateCommandsMdAsync received in stream {'A2.StorageName} duplicated ids. The feature is not supported and may 
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands)"
+
+                if aggregateIds3AreNotUnique then
+                    logger.LogError
+                                $"forceRunThreeNAggregateCommandsMdAsync received in stream {'A3.StorageName} duplicated ids. The feature is not supported and may 
+                                make fail the new pgsql level optimistic check. 
+                                You should rather use a single command involving the same aggregate doing the equivalent of
+                                multiple times a command on the same aggregate.
+                                This will also make it possible to avoid the cache invalidation trick. See example 7.
+                                Note that it is not limiting because the length of the two list of aggregateid (and, rispectively, commands)"
 
 
             let commands = fun () ->
