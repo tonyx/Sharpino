@@ -164,6 +164,7 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 6.0.1: optimized and used async in calls to get the distance from latest snapshot 
 - Version 6.0.0: Optimistic lock control switched to psql. Note: any use of forceXXX command group will log an error and may fail if non distinct aggregate ids are passed. The clean way to face the situation is transforming multiples commands hitting the same aggregate Id with a new single command behaving like repeated execution of more commands on same aggregate. It is acceptable even if it ends up in different length of aggregateIds passed as first and second group of aggregate-commands. Benefit is that  invalidating the cache (because of "conflicting" commands) will not be needed anymore. Example 7 (for the moment) shows the new behavior. 
 - Any aggregate type will need the following new stored procedure template (sustitute {Version} and {AggregateStorageName}).
 Use ``dbma new alter_name0f_stream` to create and edit the new stream, then `dbmate up` to feed the sql
