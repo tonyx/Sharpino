@@ -305,15 +305,21 @@ module PgBinaryStore =
 
                 let! insertFirstEmptyAggregateEventTask =
                     insertFirstEmptyAggregateEventCommand.ExecuteNonQueryAsync(cts.Token).ConfigureAwait(false)
+                let! distanceFromLatestSnapshotsArray =
+                    events
+                    |> Seq.map (fun (_, _, version, name, aggId) ->
+                        task {
+                            let! distanceFromLatestSnapshot = this.GetDistanceFromLatestSnapshotAsync(version, name, aggId, cts.Token)
+                            return (aggId, distanceFromLatestSnapshot)
+                        })
+                    |> Task.WhenAll
+                let distanceFromLatestSnapshots = Map.ofArray distanceFromLatestSnapshotsArray
 
                 let ids =
                     events
                     |>> fun (eventId, events, version, name, aggId) ->
                         let distanceFromLatestSnapshot =
-                            this
-                                .GetDistanceFromLatestSnapshotAsync(version, name, aggId, CancellationToken.None)
-                                .GetAwaiter()
-                                .GetResult()
+                            distanceFromLatestSnapshots.[aggId]
 
                         let index = (distanceFromLatestSnapshot + 1) % distanceBetweenSnapshots
                         let stream_name = version + name
@@ -667,6 +673,18 @@ module PgBinaryStore =
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let transaction = conn.BeginTransaction()
 
+
+                        let! distancesFromLatestSnapshotsArray =
+                            arg
+                            |> Seq.map (fun (_, _, version, name, aggregateId) ->
+                                task {
+                                    let! distance = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)
+                                    return (aggregateId, distance)
+                                })
+                            |> System.Threading.Tasks.Task.WhenAll
+                        let distancesFromLatestSnapshots = Map.ofArray distancesFromLatestSnapshotsArray
+
+
                         let result =
                             try
                                 let idLists = ResizeArray<ResizeArray<int>>()
@@ -675,15 +693,7 @@ module PgBinaryStore =
                                     arg
                                     |>> fun (eventId, events, version, name, aggregateId) ->
                                         let currentDistanceFromLastestSnapshot =
-                                            this
-                                                .GetDistanceFromLatestSnapshotAsync(
-                                                    version,
-                                                    name,
-                                                    aggregateId,
-                                                    cts.Token
-                                                )
-                                                .GetAwaiter()
-                                                .GetResult()
+                                            distancesFromLatestSnapshots.[aggregateId]
 
                                         let index =
                                             currentDistanceFromLastestSnapshot + 1 % distanceBetweenSnapshots
