@@ -112,9 +112,13 @@ module Cache =
         let objectDetailsAssociationsCache = new FusionCache(assocOptions)
         
         let mutable _backplane: IFusionCacheBackplane option = None
+        let detailsRefreshed = new Microsoft.FSharp.Control.Event<string * Guid>()
         
         static let instance = DetailsCache ()
         static member Instance = instance
+
+        [<CLIEvent>]
+        member this.OnDetailsRefreshed = detailsRefreshed.Publish
         
         member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
             if dc.IsSome && ser.IsSome then
@@ -231,6 +235,8 @@ module Cache =
                                         System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                                     )
                                     _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
+                                match key with
+                                | DetailsCacheKey (typeName, id) -> detailsRefreshed.Trigger(typeName, id)
                                 return Ok resultObj
                             with e ->
                                 logger.LogError (sprintf "error: cache update failed. %A\n" e)
