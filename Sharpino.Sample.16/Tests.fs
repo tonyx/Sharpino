@@ -661,6 +661,37 @@ let tests =
                 Expect.isOk material "should be ok"
                 Expect.equal material.OkValue.Availability.Value 1 "should be 1"
             }
+        testCaseTask "a workOrder with a single workingitem starts and then it fails, the related material quantities are restored - async 2" <| fun _ ->
+            task {
+                setUp ()
+                let pistacchio =
+                    Material.New "Pistacchio" (Quantity.New 1).OkValue
+                let addPistacchio = materialManager.AddMaterial pistacchio
+                let iceCream = Product.New "Ice Cream" [(pistacchio.MaterialId, (Quantity.New 1).OkValue)]
+                let addIceCream = materialManager.AddProduct iceCream
+                
+                let workOrder =
+                    WorkOrder.New "workOrder" [WorkingItem.New iceCream.ProductId (Quantity.New 1).OkValue]
+                    |> Result.get
+                let! addWorkorder = materialManager.AddWorkOrderAsync workOrder
+                Expect.isOk addWorkorder "should be ok"
+
+                let startWorkingItem1 = materialManager.StartWorkingItem workOrder.WorkOrderId iceCream.ProductId
+                let retrievePistacchio = materialManager.GetMaterial pistacchio.MaterialId
+                Expect.isOk retrievePistacchio "should be ok"
+                Expect.equal retrievePistacchio.OkValue.Availability.Value 0 "should be 0"
+                
+                let! failWorkingItem1 = materialManager.FailWorkingItemAsync workOrder.WorkOrderId iceCream.ProductId (Quantity.New 1).OkValue
+                Expect.isOk failWorkingItem1 "should be ok"
+                let retrievedWorkOrder = materialManager.GetWorkOrder workOrder.WorkOrderId |> Result.get
+                Expect.isTrue retrievedWorkOrder.WorkOrderState.IsSomeFailed "should be true"
+                let (SomeFailed productsQuantities) = retrievedWorkOrder.WorkOrderState
+                Expect.equal productsQuantities [iceCream.ProductId, (Quantity.New 1).OkValue] "should be equal"
+                
+                let material = materialManager.GetMaterial pistacchio.MaterialId
+                Expect.isOk material "should be ok"
+                Expect.equal material.OkValue.Availability.Value 1 "should be 1"
+            }
              
     ] 
     |> testSequenced

@@ -430,6 +430,5 @@ let tests =
             let material = materialManager.GetMaterial pistacchio.MaterialId
             Expect.isOk material "should be ok"
             Expect.equal material.OkValue.Availability.Value 1 "should be 1"
-             
     ] 
     |> testSequenced

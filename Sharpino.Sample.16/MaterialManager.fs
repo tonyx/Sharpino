@@ -196,6 +196,42 @@ type MaterialManager (messageSenders: MessageSenders, eventStore: IEventStore<st
                         eventStore
                         MessageSenders.NoSender
             }
+            
+    member this.FailWorkingItemAsync (workOrderId: WorkOrderId) (productId: ProductId) (quantity: Quantity) =
+        taskResult
+            {
+                let! _, product =
+                    productsViewer productId.Value
+               
+                let! materialsReadds =
+                    product.Materials
+                    |> List.map (fun (id, q) -> (id, Add q))
+                    |> List.traverseTaskResultM (fun (id, cmd) ->
+                        preExecuteAggregateCommandMdAsync<Material, MaterialEvents, string>
+                            id.Value
+                            eventStore
+                            MessageSenders.NoSender
+                            ""
+                            cmd 
+                            None
+                        )
+                    
+                let! workOrderFail =
+                    preExecuteAggregateCommandMdAsync<WorkOrder, WorkOrderEvents, string>
+                        workOrderId.Value
+                        eventStore
+                        MessageSenders.NoSender
+                        ""
+                        (WorkOrderCommands.Fail (productId, quantity))
+                        None
+            
+                return!    
+                    runPreExecutedAggregateCommandsAsync
+                        (workOrderFail :: materialsReadds)
+                        eventStore
+                        MessageSenders.NoSender
+                        None
+            }
     
     member this.CompleteWorkingItem (workOrderId: WorkOrderId) (productId: ProductId) =
         WorkOrderCommands.Complete productId

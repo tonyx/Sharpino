@@ -2047,6 +2047,48 @@ module CommandHandler =
                     }
                 return result
             }
+
+    let inline preExecuteAggregateCommandMdAsync<'A, 'E, 'F
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string)
+        and 'A : (static member SnapshotsInterval: int)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders) // Todo: not used. Drop this parameter
+        (md: Metadata)
+        (command: AggregateCommand<'A, 'E>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "preExecuteAggregateCommandMdAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            
+            taskResult {
+                let! eventId, state = getAggregateFreshStateAsync<'A, 'E, 'F> aggregateId storage ct
+                let! newState, events =
+                    state
+                    |> unbox
+                    |> command.Execute
+                    
+                let result  =
+                    {
+                      AggregateId = aggregateId
+                      EventId = eventId
+                      NewState = box newState
+                      SerializedEvents = events |>> (fun x -> x.Serialize)
+                      Metadata = md
+                      Version = 'A.Version
+                      StorageName = 'A.StorageName
+                      SnapshotsInterval = 'A.SnapshotsInterval
+                      EventType = typeof<'E>
+                    }
+                return result
+            }
             
     let storeEvents (eventStore: IEventStore<'F>) (messageSenders: MessageSenders) (block: PreExecutedAggregateCommand<_, _>) =
         logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
@@ -2078,6 +2120,22 @@ module CommandHandler =
             
             let! newLastStateIdsList =
                 eventStore.MultiAddAggregateEventsMd md parameters
+            return newLastStateIdsList    
+        }
+
+    let storeMultipleEventsAsync (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) (ct: Option<CancellationToken>) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
+        logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
+        taskResult {
+            do!
+                blocks.Length > 0
+                |> Result.ofBool "blocks length must be greater than 0"
+            let md = blocks.Head.Metadata    
+            let parameters =
+                blocks
+                |> List.map (fun b -> b.EventId, b.SerializedEvents, b.Version, b.StorageName, b.AggregateId)
+            
+            let! newLastStateIdsList =
+                eventStore.MultiAddAggregateEventsMdAsync (parameters, md, ct |> Option.defaultValue CancellationToken.None) 
             return newLastStateIdsList    
         }
         
@@ -2642,6 +2700,78 @@ module CommandHandler =
                     serialized
                 |> ignore
             
+            // note: 
+            // this reckless unsafe operation must work because the involved types are actually typechecked outside
+            // the scope of this call, so at the moment there is no specific treatment about theoretical runtime exceptions
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let queueName = preExecutedAggregateCommands.[i].Version + preExecutedAggregateCommands.[i].StorageName
+                let deserializer = preExecutedAggregateCommands.[i].EventType.GetMethod "Deserialize"
+                let deserializedEvents =
+                    preExecutedAggregateCommands.[i].SerializedEvents
+                    |> List.map
+                           (fun x -> deserializer.Invoke(null, [|x|]))
+                           |> List.map 
+                                (fun x ->
+                                   (
+                                    let resultType = x.GetType()
+                                    let resultValueProperty = resultType.GetProperty("ResultValue")
+                                    resultValueProperty.GetValue x 
+                                    )
+                                )
+                                
+                optionallySendTypelessAggregateEventsAsync
+                    queueName
+                    messageSenders
+                    preExecutedAggregateCommands.[i].AggregateId
+                    deserializedEvents
+                    preExecutedAggregateCommands.[i].EventId
+                    (storedIds.Item i |> List.last)
+                    |> ignore
+                    
+            return ()
+        }
+
+    let inline runPreExecutedAggregateCommandsAsync<'F>
+        (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders) 
+        (ct: Option<CancellationToken>)
+        =
+        logger.LogDebug "runPreExecutedCommands"
+        taskResult {
+            let! storedIds =
+                storeMultipleEventsAsync eventStore messageSenders
+                    ct preExecutedAggregateCommands
+
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                AggregateCache3.Instance.Memoize2 (storedIds.[i] |> List.last, preExecutedAggregateCommands.[i].NewState |> box) preExecutedAggregateCommands.[i].AggregateId
+
+            
+            let! _ = 
+                preExecutedAggregateCommands
+                |> List.traverseTaskResultM 
+                    (
+                        fun preExecutedAggregateCommand ->
+                            task {
+                                do! DetailsCache.Instance.RefreshDependentDetailsAsync(preExecutedAggregateCommand.AggregateId, ct) 
+                                return Ok ()
+                            }
+                    )
+        
+            // todo: next step implement an async snapshotting     
+            for i in 0..(preExecutedAggregateCommands.Length - 1) do
+                let serializeProperty = preExecutedAggregateCommands.[i].NewState.GetType().GetProperty("Serialize") 
+                let serialized = serializeProperty.GetValue(preExecutedAggregateCommands.[i].NewState) :?> 'F
+                mkAggregateSnapshotIfIntervalPassed3<'F>
+                    eventStore
+                    preExecutedAggregateCommands.[i].AggregateId
+                    preExecutedAggregateCommands.[i].Version
+                    preExecutedAggregateCommands.[i].StorageName
+                    (storedIds.[i] |> List.last)
+                    preExecutedAggregateCommands.[i].SnapshotsInterval
+                    serialized
+                |> ignore
+
             // note: 
             // this reckless unsafe operation must work because the involved types are actually typechecked outside
             // the scope of this call, so at the moment there is no specific treatment about theoretical runtime exceptions

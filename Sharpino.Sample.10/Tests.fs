@@ -85,7 +85,7 @@ module Tests =
                 match sender with
                 | true, sender -> sender |> Ok
                 | false, _ -> (sprintf "queue not found: %s" queueName) |> Error
-            )    
+            )
         
     #endif
     
