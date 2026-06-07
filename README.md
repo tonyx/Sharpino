@@ -164,6 +164,13 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+- Version 6.0.4:  new cache configuration options for limiting memory/eviction. New configuration options for controlling the cache memory usage:
+
+- - `Cache:AggregateCacheMaxSize (int, default: 1000)` - maximum number of items. Set to -1 or 0 to disable count limit.
+- - `Cache:AggregateCacheMaxMemoryMegabytes (int, default: 0 [disabled])` - maximum private working set memory in MB for the process.
+- - `Cache:AggregateCacheMemoryLoadThreshold (double, default: 0.85 [85%])` - maximum allowed system-wide memory load percentage before eviction begins. Set to 0.0 to disable.
+- - `Cache:AggregateCacheMinEvictBatchSize (int, default: 10)` - number of elements to evict at once when memory thresholds are hit, reducing frequent checks.
+
 - Version 6.0.3: async versions of preExecuteAggregateCommand (experimental: it may have issues with the event_id based optimistic lock)
 - Version 6.0.2: instrumented the details cache to fire some action/callback on refresh. This allows an application to trigger any "side effect" on refreshes (example: publishing a message to a signalr hub).
 - Version 6.0.1: optimized and used async in calls to get the distance from latest snapshot 
