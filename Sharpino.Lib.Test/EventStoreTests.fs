@@ -71,7 +71,7 @@ let tests =
             Expect.equal retrievedWithCast.Name "new name async" "should be equal"
             Expect.notEqual eventId 0 "should be non zero"
 
-        fmultipleTestCase "async: mismatched expected event id should fail in AddAggregateEventsMdAsync - Error" versions <| fun (eventStore, setUp)  ->
+        multipleTestCase "async: mismatched expected event id should fail in AddAggregateEventsMdAsync - Error" versions <| fun (eventStore, setUp)  ->
             setUp ()
             // Arrange
             let sampleObjectId = Guid.NewGuid()
@@ -418,6 +418,15 @@ let tests =
             
             Expect.isTrue event1Found "Should find first event"
             Expect.isTrue event2Found "Should find second event"
+            
+        testCase "AggregateCache3 basic LRU caching operations work - Ok" <| fun () ->
+            AggregateCache3.Instance.Clear()
+            let id1 = Guid.NewGuid()
+            let state1 = "sample state 1"
+            AggregateCache3.Instance.Memoize2(1, state1) id1
+            let retrieved = AggregateCache3.Instance.GetState(id1)
+            Expect.isOk retrieved "State should be found in cache"
+            Expect.equal retrieved.OkValue (box state1) "Cached state should match"
     ]
     |> testSequenced
         

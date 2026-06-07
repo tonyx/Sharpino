@@ -373,6 +373,64 @@ module Cache =
         
         let mutable _backplane: IFusionCacheBackplane option = None
 
+        let maxCacheSize = config.GetValue<int>("Cache:AggregateCacheMaxSize", 1000)
+        let maxMemoryBytes = int64 (config.GetValue<int>("Cache:AggregateCacheMaxMemoryMegabytes", 0)) * 1024L * 1024L
+        let memoryLoadThreshold = config.GetValue<double>("Cache:AggregateCacheMemoryLoadThreshold", 0.85)
+        let minEvictBatchSize = config.GetValue<int>("Cache:AggregateCacheMinEvictBatchSize", 10)
+
+        let lruList = System.Collections.Generic.LinkedList<string>()
+        let lruDict = System.Collections.Generic.Dictionary<string, System.Collections.Generic.LinkedListNode<string>>()
+        let lruLock = obj()
+
+        let checkMemoryLimits () =
+            let mutable shouldEvict = false
+            
+            // Check total system memory load
+            if memoryLoadThreshold > 0.0 then
+                let gcInfo = GC.GetGCMemoryInfo()
+                if gcInfo.TotalAvailableMemoryBytes > 0L then
+                    let loadRatio = (double gcInfo.MemoryLoadBytes) / (double gcInfo.TotalAvailableMemoryBytes)
+                    if loadRatio > memoryLoadThreshold then
+                        shouldEvict <- true
+
+            // Check process memory limit
+            if not shouldEvict && maxMemoryBytes > 0L then
+                use proc = System.Diagnostics.Process.GetCurrentProcess()
+                if proc.WorkingSet64 > maxMemoryBytes then
+                    shouldEvict <- true
+                    
+            shouldEvict
+
+        let recordAccess (key: string) =
+            lock lruLock (fun () ->
+                // 1. Update LRU access order
+                match lruDict.TryGetValue(key) with
+                | true, node ->
+                    lruList.Remove(node)
+                    lruList.AddLast(node)
+                | false, _ ->
+                    let newNode = lruList.AddLast(key)
+                    lruDict.[key] <- newNode
+
+                // 2. Enforce item count limit
+                if maxCacheSize > 0 then
+                    while lruList.Count > maxCacheSize && lruList.Count > 0 do
+                        let oldestKey = lruList.First.Value
+                        lruList.RemoveFirst()
+                        lruDict.Remove(oldestKey) |> ignore
+                        statePerAggregate.Remove(oldestKey) |> ignore
+
+                // 3. Enforce memory limits
+                if checkMemoryLimits() then
+                    let mutable evictedCount = 0
+                    while lruList.Count > 0 && (checkMemoryLimits() || (evictedCount < minEvictBatchSize)) do
+                        let oldestKey = lruList.First.Value
+                        lruList.RemoveFirst()
+                        lruDict.Remove(oldestKey) |> ignore
+                        statePerAggregate.Remove(oldestKey) |> ignore
+                        evictedCount <- evictedCount + 1
+            )
+
         static let instance = AggregateCache3()
         static member Instance = instance
         
@@ -415,6 +473,14 @@ module Cache =
                                 let key = e.Message.CacheKey.Substring(prefix.Length)
                                 statePerAggregate.Remove(key, receiverOptions)
 
+                                lock lruLock (fun () ->
+                                    match lruDict.TryGetValue(key) with
+                                    | true, node ->
+                                        lruList.Remove(node)
+                                        lruDict.Remove(key) |> ignore
+                                    | false, _ -> ()
+                                )
+
                                 let (isGuid, guidKey) = Guid.TryParse(key)
                                 if isGuid then
                                     DetailsCache.Instance.RefreshDependentDetailsAsync(guidKey, Some CancellationToken.None) |> ignore
@@ -428,6 +494,7 @@ module Cache =
             try
                 let key = aggregateId.ToString()
                 statePerAggregate.Set<Task<Result<EventId * obj, string>>>(key, tsk, entryOptions)
+                recordAccess key
                 
                 // Manually notify backplane if FusionCache skips it
                 if _backplane.IsSome then
@@ -443,11 +510,12 @@ module Cache =
                 statePerAggregate.Clear()
                 DetailsCache.Instance.Clear()
                 () 
-   
+    
         member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
             let key = aggregateId.ToString()
             let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) then
+                recordAccess key
                 v.GetAwaiter().GetResult()
             else
                 let res = f()
@@ -462,6 +530,7 @@ module Cache =
             let key = aggregateId.ToString()
             let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) then
+                recordAccess key
                 v
             else
                 let factory = System.Func<ZiggyCreatures.Caching.Fusion.FusionCacheFactoryExecutionContext<Task<Result<EventId * obj, string>>>, System.Threading.CancellationToken, Task<Result<EventId * obj, string>>>(fun ctx token ->
@@ -475,6 +544,7 @@ module Cache =
                     tsk
                 )
                 let tsk = statePerAggregate.GetOrSet<Task<Result<EventId * obj, string>>>(key, factory, entryOptions)
+                recordAccess key
                 
                 if _backplane.IsSome then
                     let fullKey = "statePerAggregate:" + key
@@ -493,6 +563,13 @@ module Cache =
         
         member this.Clean (aggregateId: AggregateId)  =
             let key = aggregateId.ToString()
+            lock lruLock (fun () ->
+                match lruDict.TryGetValue(key) with
+                | true, node ->
+                    lruList.Remove(node)
+                    lruDict.Remove(key) |> ignore
+                | false, _ -> ()
+            )
             statePerAggregate.Remove(key)
             if _backplane.IsSome then
                 let fullKey = "statePerAggregate:" + key
@@ -504,33 +581,47 @@ module Cache =
                 _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
         
         member this.Clear () =
+            lock lruLock (fun () ->
+                lruList.Clear()
+                lruDict.Clear()
+            )
             statePerAggregate.Clear()
 
         member this.ClearL1 () =
+            lock lruLock (fun () ->
+                lruList.Clear()
+                lruDict.Clear()
+            )
             statePerAggregate.Clear(true)
 
         member this.ClearL2 () =
             statePerAggregate.Clear(false)
         
         member this.LastEventId (aggregateId: AggregateId) =
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            let key = aggregateId.ToString()
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) && v.IsCompletedSuccessfully then 
+                recordAccess key
                 match v.Result with
                 | Ok (eventId, _) -> Some eventId
                 | _ -> None
             else None
         
         member this.GetState (aggregateId: AggregateId) =
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            let key = aggregateId.ToString()
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) then 
+                recordAccess key
                 match v.GetAwaiter().GetResult() with
                 | Ok (_, state) -> Ok state
                 | Error e -> Error e
             else Error "aggregate not found"        
 
         member this.GetStateAsync (aggregateId: AggregateId) (ct: Option<CancellationToken>) =
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(aggregateId.ToString(), null)
+            let key = aggregateId.ToString()
+            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
             if not (obj.ReferenceEquals(v, null)) then 
+                recordAccess key
                 task {
                     let! res = v
                     match res with
