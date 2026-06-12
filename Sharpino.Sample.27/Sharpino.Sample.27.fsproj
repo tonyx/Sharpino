@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>Sharpino.Sample._21</RootNamespace>
+    <RootNamespace>Sharpino.Sample._27</RootNamespace>
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <PropertyGroup>
@@ -28,16 +28,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="Commons.fs" />
-    <Compile Include="Domain/Todo/Todo.fs" />
-    <Compile Include="Domain/Todo/Events.fs" />
-    <Compile Include="Domain/Todo/Commands.fs" />
-    <Compile Include="Domain/User/User.fs" />
-    <Compile Include="Domain/User/Events.fs" />
-    <Compile Include="Domain/User/Commands.fs" />
-    <Compile Include="Details.fs" />
-    <Compile Include="DetailsRefactor.fs" />
-    <Compile Include="TodoManager.fs" />
+    <Compile Include="Commons.fs"/>
+    <Compile Include="Domain/Todo/Todo.fs"/>
+    <Compile Include="Domain/Todo/Events.fs"/>
+    <Compile Include="Domain/Todo/Commands.fs"/>
+    <Compile Include="Domain/User/User.fs"/>
+    <Compile Include="Domain/User/Events.fs"/>
+    <Compile Include="Domain/User/Commands.fs"/>
+    <Compile Include="Details.fs"/>
+    <Compile Include="DetailsRefactor.fs"/>
+    <Compile Include="TodoManager.fs"/>
     <Compile Include="Program.fs" />
   </ItemGroup>
 

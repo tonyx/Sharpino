@@ -21,7 +21,9 @@ open ZiggyCreatures.Caching.Fusion.Backplane
 open ZiggyCreatures.Caching.Fusion.Serialization
 
 open Microsoft.Extensions.Caching.SqlServer
+open Community.Microsoft.Extensions.Caching.PostgreSql
 open Microsoft.Extensions.Options
+open Microsoft.Extensions.DependencyInjection
 open ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson
 open System.Text.Json
 open System.Text.Json.Serialization
@@ -160,7 +162,7 @@ module Cache =
                             if e.Message.CacheKey.StartsWith(prefix) then
                                 let key = e.Message.CacheKey.Substring(prefix.Length)
                                 statesDetails.Remove(key, receiverOptions)
-                                printfn "[Cache Event] DetailsCache manually removed L1 entry for %s" key
+                                logger.LogDebug (sprintf "[Cache Event] DetailsCache manually removed L1 entry for %s" key)
                 ))
                 
                 objectDetailsAssociationsCache.Events.Backplane.add_MessageReceived(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
@@ -170,7 +172,7 @@ module Cache =
                             if e.Message.CacheKey.StartsWith(prefix) then
                                 let key = e.Message.CacheKey.Substring(prefix.Length)
                                 objectDetailsAssociationsCache.Remove(key, receiverOptions)
-                                printfn "[Cache Event] DetailsCache(Associations) manually removed L1 entry for %s" key
+                                logger.LogDebug (sprintf "[Cache Event] DetailsCache(Associations) manually removed L1 entry for %s" key)
                 ))
             ()
             
@@ -695,19 +697,48 @@ module Cache =
         
         setupSecondLevelCacheAndBackplane (Some (sqlCache :> IDistributedCache)) (Some (serializer :> IFusionCacheSerializer)) None
 
-    do // initialize L2 cache in azure Sql mode
+    let setupPostgresCache (connectionString: string) (schemaName: string) (tableName: string) =
+        let services = new ServiceCollection()
+        services.AddLogging() |> ignore
+        services.AddDistributedPostgreSqlCache(fun opts ->
+            opts.ConnectionString <- connectionString
+            opts.SchemaName <- schemaName
+            opts.TableName <- tableName
+            opts.CreateInfrastructure <- true
+        ) |> ignore
+        let provider = services.BuildServiceProvider()
+        let pgCache = provider.GetRequiredService<IDistributedCache>()
+        
+        setupSecondLevelCacheAndBackplane (Some pgCache) (Some (serializer :> IFusionCacheSerializer)) None
+
+    do // initialize L2 cache
         let l2SqlCacheEnabled = config.GetValue<bool>("Cache:L2SqlCacheEnabled", false)
         logger.LogInformation (sprintf "[Cache] Config: L2SqlCacheEnabled = %b" l2SqlCacheEnabled)
         if l2SqlCacheEnabled then
-            let l2CacheSqlUrl = config.GetValue<string>("Cache:L2CacheSqlUrl", String.Empty)
-            let l2CacheSqlTableName = config.GetValue<string>("Cache:L2CacheSqlTableName", String.Empty)
-            match l2CacheSqlUrl, l2CacheSqlTableName with
-            | "", _ -> logger.LogCritical ("[Cache] Error: L2CacheSqlUrl is empty")
-            | _, "" -> logger.LogCritical ("[Cache] Error: L2CacheSqlTableName is empty")
-            | _ ->
-                logger.LogInformation (sprintf "[Cache] Initializing L2 SQL Cache with table: %s" l2CacheSqlTableName)
-                setupAzureSqlCache l2CacheSqlUrl "dbo" l2CacheSqlTableName |> ignore
-                logger.LogInformation (sprintf "[Cache] L2 SQL Cache initialized.")
+            let provider = config.GetValue<string>("Cache:L2CacheProvider", "SqlServer")
+            if provider.Equals("Postgres", StringComparison.OrdinalIgnoreCase) then
+                let connectionString = config.GetValue<string>("Cache:L2CacheConnectionString", String.Empty)
+                let connectionString = if String.IsNullOrEmpty connectionString then config.GetValue<string>("Cache:L2CacheSqlUrl", String.Empty) else connectionString
+                let tableName = config.GetValue<string>("Cache:L2CacheTableName", String.Empty)
+                let tableName = if String.IsNullOrEmpty tableName then config.GetValue<string>("Cache:L2CacheSqlTableName", String.Empty) else tableName
+                let schemaName = config.GetValue<string>("Cache:L2CacheSchemaName", "public")
+                match connectionString, tableName with
+                | "", _ -> logger.LogCritical ("[Cache] Error: L2 Postgres connection string (L2CacheConnectionString or L2CacheSqlUrl) is empty")
+                | _, "" -> logger.LogCritical ("[Cache] Error: L2 Postgres table name (L2CacheTableName or L2CacheSqlTableName) is empty")
+                | _ ->
+                    logger.LogInformation (sprintf "[Cache] Initializing L2 Postgres Cache with table: %s.%s" schemaName tableName)
+                    setupPostgresCache connectionString schemaName tableName |> ignore
+                    logger.LogInformation (sprintf "[Cache] L2 Postgres Cache initialized.")
+            else
+                let l2CacheSqlUrl = config.GetValue<string>("Cache:L2CacheSqlUrl", String.Empty)
+                let l2CacheSqlTableName = config.GetValue<string>("Cache:L2CacheSqlTableName", String.Empty)
+                match l2CacheSqlUrl, l2CacheSqlTableName with
+                | "", _ -> logger.LogCritical ("[Cache] Error: L2CacheSqlUrl is empty")
+                | _, "" -> logger.LogCritical ("[Cache] Error: L2CacheSqlTableName is empty")
+                | _ ->
+                    logger.LogInformation (sprintf "[Cache] Initializing L2 SQL Cache with table: %s" l2CacheSqlTableName)
+                    setupAzureSqlCache l2CacheSqlUrl "dbo" l2CacheSqlTableName |> ignore
+                    logger.LogInformation (sprintf "[Cache] L2 SQL Cache initialized.")
         else 
             ()
 
@@ -749,6 +780,35 @@ module Cache =
     let setupMqttBackplane (options: MqttClientOptions) (topicPrefix: string) =
         let bp = new MqttBackplane(options, topicPrefix)
         bp :> IFusionCacheBackplane
+
+    let setupPgNotifyBackplane (connectionString: string) (channelName: string) =
+        let bp = new PgNotifyBackplane(connectionString, channelName)
+        bp :> IFusionCacheBackplane
+
+    do // initialize backplane in Postgres LISTEN/NOTIFY
+        let pgNotifyEnabled = config.GetValue<bool>("Cache:L2PgNotifyBackplaneEnabled", false)
+        if pgNotifyEnabled then
+            printfn "[Cache] Initializing Postgres LISTEN/NOTIFY Backplane..."
+            let connStr = config.GetValue<string>("Cache:L2PgNotifyConnectionString", String.Empty)
+            let connStr =
+                if String.IsNullOrEmpty connStr then
+                    let l2Conn = config.GetValue<string>("Cache:L2CacheConnectionString", String.Empty)
+                    if String.IsNullOrEmpty l2Conn then
+                        Environment.GetEnvironmentVariable("DATABASE_L2_CACHE")
+                    else
+                        l2Conn
+                else
+                    connStr
+            let channelName = config.GetValue<string>("Cache:L2PgNotifyChannelName", "sharpino_cache_eviction")
+            if String.IsNullOrEmpty connStr then
+                logger.LogCritical "[Cache] Error: L2PgNotifyConnectionString is empty and no fallback found"
+            else
+                let bp = setupPgNotifyBackplane connStr channelName
+                setupSecondLevelCacheAndBackplane None None (Some bp)
+                logger.LogCritical (sprintf "[Cache] Postgres LISTEN/NOTIFY Backplane initialized (Channel: %s)" channelName)
+        else
+            logger.LogInformation "[Cache] Postgres LISTEN/NOTIFY Backplane is disabled."
+
 
 
 

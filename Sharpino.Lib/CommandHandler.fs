@@ -2194,7 +2194,7 @@ module CommandHandler =
         (command: AggregateCommand<'A, 'E>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug (sprintf "runAggregateCommand %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            logger.LogDebug (sprintf "runAggregateCommandAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
                 taskResult {
