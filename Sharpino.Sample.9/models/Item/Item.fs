@@ -54,7 +54,6 @@ module Item =
             
         static member Version = "_01"
         static member StorageName = "_item"
-        static member SnapshotsInterval = 10 
         member this.Serialize =
             this
             |> jsonPSerializer.Serialize

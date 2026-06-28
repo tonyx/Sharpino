@@ -33,5 +33,4 @@ module Account =
             binarySerializer.Deserialize<Account> x
         static member StorageName = "_account"
         static member Version = "_01"
-        static member SnapshotsInterval = 15
         

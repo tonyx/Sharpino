@@ -19,7 +19,6 @@ open FsToolkit.ErrorHandling
         
         // ---
         member this.Id = this.ProductId.Value
-        static member SnapshotsInterval = 50
         static member StorageName = "_Products"
         static member Version = "_01"
         

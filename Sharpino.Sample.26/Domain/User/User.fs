@@ -49,7 +49,6 @@ open System
                 }
 
         member this.Id = this.UserId.Value
-        static member SnapshotsInterval = 50
         static member StorageName = "_User"
         static member Version = "_01"
         member this.Serialize = 

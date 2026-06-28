@@ -47,7 +47,6 @@ module Site =
                 } 
         static member StorageName = "_site"
         static member Version = "_01"
-        static member SnapshotsInterval = 15
         static member Deserialize x = 
             jsonPSerializer.Deserialize<Site> x
         member this.Serialize = 

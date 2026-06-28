@@ -67,7 +67,6 @@ module rec Course =
             
             static member Version = "_01"
             static member StorageName = "_course"
-            static member SnapshotsInterval = 15
             static member Deserialize(x: string): Result<Course, string> =
                 let firstTry = jsonPSerializer.Deserialize<Course> x
                 match firstTry with

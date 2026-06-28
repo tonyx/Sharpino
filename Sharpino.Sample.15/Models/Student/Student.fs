@@ -26,7 +26,6 @@ module Student =
         member this.Id = this.StudentId.Id
         static member Version = "_01"
         static member StorageName = "_Student"
-        static member SnapshotsInterval = 15
         
         static member Deserialize (x: string): Result<Student, string> =
             try

@@ -53,7 +53,6 @@ module Student =
             
         static member Version = "_01"
         static member StorageName = "_student"
-        static member SnapshotsInterval = 15
         member this.Id = this.StudentId.Id 
         static member Deserialize(x: string) =
             try

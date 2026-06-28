@@ -43,7 +43,6 @@ module Good =
 
         static member StorageName = "_good"
         static member Version = "_01"
-        static member SnapshotsInterval = 15 
 
         static member Deserialize x = 
             jsonPSerializer.Deserialize x

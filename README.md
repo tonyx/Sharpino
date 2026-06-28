@@ -164,6 +164,8 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
 
 ## News/Updates
+
+- Version 6.0.6: Aggregates don't need to define the SnapshotsInterval static member anymore as the value is given by the DitanceBetweenSnpashots in appsettings.json (if it is missing then the default 100 is used). 
 - Version 6.0.5: L2 cache can use PostgreSQL. Eviction messages to/from L1 caches can be sent/received using PostgreSQL LISTEN/NOTIFY. See example 27
 - Version 6.0.4:  new cache configuration options for limiting memory/eviction. New configuration options for controlling the cache memory usage:
 

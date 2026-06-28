@@ -63,7 +63,6 @@ module Student2 =
             
         static member Version = "_01"
         static member StorageName = "_student2"
-        static member SnapshotsInterval = 100 
         
         static member Deserialize(x: string) =
             try

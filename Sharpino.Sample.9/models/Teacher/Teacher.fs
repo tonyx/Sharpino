@@ -40,7 +40,6 @@ module Teacher =
             
         static member Version = "_01"
         static member StorageName = "_teacher"
-        static member SnapshotsInterval = 15
         
         static member Deserialize (json: string) =
             json

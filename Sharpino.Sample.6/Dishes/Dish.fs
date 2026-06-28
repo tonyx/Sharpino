@@ -42,7 +42,6 @@ type Dish(id: Guid, name: String, ingredients: List<Guid>) =
         "_dish"
     static member Version =
         "_01"
-    static member SnapshotsInterval =  15
     member this.Serialize =
         this 
         |> serializer.Serialize

@@ -36,7 +36,6 @@ open System
         // ----
         
         member this.Id = this.MaterialId.Value
-        static member SnapshotsInterval = 50
         static member StorageName = "_Materials"
         static member Version = "_01"
         
