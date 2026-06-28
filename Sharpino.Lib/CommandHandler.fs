@@ -452,7 +452,6 @@ module CommandHandler =
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                               (defaultArg ct CancellationToken.None)
                 cts.CancelAfter(eventStoreTimeout)
-                
                 let idWithserializedAggregates =
                     initialInstances
                     |>> (fun x -> x.Id, x.Serialize)

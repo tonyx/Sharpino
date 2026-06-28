@@ -719,7 +719,6 @@ let tests =
                                       && (jack.Courses |> List.exists (fun c -> c = math.Id)))
                                 )
                                 |> Result.ofBool "constraint not met"
-                            // return ()    
                         }
              
             // when 
