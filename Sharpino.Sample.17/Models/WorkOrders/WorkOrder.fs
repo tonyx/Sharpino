@@ -161,7 +161,6 @@ open FsToolkit.ErrorHandling
                  
             
             member this.Id = this.WorkOrderId.Value
-            static member SnapshotsInterval = 50
             static member StorageName = "_WorkOrders"
             static member Version = "_01"
             

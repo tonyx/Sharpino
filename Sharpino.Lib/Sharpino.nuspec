@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>Sharpino</id>
-    <version>6.0.5</version>
+    <version>6.0.6</version>
     <title>Sharpino</title>
     <authors>Antonio Lucca</authors>
     <description>F# Event Sourcing Library</description>
@@ -12,22 +12,22 @@
     <readme>README.md</readme>
     <dependencies>
         <group targetFramework="net10.0">
-            <dependency id="Expecto" version="10.2.3" />
-            <dependency id="Expecto.FsCheck" version="10.2.3" />
+            <dependency id="Expecto" version="11.1.0" />
+            <dependency id="Expecto.FsCheck" version="11.1.0" />
             <dependency id="FsCheck" version="3.3.3" />
             <dependency id="FsToolkit.ErrorHandling" version="5.2.0" />
             <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
             <dependency id="FsPickler" version="5.3.2" />
             <dependency id="FsPickler.Json" version="5.3.2" />
-            <dependency id="Microsoft.Extensions.Configuration" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Hosting" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Logging" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Caching.SqlServer" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Options" version="10.0.8" />
-            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.8" />
+            <dependency id="Microsoft.Extensions.Configuration" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Configuration.Binder" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Configuration.Json" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Hosting" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Hosting.Abstractions" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Logging" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Caching.SqlServer" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Options" version="10.0.9" />
+            <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.9" />
             <dependency id="Community.Microsoft.Extensions.Caching.PostgreSql" version="6.0.2" /> 
             
             <dependency id="Sharpino.Core" version="5.0.4" />
@@ -54,8 +54,8 @@
         </group>
         
       <group targetFramework="net9.0">
-        <dependency id="Expecto" version="10.2.3" />
-        <dependency id="Expecto.FsCheck" version="10.2.3" />
+        <dependency id="Expecto" version="11.1.0" />
+        <dependency id="Expecto.FsCheck" version="11.1.0" />
         <dependency id="FsCheck" version="3.3.3" />
         <dependency id="FsToolkit.ErrorHandling" version="5.2.0" />
         <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
@@ -70,8 +70,8 @@
         <dependency id="Microsoft.Extensions.Caching.SqlServer" version="9.0.14" />
         <dependency id="Community.Microsoft.Extensions.Caching.PostgreSql" version="6.0.2" /> 
 
-        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.8" />
-        <dependency id="Microsoft.Extensions.Options" version="10.0.8" />
+        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.9" />
+        <dependency id="Microsoft.Extensions.Options" version="10.0.9" />
           
         <dependency id="Sharpino.Core" version="5.0.4" />
 
@@ -97,8 +97,8 @@
       </group>
         
       <group targetFramework="net8.0">
-        <dependency id="Expecto" version="10.2.3" />
-        <dependency id="Expecto.FsCheck" version="10.2.3" />
+        <dependency id="Expecto" version="11.1.0" />
+        <dependency id="Expecto.FsCheck" version="11.1.0" />
         <dependency id="FsCheck" version="3.3.3" />
         <dependency id="FsToolkit.ErrorHandling" version="5.2.0" />
         <dependency id="FSharp.Quotations.Evaluator" version="2.1.0" />
@@ -113,8 +113,8 @@
         <dependency id="Microsoft.Extensions.Caching.SqlServer" version="8.0.25" />
         <dependency id="Community.Microsoft.Extensions.Caching.PostgreSql" version="6.0.2" /> 
 
-        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.8" />
-        <dependency id="Microsoft.Extensions.Options" version="10.0.8" />
+        <dependency id="Microsoft.Extensions.Caching.Memory" version="10.0.9" />
+        <dependency id="Microsoft.Extensions.Options" version="10.0.9" />
           
         <dependency id="Sharpino.Core" version="5.0.4" />
         

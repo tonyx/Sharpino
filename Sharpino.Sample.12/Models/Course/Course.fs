@@ -60,7 +60,6 @@ module  Course =
             
             static member Version = "_01"
             static member StorageName = "_course"
-            static member SnapshotsInterval = 15
 
             static member Deserialize(x: byte[]): Result<Course, string> =
                 binarySerializer.Deserialize<Course> x

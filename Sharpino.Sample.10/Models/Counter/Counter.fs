@@ -28,7 +28,6 @@ module Counter =
                 binarySerializer.Deserialize<Counter> x
             static member StorageName = "_counter"
             static member Version = "_01"
-            static member SnapshotsInterval = 15
             
        
     

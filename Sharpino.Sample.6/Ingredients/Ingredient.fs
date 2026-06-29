@@ -96,4 +96,3 @@ open System
         static member Version =
             "_01"
 
-        static member SnapshotsInterval =  15 

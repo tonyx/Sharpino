@@ -60,7 +60,6 @@ open Sharpino
 
 
         member this.Id = this.TodoId.Value
-        static member SnapshotsInterval = 50
         static member StorageName = "_Todo"
         static member Version = "_01"
         member this.Serialize = 

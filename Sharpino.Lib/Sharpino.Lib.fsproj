@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>6.0.5</Version>
+    <Version>6.0.6</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -47,8 +47,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-        <PackageReference Include="Expecto" Version="10.2.3" />
-        <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
+        <PackageReference Include="Expecto" Version="11.1.0" />
+        <PackageReference Include="Expecto.FsCheck" Version="11.1.0" />
         <PackageReference Include="FsCheck" Version="3.3.3" />
         <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
@@ -57,18 +57,18 @@
 
         <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
 
-        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.9" />
         <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
 
-        <PackageReference Include="Sharpino.Core" Version="5.0.4" />
+        <PackageReference Include="Sharpino.Core" Version="6.0.6" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.6" />
@@ -84,8 +84,8 @@
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
+    <PackageReference Include="Expecto" Version="11.1.0" />
+    <PackageReference Include="Expecto.FsCheck" Version="11.1.0" />
     <PackageReference Include="FsCheck" Version="3.3.3" />
     <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
@@ -103,10 +103,10 @@
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.14" />
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
 
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
     
-    <PackageReference Include="Sharpino.Core" Version="5.0.4" />
+    <PackageReference Include="Sharpino.Core" Version="6.0.6" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.6" />
@@ -123,8 +123,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="Expecto.FsCheck" Version="10.2.3" />
+    <PackageReference Include="Expecto" Version="11.1.0" />
+    <PackageReference Include="Expecto.FsCheck" Version="11.1.0" />
     <PackageReference Include="FsCheck" Version="3.3.3" />
     <PackageReference Include="FSharp.Quotations.Evaluator" Version="2.1.0" />
 
@@ -141,10 +141,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
     
-    <PackageReference Include="Sharpino.Core" Version="5.0.4" />
+    <PackageReference Include="Sharpino.Core" Version="6.0.6" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="0.15.6" />

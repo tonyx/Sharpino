@@ -46,7 +46,6 @@ module Cart =
 
         static member StorageName = "_cart" 
         static member Version = "_01"
-        static member SnapshotsInterval = 15
         static member Deserialize  x =
             binarySerializer.Deserialize<Cart> x
         member this.Serialize =

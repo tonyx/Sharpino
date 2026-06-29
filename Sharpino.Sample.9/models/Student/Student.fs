@@ -50,7 +50,6 @@ module Student =
             
         static member Version = "_01"
         static member StorageName = "_student"
-        static member SnapshotsInterval = 15
          
         static member Deserialize(x: string) =
             jsonPSerializer.Deserialize<Student> x

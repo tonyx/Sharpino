@@ -62,7 +62,6 @@ module Balance =
         
         static member Version = "_01"
         static member StorageName = "_balance"
-        static member SnapshotsInterval = 15
         
         static member Deserialize (json: string) =
             jsonPSerializer.Deserialize<Balance> json

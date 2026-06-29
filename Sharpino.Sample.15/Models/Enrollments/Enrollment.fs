@@ -33,7 +33,6 @@ module Enrollment =
         member this.Id = this.EnrollmentId.Id
         static member Version = "_01"
         static member StorageName = "_Enrollments"
-        static member SnapshotsInterval = 15
         
         static member Deserialize (x: string): Result<Enrollments, string> =
             try

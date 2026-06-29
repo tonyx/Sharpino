@@ -35,7 +35,6 @@ module Transporter =
             
         static member StorageName = "_truck"
         static member Version = "_01"
-        static member SnapshotsInterval = 15
         static member Deserialize x = 
             jsonPSerializer.Deserialize<Transporter> x
         member this.Serialize =

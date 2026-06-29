@@ -185,6 +185,5 @@ module rec SeatRow =
         static member Version = "_01"
         
         static member StorageName = "_seatrow"
-        static member SnapshotsInterval = 6
 
 
