@@ -165,6 +165,9 @@ Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) abl
 
 ## News/Updates
 
+- Version 6.1.0: Added runThreeAggregateCommandsMdAsync2, runAggregateCommandMdAsync2, forceRunTwoNAggregateCommandsMdAsync2, runTwoNAggregateCommandsMdAsync2,forceRunThreeNAggregateCommandsMdAsync2,  runThreeAggregateCommandsMdAsync2 accepting an extra crossAggregatesConstraint parameter which contains a lambda that evaluates evantual constraints involving any aggregate _outside_ the ones of the commands. If the conditions are met, then we have a map containing the eventId, aggregateId and streamnames of those external aggregates so that they will be used by the event store to extend the optimistic lock control when writing the events. In this way the decision boundary scope can include aggregates outside of the scope of the passed aggregateids involved by the command. See Sharpino.Sample.9 for a use case. 
+Recap: business rules that implies decisions that are outside of the scope of aggregates of the commands can be protected. _Important_: they need new pgsql functions: see the checkLastEventId.sql and the definition of insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock2. We need to add on the database the checkLastEventId and then later the  insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock2 for any aggregate stream.
+ 
 - Version 6.0.6: Aggregates don't need to define the SnapshotsInterval static member anymore as the value is given by the DitanceBetweenSnpashots in appsettings.json (if it is missing then the default 100 is used). 
 - Version 6.0.5: L2 cache can use PostgreSQL. Eviction messages to/from L1 caches can be sent/received using PostgreSQL LISTEN/NOTIFY. See example 27
 - Version 6.0.4:  new cache configuration options for limiting memory/eviction. New configuration options for controlling the cache memory usage:
