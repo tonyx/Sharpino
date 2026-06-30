@@ -360,6 +360,30 @@ module MemoryStorage =
                     let ids = newEvents |>> (fun x -> x.Id)
                     return ids
                 }
+            member this.AddAggregateEventsMdAsync2
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    extraConstraints: Map<System.Guid * string, EventId>,
+                    ?ct: CancellationToken
+                ) =
+                    let ct' =
+                        match ct with
+                        | Some c -> c
+                        | None -> CancellationToken.None
+
+                    (this:>IEventStore<string>).AddAggregateEventsMdAsync
+                        (eventId, 
+                        version, 
+                        name, 
+                        aggregateId, 
+                        md, 
+                        events, 
+                        ct')
 
             member this.GetDistanceFromLatestSnapshotAsync
                 (arg: Version, arg_1: Name, arg_2: AggregateId, ct: CancellationToken option)
@@ -1136,6 +1160,13 @@ module MemoryStorage =
                 (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
 
             member this.MultiAddAggregateEventsMdAsync(arg, md, ct) =
+                taskResult {
+                    let! result = (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
+                    return result
+                }
+
+            // extraConstraints are not checked in the inMemory implementation of the eventStore
+            member this.MultiAddAggregateEventsMdAsync2(arg, md, extraConstraints, ct) =
                 taskResult {
                     let! result = (this :> IEventStore<string>).MultiAddAggregateEventsMd md arg
                     return result

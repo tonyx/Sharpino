@@ -203,6 +203,10 @@ module Storage =
             EventId * Version * Name * System.Guid * Metadata * List<'F> * ?ct: CancellationToken ->
                 Task<Result<List<int>, string>>
 
+        abstract member AddAggregateEventsMdAsync2:
+            EventId * Version * Name * System.Guid * Metadata * List<'F> * extraConstraints:Map<System.Guid * string, EventId> * ?ct: CancellationToken ->
+                Task<Result<List<int>, string>>
+
         abstract member MultiAddEventsMd:
             Metadata -> List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
 
@@ -211,6 +215,10 @@ module Storage =
 
         abstract member MultiAddAggregateEventsMdAsync:
             List<EventId * List<'F> * Version * Name * AggregateId> * Metadata * ?ct: CancellationToken ->
+                Task<Result<List<List<EventId>>, string>>
+
+        abstract member MultiAddAggregateEventsMdAsync2:
+            List<EventId * List<'F> * Version * Name * AggregateId> * Metadata * extraConstraints:Map<AggregateId * string, EventId> * ?ct: CancellationToken ->
                 Task<Result<List<List<EventId>>, string>>
 
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result<List<EventId * 'F>, string>

@@ -1,4 +1,4 @@
-\restrict h4KpXyIzNjM7zVSgwcA2uOnXqK3QKgVAW6kavs0mH5H248vawk5cmxeJQgS9g4v
+\restrict sK2aiaOzgf3JWyb2tsMIt1ITog22LpZKYXt6j14Wy53Q7htS6VIoj77Ely0MMzU
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -14,6 +14,51 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: check_last_event_id_opt_lock(text, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_last_event_id_opt_lock(stream_name text, target_aggregate_id uuid, expected_last_event_id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+    found_last_event_id integer;
+    query text;
+    full_stream_name text;
+BEGIN
+    full_stream_name := stream_name;
+    IF NOT full_stream_name LIKE 'events_%' THEN
+        full_stream_name := 'events_' || full_stream_name;
+    END IF;
+
+    -- If target_aggregate_id is null, try to resolve it from the expected_last_event_id
+    IF target_aggregate_id IS NULL THEN
+        query := format('SELECT aggregate_id FROM %I WHERE id = $1', full_stream_name);
+        EXECUTE query INTO target_aggregate_id USING expected_last_event_id;
+    END IF;
+
+    IF target_aggregate_id IS NULL THEN
+        IF expected_last_event_id > 0 THEN
+            RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected event % not found to resolve aggregate', full_stream_name, expected_last_event_id;
+        END IF;
+    ELSE
+        query := format('SELECT id FROM %I WHERE aggregate_id = $1 ORDER BY id DESC LIMIT 1', full_stream_name);
+        EXECUTE query INTO found_last_event_id USING target_aggregate_id;
+
+        IF expected_last_event_id = 0 THEN
+            IF found_last_event_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected no previous events, but found event %', full_stream_name, found_last_event_id;
+            END IF;
+        ELSIF expected_last_event_id > 0 THEN
+            IF found_last_event_id IS NULL OR found_last_event_id <> expected_last_event_id THEN
+                RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected last event id %, but found %', full_stream_name, expected_last_event_id, found_last_event_id;
+            END IF;
+        END IF;
+    END IF;
+END;
+$_$;
+
 
 --
 -- Name: insert_01_tags_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
@@ -484,7 +529,7 @@ ALTER TABLE ONLY public.snapshots_02_todo
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h4KpXyIzNjM7zVSgwcA2uOnXqK3QKgVAW6kavs0mH5H248vawk5cmxeJQgS9g4v
+\unrestrict sK2aiaOzgf3JWyb2tsMIt1ITog22LpZKYXt6j14Wy53Q7htS6VIoj77Ely0MMzU
 
 
 --
@@ -495,4 +540,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20230618084021'),
     ('20230618084147'),
     ('20230618084416'),
-    ('20230618084628');
+    ('20230618084628'),
+    ('20260629160000');

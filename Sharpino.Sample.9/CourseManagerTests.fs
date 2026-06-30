@@ -727,6 +727,58 @@ let tests =
             // then 
             Expect.isError assignTeacher "should be error"
             
+        multipleTestCase "Teacher John don't want to teach Math if student Jack is enrolled in that course and in literature as well second approach - Error" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
+            // given
+            setUp ()
+            let teacher = Teacher.MkTeacher "John"
+            let courseManager = courseManager ()
+            let addTeacher = courseManager.AddTeacher teacher
+            Expect.isOk addTeacher "should be ok"
+            let math = Course.MkCourse  ("Math", 10)
+            let addCourse = courseManager.AddCourse math
+            Expect.isOk addCourse "should be ok"
+            
+            let literature = Course.MkCourse  ("Literature", 10)
+            let addLiterature = courseManager.AddCourse literature
+            Expect.isOk addLiterature "should be ok"
+            
+            let jack = Student.MkStudent ("Jack", 5)
+            let addStudent = courseManager.AddStudent jack
+            
+            Async.Sleep delay |> Async.RunSynchronously
+            let subscribeJackToMath = courseManager.SubscribeStudentToCourse jack.Id math.Id
+            Expect.isOk subscribeJackToMath "should be ok"
+            
+            Async.Sleep delay |> Async.RunSynchronously
+            let subscribeJackToLiterature = courseManager.SubscribeStudentToCourse jack.Id literature.Id
+            Expect.isOk subscribeJackToLiterature "should be ok"
+            
+            let crossAggregatesConstraint =
+                fun () ->
+                    result
+                        {
+                            let! (jackEvId, jack) = studentViewer jack.Id
+                            let extraStreamsLocks =
+                                [((jack.Id, Student.Version + Student.StorageName), jackEvId)] |> Map.ofList
+
+                            let! constraintToBeMet =
+                                (not 
+                                     (jack.Courses |> List.exists (fun c -> c = literature.Id)
+                                      && (jack.Courses |> List.exists (fun c -> c = math.Id)))
+                                )
+                                |> Result.ofBool "constraint not met"
+                            return extraStreamsLocks
+                        }
+             
+            // when 
+            let assignTeacher = 
+                courseManager.AddTeacherToCourseConsideringIncompatibilities2 (teacher.Id, math.Id, crossAggregatesConstraint)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+           
+            // then 
+            Expect.isError assignTeacher "should be error"
+
         multipleTestCase "Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature - Ok" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             setUp ()
             Async.Sleep delay |> Async.RunSynchronously

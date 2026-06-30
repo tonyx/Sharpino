@@ -1626,7 +1626,7 @@ module CommandHandler =
             command ()
         #endif
 
-    let inline runThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+    let inline runThreeAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
@@ -1661,6 +1661,7 @@ module CommandHandler =
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
+        (crossAggregatesConstraint: Unit -> Result<Map<AggregateId * string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
             logger.LogDebug (sprintf "runThreeAggregateCommandsMdAsync %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
@@ -1698,8 +1699,10 @@ module CommandHandler =
                             (eventId2, events2', 'A2.Version, 'A2.StorageName, aggregateId2)
                             (eventId3, events3', 'A3.Version, 'A3.StorageName, aggregateId3)
                         ]
+                    let! extraContextConstraintsMap =
+                        crossAggregatesConstraint ()
                     let! ids =
-                        eventStore.MultiAddAggregateEventsMdAsync (multiEvents, metadata, ct)
+                        eventStore.MultiAddAggregateEventsMdAsync2 (multiEvents, metadata, extraContextConstraintsMap, ct)
 
                     AggregateCache3.Instance.Memoize2 (ids.[0] |> List.last, newState1 |> box) aggregateId1
                     AggregateCache3.Instance.Memoize2 (ids.[1] |> List.last, newState2 |> box) aggregateId2
@@ -1724,6 +1727,55 @@ module CommandHandler =
         #else    
             command()
         #endif
+    let inline runThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
+        and 'E3 :> Event<'A3>
+        and 'E3 : (member Serialize: 'F)
+        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A3 : (static member StorageName: string)
+        and 'A3 : (static member Version: string)
+        >
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (aggregateId3: Guid)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (metadata: Metadata)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (command3: AggregateCommand<'A3, 'E3>)
+        (ct: Option<CancellationToken>)
+        =
+            runThreeAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F>
+                aggregateId1
+                aggregateId2
+                aggregateId3
+                eventStore
+                messageSenders
+                metadata
+                command1
+                command2
+                command3
+                (fun () -> Ok Map.empty)
+                ct
 
     let inline runInitAndAggregateCommand<'A1, 'E1, 'A2, 'F
         when 'A1 : (member Id: Guid)
@@ -2169,7 +2221,53 @@ module CommandHandler =
                     
                 return ()
             }
-            
+
+    let inline runAggregateCommandMdAsync2<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (member Serialize: 'F) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command: AggregateCommand<'A, 'E>)
+        (crossAggregatesConstraint: Unit -> Result<Map<AggregateId*string, EventId>, string>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runAggregateCommandAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            let command = fun () ->
+                taskResult {
+                    let! eventId, state = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
+                    let! newState, events =
+                        state
+                        |> unbox
+                        |> command.Execute
+
+                    let! extraContextConstraintsMap =
+                        crossAggregatesConstraint ()
+
+                    let! ids =
+                        storage.AddAggregateEventsMdAsync2(eventId, 'A.Version, 'A.StorageName, aggregateId, md, events |>> _.Serialize, extraContextConstraintsMap,  ct)
+                   
+                    AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
+
+                    DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [aggregateId]
+                    
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR        
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
+            MailBoxProcessors.postToTheProcessor processor command
+        #else    
+            command ()
+        #endif    
+
     let inline runAggregateCommandMdAsync<'A, 'E, 'F
         when 'E :> Event<'A>
         and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
@@ -2186,6 +2284,7 @@ module CommandHandler =
         (command: AggregateCommand<'A, 'E>)
         (ct: Option<CancellationToken>)
         =
+
             logger.LogDebug (sprintf "runAggregateCommandAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
@@ -2926,6 +3025,82 @@ module CommandHandler =
         #else
             commands () 
         #endif    
+
+    let inline runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd2<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)>
+        
+        (aggregateId1: Guid)
+        (aggregateId2: Guid)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command1: AggregateCommand<'A1, 'E1>)
+        (command2: AggregateCommand<'A2, 'E2>)
+        (crossAggregatesConstraint: Unit -> Result<Map<string, EventId>, string>)
+        =
+            let commands = fun () ->
+                result {
+                    let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
+                    let! eventId2, state2 = getAggregateFreshState<'A2, 'E2, 'F> aggregateId2 eventStore
+                    
+                    let! newState1, events1 =
+                        state1
+                        |> unbox
+                        |> command1.Execute
+                    
+                    let! newState2, events2 =
+                        state2
+                        |> unbox
+                        |> command2.Execute
+                    
+                    let! checkFurtherConstraints =
+                        crossAggregatesConstraint ()
+                        
+                    let! newLastStateIdsList =
+                        eventStore.MultiAddAggregateEventsMd
+                            md 
+                            [
+                                (eventId1, (events1 |>> _.Serialize), 'A1.Version, 'A1.StorageName, aggregateId1)
+                                (eventId2, (events2 |>> _.Serialize), 'A2.Version, 'A2.StorageName, aggregateId2)
+                            ]
+                    
+                    AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[0] |> List.last, newState1 |> box) aggregateId1
+                    AggregateCache3.Instance.Memoize2 (newLastStateIdsList.[1] |> List.last, newState2 |> box) aggregateId2
+
+                    let _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId1, Some CancellationToken.None).GetAwaiter().GetResult()
+                    let _ = DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId2, Some CancellationToken.None).GetAwaiter().GetResult()
+                    
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> eventStore aggregateId1 newState1 (newLastStateIdsList.[0] |> List.last)
+                    let _ = mkAggregateSnapshotIfIntervalPassed2<'A2, 'E2, 'F> eventStore aggregateId2 newState2 (newLastStateIdsList.[1] |> List.last)
+                    
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId1 events1 eventId1 (newLastStateIdsList.[0] |> List.last)
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A2, 'E2> ('A2.Version + 'A2.StorageName) messageSenders aggregateId2 events2 eventId2 (newLastStateIdsList.[1] |> List.last)
+                    
+                    return ()     
+                }
+        #if USING_MAILBOXPROCESSOR
+            let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
+            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
+        #else
+            commands () 
+        #endif    
             
     let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
@@ -3182,7 +3357,7 @@ module CommandHandler =
             commands ()
         #endif    
 
-    let inline forceRunTwoNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F
+    let inline forceRunTwoNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
@@ -3207,9 +3382,9 @@ module CommandHandler =
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
+        (crossAggregatesConstraint: Unit -> Result<Map<Guid*string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-
             logger.LogDebug "forceRunTwoNAggregateCommandsAsync"
             let ct = 
                 match ct with
@@ -3353,9 +3528,12 @@ module CommandHandler =
                     |>> fun (eventId, events, id) -> (eventId, events, 'A2.Version, 'A2.StorageName, id)
                 
                 let allPacked = initialEventIds1Events1AndAggregateIds1 @ initialEventIds2EventIds2AndAggregateIds2
+
+                let! extraContextConstraintsMap =
+                    crossAggregatesConstraint ()
                 
                 let! dbNewStatesEventIds =
-                    eventStore.MultiAddAggregateEventsMdAsync (allPacked, md, ct)
+                    eventStore.MultiAddAggregateEventsMdAsync2 (allPacked, md, extraContextConstraintsMap, ct)
                     
                 let newDbBasedEventIds1 =
                     dbNewStatesEventIds
@@ -3404,7 +3582,45 @@ module CommandHandler =
                     
                 return ()
             }
-            
+
+    let inline forceRunTwoNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        >
+        (aggregateIds1: List<Guid>)
+        (aggregateIds2: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
+        (ct: Option<CancellationToken>)
+        =
+            forceRunTwoNAggregateCommandsMdAsync2 
+                                                    aggregateIds1
+                                                    aggregateIds2
+                                                    eventStore
+                                                    messageSenders
+                                                    md
+                                                    command1
+                                                    command2
+                                                    (fun () -> Ok(Map.empty))
+                                                    ct
+                                                
     let inline forceRunTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -3580,7 +3796,7 @@ module CommandHandler =
             commands ()
         #endif
 
-    let inline runTwoNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F
+    let inline runTwoNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
@@ -3605,6 +3821,7 @@ module CommandHandler =
         (md: Metadata)
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
+        (crossAggregatesConstraint: Unit -> Result<Map<AggregateId*string, EventId>, string>)
         (ct: Option<CancellationToken>):TaskResult<Unit, string>
         =
             logger.LogDebug "runTwoNAggregateCommands"
@@ -3689,8 +3906,11 @@ module CommandHandler =
                     let allPacked = packParametersForDb1 @ packParametersForDb2
                     let ct' = ct |> Option.defaultWith (fun _ -> CancellationToken.None)
 
+                    let! extraContextConstraintsMap =
+                        crossAggregatesConstraint ()
+
                     let! eventIds =
-                        eventStore.MultiAddAggregateEventsMdAsync(allPacked, md, ct')
+                        eventStore.MultiAddAggregateEventsMdAsync2(allPacked, md, extraContextConstraintsMap, ct')
                         
                     let eventIds1' = eventIds |> List.take aggregateIds1.Length
                     let eventIds2' = eventIds |> List.skip aggregateIds1.Length
@@ -3724,6 +3944,44 @@ module CommandHandler =
                         
                     return ()
                 }
+
+    let inline runTwoNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        >
+        (aggregateIds1: List<Guid>)
+        (aggregateIds2: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
+        (ct: Option<CancellationToken>):TaskResult<Unit, string>
+        =
+        runTwoNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'F>
+                aggregateIds1
+                aggregateIds2
+                eventStore
+                messageSenders
+                md
+                command1
+                command2
+                (fun () -> Ok(Map.empty))
+                ct
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -4035,7 +4293,7 @@ module CommandHandler =
             commands ()
         #endif    
                 
-    let inline forceRunThreeNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+    let inline forceRunThreeNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
         and 'E1 :> Event<'A1>
@@ -4070,6 +4328,7 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         (command3: List<AggregateCommand<'A3, 'E3>>)
+        (crossAggregatesConstraint: Unit -> Result<Map<AggregateId * string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
             logger.LogDebug "forceRunThreeNAggregateCommandsMd"
@@ -4225,6 +4484,9 @@ module CommandHandler =
                         uniqueInitialStates3
                         |>> fst
                     
+                    let! extraContextConstraintsMap =
+                        crossAggregatesConstraint ()
+
                     let! dbEventIds =
                         let packParametersForDb1 =
                             let serEvents1 =
@@ -4247,7 +4509,7 @@ module CommandHandler =
                         
                         let allPacked = packParametersForDb1 @ packParametersForDb2 @ packParametersForDb3
 
-                        eventStore.MultiAddAggregateEventsMdAsync (allPacked, md, ct)
+                        eventStore.MultiAddAggregateEventsMdAsync2 (allPacked, md, extraContextConstraintsMap, ct)
 
                     let newDbBasedEventIds1 =
                         dbEventIds
@@ -4328,6 +4590,58 @@ module CommandHandler =
         #else
             commands ()
         #endif    
+
+    let inline forceRunThreeNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1 : (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A1 : (static member StorageName: string)
+        and 'A1 : (static member Version: string)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'E2 :> Event<'A2>
+        and 'E2 : (member Serialize: 'F)
+        and 'E2 : (static member Deserialize: 'F -> Result<'E2, string>)
+        and 'A2 : (static member Deserialize: 'F -> Result<'A2, string>)
+        and 'A2 : (static member StorageName: string)
+        and 'A2 : (static member Version: string)
+        and 'A3 : (member Id: Guid)
+        and 'A3 : (member Serialize: 'F)
+        and 'E3 :> Event<'A3>
+        and 'E3 : (member Serialize: 'F)
+        and 'E3 : (static member Deserialize: 'F -> Result<'E3, string>)
+        and 'A3 : (static member Deserialize: 'F -> Result<'A3, string>)
+        and 'A3 : (static member StorageName: string)
+        and 'A3 : (static member Version: string)
+        >
+        (aggregateIds1: List<Guid>)
+        (aggregateIds2: List<Guid>)
+        (aggregateIds3: List<Guid>)
+        (eventStore: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (command1: List<AggregateCommand<'A1, 'E1>>)
+        (command2: List<AggregateCommand<'A2, 'E2>>)
+        (command3: List<AggregateCommand<'A3, 'E3>>)
+        (ct: Option<CancellationToken>)
+        =
+
+            forceRunThreeNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F>
+                (aggregateIds1)
+                (aggregateIds2)
+                (aggregateIds3)
+                (eventStore)
+                (messageSenders)
+                (md)
+                (command1)
+                (command2)
+                (command3)
+                (fun () -> Ok Map.empty)
+                (ct)
+
     let inline forceRunThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)

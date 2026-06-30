@@ -650,6 +650,104 @@ module PgStorage =
                         return (Error ex.Message)
                 }
 
+            member this.MultiAddAggregateEventsMdAsync2
+                (arg: List<EventId * List<Json> * Version * Name * AggregateId>, md: Metadata, extraConstraints: Map<AggregateId * string, EventId>, ?ct: CancellationToken)
+                =
+                logger.LogDebug(sprintf "MultiAddAggregateEventsMdAsync2 %A" arg)
+
+                task {
+                    use conn = new NpgsqlConnection(connection)
+
+                    use cts =
+                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                    cts.CancelAfter(cancellationTokenSourceExpiration)
+
+                    try
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        let transaction = conn.BeginTransaction()
+
+                        let! distancesFromLatestSnapshotsArray =
+                            arg
+                            |> Seq.map (fun (_, _, version, name, aggregateId) ->
+                                task {
+                                    let! distance = this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)
+                                    return (aggregateId, distance)
+                                })
+                            |> System.Threading.Tasks.Task.WhenAll
+                        let distancesFromLatestSnapshots = Map.ofArray distancesFromLatestSnapshotsArray
+
+                        let result =
+                            try
+                                let idLists = ResizeArray<ResizeArray<int>>()
+
+                                let _ =
+                                    arg
+                                    |>> fun (eventId, events, version, name, aggregateId) ->
+                                        let currentDistanceFromLastestSnapshot =
+                                            distancesFromLatestSnapshots[aggregateId]
+
+                                        let index =
+                                            (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
+
+                                        let stream_name = version + name
+                                        let ids = ResizeArray<int>()
+
+                                        for event in events do
+                                            let command =
+                                                let extraStreamsAggregateIds = extraConstraints.Keys |> Seq.map fst |> Seq.toArray
+                                                let extraStreamNames = extraConstraints.Keys |> Seq.map snd |> Seq.toArray
+                                                let extraEventIds = extraConstraints.Values |> Seq.toArray
+
+                                                let cmd =
+                                                    new NpgsqlCommand(
+                                                        sprintf
+                                                            "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock2(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @extra_stream_names, @extra_event_ids, @extra_aggregate_ids);"
+                                                            stream_name,
+                                                        conn,
+                                                        transaction
+                                                    )
+                                                cmd.Parameters.AddWithValue("@extra_aggregate_ids", extraStreamsAggregateIds) |> ignore
+                                                cmd.Parameters.AddWithValue("@extra_stream_names", extraStreamNames) |> ignore
+                                                cmd.Parameters.AddWithValue("@extra_event_ids", extraEventIds) |> ignore
+                                                cmd
+
+                                            command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                                            command.Parameters.AddWithValue("event", event) |> ignore
+                                            command.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                                            command.Parameters.AddWithValue(
+                                                    "@distance_from_latest_snapshot",
+                                                    index
+                                                )
+                                            |> ignore
+
+                                            command.Parameters.AddWithValue("md", md) |> ignore
+                                            command.Parameters.AddWithValue("last_event_id", eventId) |> ignore
+                                            let scalar = command.ExecuteScalar()
+                                            ids.Add(unbox<int> scalar)
+
+                                        idLists.Add(ids)
+
+                                transaction.Commit()
+                                let result = idLists |>> List.ofSeq
+                                result |> List.ofSeq |> Ok
+                            with _ as ex ->
+                                logger.LogError(
+                                    sprintf "MultiAddAggregateEventsMdAsync2. An error occurred: %A" ex.Message
+                                )
+                                transaction.Rollback()
+                                ex.Message |> Error
+
+                        try
+                            return result
+                        finally
+                            conn.Close()
+                    with _ as ex ->
+                        logger.LogError(sprintf "MultiAddAggregateEventsMdAsync2. An error occurred: %A" ex.Message)
+                        return (Error ex.Message)
+                }
+
             // only test db should be resettable (erasable)
             member this.Reset (version: Version) (name: Name) : unit = this.Reset version name |> ignore
 
@@ -705,6 +803,77 @@ module PgStorage =
 
                                 command'.Parameters.AddWithValue("md", md) |> ignore
                                 command'.Parameters.AddWithValue("last_event_id", eventId) |> ignore
+                                let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
+                                ids.Add(unbox<int> scalar)
+
+                            do! transaction.CommitAsync(cts.Token).ConfigureAwait(false)
+                            return Ok(List.ofSeq ids)
+                        with ex ->
+                            logger.LogError(sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
+                            do! transaction.RollbackAsync(cts.Token).ConfigureAwait(false)
+                            return Error ex.Message
+                    with ex ->
+                        logger.LogError(sprintf "AddAggregateEventsMdAsync. An error occurred: %A" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.AddAggregateEventsMdAsync2
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    extraConstraints:Map<System.Guid * string, EventId>,
+                    ?ct: CancellationToken
+                ) : Task<Result<List<int>, string>> =
+                task {
+                    logger.LogDebug(
+                        sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md
+                    )
+
+                    let stream_name = version + name
+
+                    let commandText =
+                        sprintf
+                            "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock2(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @extra_stream_names, @extra_event_ids, @extra_aggregate_ids);"
+                            stream_name
+
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use transaction = conn.BeginTransaction()
+
+                        let! currentDistanceFromLastestSnapshot =
+                            this.GetDistanceFromLatestSnapshotAsync(version, name, aggregateId, cts.Token)
+
+                        let extraStreamsAggregateIds = extraConstraints.Keys |> Seq.map fst |> Seq.toArray
+                        let extraStreamNames = extraConstraints.Keys |> Seq.map snd |> Seq.toArray
+                        let extraEventIds = extraConstraints.Values |> Seq.toArray
+
+                        try
+                            let ids = ResizeArray<int>()
+                            let index = (currentDistanceFromLastestSnapshot + 1) % distanceBetweenSnapshots
+
+                            for x in events do
+                                use command' = new NpgsqlCommand(commandText, conn, transaction)
+                                command'.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
+                                command'.Parameters.AddWithValue("event", x) |> ignore
+                                command'.Parameters.AddWithValue("@aggregate_id", aggregateId) |> ignore
+
+                                command'.Parameters.AddWithValue("@distance_from_latest_snapshot", index)
+                                |> ignore
+
+                                command'.Parameters.AddWithValue("md", md) |> ignore
+                                command'.Parameters.AddWithValue("last_event_id", eventId) |> ignore
+                                command'.Parameters.AddWithValue("@extra_stream_names", extraStreamNames) |> ignore
+                                command'.Parameters.AddWithValue("@extra_event_ids", extraEventIds) |> ignore
+                                command'.Parameters.AddWithValue("@extra_aggregate_ids", extraStreamsAggregateIds) |> ignore
                                 let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                 ids.Add(unbox<int> scalar)
 

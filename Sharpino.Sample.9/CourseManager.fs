@@ -105,6 +105,18 @@ type CourseManager
                     runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<Teacher, TeacherEvents, Course, CourseEvents, string>
                         teacherId courseId eventStore messageSenders "md" assignTeacherToCourse assignCourseToTeacher crossAggregatesConstraint
             }
+    member this.AddTeacherToCourseConsideringIncompatibilities2 (teacherId: Guid, courseId: Guid, crossAggregatesConstraint) =
+        taskResult
+            {
+                let! _, course = courseViewer courseId
+                let! _, teacher = teacherViewer teacherId
+                let assignTeacherToCourse = TeacherCommands.AddCourse course.Id
+                let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
+                let! result =
+                    forceRunTwoNAggregateCommandsMdAsync2<Teacher, TeacherEvents, Course, CourseEvents, string>
+                        [teacherId] [courseId] eventStore messageSenders "md" [assignTeacherToCourse] [assignCourseToTeacher] crossAggregatesConstraint None
+                return result 
+            }
             
     member this.GetStudent (id: Guid) =
         result
