@@ -680,54 +680,8 @@ let tests =
             Expect.isOk retrieveStudent "should be ok"
             let retrieveStudent = retrieveStudent.OkValue
             Expect.equal retrieveStudent.Courses.Length 1 "should be equal"
-       
-        // starting deailing with cross aggregates invariants explicitly passed to command handler
+            
         multipleTestCase "Teacher John don't want to teach Math if student Jack is enrolled in that course and in literature as well - Error" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
-            // given
-            setUp ()
-            let teacher = Teacher.MkTeacher "John"
-            let courseManager = courseManager ()
-            let addTeacher = courseManager.AddTeacher teacher
-            Expect.isOk addTeacher "should be ok"
-            let math = Course.MkCourse  ("Math", 10)
-            let addCourse = courseManager.AddCourse math
-            Expect.isOk addCourse "should be ok"
-            
-            let literature = Course.MkCourse  ("Literature", 10)
-            let addLiterature = courseManager.AddCourse literature
-            Expect.isOk addLiterature "should be ok"
-            
-            let jack = Student.MkStudent ("Jack", 5)
-            let addStudent = courseManager.AddStudent jack
-            
-            Async.Sleep delay |> Async.RunSynchronously
-            let subscribeJackToMath = courseManager.SubscribeStudentToCourse jack.Id math.Id
-            Expect.isOk subscribeJackToMath "should be ok"
-            
-            Async.Sleep delay |> Async.RunSynchronously
-            let subscribeJackToLiterature = courseManager.SubscribeStudentToCourse jack.Id literature.Id
-            Expect.isOk subscribeJackToLiterature "should be ok"
-            
-            let crossAggregatesConstraint =
-                fun (_: Teacher, _: Course) ->
-                    result
-                        {
-                            let! (_, jack) = studentViewer jack.Id
-                            return!
-                                (not 
-                                     (jack.Courses |> List.exists (fun c -> c = literature.Id)
-                                      && (jack.Courses |> List.exists (fun c -> c = math.Id)))
-                                )
-                                |> Result.ofBool "constraint not met"
-                        }
-             
-            // when 
-            let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
-           
-            // then 
-            Expect.isError assignTeacher "should be error"
-            
-        multipleTestCase "Teacher John don't want to teach Math if student Jack is enrolled in that course and in literature as well second approach - Error" instances <| fun (setUp, courseManager, courseViewer, studentViewer, delay) ->
             // given
             setUp ()
             let teacher = Teacher.MkTeacher "John"
@@ -806,21 +760,27 @@ let tests =
             //beware there is not literature subscribed
             
             let crossAggregatesConstraint =
-                fun (_: Teacher, _: Course) ->
+                fun () ->
                     result
                         {
-                            let! (_, jack) = studentViewer jack.Id
-                            do!
+                            let! (jackEvId, jack) = studentViewer jack.Id
+                            let extraStreamsLocks =
+                                [((jack.Id, Student.Version + Student.StorageName), jackEvId)] |> Map.ofList
+
+                            let! constraintToBeMet =
                                 (not 
                                      (jack.Courses |> List.exists (fun c -> c = literature.Id)
                                       && (jack.Courses |> List.exists (fun c -> c = math.Id)))
                                 )
                                 |> Result.ofBool "constraint not met"
-                            return ()    
+                            return extraStreamsLocks
                         }
              
             Async.Sleep delay |> Async.RunSynchronously
-            let assignTeacher = courseManager.AddTeacherToCourseConsideringIncompatibilities (teacher.Id, math.Id, crossAggregatesConstraint)
+            let assignTeacher = 
+                courseManager.AddTeacherToCourseConsideringIncompatibilities2 (teacher.Id, math.Id, crossAggregatesConstraint)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
             
             Expect.isOk assignTeacher "should be Ok"
             

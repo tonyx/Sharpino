@@ -192,7 +192,7 @@ module CommandHandler =
         (state: 'A)
         (eventId: int)
         =
-            logger.LogDebug "mkSnapshotIfIntervalPassed"
+            logger.LogDebug "mkSnapshotIfIntervalPassed2"
             Async.RunSynchronously
                 (async {
                     return
@@ -277,7 +277,7 @@ module CommandHandler =
         (eventBroker: IEventBroker<'F>)
         (md: Metadata)
         (command: Command<'A, 'E>) =
-            logger.LogDebug (sprintf "runCommand %A\n" command)
+            logger.LogDebug (sprintf "runCommandMd %A\n" command)
             let command = fun ()  ->
                 result {
                     let! (eventId, state) = getFreshState<'A, 'E, 'F> eventStore
@@ -342,7 +342,7 @@ module CommandHandler =
         (md: Metadata)
         (command: Command<'A, 'E>)
         =
-            logger.LogDebug (sprintf "runInitAndCommand %A %A" 'A.StorageName command)
+            logger.LogDebug (sprintf "runInitAndCommandMd %A %A" 'A.StorageName command)
             
             let command = fun () ->
                 result {
@@ -446,6 +446,7 @@ module CommandHandler =
         (messageSenders: MessageSenders)
         (initialInstances: 'A1[])
         (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "runMultipleInitAsync %A" 'A1.StorageName)
             taskResult {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                               (defaultArg ct CancellationToken.None)
@@ -478,6 +479,7 @@ module CommandHandler =
         (messageSenders: MessageSenders)
         (initialInstance: 'A1)
         (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "runInitAsync %A" 'A1.StorageName)
             taskResult {
                 use cts = CancellationTokenSource.CreateLinkedTokenSource
                               (defaultArg ct CancellationToken.None)
@@ -507,7 +509,6 @@ module CommandHandler =
         (messageSenders: MessageSenders) 
         (id: AggregateId)
         (predicate: 'A1 -> bool)
-        
         =
             logger.LogDebug (sprintf "runDelete %A" 'A1.StorageName)
             result {
@@ -598,7 +599,7 @@ module CommandHandler =
         (streamAggregateId: AggregateId)
         (command: AggregateCommand<'A2, 'E2>)
         (predicate: 'A1 -> bool) =
-            logger.LogDebug (sprintf "runDelete %A" 'A1.StorageName)
+            logger.LogDebug (sprintf "runDeleteAndAggregateCommandMd %A" 'A1.StorageName)
             result {
                 let! eventId, state =
                     getAggregateFreshState<'A1, 'E1, 'F> id eventStore
@@ -674,6 +675,7 @@ module CommandHandler =
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         (predicate: 'A -> bool) =
+            logger.LogDebug (sprintf "runDeleteAndTwoAggregateCommandsMd %A" 'A1.StorageName)
             result {
                 let! eventId, state =
                     getAggregateFreshState<'A, 'E, 'F> aggregateId eventStore
@@ -1144,7 +1146,7 @@ module CommandHandler =
         (md: Metadata)
         (command: AggregateCommand<'A1, 'E1>)
         =
-            logger.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            logger.LogDebug (sprintf "runInitAndAggregateCommandMd %A %A" 'A1.StorageName command)
             let command = fun () ->
                 result {
                     let! eventId, state = getAggregateFreshState<'A1, 'E1, 'F> aggregateId storage
@@ -1201,7 +1203,7 @@ module CommandHandler =
         (command: AggregateCommand<'A1, 'E1>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug (sprintf "runInitAndAggregateCommand %A %A" 'A1.StorageName command)
+            logger.LogDebug (sprintf "runInitAndAggregateCommandMdAsync %A %A" 'A1.StorageName command)
             let command = fun () ->
                 // todo: why asyncResult instead of taskResult
                 asyncResult {
@@ -1462,7 +1464,7 @@ module CommandHandler =
         (md: Metadata)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
-            logger.LogDebug (sprintf "runInitAndNAggregateCommands %A %A" 'A1.StorageName commands)
+            logger.LogDebug (sprintf "runInitAndNAggregateCommandsMd %A %A" 'A1.StorageName commands)
             let command = fun () ->
                 result {
                     let! states =
@@ -1664,7 +1666,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<AggregateId * string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug (sprintf "runThreeAggregateCommandsMdAsync %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
+            logger.LogDebug (sprintf "runThreeAggregateCommandsMdAsync2 %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
                 taskResult {
@@ -1832,7 +1834,7 @@ module CommandHandler =
         (command1: AggregateCommand<'A1, 'E1>)
         (command2: AggregateCommand<'A2, 'E2>)
         =
-            logger.LogDebug (sprintf "runInitAndTwoAggregateCommands %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName command1 command2 aggregateId1 aggregateId2)
+            logger.LogDebug (sprintf "runInitAndTwoAggregateCommandsMd %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName command1 command2 aggregateId1 aggregateId2)
             let command = fun () ->
                 result {
                     let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -1953,7 +1955,7 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
         =
-            logger.LogDebug (sprintf "runInitAndThreeAggregateCommands %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
+            logger.LogDebug (sprintf "runInitAndThreeAggregateCommandsMd %A %A %A %A %A %A %A %A %A" 'A1.StorageName 'A2.StorageName 'A3.StorageName command1 command2 command3 aggregateId1 aggregateId2 aggregateId3)
             let command = fun () ->
                 result {
                     let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -2136,7 +2138,7 @@ module CommandHandler =
             }
             
     let storeEvents (eventStore: IEventStore<'F>) (messageSenders: MessageSenders) (block: PreExecutedAggregateCommand<_, _>) =
-        logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
+        logger.LogDebug (sprintf "storeevents %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
         result {
             let! ids =
                 block.SerializedEvents
@@ -2145,7 +2147,7 @@ module CommandHandler =
         }
         
     let storeEventsAsync (eventStore: IEventStore<'F>) (block: PreExecutedAggregateCommand<_, _>, ct: CancellationToken) =
-        logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
+        logger.LogDebug (sprintf "storeEventsAsync %A,  %A, id: %A" block.StorageName block.AggregateId block.AggregateId)
         taskResult {
             let ids =
                 eventStore.AddAggregateEventsMdAsync (block.EventId, block.Version, block.StorageName, block.AggregateId, block.Metadata, block.SerializedEvents, ct)
@@ -2153,7 +2155,7 @@ module CommandHandler =
         }
     
     let storeMultipleEvents (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
-        logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
+        logger.LogDebug (sprintf "storeMultipleEvents %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
         result {
             do!
                 blocks.Length > 0
@@ -2169,7 +2171,7 @@ module CommandHandler =
         }
 
     let storeMultipleEventsAsync (eventStore: IEventStore<'F>) (eventBroker: MessageSenders) (ct: Option<CancellationToken>) (blocks: List<PreExecutedAggregateCommand<_, _>>) =
-        logger.LogDebug (sprintf "storeAggregateBlock %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
+        logger.LogDebug (sprintf "storeMultipleEventsAsync %A,  %A, id: %A" blocks.Head.StorageName blocks.Head.AggregateId blocks.Head.AggregateId)
         taskResult {
             do!
                 blocks.Length > 0
@@ -2200,7 +2202,7 @@ module CommandHandler =
         (md: Metadata)
         (command: AggregateCommand<'A, 'E>)
         =
-            logger.LogDebug (sprintf "runAggregateCommandRefactor %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            logger.LogDebug (sprintf "runAggregateCommandMd %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             result {
                 let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
                 let! _, events =
@@ -2239,7 +2241,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<AggregateId*string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug (sprintf "runAggregateCommandAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            logger.LogDebug (sprintf "runAggregateCommandAsync2 %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
                 taskResult {
@@ -2258,6 +2260,8 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
 
                     DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [aggregateId]
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
                     
                     return ()
                 }
@@ -2285,7 +2289,7 @@ module CommandHandler =
         (ct: Option<CancellationToken>)
         =
 
-            logger.LogDebug (sprintf "runAggregateCommandAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            logger.LogDebug (sprintf "runAggregateCommandMdAsync %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
                 taskResult {
@@ -2301,6 +2305,9 @@ module CommandHandler =
                     AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
 
                     DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [aggregateId]
+
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
                     
                     return ()
                 }
@@ -2582,7 +2589,7 @@ module CommandHandler =
         (cancellationToken: Option<CancellationToken>)
         =
             taskResult {
-                logger.LogDebug "runNAggregateCommandsMd"
+                logger.LogDebug "runNAggregateCommandsMdAsync"
                 let aggregateIdsAreUnique = aggregateIds |> List.distinct |> List.length = aggregateIds.Length
                 let ct = defaultArg cancellationToken CancellationToken.None
 
@@ -2667,9 +2674,8 @@ module CommandHandler =
         (messageSenders: MessageSenders)
         (commands: List<AggregateCommand<'A1, 'E1>>)
         =
-            logger.LogDebug "runNAggregateCommands"
+            logger.LogDebug (sprintf "runNAggregateCommands %A" aggregateIds)
             runNAggregateCommandsMd<'A1, 'E1, 'F> aggregateIds eventStore messageSenders Metadata.Empty commands
-   
     
     let inline runTwoAggregateCommandsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
@@ -2761,7 +2767,7 @@ module CommandHandler =
         (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
         (eventStore: IEventStore<'F>)
         (messageSenders: MessageSenders) =
-        logger.LogDebug "runPreExecutedCommands"
+        logger.LogDebug "runPreExecutedAggregateCommands"
         result {
             let! storedIds =
                 storeMultipleEvents eventStore messageSenders
@@ -2822,7 +2828,7 @@ module CommandHandler =
         (messageSenders: MessageSenders) 
         (ct: Option<CancellationToken>)
         =
-        logger.LogDebug "runPreExecutedCommands"
+        logger.LogDebug "runPreExecutedAggregateCommandsAsync"
         taskResult {
             let! storedIds =
                 storeMultipleEventsAsync eventStore messageSenders
@@ -2892,7 +2898,7 @@ module CommandHandler =
         (preExecutedAggregateCommands: List<PreExecutedAggregateCommand<_,'F>>)
         (eventStore: IEventStore<'F>)
         (messageSenders: MessageSenders) =
-        logger.LogDebug "runPreExecutedCommands"
+        logger.LogDebug "runPreExecutedAggregateCommands2"
         result {
             let! storedIds =
                 storeMultipleEvents eventStore messageSenders
@@ -2977,6 +2983,7 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         (crossAggregatesConstraint:'A1*'A2 -> Result<unit, string>)
         =
+            logger.LogDebug "runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd"
             let commands = fun () ->
                 result {
                     let! eventId1, state1 = getAggregateFreshState<'A1, 'E1, 'F> aggregateId1 eventStore
@@ -3385,7 +3392,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<Guid*string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug "forceRunTwoNAggregateCommandsAsync"
+            logger.LogDebug "forceRunTwoNAggregateCommandsAsync2"
             let ct = 
                 match ct with
                 | Some c -> c
@@ -3675,7 +3682,7 @@ module CommandHandler =
         (command1: List<AggregateCommand<'A1, 'E1>>)
         (command2: List<AggregateCommand<'A2, 'E2>>)
         =
-            logger.LogDebug "runTwoNAggregateCommands"
+            logger.LogDebug "runTwoNAggregateCommandsMd"
             let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
             let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
             if (not aggregateId1AreUnique) then
@@ -3824,7 +3831,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<AggregateId*string, EventId>, string>)
         (ct: Option<CancellationToken>):TaskResult<Unit, string>
         =
-            logger.LogDebug "runTwoNAggregateCommands"
+            logger.LogDebug "runTwoNAggregateCommandsAsync2"
             let aggregateId1AreUnique = aggregateIds1 |> List.distinct |> List.length = aggregateIds1.Length
             let aggregateId2AreUnique = aggregateIds2 |> List.distinct |> List.length = aggregateIds2.Length
             if (not aggregateId1AreUnique) then
@@ -4331,7 +4338,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<AggregateId * string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug "forceRunThreeNAggregateCommandsMd"
+            logger.LogDebug "forceRunThreeNAggregateCommandsMdAsync2"
 
             let ct =
                 match ct with
@@ -4946,7 +4953,7 @@ module CommandHandler =
         (command2: AggregateCommand<'A2, 'E2>)
         (command3: AggregateCommand<'A3, 'E3>)
         =
-            logger.LogDebug "runThreeAggregateCommandsMdRefactor"
+            logger.LogDebug "runThreeAggregateCommandsMd"
             result
                 {
                     let! a1ExecutedCommand =  preExecuteAggregateCommandMd<'A1, 'E1, 'F> aggregateId1 eventStore messageSenders metadata command1
@@ -5153,7 +5160,7 @@ module CommandHandler =
             (command2: Command<'A2, 'E2>) 
             (command3: Command<'A3, 'E3>) 
             =
-            logger.LogDebug (sprintf "runThreeCommands %A %A %A" command1 command2 command3)
+            logger.LogDebug (sprintf "runThreeCommandsMd %A %A %A" command1 command2 command3)
             
             let commands = fun () ->
                 result {

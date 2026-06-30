@@ -29,7 +29,11 @@ DECLARE
 BEGIN
     full_stream_name := stream_name;
     IF NOT full_stream_name LIKE 'events_%' THEN
-        full_stream_name := 'events_' || full_stream_name;
+        IF full_stream_name LIKE '_%' THEN
+            full_stream_name := 'events' || full_stream_name;
+        ELSE
+            full_stream_name := 'events_' || full_stream_name;
+        END IF;
     END IF;
 
     -- If target_aggregate_id is null, try to resolve it from the expected_last_event_id

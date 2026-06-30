@@ -94,17 +94,6 @@ type CourseManager
                         teacherId courseId eventStore messageSenders assignTeacherToCourse assignCourseToTeacher
             }        
    
-    member this.AddTeacherToCourseConsideringIncompatibilities (teacherId: Guid, courseId: Guid, crossAggregatesConstraint) =
-        result
-            {
-                let! _, course = courseViewer courseId
-                let! _, teacher = teacherViewer teacherId
-                let assignTeacherToCourse = TeacherCommands.AddCourse course.Id
-                let assignCourseToTeacher = CourseCommands.AddTeacher teacher.Id
-                return!
-                    runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<Teacher, TeacherEvents, Course, CourseEvents, string>
-                        teacherId courseId eventStore messageSenders "md" assignTeacherToCourse assignCourseToTeacher crossAggregatesConstraint
-            }
     member this.AddTeacherToCourseConsideringIncompatibilities2 (teacherId: Guid, courseId: Guid, crossAggregatesConstraint) =
         taskResult
             {

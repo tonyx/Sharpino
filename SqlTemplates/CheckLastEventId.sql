@@ -1,4 +1,3 @@
--- migrate:up
 
 CREATE OR REPLACE FUNCTION check_last_event_id_opt_lock(
     IN stream_name text,
@@ -48,9 +47,3 @@ BEGIN
     END IF;
 END;
 $$;
-
--- migrate:down
-
-DROP FUNCTION IF EXISTS check_last_event_id_opt_lock(
-    text, uuid, int
-);

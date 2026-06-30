@@ -147,7 +147,7 @@ module PgBinaryStore =
                 events: List<byte[]>,
                 ?ct: CancellationToken
             ) =
-            logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
+            logger.LogDebug "SetInitialAggregateStateAndAddAggregateEventsMdAsync"
 
             let insertSnapshot =
                 sprintf
@@ -254,7 +254,7 @@ module PgBinaryStore =
                 events: List<EventId * List<byte[]> * Version * Name * AggregateId>,
                 ?ct: CancellationToken
             ) =
-            logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
+            logger.LogDebug "SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync"
 
             let insertSnapshot =
                 sprintf
@@ -462,7 +462,7 @@ module PgBinaryStore =
                     ?ct: CancellationToken
                 ) =
                 logger.LogDebug(
-                    sprintf "GetEventsInATimeInterval %s %s %A %A %A" version name aggregateId dateFrom dateTo
+                    sprintf "GetAggregateEventsInATimeIntervalAsync %s %s %A %A %A" version name aggregateId dateFrom dateTo
                 )
 
                 let query =
@@ -503,7 +503,7 @@ module PgBinaryStore =
             member this.GetAggregateEventsAfterIdAsync
                 (version: Version, name: Name, aggregateId: AggregateId, id: EventId, ?ct: CancellationToken)
                 =
-                logger.LogDebug(sprintf "GetAggregateEventsAfterId %s %s %A %d" version name aggregateId id)
+                logger.LogDebug(sprintf "GetAggregateEventsAfterIdAsync %s %s %A %d" version name aggregateId id)
 
                 let query =
                     sprintf
@@ -667,7 +667,7 @@ module PgBinaryStore =
                     extraConstraints:Map<System.Guid * string, EventId>,
                     ?ct: CancellationToken
                 ) =
-                logger.LogDebug(sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
+                logger.LogDebug(sprintf "AddAggregateEventsMdAsync2 %s %s %A %A %s" version name aggregateId events md)
                 let stream_name = version + name
 
                 let commandText =
@@ -831,7 +831,6 @@ module PgBinaryStore =
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         let transaction = conn.BeginTransaction()
 
-
                         let! distancesFromLatestSnapshotsArray =
                             arg
                             |> Seq.map (fun (_, _, version, name, aggregateId) ->
@@ -861,7 +860,6 @@ module PgBinaryStore =
 
                                         for event in events do
                                             let command =
-                                                // if stream_name = "_01_teacher" || stream_name = "_01_student" then
                                                 let extraAggregateIds = extraConstraints.Keys |> Seq.map fst |> Seq.toArray     
                                                 let extraStreamNames = extraConstraints.Keys |> Seq.map snd |> Seq.toArray
                                                 let extraEventIds = extraConstraints.Values |> Seq.toArray
@@ -878,14 +876,6 @@ module PgBinaryStore =
                                                 cmd.Parameters.AddWithValue("@extra_event_ids", extraEventIds) |> ignore
                                                 cmd.Parameters.AddWithValue("@extra_aggregate_ids", extraAggregateIds) |> ignore
                                                 cmd
-                                                // else
-                                                //     new NpgsqlCommand(
-                                                //         sprintf
-                                                //             "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id);"
-                                                //             stream_name,
-                                                //         conn,
-                                                //         transaction
-                                                //     )
 
                                             command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
                                             command.Parameters.AddWithValue("event", event) |> ignore
@@ -1048,7 +1038,7 @@ module PgBinaryStore =
                 | _ -> None
 
             member this.TryGetLastHistorySnapshotIdByAggregateId version name aggregateId =
-                logger.LogDebug(sprintf "TryGetLastSnapshotIdByAggregateId %s %s %A" version name aggregateId)
+                logger.LogDebug(sprintf "TryGetLastHistorySnapshotIdByAggregateId %s %s %A" version name aggregateId)
 
                 let query =
                     sprintf
@@ -1354,7 +1344,7 @@ module PgBinaryStore =
             member this.SetInitialAggregateStatesAsync
                 (version: Version, name: Name, idsAndSnapshots: (AggregateId * byte[])[], ?ct: CancellationToken)
                 =
-                logger.LogDebug(sprintf "SetInitialAggregateStatesAsync %s %s" version name)
+                logger.LogDebug(sprintf "SetInitialAggregateStatesMdAsync %s %s" version name)
 
                 let insertSnapshotCmd =
                     sprintf
@@ -1404,6 +1394,7 @@ module PgBinaryStore =
                 }
 
             member this.SetInitialAggregateStateAsync(aggregateId, version, name, json, ?ct) =
+                logger.LogDebug(sprintf "SetInitialAggregateStateAsync %s %s %A" version name aggregateId)
                 task {
                     use conn = new NpgsqlConnection(connection)
 
@@ -1504,7 +1495,7 @@ module PgBinaryStore =
                 md
                 events
                 =
-                logger.LogDebug "entered in setInitialAggregateStateAndAddEvents"
+                logger.LogDebug "SetInitialAggregateStateAndAddEventsMd"
 
                 let insertSnapshot =
                     sprintf
@@ -1596,7 +1587,7 @@ module PgBinaryStore =
                 md
                 events
                 =
-                logger.LogDebug "entered in SetInitialAggregateStateAndAddAggregateEvents"
+                logger.LogDebug "SetInitialAggregateStateAndAddEventsMd"
 
                 let insertSnapshot =
                     sprintf
@@ -1698,7 +1689,7 @@ module PgBinaryStore =
                 md
                 events
                 =
-                logger.LogDebug "entered in SetInitialAggregateStateAndMultiAddAggregateEvents"
+                logger.LogDebug "SetInitialAggregateStateAndMultiAddAggregateEventsMd"
 
                 let insertSnapshot =
                     sprintf
@@ -1803,7 +1794,7 @@ module PgBinaryStore =
                 (aggregateId: AggregateId, eventId: int, snapshot: byte array)
                 name
                 =
-                logger.LogDebug "entered in setAggregateSnapshot"
+                logger.LogDebug "SetAggregateSnapshot"
 
                 let command =
                     sprintf
@@ -2152,7 +2143,7 @@ module PgBinaryStore =
                     Error ex.Message
 
             member this.GetUndeletedAggregateIds version name =
-                logger.LogDebug(sprintf "GetAggregateIds %s %s" version name)
+                logger.LogDebug(sprintf "GetUndeletedAggregateIds %s %s" version name)
 
                 let query =
                     sprintf
@@ -2206,7 +2197,7 @@ module PgBinaryStore =
                 }
 
             member this.GetUndeletedAggregateIdsAsync(version, name, ?ct) =
-                logger.LogDebug(sprintf "GetAggregateIdsAsync %s %s" version name)
+                logger.LogDebug(sprintf "GetUndeletedAggregateIdsAsync %s %s" version name)
 
                 let query =
                     sprintf
@@ -2435,7 +2426,7 @@ module PgBinaryStore =
                 }
 
             member this.TryGetAggregateSnapshotById version name aggregateId id =
-                logger.LogDebug(sprintf "TryGetSnapshotById %s %s %d" version name id)
+                logger.LogDebug(sprintf "TryGetAggregateSnapshotById %s %s %d" version name id)
 
                 let query =
                     sprintf "SELECT event_id, snapshot FROM snapshots%s%s WHERE id = @id" version name
@@ -2485,7 +2476,7 @@ module PgBinaryStore =
                     None
 
             member this.TryGetLastAggregateEventId version name aggregateId =
-                logger.LogDebug(sprintf "TryGetLastEventId %s %s" version name)
+                logger.LogDebug(sprintf "TryGetLastAggregateEventId %s %s" version name)
 
                 let query =
                     sprintf
@@ -2659,7 +2650,7 @@ module PgBinaryStore =
             member this.GetAggregateEventsAsync
                 (version: Version, name: Name, aggregateId: AggregateId, ?ct: CancellationToken)
                 : Task<Result<List<EventId * byte array>, string>> =
-                logger.LogDebug(sprintf "GetAggregateEvents %s %s %A" version name aggregateId)
+                logger.LogDebug(sprintf "GetAggregateEventsAsync %s %s %A" version name aggregateId)
 
                 let query =
                     sprintf
@@ -2808,7 +2799,7 @@ module PgBinaryStore =
                 metaData
                 events
                 =
-                logger.LogDebug(sprintf "SnapshotAndMarkDeleted %s %s %A" s1Version s1name s1AggregateId)
+                logger.LogDebug(sprintf "SnapshotMarkDeletedAndAddAggregateEventsMd %s %s %A" s1Version s1name s1AggregateId)
 
                 let snapCommand =
                     sprintf
@@ -2893,6 +2884,7 @@ module PgBinaryStore =
                     Error $"error checking event alignments. eventId passed {s1EventId}. Latest event id: {lastEventId}"
 
             member this.GDPRReplaceEventsByPredicate version name aggregateId predicate replacement =
+                logger.LogDebug(sprintf "GDPRReplaceEventsByPredicate %s %s %A" version name aggregateId)
 
                 let sqlUpdate =
                     sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
@@ -2924,6 +2916,8 @@ module PgBinaryStore =
                 )
 
             member this.GDPRPartialUpdateSnapshots version name aggregateId updateFunction =
+                logger.LogDebug(sprintf "GDPRPartialUpdateSnapshots %s %s %A" version name aggregateId)
+
                 let query =
                     sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
 
@@ -2983,6 +2977,8 @@ module PgBinaryStore =
             member this.GDPRPartialUpdateSnapshotsAsync
                 (version, name, aggregateId, updateFunciton, ?ct: CancellationToken)
                 =
+                logger.LogDebug(sprintf "GDPRPartialUpdateSnapshotsAsync %s %s %A" version name aggregateId)
+
                 let query =
                     sprintf "SELECT id, snapshot FROM snapshots%s%s WHERE aggregate_id = @aggregateId" version name
 
@@ -3033,6 +3029,7 @@ module PgBinaryStore =
             member this.GDPRReplaceEventsByPredicateAsync
                 (version, name, aggregateId, predicate, replacement, ?ct: CancellationToken)
                 =
+                logger.LogDebug(sprintf "GDPRReplaceEventsByPredicateAsync %s %s %A" version name aggregateId)
                 let sqlUpdate =
                     sprintf "UPDATE events%s%s SET event = @replacement WHERE id = ANY(@ids)" version name
 
@@ -3068,6 +3065,7 @@ module PgBinaryStore =
                 }
 
             member this.BulkSnapshotsUpcast(version, name, upcastFunction, ?ct: CancellationToken) =
+                logger.LogDebug(sprintf "BulkSnapshotsUpcast %s %s" version name)
                 let query =
                     sprintf "SELECT id, snapshot FROM snapshots%s%s" version name
 
@@ -3129,6 +3127,8 @@ module PgBinaryStore =
                 s1Snapshot
                 (arg: List<EventId * List<byte[]> * Version * Name * AggregateId>)
                 =
+                logger.LogDebug(sprintf "SnapshotMarkDeletedAndMultiAddAggregateEventsMd %s %s %A" s1Version s1name s1AggregateId)
+
                 let snapCommand =
                     sprintf
                         "INSERT INTO snapshots%s%s (aggregate_id, snapshot, timestamp, is_deleted) VALUES (@aggregate_id, @snapshot, @timestamp, true)"
