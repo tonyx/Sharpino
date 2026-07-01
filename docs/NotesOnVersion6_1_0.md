@@ -1,48 +1,51 @@
-Those are notes about how to extend the decision boundary in an arbitrary way and use it with some commands involving specific aggregates.
+## Extending the decision boundary
 
-In Sharpino, the flow of executing a command has always been essentially based on specifying an extended decision boundary of a command in a way separated from the command execution itself. 
+In Sharpino, the flow of executing one or more commands has always been based on specifying any eventual "extended" decision boundary in a way that is separated from the command itself. This means that before running the commands, the condition is evaluated based on a context external to the involved aggregate, and then the commands are sent for execution. This works fine on a statistical ground but may have consistency issues in a strict sense, as the execution is unable to check if the condition used to evaluate the "extended" decision boundary still holds.
+Using multiple commands involving multiple aggregates in a single execution flow may mitigate the issue in many cases, but it does not fully resolve it.
+The reason is that the condition evaluated by any command is local to the involved aggregate and cannot be a function of all the states of all the aggregates involved.
 
-It used to work as follows: 
-when the CommandHandler executes the passed command, it decides on the basis of a consistency boundary that is limited only to single the states of the aggregates involved in the command.
- By this approach, in theory I may still encounter a state that is inconsistent respect to the "extended decision boundary".
-Such "extended boundary" may have been evaluated _before_ executing the command by the caller. The actual state that includes the extended boundary may have changed in between. The optimistic lock was not able to include the "extra-aggregate" state changes.
+The "extending the decision boundary" feature is now available in Sharpino 6.1.0. This feature allows you to include, using a specific lambda expression, an arbitrary extended decision boundary that enforces consistency in a wider sense. The optimistic lock control can include the extended scope as well, without limiting it to the event ID-based optimistic lock control associated with the passed aggregates.
 
-So I introduced a new feature that allows including, using a particular lambda expression, an arbitrary extended decision boundary that enforces consistency in a wider sense. 
-The optimistic lock control  may include the extended scope as well, without limiting it to the eventId-based optimistic lock control related to the passed aggregates. 
+## A recap of the "old way"
 
-Let's take a look at the way a specific "extended decision boundary" typically was part of the workflow in any Sharpino-based program before this feature.
+1. If a particular condition is met, the application executes a command by sending it to the CommandHandler component.
+2. The CommandHandler retrieves the current event ID (version) of the object/aggregate.
+3. It executes the command on that state, producing a new state and a list of events if the decision function determines the new state is consistent (i.e., the execution of the command returns an `Ok`).
+4. It passes the event ID and the events to the event store.
+5. The event store stores those events if the last event ID on the stream for that aggregate corresponds to the event ID passed.
+6. If the previous step succeeds, it feeds the cache with the new state.
+7. It then activates a fire-and-forget task to send the events to a message bus.
+8. Finally, it refreshes, also in a fire-and-forget way, any cached details that depend on this particular aggregate.
 
-- If a particular condition is met, the application executes a command, sending it to the CommandHandler component
-- The CommandHandler retrieves the current eventId (version) of the object/aggregate 
-- It executes the command on that state, producing a new state and a list of events if the "decision" function says the new state will be consistent (i.e., the execution of the command returns an Ok)
-- Passes the eventId to the eventStore and the events.
-- The eventstore stores those events if the last eventId on the stream for that aggregate corresponds to the eventId passed
-- If the previous step is ok then it feeds the cache with the new state
-- Then Activates a fire-and-forget task to send the events to a message bus
-- Finally, it refreshes, still in a fire-and-forget way, any "cached details" that depend on this particular aggregate
+In this previous approach, there is no further check based on an optimistic lock check involving the extended boundary to verify that the condition applied at step 1 still holds after the events are run.
 
-In this previous approach, virtually the "decide" part is split into two parts. The first part has nothing to do with event-sourcing per se. It's just evaluating the expression "a particular condition is met", where such condition isn't part of the aggregate that has to be involved by the new events.
-Such a particular condition is still, logically speaking, a decision boundary. It is just related to a scope that exceeds the scope of the aggregate itself and so normally cannot be evaluated by the command itself and by the CommandHandler either.
+## An example
+Suppose a business rule tries to preserve seat fragmentation and filters reservations accordingly. For instance, a rule could be: "this row should be fully available for new reservations only if the nearest rows are not also fully reserved."
+The application logic, in the old way, might encode this rule in the condition that has to be met before deciding to execute the command to reserve all the seats in a specific row (which is an aggregate). So before issuing the command, the application evaluates the state of the rows that are close to the row that needs to be reserved.
 
-An example: Suppose that a business rule tries to preserve a sort of fragmentation in the occupied seats and so tries to filter the reservations accordingly. So a rule can be "this row should be fully available for new reservations only if the nearest rows aren't also fully reserved".  
-The application logic, in the old way, may encode this rule in the condition that has to be met before deciding to execute the command of reserving all the seats in the specific row (which is an aggregate). So before issuing the command, the application may evaluate the state of the rows that are close to the row that needs to be reserved.
+## The "multiple commands at once" alternative
+An alternative is running multiple commands at once on different aggregates, where only one command actually produces meaningful events, and the other commands are just used to evaluate constraints (producing "do-nothing" events, or an empty list of events).
 
-An alternative is running multiple commands at once on different aggregates, whereas only one command actually produces meaningful events, and the other commands are just used to evaluate the constraints (producing "do-nothing" events, or an empty list of events).
+The previous approach of using multiple commands may solve the problem as long as the decision is always a conjunction of local decisions for each extra-aggregate involved. However, a more complex decision function over the combined state of all involved extra-aggregates may not be easy to apply and manage.
+In this case, the whole is more than the sum of its parts. Regarding the previous example of keeping some fragmentation of seats in nearby rows, we might have a condition like: "the sum of the existing reservations in neighboring rows cannot exceed 80%" to allow fully reserving a specific row. This would be difficult to implement using multiple commands (and thus multiple local decision functions) executed at once.
 
-The previous approach of using multiple commands may solve the problem as long the decision is always local to any extra-aggregate involved. We may have a conjunction of "decides" that are all local to any aggregate involved.
+__Note__: here I am deliberately avoiding introducing any "process manager" or "saga" based solution. Anyone who endorses those patterns will not find anything about them here. This does not mean I dismiss or dislike those approaches; I simply want to focus on alternative ways.
 
-By evaluating the state on the extended boundary before running the events, it may happen that the invariant will still be broken. It is still theoretically possible that, after the decision to run the command, the contexts that contributed to that decision (the nearest rows aren't fully reserved) don't apply when the command is actually executed, and the related events are stored. Therefore, the expected constraint/invariant is that a particular fragmentation of the reservations could be no longer valid. The runCommand part of the code cannot avoid this because the decision boundary and the related optimistic lock check on the eventStore are still limited to the boundary of the aggregate involved in the command and not on the previous decision, i.e., other aggregate states that are not part of the aggregate involved in the command.
-The fact that the situation is unlikely, or that other alternatives are possible (including using multiple commands on multiple aggregates at once, even if they affect only one aggregate), or the fact that even the rare case of a rule violation is not a big deal, may have contributed to postponing this feature until now.
-So now it is available, in the sense that some of the runCommand functions have their related version that accepts a new parameter for it.
-The new logic changes the previous workflow a little bit, as follows:
-Express the particular condition to be met, involving some aggregates that are part of the decision boundary (but not of the aggregate that will be "hit" by the command and the related events) as a particular lambda expression that, if it succeeds, it will also return a map of aggregateIds, the "last eventId" and the stream names of the aggregates that matters for that decision. If the lambda returns successfully, it means that the condition related to that "extended boundary" applies.
-The CommandHandler retrieves the current eventId (version) of the aggregate.
-It executes the command on that state, producing a new state and a list of events
-It evaluates the lambda that evaluates the extended decision boundary, verifying that it returns an Ok with triples eventId, aggregateId, streamName
-It passes the eventId to the eventStore and the events, and also the information related to the extended boundary (eventId, aggregateId, streamName)
-The eventstore stores those events if the last eventId on the event store corresponds to the eventId passed, and also if the eventId/aggregateId/streamName related to the extended decision boundary context do match
-If all the previous storing operations succeed, it means that the event store will produce a state that is coherent with all the mentioned constraints, which include the aggregate and the extended context.
-…
+The new "decision boundary" feature tries to address the problem of keeping consistency in complex scenarios by allowing you to include an arbitrary extended decision boundary as part of the command execution flow.
 
-So a little recap.
-When running a command or some commands, for certain classes of runCommand, I have alternative implementations allowing me to send an extended scope decision function in a way that such a decision lies outside the aggregates involved by the commands. The resulting state will be consistent not only in relation to the aggregate involved in the command but also from an extended base of optimistic control lock, without relying on a statistical base.
+Here is the new flow, which serves as an alternative to the previous one:
+
+1. Express the particular condition to be met, involving some aggregates that are part of the decision boundary (but not the aggregate that will be hit by the command and the related events) as a specific lambda expression. If it succeeds, this lambda will also return a map of aggregate IDs, the last event ID, and the stream names of the aggregates that matter for that decision. If the lambda returns successfully, it means that the condition related to that extended boundary applies and, moreover, the optimistic lock-related check information for this boundary is available.
+2. The CommandHandler retrieves the current event ID (version) of the target aggregate.
+3. It executes the command on that state, producing a new state and a list of events.
+4. It evaluates the lambda related to the decision boundary, verifying that it returns an `Ok` with triples `(eventId, aggregateId, streamName)`.
+5. It passes the event ID to the event store and the events, and also the triples `(eventId, aggregateId, streamName)`.
+
+The event store stores those events if the last event ID on the event store corresponds to the event ID passed, and also if the triples `(eventId, aggregateId, streamName)` related to the extended decision boundary context match.
+If all the previous storing operations succeed, it means that the event store will produce a state that is consistent with all the mentioned constraints, which include the aggregate and the extended context. It will enforce the rule that the event store will contain events that are consistent with the whole set of applied constraints. This is a stronger consistency than the probabilistic consistency related to the statistical approach of running multiple commands at once.
+
+# Recap
+When running a command or multiple commands, for certain classes of `runCommand`, alternative implementations allow sending an extended-scope decision function that will be verified as part of the command execution flow, maintaining the consistency of the event store with respect to those extended constraints.
+
+
+
