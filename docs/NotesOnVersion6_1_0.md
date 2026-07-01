@@ -1,10 +1,42 @@
 ## Extending the decision boundary
 
-In Sharpino, the flow of executing one or more commands has always been based on specifying any eventual "extended" decision boundary in a way that is separated from the command itself. This means that before running the commands, the condition is evaluated based on a context external to the involved aggregate, and then the commands are sent for execution. This works fine on a statistical ground but may have consistency issues in a strict sense, as the execution is unable to check if the condition used to evaluate the "extended" decision boundary still holds.
-Using multiple commands involving multiple aggregates in a single execution flow may mitigate the issue in many cases, but it does not fully resolve it.
-The reason is that the condition evaluated by any command is local to the involved aggregate and cannot be a function of all the states of all the aggregates involved.
+In Sharpino, the flow of executing one or more commands has always been based on specifying any eventual "extended" decision boundary prior to executing the commands.  In relation to the consistency respect to the "extended" decision boundary, this works fine on a statistical ground but may have still issues which are the fact that the extended condition may change when the command is executed, no matter how unlikely they can be.
+A possibility to mitigate this issue is by using multiple aggregates and commands in a single execution flow, so that the condition can be evaluated on the combined state of multiple aggregates. 
+Still, this does not fully resolve the issue because any decision evaluated by any command is local to the involved aggregate and cannot be a function of all the states of all the aggregates involved as a whole and therefore it will be possible to imagine some logical expressions that define a constraints in a way that cannot be expressed as a conjunction of local constraints (example may come later).
 
-The "extending the decision boundary" feature is now available in Sharpino 6.1.0. This feature allows you to include, using a specific lambda expression, an arbitrary extended decision boundary that enforces consistency in a wider sense. The optimistic lock control can include the extended scope as well, without limiting it to the event ID-based optimistic lock control associated with the passed aggregates.
+The "extending the decision boundary" feature is now available in Sharpino 6.1.0. This feature allows you to include, using a particular lambda expression, an arbitrary extended decision boundary that includes extra aggregates and enforces consistency in a wider sense. The optimistic lock control is able to check the extended scope as well, without limiting it to the event ID-based optimistic lock control associated with the passed aggregates. This ensure that the command succeeds only if the extended condition holds true. 
+
+A form of the "lambda" expression that evaluates the extended scope is given by the following example in the Sharpino.Sample.9 code:
+
+```FSharp
+
+let crossAggregatesConstraint =
+    fun () ->
+        result
+            {
+                let! (jackEvId, jack) = studentViewer jack.Id
+                let extraStreamsLocks =
+                    [((jack.Id, Student.Version + Student.StorageName), jackEvId)] |> Map.ofList
+
+                let! constraintToBeMet =
+                    (not 
+                            (jack.Courses |> List.exists (fun c -> c = literature.Id)
+                            && (jack.Courses |> List.exists (fun c -> c = math.Id)))
+                    )
+                    |> Result.ofBool "constraint not met"
+                return extraStreamsLocks
+            }
+
+```
+the test that contains this expression is named
+"Teacher John will be able to teach Math if student Jack is enrolled in that course and not in literature"
+
+That means that despite only the courses and teachers streams are involved in the command execution, the student stream is also involved in the "wider sense" of the decision boundary, because the constraint depends o a particular combination of the student's enrollment.
+
+As we can see the returned value is a map of the event ID and the aggregate ID, related to the student stream. 
+
+The commandHanlder may evaluate this lambda at any time and it will send to the event store any extended scope information so that the optimistic lock check is extended to those extra-streams.
+
 
 ## A recap of the "old way"
 
