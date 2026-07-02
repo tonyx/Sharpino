@@ -22,6 +22,8 @@ open DotNetEnv
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
+open System.Threading
+open System.Threading.Tasks
 
 module Common =
 
