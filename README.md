@@ -555,7 +555,7 @@ Remember that we don't necessarily need Json fields as at the moment we just do 
 
 _old stuff deleted_
 
-More documentation [(Sharpino gitbook)](https://tonyx.github.io)
+More documentation [www.sharpino.eu](https://www.sharpino.eu)
 
 <a href="https://www.buymeacoffee.com/Now7pmK92m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
