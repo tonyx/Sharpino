@@ -34,36 +34,11 @@ Sharpino is a library to support Event-Sourcing in F# based on the following pri
 - Multilanguage environment and architecture (a template using Blazor with C# on front end and F# on backend is given).
 - Avoid impedance mismatch between the domain and the database, so objects don't need to know about the database column mapping.
 
-## Overview and terms
-
-- Contexts (_deprecated: just use ordinary aggregates with a constant Id_) _Event-sourced objects with no Id, so only one instance is around for each type. 
-- Aggregates: Event-sourced objects with Id (Guid).
-- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
-- Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
-- Events are based on D.U. and are wrappers to transformation events, i.e. processing events means calling the transformation members.
-- Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events (in the future).
-- Cache: use of MemoryCache to keep the latest state of any aggregate or context.
-- CacheDetails: use of MemoryCache to keep the state of details (combination of values from other aggregates or streams) and update them when the related aggregates are updated.
-- Soft delete: Mark an aggregate as deleted.
-- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
-- HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
-- GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
-- EventStore is based on PostgreSQL to store events and snapshots.
-- SQLTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
-- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matching fails then no events are stored).
-- In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there are no query of the content of JSON fields).
-- Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
-- Commands and events avoid versioning or upcasting. Just adding new events is the practice to extend the functionality related to events.
-- By default, the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
-- In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed, which is practically unlikely).
-- Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
-  There may also be events associated with the creation and deletion of aggregates, but they are not needed.
-- Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
-- MessageSenders: can be set to NoSender or to a MessageSender that, given the name of a stream, returns a ValueTask that can be used to send messages to a message bus: examples with RabbitMQ are provided.
+More documentation [www.sharpino.eu](https://www.sharpino.eu)
 
 ### Issues
 - A [temporary list of issues](https://github.com/tonyx/Sharpino/issues)
+
 ## Projects
 __Sharpino.Lib.Core__:
 
@@ -145,26 +120,8 @@ __Faq__ and __trivia__:
 
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
-## Upcasting techniques.
-
-In this section, I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
-Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) able to read the old (serialized) version of typeX into a new version of it.
-1. The following premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as the target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/or specific converters).
-2. Now you can make some changes to TypeX that make it different from the old TypeX/TypeX001 (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic immersion" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.
-3. Define the Upcast function/instance member form TypeX001 that actually implements that conversion from an instance of the old typeX to an instance of the new typeX.
-4. Define a "fallback" action in the deserialization related to the new TypeX so that it can, in case of failure because of encountering an old TypeX/TypeX001, apply the deserialization obtaining a typeX001 instance and use its Upcastor to get, finally, the equivalent instance of TypeX.
-
-- Now you can deploy the new version and in case the code tries to read an old TypeX/TypeX001 it must be able to correctly interpret it as the new TypeX by adopting the following steps in deserialization of the existing snapshot:
-- try to read and deserialize it as TypeX
-- if Ok then Ok
-- if it fails try to read it as TypeX001 and then upcast to TypeX
-
-5. If it is not expensive, transform any snapshot of old typeX/TypeX001 into the new TypeX in one shot: make a massive upfront aggregate upcast and re-snapshot: retrieve all the existing current state of aggregates of old TypeX/TypeX001 (that will do upcast under the neaths) and generate and store snapshots for all of them so that those snapshot will surely respect the format of the new TypeX. After doing it, assume that the fallback action of reading old versions and then upcasting will never be necessary again and that part of the code can be simply deleted from TypeX.
-6. If you decided not to do the previous step 5 or if there is the possibility that you'll need to downgrade the new TypeX again to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error-prone recursive chain of fallback/upcast among older versions. So rather you will prefer to doing the full step 7 to make sure that the upgrade will affect all the snapshots.
-7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
-
 ## News/Updates
-- Made some append tests compared with Uma.Db. [Sharpino is slightly faster](https://github.com/tonyx/sharpinoVsUmaDbTest). 
+- Made some append tests compared with Uma.Db. [Simple append tests measured on 10000 events show that Sharpino is between 177% and 187% faster](https://github.com/tonyx/sharpinoVsUmaDbTest). 
 - Published a short paper: [Dynamic Consistency Boundaries in Event Sourcing via Multi-Stream Optimistic Concurrency Control](https://zenodo.org/records/21157057)
 - Version 6.1.1: Added modified versions of runThreeAggregateCommandsMdAsync2 etc ... called runThreeAggregateCommandsMdAsync3 with the lazy contraint accepting ct instead of unit.
 - Version 6.1.0: Added runThreeAggregateCommandsMdAsync2, runAggregateCommandMdAsync2, forceRunTwoNAggregateCommandsMdAsync2, runTwoNAggregateCommandsMdAsync2,forceRunThreeNAggregateCommandsMdAsync2,  runThreeAggregateCommandsMdAsync2 accepting an extra crossAggregatesConstraint parameter which contains a lambda that evaluates evantual constraints involving any aggregate _outside_ the ones of the commands. If the conditions are met, then we have a map containing the eventId, aggregateId and streamnames of those external aggregates so that they will be used by the event store to extend the optimistic lock control when writing the events. In this way the decision boundary scope can include aggregates outside of the scope of the passed aggregateids involved by the command. See Sharpino.Sample.9 for a use case. 
