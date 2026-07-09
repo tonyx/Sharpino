@@ -121,7 +121,7 @@ __Faq__ and __trivia__:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
-- Made some append tests compared with Uma.Db. [Simple append tests measured on 10000 events show that Sharpino is between 177% and 187% faster](https://github.com/tonyx/sharpinoVsUmaDbTest). 
+- [Made some append tests compared with Uma.Db.](https://github.com/tonyx/sharpinoVsUmaDbTest). Despite in a sequential tests with 10000 events Sharpino is faster, in parallel tests it is considerably slower than UmaDb.
 - Published a short paper: [Dynamic Consistency Boundaries in Event Sourcing via Multi-Stream Optimistic Concurrency Control](https://zenodo.org/records/21157057)
 - Version 6.1.1: Added modified versions of runThreeAggregateCommandsMdAsync2 etc ... called runThreeAggregateCommandsMdAsync3 with the lazy contraint accepting ct instead of unit.
 - Version 6.1.0: Added runThreeAggregateCommandsMdAsync2, runAggregateCommandMdAsync2, forceRunTwoNAggregateCommandsMdAsync2, runTwoNAggregateCommandsMdAsync2,forceRunThreeNAggregateCommandsMdAsync2,  runThreeAggregateCommandsMdAsync2 accepting an extra crossAggregatesConstraint parameter which contains a lambda that evaluates evantual constraints involving any aggregate _outside_ the ones of the commands. If the conditions are met, then we have a map containing the eventId, aggregateId and streamnames of those external aggregates so that they will be used by the event store to extend the optimistic lock control when writing the events. In this way the decision boundary scope can include aggregates outside of the scope of the passed aggregateids involved by the command. See Sharpino.Sample.9 for a use case. 
