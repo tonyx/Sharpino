@@ -1,21 +1,21 @@
 
 ## Work in progress to refactor the Sample.27 (async refreshable details)
 
-The L2 cache is still an experimental feature that can be checked by this example.
+L2 cache/Backplane.
 
 In this setup we have a command line application that tests the L1 and L2 cache and the invalidation messages.
 You will run the same application twice in two different terminal/console windows.
 
 They will use the dockerized vertions of:
 - PostgresSql as a event store
-- postgres sql as L2 cache
+- redis sql as L2 cache and backplane
 - Internal memory as L1 cache
 - Azure service bus emulator to exchange messages to force evicting L1 cache entries after any new event.
 
 That means that for an aggregate X we will have
 1. a stream of events on PgSql to rebuild the aggregate
 2. a snapshot of the aggregate on PgSql every 100 events
-3. an L2 cache entry on Postgres sql with the aggregate value
+3. an L2 cache entry on redis with the aggregate value
 4. an L1 cache entry on internal memory with the aggregate value
 5. a message on Azure service bus to evict the L1 cache entry, refreshing also the related details cache entries.
 
@@ -99,23 +99,34 @@ The scenario is when using the application with tech stack able to replicate new
   "AggregateCacheExpiration": 600,
   "DistanceBetweenSnapshots": 100,
 
- "Cache": {
+  "CacheOld": {
      "IgnoreIncomingBackplaneNotifications": false,
      "L2SqlCacheEnabled": true,
-     "L2CacheProvider": "SqlServer", // Options: 'SqlServer' or 'Postgres'
-     "L2CacheSqlUrl": "Server=127.0.0.1,1433;Database=sharpinoCache;User Id=sa;Password=Sharpino@1234;TrustServerCertificate=True;",
-     "L2CacheSqlTableName": "SharpinoL2Cache",
-     
-     // To run L2 Cache with Postgres:
-     // "L2CacheProvider": "Postgres",
-     // "L2CacheConnectionString": "Host=127.0.0.1;Port=5432;Database=sharpino;Username=sharpino;Password=password",
-     // "L2CacheTableName": "L2CacheTable",
-     // "L2CacheSchemaName": "public",
-    "L2ServiceBusEnabled": true,
-    "ServiceBusConnectionString": "Endpoint=sb://localhost;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;",
-    "ServiceBusTopicName": "sharpino-topic",
-    "ServiceBusSubscriptionName": "sharpino-sub-1",
-    "L2CacheExpirationSeconds": 120
+
+     "L2CacheProvider": "Postgres",
+
+     "L2CacheConnectionString": "Host=127.0.0.1;Port=5435;Database=sharpino_l2_cache;Username=sharpino;Password=password",
+     "L2CacheTableName": "L2CacheTable",
+     "L2CacheSchemaName": "public",
+     "L2ServiceBusEnabled": false,
+     "L2PgNotifyBackplaneEnabled": true,
+     "L2PgNotifyConnectionString": "Host=127.0.0.1;Port=5435;Database=sharpino_l2_cache;Username=sharpino;Password=password",
+     "L2PgNotifyChannelName": "sharpino_cache_eviction",
+     "L2CacheExpirationSeconds": 120,
+
+     "L2RedisBackplaneEnabled": false,
+     "L2RedisBackplaneChannel": "sharpino_cache_eviction"
+  },
+  "Cache": {
+     "IgnoreIncomingBackplaneNotifications": false,
+     "L2SqlCacheEnabled": true,
+     "L2CacheProvider": "Redis",
+     "L2CacheConnectionString": "localhost:6380",
+     "L2ServiceBusEnabled": false,
+     "L2PgNotifyBackplaneEnabled": false,
+     "L2CacheExpirationSeconds": 120,
+     "L2RedisBackplaneEnabled": true,
+     "L2RedisBackplaneChannel": "sharpino_cache_eviction"
   },
 
   "Logging": {
@@ -124,4 +135,5 @@ The scenario is when using the application with tech stack able to replicate new
     }
   }
 }
+
 ```
