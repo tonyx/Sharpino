@@ -11,3 +11,17 @@ services:
       - "5435:5432"
     volumes:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+
+  # Dedicated Redis instance for the L2 distributed cache.
+  # Exposed on port 6380 to avoid conflicts with a local Redis on the default 6379.
+  # Use setup-redis-cache.sh to start this container.
+  redis-cache:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

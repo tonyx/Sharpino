@@ -22,6 +22,7 @@ open ZiggyCreatures.Caching.Fusion.Serialization
 
 open Microsoft.Extensions.Caching.SqlServer
 open Community.Microsoft.Extensions.Caching.PostgreSql
+open Microsoft.Extensions.Caching.StackExchangeRedis
 open Microsoft.Extensions.Options
 open Microsoft.Extensions.DependencyInjection
 open ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson
@@ -29,6 +30,7 @@ open System.Text.Json
 open System.Text.Json.Serialization
 open FsToolkit.ErrorHandling
 open MQTTnet
+open ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis
 
 module Cache =
     let builder = Host.CreateApplicationBuilder()
@@ -711,6 +713,23 @@ module Cache =
         
         setupSecondLevelCacheAndBackplane (Some pgCache) (Some (serializer :> IFusionCacheSerializer)) None
 
+    let setupRedisCache (connectionString: string) =
+        let services = new ServiceCollection()
+        services.AddLogging() |> ignore
+        services.AddStackExchangeRedisCache(fun opts ->
+            opts.Configuration <- connectionString
+            opts.InstanceName <- "sharpino:"
+        ) |> ignore
+        let provider = services.BuildServiceProvider()
+        let redisCache = provider.GetRequiredService<IDistributedCache>()
+        
+        setupSecondLevelCacheAndBackplane (Some redisCache) (Some (serializer :> IFusionCacheSerializer)) None
+
+    let setupRedisBackplane (connectionString: string) =
+        let options = RedisBackplaneOptions(Configuration = connectionString)
+        let bp = new RedisBackplane(options)
+        bp :> IFusionCacheBackplane
+
     do // initialize L2 cache
         let l2SqlCacheEnabled = config.GetValue<bool>("Cache:L2SqlCacheEnabled", false)
         logger.LogInformation (sprintf "[Cache] Config: L2SqlCacheEnabled = %b" l2SqlCacheEnabled)
@@ -729,6 +748,14 @@ module Cache =
                     logger.LogInformation (sprintf "[Cache] Initializing L2 Postgres Cache with table: %s.%s" schemaName tableName)
                     setupPostgresCache connectionString schemaName tableName |> ignore
                     logger.LogInformation (sprintf "[Cache] L2 Postgres Cache initialized.")
+            elif provider.Equals("Redis", StringComparison.OrdinalIgnoreCase) then
+                let connectionString = config.GetValue<string>("Cache:L2CacheConnectionString", String.Empty)
+                match connectionString with
+                | "" -> logger.LogCritical ("[Cache] Error: L2 Redis connection string (L2CacheConnectionString) is empty")
+                | _ ->
+                    logger.LogInformation (sprintf "[Cache] Initializing L2 Redis Cache with connection: %s" connectionString)
+                    setupRedisCache connectionString |> ignore
+                    logger.LogInformation (sprintf "[Cache] L2 Redis Cache initialized.")
             else
                 let l2CacheSqlUrl = config.GetValue<string>("Cache:L2CacheSqlUrl", String.Empty)
                 let l2CacheSqlTableName = config.GetValue<string>("Cache:L2CacheSqlTableName", String.Empty)
@@ -808,6 +835,23 @@ module Cache =
                 logger.LogCritical (sprintf "[Cache] Postgres LISTEN/NOTIFY Backplane initialized (Channel: %s)" channelName)
         else
             logger.LogInformation "[Cache] Postgres LISTEN/NOTIFY Backplane is disabled."
+
+    do // initialize Redis backplane (pub/sub invalidation via StackExchange.Redis)
+        let redisBackplaneEnabled = config.GetValue<bool>("Cache:L2RedisBackplaneEnabled", false)
+        if redisBackplaneEnabled then
+            printfn "[Cache] Initializing Redis Backplane..."
+            let connStr = config.GetValue<string>("Cache:L2CacheConnectionString", String.Empty)
+            let channelName = config.GetValue<string>("Cache:L2RedisBackplaneChannel", "sharpino_cache_eviction")
+            match connStr with
+            | "" -> logger.LogCritical "[Cache] Error: L2CacheConnectionString is empty — cannot initialize Redis Backplane"
+            | _ ->
+                // Note: FusionCache derives the Redis channel name from the CacheName (FusionCacheOptions.BackplaneChannelPrefix).
+                // The L2RedisBackplaneChannel config value is logged here for documentation purposes.
+                let bp = setupRedisBackplane connStr
+                setupSecondLevelCacheAndBackplane None None (Some bp)
+                logger.LogInformation (sprintf "[Cache] Redis Backplane initialized (configured channel prefix hint: %s)" channelName)
+        else
+            logger.LogInformation "[Cache] Redis Backplane is disabled."
 
 
 

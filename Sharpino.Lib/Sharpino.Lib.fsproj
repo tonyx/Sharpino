@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0; net9.0; net8.0</TargetFrameworks>
@@ -65,6 +65,7 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.9" />
         <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
 
@@ -102,6 +103,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.14" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="9.0.14" />
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.14" />
 
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
@@ -141,6 +143,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.25" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
     
@@ -166,7 +169,9 @@
 
     <PackageReference Include="MQTTnet" Version="5.1.0.1559" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
     <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.6.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Backplane.StackExchangeRedis" Version="2.6.0" />
     <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.6.0" />
   </ItemGroup>
 
