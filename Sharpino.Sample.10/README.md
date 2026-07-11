@@ -1,9 +1,8 @@
+Configure your .env as follows:
 
-## Setup
-Create a .env file containig as follows:
 ```bash
-DATABASE_URL="postgres://yourusername@127.0.0.1:5432/es_transport_tycoon_bin?sslmode=disable"
-CONNECTION_STRING="Server=127.0.0.1;Database=es_transport_tycoon_bin;User Id=yourusername"
+DATABASE_URL="postgres://yourusername@127.0.0.1:5432/sharpino_sample_10?sslmode=disable"
+CONNECTION_STRING="Server=127.0.0.1;Database=sharpino_sample_10;User Id=yourusername"
 password=safe
 ```
 
@@ -12,8 +11,7 @@ This is true for example if you install Postgres using Homebrew on MacOS.
 Alteratively, you may have to specify a proper username and password with enough permissions.
 A simplere way is to use the docker pgsql configuration (as the one used in the template, wich uses the port 5434 rather than 5432)  
 
+Run dbmate to set up the database:
 ```bash
 dbmate up
 ```
-
-Start modeling the transport-tycoon domain as in the [transport-tycoon exercise](https://github.com/trustbit/exercises/blob/master/transport-tycoon-1.md)[Core.fs](../Sharpino.Lib.Core/Core.fs)

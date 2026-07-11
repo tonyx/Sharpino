@@ -5,6 +5,22 @@
 (doc A.I. generated and slightly edited: needs further review)
 This example showcases a Pub Management System built with Sharpino, demonstrating event sourcing patterns in F#. The system manages a pub's kitchen operations, including dishes, ingredients, suppliers, and inventory management.
 
+## Setup
+Create a .env file containig as follows:
+```bash
+DATABASE_URL="postgres://youusername@127.0.0.1:5432/es_pub_system?sslmode=disable"
+CONNECTION_STRING="Server=127.0.0.1;Database=es_pub_system;User Id=yourusername"
+```
+
+Note: you probably can just use the operaing system credential to connect to the db. 
+This is true for example if you install Postgres using Homebrew on MacOS.
+Alteratively, you may have to specify a proper username and password with enough permissions.
+A simplere way is to use the docker pgsql configuration (as the one used in the template)
+
+```bash
+dbmate up
+```
+
 ## Key Features
 
 1. **Dish Management**
@@ -120,3 +136,4 @@ let addSupplier = pubSystem.AddSupplier supplier
 ## License
 
 This example is part of the Sharpino library and is licensed under the MIT License.
+

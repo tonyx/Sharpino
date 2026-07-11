@@ -664,6 +664,7 @@ module PgStorage =
 
                     try
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+
                         let transaction = conn.BeginTransaction()
 
                         let! distancesFromLatestSnapshotsArray =
@@ -674,6 +675,7 @@ module PgStorage =
                                     return (aggregateId, distance)
                                 })
                             |> System.Threading.Tasks.Task.WhenAll
+
                         let distancesFromLatestSnapshots = Map.ofArray distancesFromLatestSnapshotsArray
 
                         let result =

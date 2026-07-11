@@ -5,14 +5,19 @@
 ## Setup
 Create a .env file containig as follows:
 ```bash
-DATABASE_URL="postgres://yourusername@127.0.0.1:5432/es_shopping_cart?sslmode=disable"
-CONNECTION_STRING="Server=127.0.0.1;Database=es_shopping_cart"
+DATABASE_URL="postgres://yourusername@127.0.0.1:5432/es_shopping_cart_bin?sslmode=disable"
+CONNECTION_STRING="Server=127.0.0.1;Database=es_shopping_cart_bin;User Id=yourusername"
+password=safe
 ```
 
 Note: you probably can just use the operaing system credential to connect to the db. 
 This is true for example if you install Postgres using Homebrew on MacOS.
 Alteratively, you may have to specify a proper username and password with enough permissions.
-A simplere way is to use the docker pgsql configuration (as the one used in the template)
+A simplere way is to use the docker pgsql configuration (as the one used in the template, wich uses the port 5434 rather than 5432)  
+
+```bash
+dbmate up
+```
 
 ## Overview
 

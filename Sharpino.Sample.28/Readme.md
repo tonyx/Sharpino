@@ -15,7 +15,7 @@ They will use the dockerized vertions of:
 That means that for an aggregate X we will have
 1. a stream of events on PgSql to rebuild the aggregate
 2. a snapshot of the aggregate on PgSql every 100 events
-3. an L2 cache entry on Azure sql with the aggregate value
+3. an L2 cache entry on Postgres sql with the aggregate value
 4. an L1 cache entry on internal memory with the aggregate value
 5. a message on Azure service bus to evict the L1 cache entry, refreshing also the related details cache entries.
 

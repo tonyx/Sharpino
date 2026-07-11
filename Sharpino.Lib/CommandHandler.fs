@@ -2343,7 +2343,7 @@ module CommandHandler =
         (crossAggregatesConstraint: Unit -> Result<Map<AggregateId*string, EventId>, string>)
         (ct: Option<CancellationToken>)
         =
-            logger.LogDebug (sprintf "runAggregateCommandAsync2 %A,  %A, id: %A" 'A.StorageName command  aggregateId)
+            logger.LogDebug (sprintf "runAggregateCommandMdAsync2 %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             let ct = ct |> Option.defaultValue CancellationToken.None
             let command = fun () ->
                 taskResult {
