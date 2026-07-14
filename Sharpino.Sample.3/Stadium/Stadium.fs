@@ -10,9 +10,8 @@ open System
 open Utils
 
 module Stadium =
+    let UniqueStadiumId = Guid.Parse("5d1e9d0b-6e7c-4d9e-a7b1-7e8c6d5f3a4b")
     type Stadium (rowReferences: List<DateTime * Guid>) =
-        let stateId = Guid.NewGuid()
-        member this.StateId = stateId
         member this.rowReferences = rowReferences
 
         member this.AddRowReference (id: Guid) =
@@ -38,8 +37,8 @@ module Stadium =
 
         member this.GetRowReferences () =
             this.rowReferences |> List.map snd
-        static member Zero =
-            Stadium []
+        member this.Id = 
+            UniqueStadiumId
         static member StorageName =
             "_stadium"
         static member Version =

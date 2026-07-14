@@ -1,4 +1,4 @@
-\restrict 4HikDGgWB5hFOAnoFmEMg7IfzrhQidWwvVXq3i8OMCsP5Ff0SgOQ06I9hDxlwcz
+\restrict byplm0XpxVkE7e4r8bU2Ohc1ZFggO2UdJh0MviFNnVsc6jPb4DrlPN9hJv9pNb2
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -102,19 +102,38 @@ $$;
 
 
 --
--- Name: insert_01_stadium_event_and_return_id(text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_01_stadium_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_01_stadium_event_and_return_id(event_in text) RETURNS integer
+CREATE FUNCTION public.insert_01_stadium_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_01_stadium_event_and_return_id(event_in, aggregate_id);
+
+INSERT INTO aggregate_events_01_stadium(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_01_stadium_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_01_stadium_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_stadium(event, timestamp)
-VALUES(event_in::text, now()) RETURNING id INTO inserted_id;
+INSERT INTO events_01_stadium(event, aggregate_id, timestamp)
+VALUES(event_in::text, aggregate_id,  now()) RETURNING id INTO inserted_id;
 return inserted_id;
-
 END;
 $$;
 
@@ -176,10 +195,10 @@ $$;
 
 
 --
--- Name: insert_md_01_seatrow_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_seatrow_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_seatrow_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[]) RETURNS integer
+CREATE FUNCTION public.insert_md_01_seatrow_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[]) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -192,7 +211,7 @@ BEGIN
     -- Perform the checks for extra constraints
     IF extra_stream_names IS NOT NULL THEN
         FOR i IN 1..cardinality(extra_stream_names) LOOP
-            PERFORM check_last_event_id_opt_lock(extra_stream_names[i], NULL, extra_event_ids[i]);
+            PERFORM check_last_event_id_opt_lock(extra_stream_names[i], extra_aggregate_ids[i], extra_event_ids[i]);
         END LOOP;
     END IF;
 
@@ -223,19 +242,104 @@ $$;
 
 
 --
--- Name: insert_md_01_stadium_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_stadium_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_stadium_event_and_return_id(event_in text, md_in text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_stadium_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+inserted_id integer;
+    event_id integer;
+BEGIN
+    event_id := insert_md_01_stadium_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+INSERT INTO aggregate_events_01_stadium(aggregate_id, event_id)
+VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_stadium_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_stadium_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    found_last_event_id integer;
+BEGIN
+    SELECT id INTO found_last_event_id
+    FROM events_01_stadium
+    WHERE events_01_stadium.aggregate_id = insert_md_01_stadium_aggregate_event_and_return_id_opt_lock.aggregate_id
+    ORDER BY id DESC LIMIT 1;
+
+    IF last_event_id = 0 THEN
+        IF found_last_event_id IS NOT NULL THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
+        END IF;
+    ELSIF last_event_id > 0 THEN
+        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
+        END IF;
+    END IF;
+
+    event_id := insert_md_01_stadium_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events_01_stadium(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_stadium_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_stadium_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[]) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+BEGIN
+    -- Perform the main optimistic locking check for the aggregate itself
+    PERFORM check_last_event_id_opt_lock('events_01_stadium', aggregate_id, last_event_id);
+
+    -- Perform the checks for extra constraints
+    IF extra_stream_names IS NOT NULL THEN
+        FOR i IN 1..cardinality(extra_stream_names) LOOP
+            PERFORM check_last_event_id_opt_lock(extra_stream_names[i], extra_aggregate_ids[i], extra_event_ids[i]);
+        END LOOP;
+    END IF;
+
+    event_id := insert_md_01_stadium_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events_01_stadium(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
+$$;
+
+
+--
+-- Name: insert_md_01_stadium_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.insert_md_01_stadium_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_stadium(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
+INSERT INTO events_01_stadium(event, aggregate_id, timestamp, distance_from_latest_snapshot, md)
+VALUES(event_in::text, aggregate_id, now(), distance_from_latest_snapshot, md) RETURNING id INTO inserted_id;
 return inserted_id;
-
 END;
 $$;
 
@@ -262,6 +366,29 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.aggregate_events_01_seatrow (
     id integer DEFAULT nextval('public.aggregate_events_01_seatrow_id_seq'::regclass) NOT NULL,
+    aggregate_id uuid NOT NULL,
+    event_id integer
+);
+
+
+--
+-- Name: aggregate_events_01_stadium_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.aggregate_events_01_stadium_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: aggregate_events_01_stadium; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.aggregate_events_01_stadium (
+    id integer DEFAULT nextval('public.aggregate_events_01_stadium_id_seq'::regclass) NOT NULL,
     aggregate_id uuid NOT NULL,
     event_id integer
 );
@@ -302,9 +429,11 @@ ALTER TABLE public.events_01_seatrow ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 
 CREATE TABLE public.events_01_stadium (
     id integer NOT NULL,
+    aggregate_id uuid NOT NULL,
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
+    distance_from_latest_snapshot integer,
     md text
 );
 
@@ -377,8 +506,10 @@ CREATE SEQUENCE public.snapshots_01_stadium_id_seq
 CREATE TABLE public.snapshots_01_stadium (
     id integer DEFAULT nextval('public.snapshots_01_stadium_id_seq'::regclass) NOT NULL,
     snapshot text NOT NULL,
-    event_id integer NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL
+    event_id integer,
+    aggregate_id uuid NOT NULL,
+    "timestamp" timestamp without time zone NOT NULL,
+    is_deleted boolean DEFAULT false NOT NULL
 );
 
 
@@ -396,6 +527,22 @@ ALTER TABLE ONLY public.aggregate_events_01_seatrow
 
 ALTER TABLE ONLY public.aggregate_events_01_seatrow
     ADD CONSTRAINT aggregate_events_01_seatrow_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: aggregate_events_01_stadium aggregate_events_01_stadium_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_stadium
+    ADD CONSTRAINT aggregate_events_01_stadium_event_id_key UNIQUE (event_id);
+
+
+--
+-- Name: aggregate_events_01_stadium aggregate_events_01_stadium_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_stadium
+    ADD CONSTRAINT aggregate_events_01_stadium_pkey PRIMARY KEY (id);
 
 
 --
@@ -446,6 +593,13 @@ CREATE INDEX ix_01_aggregate_events_seatrow_id ON public.aggregate_events_01_sea
 
 
 --
+-- Name: ix_01_aggregate_events_stadium_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_aggregate_events_stadium_id ON public.aggregate_events_01_stadium USING btree (aggregate_id);
+
+
+--
 -- Name: ix_01_events_seatrow_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -457,6 +611,20 @@ CREATE INDEX ix_01_events_seatrow_id ON public.events_01_seatrow USING btree (ag
 --
 
 CREATE INDEX ix_01_events_seatrow_timestamp ON public.events_01_seatrow USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_events_stadium_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_stadium_id ON public.events_01_stadium USING btree (aggregate_id);
+
+
+--
+-- Name: ix_01_events_stadium_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_stadium_timestamp ON public.events_01_stadium USING btree ("timestamp");
 
 
 --
@@ -481,10 +649,38 @@ CREATE INDEX ix_01_snapshot_seatrow_id ON public.snapshots_01_seatrow USING btre
 
 
 --
+-- Name: ix_01_snapshot_stadium_aggregate_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_stadium_aggregate_id_and_id ON public.snapshots_01_stadium USING btree (aggregate_id, id DESC);
+
+
+--
+-- Name: ix_01_snapshot_stadium_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_stadium_event_id ON public.snapshots_01_stadium USING btree (event_id);
+
+
+--
+-- Name: ix_01_snapshot_stadium_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_stadium_id ON public.snapshots_01_stadium USING btree (aggregate_id);
+
+
+--
 -- Name: ix_01_snapshots_seatrow_timestamp; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX ix_01_snapshots_seatrow_timestamp ON public.snapshots_01_seatrow USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_snapshots_stadium_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshots_stadium_timestamp ON public.snapshots_01_stadium USING btree ("timestamp");
 
 
 --
@@ -493,6 +689,14 @@ CREATE INDEX ix_01_snapshots_seatrow_timestamp ON public.snapshots_01_seatrow US
 
 ALTER TABLE ONLY public.aggregate_events_01_seatrow
     ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_seatrow(id) MATCH FULL ON DELETE CASCADE;
+
+
+--
+-- Name: aggregate_events_01_stadium aggregate_events_01_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aggregate_events_01_stadium
+    ADD CONSTRAINT aggregate_events_01_fk FOREIGN KEY (event_id) REFERENCES public.events_01_stadium(id) MATCH FULL ON DELETE CASCADE;
 
 
 --
@@ -515,7 +719,7 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 4HikDGgWB5hFOAnoFmEMg7IfzrhQidWwvVXq3i8OMCsP5Ff0SgOQ06I9hDxlwcz
+\unrestrict byplm0XpxVkE7e4r8bU2Ohc1ZFggO2UdJh0MviFNnVsc6jPb4DrlPN9hJv9pNb2
 
 
 --
@@ -525,8 +729,6 @@ ALTER TABLE ONLY public.snapshots_01_stadium
 INSERT INTO public.schema_migrations (version) VALUES
     ('20241101091436'),
     ('20241101091716'),
-    ('20250612124659'),
-    ('20250713053847'),
     ('20260307110612'),
     ('20260529160000'),
     ('20260629160000'),

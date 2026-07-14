@@ -30,17 +30,34 @@ module StorageStadiumBookingSystem =
                 ValueTask.CompletedTask
 
     type StadiumBookingSystem
-        (eventStore: IEventStore<string>, messageSenders: MessageSenders, stadiumStateViewer: StateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
+        (eventStore: IEventStore<string>, messageSenders: MessageSenders, stadiumStateViewer: AggregateViewer<Stadium>, rowStateViewer: AggregateViewer<SeatsRow>) =
 
+        let createInstance =
+            taskResult {
+                let exists = stadiumStateViewer Stadium.UniqueStadiumId
+                match exists with
+                | Ok _ ->
+                    return () 
+                | Error _ ->
+                    let createStadium = Stadium([])
+                    let! create = runInitAsync<Stadium, StadiumEvent, string> eventStore MessageSenders.NoSender createStadium None
+                    return create
+                }
+
+        do
+            createInstance
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            |> ignore
         new (eventStore: IEventStore<string>) =
-            StadiumBookingSystem(eventStore, MessageSenders.NoSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+            StadiumBookingSystem(eventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
         new (eventStore: IEventStore<string>, messageSenders: MessageSenders) =
-            StadiumBookingSystem(eventStore, messageSenders, getStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
+            StadiumBookingSystem(eventStore, messageSenders, getAggregateStorageFreshStateViewer<Stadium, StadiumEvent, string > eventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> eventStore)
         
         member this.AddRow (row: SeatsRow) =
              result {
                 let addRowReference = StadiumCommand.AddRowReference row.Id
-                let! result = runInitAndCommand<Stadium, StadiumEvent, SeatsRow, string> eventStore messageSenders row addRowReference
+                let! result = runInitAndAggregateCommand<Stadium, StadiumEvent, SeatsRow, string> Stadium.UniqueStadiumId eventStore messageSenders row addRowReference
                 return result
             }
 
@@ -133,7 +150,7 @@ module StorageStadiumBookingSystem =
 
         member this.GetAllRowsSeatsTo () =
             result {
-                let! (_, stadiumState) = stadiumStateViewer ()
+                let! (_, stadiumState) = stadiumStateViewer Stadium.UniqueStadiumId
                 let rowReferences = stadiumState.GetRowReferences ()
                 let! rowsTos =
                     rowReferences
@@ -143,7 +160,7 @@ module StorageStadiumBookingSystem =
 
         member this.GetAllRowReferences () =
             result {
-                let! (_, stadiumState) = stadiumStateViewer ()
+                let! (_, stadiumState) = stadiumStateViewer Stadium.UniqueStadiumId
                 return stadiumState.GetRowReferences ()
             }
         

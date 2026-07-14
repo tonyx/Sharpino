@@ -439,7 +439,16 @@ module PgBinaryStore =
 
                         return results |> Seq.toList |> Ok
 
-                    with ex ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("GetEventsInATimeIntervalAsync cancelled by caller")
+                            return Error "GetEventsInATimeIntervalAsync cancelled by caller"
+                        else
+                            logger.LogError("GetEventsInATimeIntervalAsync timed out")
+                            return Error "GetEventsInATimeIntervalAsync timed out"
+                    | ex ->
                         logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
@@ -948,23 +957,37 @@ module PgBinaryStore =
                 let timeout = max 1 (eventStoreTimeout / 1000)
 
                 task {
-                    use cts =
-                        CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
+                    try
+                        use cts =
+                            CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
-                    cts.CancelAfter(cancellationTokenSourceExpiration)
-                    use conn = new NpgsqlConnection(connection)
-                    do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
-                    use command = new NpgsqlCommand(query, conn)
-                    command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
-                    use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
-                    let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
+                        cts.CancelAfter(cancellationTokenSourceExpiration)
+                        use conn = new NpgsqlConnection(connection)
+                        do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
+                        use command = new NpgsqlCommand(query, conn)
+                        command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
+                        use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
+                        let! hasRows = reader.ReadAsync(cts.Token).ConfigureAwait(false)
 
-                    if hasRows then
-                        let id = reader.GetInt32(0)
-                        let eventId = reader.GetInt32(1)
-                        let snapshot = reader.GetFieldValue<byte[]>(2)
-                        return Some(id, eventId, snapshot)
-                    else
+                        if hasRows then
+                            let id = reader.GetInt32(0)
+                            let eventId = reader.GetInt32(1)
+                            let snapshot = reader.GetFieldValue<byte[]>(2)
+                            return Some(id, eventId, snapshot)
+                        else
+                            return None
+                    with
+                    | :? OperationCanceledException as ex ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("TryGetLastSnapshotAsync cancelled by caller")
+                        else
+                            logger.LogError("TryGetLastSnapshotAsync timed out")
+                        raise ex
+                        return None
+                    | ex ->
+                        logger.LogError(sprintf "TryGetLastSnapshotAsync: an error occurred: %A" ex.Message)
+                        raise ex
                         return None
                 }
 
@@ -1388,7 +1411,16 @@ module PgBinaryStore =
 
                         do! transaction.CommitAsync(cts.Token)
                         return Ok()
-                    with e ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("SetInitialAggregateStatesAsync cancelled by caller")
+                            return Error "SetInitialAggregateStatesAsync cancelled by caller"
+                        else
+                            logger.LogError("SetInitialAggregateStatesAsync timed out")
+                            return Error "SetInitialAggregateStatesAsync timed out"
+                    | e ->
                         do! transaction.RollbackAsync(cts.Token)
                         return Error e.Message
                 }
@@ -1438,7 +1470,16 @@ module PgBinaryStore =
 
                         do! transaction.CommitAsync(cts.Token)
                         return Ok()
-                    with e ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("SetInitialAggregateStateAsync cancelled by caller")
+                            return Error "SetInitialAggregateStateAsync cancelled by caller"
+                        else
+                            logger.LogError("SetInitialAggregateStateAsync timed out")
+                            return Error "SetInitialAggregateStateAsync timed out"
+                    | e ->
                         logger.LogError(sprintf "SetInitialAggregateStateAsync Error occurred %A" e.Message)
                         return Error e.Message
                 }
@@ -2147,9 +2188,14 @@ module PgBinaryStore =
 
                 let query =
                     sprintf
-                        "SELECT DISTINCT s.aggregate_id FROM snapshots%s%s s INNER JOIN (SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn FROM snapshots%s%s) latest ON s.aggregate_id = latest.aggregate_id AND latest.rn = 1 WHERE latest.is_deleted = false"
-                        version
-                        name
+                        """
+                            SELECT latest.aggregate_id 
+                            FROM (
+                                SELECT aggregate_id, is_deleted, ROW_NUMBER() OVER (PARTITION BY aggregate_id ORDER BY id DESC) as rn 
+                                FROM snapshots%s%s
+                            ) latest 
+                            WHERE latest.rn = 1 AND latest.is_deleted = false
+                        """
                         version
                         name
 
@@ -2191,7 +2237,16 @@ module PgBinaryStore =
                             results.Add(aggregateId)
 
                         return results |> Seq.toList |> Ok
-                    with _ as ex ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("GetAggregateIdsAsync cancelled by caller")
+                            return Error "GetAggregateIdsAsync cancelled by caller"
+                        else
+                            logger.LogError("GetAggregateIdsAsync timed out")
+                            return Error "GetAggregateIdsAsync timed out"
+                    | ex ->
                         logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
@@ -2224,7 +2279,16 @@ module PgBinaryStore =
                             results.Add(aggregateId)
 
                         return results |> Seq.toList |> Ok
-                    with _ as ex ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("GetUndeletedAggregateIdsAsync cancelled by caller")
+                            return Error "GetUndeletedAggregateIdsAsync cancelled by caller"
+                        else
+                            logger.LogError("GetUndeletedAggregateIdsAsync timed out")
+                            return Error "GetUndeletedAggregateIdsAsync timed out"
+                    | ex ->
                         logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
@@ -2258,7 +2322,16 @@ module PgBinaryStore =
 
                         return results |> Seq.toList |> Ok
 
-                    with _ as ex ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("GetAggregateIdsInATimeIntervalAsync cancelled by caller")
+                            return Error "GetAggregateIdsInATimeIntervalAsync cancelled by caller"
+                        else
+                            logger.LogError("GetAggregateIdsInATimeIntervalAsync timed out")
+                            return Error "GetAggregateIdsInATimeIntervalAsync timed out"
+                    | ex ->
                         logger.LogError(sprintf "an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }
@@ -2420,7 +2493,16 @@ module PgBinaryStore =
                                 return Ok(eventIdOpt, snapshotBin)
                         else
                             return Error(sprintf "object %A type %s%s not existing" aggregateId version name)
-                    with ex ->
+                    with
+                    | :? OperationCanceledException ->
+                        let ctValue = defaultArg ct CancellationToken.None
+                        if ctValue.IsCancellationRequested then
+                            logger.LogInformation("TryGetLastAggregateSnapshotAsync cancelled by caller")
+                            return Error "TryGetLastAggregateSnapshotAsync cancelled by caller"
+                        else
+                            logger.LogError("TryGetLastAggregateSnapshotAsync timed out")
+                            return Error "TryGetLastAggregateSnapshotAsync timed out"
+                    | ex ->
                         logger.LogError(sprintf "TryGetLastAggregateSnapshotAsync: an error occurred: %A" ex.Message)
                         return Error ex.Message
                 }

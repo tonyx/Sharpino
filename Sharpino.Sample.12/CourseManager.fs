@@ -93,6 +93,13 @@ module CourseManager =
                     return students
                 }
         
+        member this.GetAllStudentsEnumerableAsync () =
+            StateView.getAllAggregateStatesEnumerableAsync<Student, StudentEvents, byte[]> eventStore None
+        
+        member this.GetStudentsFilteredEnumerableAsync (predicate: Student -> bool) =
+            StateView.getAllFilteredAggregateStatesEnumerableAsync<Student, StudentEvents, byte[]> predicate eventStore None
+        
+        
         member this.GetCoursesFilteredAsync (predicate: Course -> bool) =
             taskResult
                 {

@@ -15,6 +15,7 @@ open DotNetEnv
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
 open Sharpino.Storage
+open FSharp.Control
 
 Env.Load() |> ignore
 let connection  = Environment.GetEnvironmentVariable("CONNECTION_STRING")
@@ -285,7 +286,21 @@ let tests =
                 courseManagerAsync.AddMultipleStudents students |> ignore
                 stopwatch.Stop()
                 printfn "Inserting 10000 students in batch async took %d ms" stopwatch.ElapsedMilliseconds   
+
+            testCase "insert 1000 students and retrieve them using Enumerable" <| fun _ ->
+                setUp ()
+                let students = Array.init 1000 (fun _ -> Student.MkStudent (Guid.NewGuid().ToString(), 3))
+                courseManagerAsync.AddMultipleStudents students |> ignore
+
+                let enumerable = courseManagerAsync.GetAllStudentsEnumerableAsync()
+                let retrieved = 
+                    enumerable 
+                    |> TaskSeq.toListAsync 
+                    |> Async.AwaitTask 
+                    |> Async.RunSynchronously
+                
+                Expect.equal retrieved.Length 1000 "Courses count must be 1000"
+                for item in retrieved do
+                    Expect.isOk item "Item must be Ok"
         ]
         |> testSequenced
-    
-    

@@ -6,6 +6,7 @@ open System.Threading
 open System.Threading.Tasks
 open FSharp.Core
 open FSharpPlus
+open FSharp.Control
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
@@ -969,15 +970,64 @@ module StateView =
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
+                                ct.ThrowIfCancellationRequested()
                                 let! _ = semaphore.WaitAsync(ct)
                                 try
+                                    ct.ThrowIfCancellationRequested()
                                     return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
                                 finally
                                     semaphore.Release() |> ignore
                             })
-                    let! results = Task.WhenAll(tasks)
-                    return results |> Array.toList |> List.choose (function | Ok x -> Some x | Error _ -> None)
+                    try
+                        let! results = Task.WhenAll(tasks)
+                        return results |> Array.toList |> List.choose (function | Ok x -> Some x | Error _ -> None)
+                    with
+                    | :? OperationCanceledException ->
+                        return! Error "getAllAggregateStatesAsync cancelled"
+                    | ex ->
+                        return! Error ex.Message
                 }
+
+    let inline getAllAggregateStatesEnumerableAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : Collections.Generic.IAsyncEnumerable<Result<EventId * 'A, string>> =
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            logger.LogDebug (sprintf "getAllAggregateStatesEnumerableAsync - %s - %s\n" 'A.Version 'A.StorageName)
+            taskSeq {
+                let! (ids: Result<Guid list, string>) =
+                    eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
+                
+                match ids with
+                | Error e ->
+                    yield Error e
+                | Ok ids ->
+                    use semaphore = new SemaphoreSlim 50
+                    let tasks =
+                        ids |> List.map (fun id ->
+                            task {
+                                ct.ThrowIfCancellationRequested()
+                                let! _ = semaphore.WaitAsync(ct)
+                                try
+                                    ct.ThrowIfCancellationRequested()
+                                    return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
+                                finally
+                                    semaphore.Release() |> ignore
+                            })
+                    for task in tasks do
+                        let! res = task
+                        match res with
+                        | Ok (eventId, state) ->
+                            yield Ok (eventId, state)
+                        | Error e ->
+                            yield Error e
+            }
+
 
     // there may be some issues in this function which need necessary to use the equivalent non async function
     let inline getAllFilteredAggregateStatesAsync<'A, 'E, 'F
@@ -1003,20 +1053,71 @@ module StateView =
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
+                                ct.ThrowIfCancellationRequested()
                                 let! _ = semaphore.WaitAsync(ct)
                                 try
+                                    ct.ThrowIfCancellationRequested()
                                     return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
                                 finally
                                     semaphore.Release() |> ignore
                             })
 
-                    let! results = Task.WhenAll(tasks) 
+                    try
+                        let! results = Task.WhenAll(tasks) 
 
-                    return 
-                        results 
-                        |> Array.toList
-                        |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
+                        return 
+                            results 
+                            |> Array.toList
+                            |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
+                    with
+                    | :? OperationCanceledException ->
+                        return! Error "getAllFilteredAggregateStatesAsync cancelled"
+                    | ex ->
+                        return! Error ex.Message
                 }
+
+    let inline getAllFilteredAggregateStatesEnumerableAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (predicate: 'A -> bool)
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : Collections.Generic.IAsyncEnumerable<Result<EventId * 'A, string>> =
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            logger.LogDebug (sprintf "getAllFilteredAggregateStatesEnumerableAsync - %s - %s\n" 'A.Version 'A.StorageName)
+            taskSeq {
+                let! (ids: Result<Guid list, string>) =
+                    eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
+                
+                match ids with
+                | Error e ->
+                    yield Error e
+                | Ok ids ->
+                    use semaphore = new SemaphoreSlim 50
+                    let tasks =
+                        ids |> List.map (fun id ->
+                            task {
+                                ct.ThrowIfCancellationRequested()
+                                let! _ = semaphore.WaitAsync(ct)
+                                try
+                                    ct.ThrowIfCancellationRequested()
+                                    return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
+                                finally
+                                    semaphore.Release() |> ignore
+                            })
+                    for task in tasks do
+                        let! res = task
+                        match res with
+                        | Ok (eventId, state) when predicate state ->
+                            yield Ok (eventId, state)
+                        | Error e ->
+                            yield Error e
+                        | _ -> ()
+            }
+
     
     [<Obsolete "if you use this you will need all the after-refactoring upcast chain">]
     let inline getInitialAggregateSnapshot<'A, 'F

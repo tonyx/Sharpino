@@ -82,13 +82,23 @@ let pgReset () =
     pgEventStore.Reset Stadium.Version Stadium.StorageName
     pgEventStore.Reset SeatsRow.Version SeatsRow.StorageName
     pgEventStore.ResetAggregateStream SeatsRow.Version SeatsRow.StorageName
+    pgEventStore.ResetAggregateStream Stadium.Version Stadium.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
     AggregateCache3.Instance.Clear()
+    runInitAsync<Stadium, StadiumEvent, string> pgEventStore MessageSenders.NoSender (Stadium []) None
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> ignore
+
 let memReset () =
     memoryStorage.Reset Stadium.Version Stadium.StorageName
     memoryStorage.Reset SeatsRow.Version SeatsRow.StorageName
     StateCache2<Stadium>.Instance.Invalidate()
     AggregateCache3.Instance.Clear()
+    runInitAsync<Stadium, StadiumEvent, string> memoryStorage MessageSenders.NoSender (Stadium []) None
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    |> ignore
 
 [<Tests>]
 let tests =
@@ -96,9 +106,9 @@ let tests =
     let stadiumInstances =
         [
             #if RABBITMQ
-            StadiumBookingSystem (pgEventStore, rMessageSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100
+            StadiumBookingSystem (pgEventStore, rMessageSender, getAggregateStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, rabbitMqSeatRowStateViewer), pgReset, 100
             #else
-            StadiumBookingSystem (pgEventStore, MessageSenders.NoSender, getStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 0
+            StadiumBookingSystem (pgEventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Stadium, StadiumEvent, string > pgEventStore, getAggregateStorageFreshStateViewer<SeatsRow, RowAggregateEvent, string> pgEventStore), pgReset, 0
             #endif
         ]
         

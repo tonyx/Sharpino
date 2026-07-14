@@ -9,7 +9,7 @@ module StadiumCommands =
     type StadiumCommand =
         | AddRowReference of Guid
         | RemoveRowReference of Guid
-            interface Command<Stadium, StadiumEvent> with
+            interface AggregateCommand<Stadium, StadiumEvent> with
                 member this.Execute (x: Stadium) =
                     match this with
                     | AddRowReference id ->
