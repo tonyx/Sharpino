@@ -21,11 +21,12 @@ SET row_security = off;
 
 CREATE FUNCTION public.check_last_event_id_opt_lock(stream_name text, target_aggregate_id uuid, expected_last_event_id integer) RETURNS void
     LANGUAGE plpgsql
-    AS $_$
+    AS $
 DECLARE
     found_last_event_id integer;
     query text;
     full_stream_name text;
+    lock_key bigint;
 BEGIN
     full_stream_name := stream_name;
     IF NOT full_stream_name LIKE 'events_%' THEN
@@ -38,7 +39,7 @@ BEGIN
 
     -- If target_aggregate_id is null, try to resolve it from the expected_last_event_id
     IF target_aggregate_id IS NULL THEN
-        query := format('SELECT aggregate_id FROM %I WHERE id = $1', full_stream_name);
+        query := format('SELECT aggregate_id FROM %I WHERE id = ', full_stream_name);
         EXECUTE query INTO target_aggregate_id USING expected_last_event_id;
     END IF;
 
@@ -47,7 +48,14 @@ BEGIN
             RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected event % not found to resolve aggregate', full_stream_name, expected_last_event_id;
         END IF;
     ELSE
-        query := format('SELECT id FROM %I WHERE aggregate_id = $1 ORDER BY id DESC LIMIT 1', full_stream_name);
+        -- Acquire a per-aggregate advisory lock for the duration of this transaction.
+        -- This serializes concurrent writes to the same aggregate, closing the TOCTOU
+        -- window between the SELECT (check) and the INSERT (write) in the caller.
+        -- pg_advisory_xact_lock is released automatically on COMMIT / ROLLBACK.
+        lock_key := hashtext(full_stream_name || '|' || target_aggregate_id::text);
+        PERFORM pg_advisory_xact_lock(lock_key);
+
+        query := format('SELECT id FROM %I WHERE aggregate_id =  ORDER BY id DESC LIMIT 1', full_stream_name);
         EXECUTE query INTO found_last_event_id USING target_aggregate_id;
 
         IF expected_last_event_id = 0 THEN
@@ -61,9 +69,7 @@ BEGIN
         END IF;
     END IF;
 END;
-$_$;
-
-
+$;
 --
 -- Name: insert_01_materials_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --

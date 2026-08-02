@@ -1,4 +1,4 @@
-\restrict hUlBnjVgT1o9HekhbZJ3G1tJEZD3WP0zbGiqg1A84aUPBMA7RsHGPhwXPI1hwpK
+\restrict JaHKveDiWF64pVyHPW8H45dOaZjPar0a61qz54HxwkhDIRtN3GdrJDoyvSxJ784
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -26,6 +26,7 @@ DECLARE
     found_last_event_id integer;
     query text;
     full_stream_name text;
+    lock_key bigint;
 BEGIN
     full_stream_name := stream_name;
     IF NOT full_stream_name LIKE 'events_%' THEN
@@ -47,6 +48,13 @@ BEGIN
             RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected event % not found to resolve aggregate', full_stream_name, expected_last_event_id;
         END IF;
     ELSE
+        -- Acquire a per-aggregate advisory lock for the duration of this transaction.
+        -- This prevents concurrent writes to the same aggregate from interleaving
+        -- between our SELECT (below) and the INSERT performed by the caller.
+        -- pg_advisory_xact_lock is released automatically on COMMIT / ROLLBACK.
+        lock_key := hashtext(full_stream_name || '|' || target_aggregate_id::text);
+        PERFORM pg_advisory_xact_lock(lock_key);
+
         query := format('SELECT id FROM %I WHERE aggregate_id = $1 ORDER BY id DESC LIMIT 1', full_stream_name);
         EXECUTE query INTO found_last_event_id USING target_aggregate_id;
 
@@ -749,7 +757,7 @@ ALTER TABLE ONLY public.snapshots_01_person
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hUlBnjVgT1o9HekhbZJ3G1tJEZD3WP0zbGiqg1A84aUPBMA7RsHGPhwXPI1hwpK
+\unrestrict JaHKveDiWF64pVyHPW8H45dOaZjPar0a61qz54HxwkhDIRtN3GdrJDoyvSxJ784
 
 
 --
@@ -764,4 +772,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260307132120'),
     ('20260529160000'),
     ('20260629160000'),
-    ('20260629170000');
+    ('20260629170000'),
+    ('20260801200000');

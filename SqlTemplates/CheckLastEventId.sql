@@ -11,6 +11,7 @@ DECLARE
     found_last_event_id integer;
     query text;
     full_stream_name text;
+    lock_key bigint;
 BEGIN
     full_stream_name := stream_name;
     IF NOT full_stream_name LIKE 'events_%' THEN
@@ -32,6 +33,13 @@ BEGIN
             RAISE EXCEPTION 'Optimistic locking check failed for stream %: expected event % not found to resolve aggregate', full_stream_name, expected_last_event_id;
         END IF;
     ELSE
+        -- Acquire a per-aggregate advisory lock for the duration of this transaction.
+        -- This serializes concurrent writes to the same aggregate, closing the TOCTOU
+        -- window between the SELECT (check) and the INSERT (write) in the caller.
+        -- pg_advisory_xact_lock is released automatically on COMMIT / ROLLBACK.
+        lock_key := hashtext(full_stream_name || '|' || target_aggregate_id::text);
+        PERFORM pg_advisory_xact_lock(lock_key);
+
         query := format('SELECT id FROM %I WHERE aggregate_id = $1 ORDER BY id DESC LIMIT 1', full_stream_name);
         EXECUTE query INTO found_last_event_id USING target_aggregate_id;
 
