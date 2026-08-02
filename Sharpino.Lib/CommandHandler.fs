@@ -2306,14 +2306,13 @@ module CommandHandler =
         =
             logger.LogDebug (sprintf "runAggregateCommandMd %A,  %A, id: %A" 'A.StorageName command  aggregateId)
             result {
-                let! (eventId, state) = getAggregateFreshState<'A, 'E, 'F> aggregateId storage
-                let! _, events =
-                    state
-                    |> unbox
-                    |> command.Execute
-            
                 let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders md command
-                
+                // Deserialize typed events from the serialized form — avoids a second DB round-trip
+                // while still providing typed 'E values to the messaging layer
+                let! typedEvents =
+                    executedCommand.SerializedEvents
+                    |> List.traverseResultM (fun s -> 'E.Deserialize s)
+                    
                 let! ids = storeEvents storage messageSenders executedCommand
                 AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
                  
@@ -2321,7 +2320,7 @@ module CommandHandler =
                 let _ =
                     mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
                 let _ =
-                    optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId typedEvents executedCommand.EventId (ids |> List.last)
                     
                 return ()
             }
