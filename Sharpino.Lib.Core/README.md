@@ -1,7 +1,7 @@
 # Sharpino
 
 
-<img src="ico/sharpino.png" alt="drawing" width="50"/>
+<img src="../ico/sharpino.png" alt="drawing" width="50"/>
 
 
 ## A little F# Event Sourcing Library
