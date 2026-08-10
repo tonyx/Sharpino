@@ -121,7 +121,7 @@ __Faq__ and __trivia__:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
-- Version 6.2.1. Various fixes and improvement in eventstore/opt lock (Courtesy by Cloude Sonnet/Opus)
+- Version 6.2.1. Various fixes and improvement in eventstore/opt lock (Courtesy by Cloude Sonnet/Opus). The CheckLastEventId2.sql provides an improved lock check and so you should apply it (as a dbmate migration file, as usual). 
 - Version 6.1.4. Improve Cancellation Token handling. Added `getAllAggregateStatesEnumerableAsync` (optimized version using C# IAsyncEnumerable).
 - [New On line doc](www.sharpino.eu)
 - Version 6.1.3. Redis L2/Backplane support (see example 28)
