@@ -121,6 +121,7 @@ __Faq__ and __trivia__:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
+- Version 6.2.2. Added getAllFilteredAggregateStatesUnskippedErrorsAsync which fails if an aggregate read fails for instance duet to an upcast failure or any other reason. Use case: you evolve an aggregate and upcast, then you want to reload all the aggregates, you get a failure and so you fix it. Previously getAllFilteredAggregateStatesAsync would have returned the other aggregates and silently ignored the failure of the upcasting of the current aggregate. Now it fails, 
 - Version 6.2.1. Various fixes and improvement in eventstore/opt lock (Courtesy by Cloude Sonnet/Opus). The CheckLastEventId2.sql provides an improved lock check and so you should apply it (as a dbmate migration file, as usual). 
 - Version 6.1.4. Improve Cancellation Token handling. Added `getAllAggregateStatesEnumerableAsync` (optimized version using C# IAsyncEnumerable).
 - [New On line doc](www.sharpino.eu)

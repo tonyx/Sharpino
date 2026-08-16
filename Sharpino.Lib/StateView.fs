@@ -1064,11 +1064,94 @@ module StateView =
 
                     try
                         let! results = Task.WhenAll(tasks) 
+                        let errors =
+                            results 
+                            |> Array.filter (function | Error _ -> true | _ -> false)
 
+                        let _ = 
+                            if errors.Length > 0 then
+                                let err = 
+                                    errors 
+                                    |> Array.map (function | Error e -> e | _ -> "") 
+                                    |> String.concat ", "
+
+                                logger.LogError (sprintf "getAllFilteredAggregateStatesAsync found %d errors %s" errors.Length err)
                         return 
                             results 
                             |> Array.toList
                             |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
+                    with
+                    | :? OperationCanceledException ->
+                        return! Error "getAllFilteredAggregateStatesAsync cancelled"
+                    | ex ->
+                        return! Error ex.Message
+                }
+
+    /// <summary>
+    /// Gets all filtered aggregate states
+    /// </summary>
+    /// <typeparam name="'A">Aggregate type</typeparam>
+    /// <typeparam name="'E">Event type</typeparam>
+    /// <typeparam name="'F">Event store type</typeparam>
+    /// <param name="predicate">Predicate to filter aggregates</param>
+    /// <param name="eventStore">Event store</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>Result containing filtered aggregate states</returns>
+    /// <remarks>
+    /// This version is not forgiving: useful to detect upcasters failures
+    /// </remarks>
+    let inline getAllFilteredAggregateStatesUnskippedErrorsAsync<'A, 'E, 'F
+        when 'E :> Event<'A>
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        >
+        (predicate: 'A -> bool)
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "getAllFilteredAggregateStatesAsync - %s - %s\n" 'A.Version 'A.StorageName)
+            taskResult
+                {
+                    let ct = ct |> Option.defaultValue CancellationToken.None
+
+                    let! (ids: Guid list) =
+                        eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
+
+                    // todo: stay on 50 or make a config parameter and tune it
+                    use semaphore = new SemaphoreSlim 50
+                    let tasks =
+                        ids |> List.map (fun id ->
+                            task {
+                                ct.ThrowIfCancellationRequested()
+                                let! _ = semaphore.WaitAsync(ct)
+                                try
+                                    ct.ThrowIfCancellationRequested()
+                                    return! getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct)
+                                finally
+                                    semaphore.Release() |> ignore
+                            })
+
+                    try
+                        let! results = Task.WhenAll(tasks) 
+                        let errors =
+                            results 
+                            |> Array.filter (function | Error _ -> true | _ -> false)
+
+                        if errors.Length > 0 then
+                            let err = 
+                                errors 
+                                |> Array.map (function | Error e -> e | _ -> "") 
+                                |> String.concat ", "
+
+                            logger.LogError (sprintf "getAllFilteredAggregateStatesAsync found %d errors %s" errors.Length err)
+                            return! Error (sprintf "getAllFilteredAggregateStatesAsync found %d errors %s" errors.Length err)
+
+                        else
+                            return 
+                                results 
+                                |> Array.toList
+                                |> List.choose (function | Ok (eventId, state) when predicate state -> Some (eventId, state) | _ -> None)
                     with
                     | :? OperationCanceledException ->
                         return! Error "getAllFilteredAggregateStatesAsync cancelled"

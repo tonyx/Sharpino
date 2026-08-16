@@ -1,7 +1,7 @@
 # Sharpino
 
 
-<img src="../ico/sharpino.png" alt="drawing" width="50"/>
+<img src="./ico/sharpino.png" alt="drawing" width="50"/>
 
 
 ## A little F# Event Sourcing Library
@@ -34,36 +34,11 @@ Sharpino is a library to support Event-Sourcing in F# based on the following pri
 - Multilanguage environment and architecture (a template using Blazor with C# on front end and F# on backend is given).
 - Avoid impedance mismatch between the domain and the database, so objects don't need to know about the database column mapping.
 
-## Overview and terms
-
-- Contexts (_deprecated: just use ordinary aggregates with a constant Id_) _Event-sourced objects with no Id, so only one instance is around for each type. 
-- Aggregates: Event-sourced objects with Id (Guid).
-- Multiple streams transactions: executing multiple commands involving different aggregates as single db transactions.
-- Transformation members of any object of type 'A use this signature: 'A -> Result<'A, string>'.
-- Events are based on D.U. and are wrappers to transformation events, i.e. processing events means calling the transformation members.
-- Commands are also based on D.U. and generate lists of events and, optionally, "unders" that will return a function to produce a list of compensating events (in the future).
-- Cache: use of MemoryCache to keep the latest state of any aggregate or context.
-- CacheDetails: use of MemoryCache to keep the state of details (combination of values from other aggregates or streams) and update them when the related aggregates are updated.
-- Soft delete: Mark an aggregate as deleted.
-- StateViewer: A non-pure function to get the current state of any aggregate or context. StateViewers probe the cache and, in case of a cache miss, look into the event store to apply the "evolve" on the latest snapshot and subsequent events.
-- HistoryStateViewer: The same as the StateViewer, including also the state of an object that was softly deleted.
-- GDPR: Overwrite/clear/reset snapshots and events in case a user asks to delete their data.
-- EventStore is based on PostgreSQL to store events and snapshots.
-- SQLTemplates: scripts to create tables for events and snapshots for any aggregate/context and format (bytea or text/JSON).
-- Optimistic lock based on event_id: Checking the available position to store new events on the basis of the event_id used to execute the command and passed by the command handler to the event store (if matching fails then no events are stored).
-- In-memory event store: an in-memory cache of events and snapshots that can be used to speed up the tests.
-- JSON or binary serialization for events and snapshots. The serialization mechanism is up to the user. The examples included use FsPickler to serialize/deserialize events and snapshots in binary or JSON. The JSON fields are plain text fields on the DB. They could be JSON or JSONB fields (with no significant advantages - and a little overhead - as there are no query of the content of JSON fields).
-- Evolving/refactoring aggregates by keeping backward snapshot read compatibility with upcasting.
-- Commands and events avoid versioning or upcasting. Just adding new events is the practice to extend the functionality related to events.
-- By default, the "evolve" function skips events that may produce an invalid state. There is an alternative evolve function that can't skip events that may produce invalid states.
-- In regard to the previous point: Because of the optimistic lock, the Event store should __never__ store events that produce an invalid state (and if it happens it means that the optimistic lock failed, which is practically unlikely).
-- Creation of any aggregate is based on generating an initial snapshot. Deletion is based on generating a new snapshot with the deleted field set to true and on the invalidation of the related cache entry.
-  There may also be events associated with the creation and deletion of aggregates, but they are not needed.
-- Contexts don't need creation nor deletion. They declare an initial state by a static Zero member.
-- MessageSenders: can be set to NoSender or to a MessageSender that, given the name of a stream, returns a ValueTask that can be used to send messages to a message bus: examples with RabbitMQ are provided.
+More documentation [www.sharpino.eu](https://www.sharpino.eu)
 
 ### Issues
 - A [temporary list of issues](https://github.com/tonyx/Sharpino/issues)
+
 ## Projects
 __Sharpino.Lib.Core__:
 
@@ -145,26 +120,74 @@ __Faq__ and __trivia__:
 
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
-## Upcasting techniques.
-
-In this section, I will describe the upcasting techniques that any application may use to allow read snapshots in old format.
-Goal: using upcast techniques to be[StateView.fs](Sharpino.Lib/StateView.fs) able to read the old (serialized) version of typeX into a new version of it.
-1. The following premise must be true: If you clone any TypeX into a new one with only a different name (example: TypeX001), then your serialization technique/library must be able to read any stored serialized instance of typeX and get the equivalent instance of TypeX001, so it will be able to indifferently have TypeX and TypeX001 as the target for deserialization (some libraries may allow this out of the box, some other may need some extra config/tuning and/or specific converters).
-2. Now you can make some changes to TypeX that make it different from the old TypeX/TypeX001 (example: add new property) making sure that there exists a proper logical conversion (or better: "isomorphic immersion" if you like algebraic terms) from the old TypeX (i.e. TypeX001) into the new TypeX.
-3. Define the Upcast function/instance member form TypeX001 that actually implements that conversion from an instance of the old typeX to an instance of the new typeX.
-4. Define a "fallback" action in the deserialization related to the new TypeX so that it can, in case of failure because of encountering an old TypeX/TypeX001, apply the deserialization obtaining a typeX001 instance and use its Upcastor to get, finally, the equivalent instance of TypeX.
-
-- Now you can deploy the new version and in case the code tries to read an old TypeX/TypeX001 it must be able to correctly interpret it as the new TypeX by adopting the following steps in deserialization of the existing snapshot:
-- try to read and deserialize it as TypeX
-- if Ok then Ok
-- if it fails try to read it as TypeX001 and then upcast to TypeX
-
-5. If it is not expensive, transform any snapshot of old typeX/TypeX001 into the new TypeX in one shot: make a massive upfront aggregate upcast and re-snapshot: retrieve all the existing current state of aggregates of old TypeX/TypeX001 (that will do upcast under the neath) and generate and store snapshots for all of them so that those snapshot will surely respect the format of the new TypeX. After doing it, assume that the fallback action of reading old versions and then upcasting will never be necessary again and that part of the code can be simply deleted from TypeX.
-6. If you decided not to do the previous step 5 or if there is the possibility that you'll need to downgrade the new TypeX again to the previous TypeX001 (which would mean creating a "downcastor" making essentially the reverse of the Upcast process described), then keep the older typeX (or TypeX001) for a while so you will still be able to upcast "on the fly" any older typeX and you will also are prepared to eventually downgrade/downcast again. Note that keeping the TypeX001 around for a long time means that a further upgrade may complicate things as you may have to go deeper in having more older versions in the form of TypeX002, with a more complicated and error-prone recursive chain of fallback/upcast among older versions. So rather you will prefer to doing the full step 7 to make sure that the upgrade will affect all the snapshots.
-7. Last but not least. Having events that depend strictly on the old type X format could be a problem because you don't know if that may imply the necessity to change/upcast also the events, or just test the hypothesis that events based on typeX (say Event.Update (x: Type/X)) can be correctly parsed if TypeX changes. If not, then just don't use TypeX as an argument for whatever event.
-
 ## News/Updates
-- Version 5.0.6: A fix in optimistic concurrency control (MultiAddAggregateEventsMdAsync)
+- Version 6.2.1. Various fixes and improvement in eventstore/opt lock (Courtesy by Cloude Sonnet/Opus). The CheckLastEventId2.sql provides an improved lock check and so you should apply it (as a dbmate migration file, as usual). 
+- Version 6.1.4. Improve Cancellation Token handling. Added `getAllAggregateStatesEnumerableAsync` (optimized version using C# IAsyncEnumerable).
+- [New On line doc](www.sharpino.eu)
+- Version 6.1.3. Redis L2/Backplane support (see example 28)
+- [Made some append tests compared with Uma.Db.](https://github.com/tonyx/sharpinoVsUmaDbTest). Despite in a sequential tests with 10000 events Sharpino is faster, in parallel tests it is considerably slower than UmaDb.
+- Published a short paper: [Dynamic Consistency Boundaries in Event Sourcing via Multi-Stream Optimistic Concurrency Control](https://zenodo.org/records/21157057)
+- Version 6.1.1: Added modified versions of runThreeAggregateCommandsMdAsync2 etc ... called runThreeAggregateCommandsMdAsync3 with the lazy contraint accepting ct instead of unit.
+- Version 6.1.0: Added runThreeAggregateCommandsMdAsync2, runAggregateCommandMdAsync2, forceRunTwoNAggregateCommandsMdAsync2, runTwoNAggregateCommandsMdAsync2,forceRunThreeNAggregateCommandsMdAsync2,  runThreeAggregateCommandsMdAsync2 accepting an extra crossAggregatesConstraint parameter which contains a lambda that evaluates evantual constraints involving any aggregate _outside_ of the ones of the commands. If the conditions are met, then we have a map containing the eventId, aggregateId and streamnames of those external aggregates so that they will be used by the event store to extend the optimistic lock control when writing the events. In this way the decision boundary scope can include aggregates outside of the scope of the passed aggregateids involved by the command. See Sharpino.Sample.9 for a use case. 
+Recap: business rules that implies decisions that are outside of the scope of aggregates of the commands can be protected. _Important_: they need new pgsql functions: see the checkLastEventId.sql and the definition of insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock2. We need to add on the database the checkLastEventId and then later the  insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock2 for any aggregate stream.
+ 
+- Version 6.0.6: Aggregates don't need to define the SnapshotsInterval static member anymore as the value is given by the DitanceBetweenSnpashots in appsettings.json (if it is missing then the default 100 is used). 
+- Version 6.0.5: L2 cache can use PostgreSQL. Eviction messages to/from L1 caches can be sent/received using PostgreSQL LISTEN/NOTIFY. See example 27
+- Version 6.0.4:  new cache configuration options for limiting memory/eviction. New configuration options for controlling the cache memory usage:
+
+- - `Cache:AggregateCacheMaxSize (int, default: 1000)` - maximum number of items. Set to -1 or 0 to disable count limit.
+- - `Cache:AggregateCacheMaxMemoryMegabytes (int, default: 0 [disabled])` - maximum private working set memory in MB for the process.
+- - `Cache:AggregateCacheMemoryLoadThreshold (double, default: 0.85 [85%])` - maximum allowed system-wide memory load percentage before eviction begins. Set to 0.0 to disable.
+- - `Cache:AggregateCacheMinEvictBatchSize (int, default: 10)` - number of elements to evict at once when memory thresholds are hit, reducing frequent checks.
+
+- Version 6.0.3: async versions of preExecuteAggregateCommand (experimental: it may have issues with the event_id based optimistic lock)
+- Version 6.0.2: instrumented the details cache to fire some action/callback on refresh. This allows an application to trigger any "side effect" on refreshes (example: publishing a message to a signalr hub).
+- Version 6.0.1: optimized and used async in calls to get the distance from latest snapshot 
+- Version 6.0.0: Optimistic lock control switched to psql. Note: any use of forceXXX command group will log an error and may fail if non distinct aggregate ids are passed. The clean way to face the situation is transforming multiples commands hitting the same aggregate Id with a new single command behaving like repeated execution of more commands on same aggregate. It is acceptable even if it ends up in different length of aggregateIds passed as first and second group of aggregate-commands. Benefit is that  invalidating the cache (because of "conflicting" commands) will not be needed anymore. Example 7 (for the moment) shows the new behavior. 
+- Any aggregate type will need the following new stored procedure template (sustitute {Version} and {AggregateStorageName}).
+Use ``dbma new alter_name0f_stream` to create and edit the new stream, then `dbmate up` to feed the sql
+provided that DATABASE_URL points to the db:
+```sql
+CREATE OR REPLACE FUNCTION insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock(
+    IN event_in {Format},
+    IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
+    IN md text,   
+    IN last_event_id int
+)
+RETURNS int
+    
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    inserted_id integer;
+    event_id integer;
+    found_last_event_id integer;
+BEGIN
+    SELECT id INTO found_last_event_id 
+    FROM events{Version}{AggregateStorageName} 
+    WHERE events{Version}{AggregateStorageName}.aggregate_id = insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock.aggregate_id 
+    ORDER BY id DESC LIMIT 1;
+
+    IF last_event_id = 0 THEN
+        IF found_last_event_id IS NOT NULL THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
+        END IF;
+    ELSIF last_event_id > 0 THEN
+        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
+            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
+        END IF;
+    END IF;
+
+    event_id := insert_md{Version}{AggregateStorageName}_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
+
+    INSERT INTO aggregate_events{Version}{AggregateStorageName}(aggregate_id, event_id)
+    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
+    return event_id;
+END;
+$$;
+
+```
 - Version 5.0.5: Big Snapshots upcast at event store level. Upcast an old snapshot means to upcast the snapshot and replace the old snapshot with the equivalent in the new format.
 - Version 5.0.4: GDPR update snapshots and events async versions.
 - Version 5.0.3: GDPR Partial Update Snapshots, events replace for snapshots and events containing sensible data. 
@@ -493,7 +516,7 @@ Remember that we don't necessarily need Json fields as at the moment we just do 
 
 _old stuff deleted_
 
-More documentation [(Sharpino gitbook)](https://tonyx.github.io)
+More documentation [www.sharpino.eu](https://www.sharpino.eu)
 
 <a href="https://www.buymeacoffee.com/Now7pmK92m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
