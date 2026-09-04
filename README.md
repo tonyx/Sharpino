@@ -122,6 +122,7 @@ A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have genero
 
 ## News/Updates
 
+- Version 6.2.3 Improved L2 cache. Instad of caching Task, now full objects are cached in L2.
 - A [video](https://youtu.be/bXA4-Y589sQ) of a scalable architectural solution using Blazor/Webassebly/Azure functions using Sharpino
 
 - Version 6.2.2. Added getAllFilteredAggregateStatesUnskippedErrorsAsync which fails if an aggregate read fails for instance duet to an upcast failure or any other reason. Use case: you evolve an aggregate and upcast, then you want to reload all the aggregates, you get a failure and so you fix it. Previously getAllFilteredAggregateStatesAsync would have returned the other aggregates and silently ignored the failure of the upcasting of the current aggregate. Now it fails, 
