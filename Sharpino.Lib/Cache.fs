@@ -358,6 +358,15 @@ module Cache =
             statesDetails.Clear(false)
             objectDetailsAssociationsCache.Clear(false)
 
+    [<CLIMutable>]
+    type CachedAggregateEntry = {
+        EventId: EventId
+        TypeName: string
+        StateJson: string
+        [<System.Text.Json.Serialization.JsonIgnore>]
+        mutable BoxedState: obj option
+    }
+
     type AggregateCache3 private () =
         let ignoreIncomingBackplane = config.GetValue<bool>("Cache:IgnoreIncomingBackplaneNotifications", false)
         let aggregateOptions = FusionCacheOptions(
@@ -439,9 +448,8 @@ module Cache =
         static member Instance = instance
         
         member this.SetupL2AndBackplane(dc: IDistributedCache option, ser: IFusionCacheSerializer option, bp: IFusionCacheBackplane option) =
-            // We do NOT configure L2 Cache because this cache stores Task objects which cannot be serialized
-            // if dc.IsSome && ser.IsSome then
-            //     (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+            if dc.IsSome && ser.IsSome then
+                (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
             if bp.IsSome then
                 let backplane = bp.Value
                 _backplane <- Some backplane
@@ -462,8 +470,13 @@ module Cache =
                                 logger.LogInformation (sprintf "[Cache] AggregateCache3: IsCurrentlyUsable = %A" (usableMethod.Invoke(bpa, [| null; null |])))
                             logger.LogInformation (sprintf "[Cache] AggregateCache3: SkipBackplane = %A" entryOptions.SkipBackplaneNotifications)
                 
-                // Add event listeners
-                let receiverOptions = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions().SetSkipBackplaneNotifications(true)
+                // Add event listeners (evicts only L1 upon EntrySet so L2 remains intact)
+                let receiverOptions =
+                    let opt = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions()
+                    opt.SkipBackplaneNotifications <- true
+                    opt.SkipDistributedCacheRead <- true
+                    opt.SkipDistributedCacheWrite <- true
+                    opt
                 statePerAggregate.Events.Backplane.add_MessagePublished(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
                     logger.LogDebug (sprintf "[Cache Event] MessagePublished: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
                 ))
@@ -494,13 +507,22 @@ module Cache =
                 ))
             ()
 
-        member private this.TryCacheTask (aggregateId: AggregateId, tsk: Task<Result<EventId * obj, string>>) =
+        member this.Memoize2 (eventId: EventId, x:'A) (aggregateId: AggregateId) =
+            let key = aggregateId.ToString()
+            this.Clean aggregateId
+            let boxed: obj = box x
+            let typeName = boxed.GetType().AssemblyQualifiedName
+            let json: string = System.Text.Json.JsonSerializer.Serialize(boxed, boxed.GetType(), jsonOptions)
+            let entry = {
+                EventId = eventId
+                TypeName = typeName
+                StateJson = json
+                BoxedState = Some boxed
+            }
             try
-                let key = aggregateId.ToString()
-                statePerAggregate.Set<Task<Result<EventId * obj, string>>>(key, tsk, entryOptions)
+                statePerAggregate.Set<CachedAggregateEntry>(key, entry, entryOptions)
                 recordAccess key
                 
-                // Manually notify backplane if FusionCache skips it
                 if _backplane.IsSome then
                     let fullKey = "statePerAggregate:" + key
                     let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
@@ -515,57 +537,7 @@ module Cache =
                 DetailsCache.Instance.Clear()
                 () 
     
-        member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
-            let key = aggregateId.ToString()
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
-            if not (obj.ReferenceEquals(v, null)) then
-                recordAccess key
-                v.GetAwaiter().GetResult()
-            else
-                let res = f()
-                match res with
-                | Ok (eventId, state) ->
-                    this.TryCacheTask (aggregateId, task { return res } )
-                    Ok (eventId, state)
-                | Error e ->
-                    Error e
-
-        member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<EventId * obj, string>>) (aggregateId: AggregateId) (ct: Option<CancellationToken>): Task<Result<EventId * obj, string>> =
-            let key = aggregateId.ToString()
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
-            if not (obj.ReferenceEquals(v, null)) then
-                recordAccess key
-                v
-            else
-                let factory = System.Func<ZiggyCreatures.Caching.Fusion.FusionCacheFactoryExecutionContext<Task<Result<EventId * obj, string>>>, System.Threading.CancellationToken, Task<Result<EventId * obj, string>>>(fun ctx token ->
-                    let tsk = task {
-                        let! res = f ct
-                        match res with
-                        | Ok _ -> ()
-                        | Error _ -> statePerAggregate.Remove(key) |> ignore
-                        return res
-                    }
-                    tsk
-                )
-                let tsk = statePerAggregate.GetOrSet<Task<Result<EventId * obj, string>>>(key, factory, entryOptions)
-                recordAccess key
-                
-                if _backplane.IsSome then
-                    let fullKey = "statePerAggregate:" + key
-                    let msg = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessage.CreateForEntrySet(
-                        statePerAggregate.InstanceId, 
-                        fullKey, 
-                        System.DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    )
-                    _backplane.Value.PublishAsync(msg, entryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
-                tsk
-              
-        member this.Memoize2 (eventId: EventId, x:'A) (aggregateId: AggregateId) =
-            this.Clean aggregateId
-            let tsk = Task.FromResult(Ok(eventId, box x))
-            this.TryCacheTask (aggregateId, tsk)
-        
-        member this.Clean (aggregateId: AggregateId)  =
+        member this.Clean (aggregateId: AggregateId) =
             let key = aggregateId.ToString()
             lock lruLock (fun () ->
                 match lruDict.TryGetValue(key) with
@@ -596,44 +568,171 @@ module Cache =
                 lruList.Clear()
                 lruDict.Clear()
             )
-            statePerAggregate.Clear(true)
+            let mcaProp = statePerAggregate.GetType().GetProperty("MemoryCacheAccessor", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.NonPublic)
+            if not (isNull mcaProp) then
+                let mca = mcaProp.GetValue(statePerAggregate)
+                if not (isNull mca) then
+                    let tryClearMethod = mca.GetType().GetMethod("TryClear", System.Reflection.BindingFlags.Instance ||| System.Reflection.BindingFlags.Public ||| System.Reflection.BindingFlags.NonPublic)
+                    if not (isNull tryClearMethod) then
+                        tryClearMethod.Invoke(mca, [||]) |> ignore
 
         member this.ClearL2 () =
-            statePerAggregate.Clear(false)
+            let opt = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions()
+            opt.SkipMemoryCacheRead <- true
+            opt.SkipMemoryCacheWrite <- true
+            opt.SkipBackplaneNotifications <- true
+            statePerAggregate.Clear(false, opt)
         
+        member this.GetEntry (aggregateId: AggregateId) : CachedAggregateEntry option =
+            let key = aggregateId.ToString()
+            let entry = statePerAggregate.GetOrDefault<CachedAggregateEntry>(key, null)
+            if not (obj.ReferenceEquals(entry, null)) then
+                recordAccess key
+                Some entry
+            else
+                None
+
+        member this.GetEntryAsync (aggregateId: AggregateId, ?ct: CancellationToken) : Task<CachedAggregateEntry option> =
+            task {
+                let key = aggregateId.ToString()
+                let token = defaultArg ct CancellationToken.None
+                let! entry = statePerAggregate.GetOrDefaultAsync<CachedAggregateEntry>(key, null, token = token)
+                if not (obj.ReferenceEquals(entry, null)) then
+                    recordAccess key
+                    return Some entry
+                else
+                    return None
+            }
+
         member this.LastEventId (aggregateId: AggregateId) =
             let key = aggregateId.ToString()
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
-            if not (obj.ReferenceEquals(v, null)) && v.IsCompletedSuccessfully then 
+            let entry = statePerAggregate.GetOrDefault<CachedAggregateEntry>(key, null)
+            if not (obj.ReferenceEquals(entry, null)) then 
                 recordAccess key
-                match v.Result with
-                | Ok (eventId, _) -> Some eventId
-                | _ -> None
+                Some entry.EventId
             else None
         
-        member this.GetState (aggregateId: AggregateId) =
+        member this.GetState (aggregateId: AggregateId) : Result<obj, string> =
             let key = aggregateId.ToString()
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
-            if not (obj.ReferenceEquals(v, null)) then 
+            let entry = statePerAggregate.GetOrDefault<CachedAggregateEntry>(key, null)
+            if not (obj.ReferenceEquals(entry, null)) then 
                 recordAccess key
-                match v.GetAwaiter().GetResult() with
-                | Ok (_, state) -> Ok state
-                | Error e -> Error e
+                match entry.BoxedState with
+                | Some state -> Ok state
+                | None ->
+                    try
+                        let t = Type.GetType(entry.TypeName)
+                        if not (isNull t) then
+                            let state = System.Text.Json.JsonSerializer.Deserialize(entry.StateJson, t, jsonOptions)
+                            entry.BoxedState <- Some state
+                            Ok state
+                        else
+                            Error (sprintf "Could not resolve type %s" entry.TypeName)
+                    with ex ->
+                        Error ex.Message
             else Error "aggregate not found"        
 
         member this.GetStateAsync (aggregateId: AggregateId) (ct: Option<CancellationToken>) =
             let key = aggregateId.ToString()
-            let v = statePerAggregate.GetOrDefault<Task<Result<EventId * obj, string>>>(key, null)
-            if not (obj.ReferenceEquals(v, null)) then 
+            let token = ct |> Option.defaultValue CancellationToken.None
+            task {
+                let! entry = statePerAggregate.GetOrDefaultAsync<CachedAggregateEntry>(key, null, token = token)
+                if not (obj.ReferenceEquals(entry, null)) then 
+                    recordAccess key
+                    match entry.BoxedState with
+                    | Some state -> return Ok state
+                    | None ->
+                        try
+                            let t = Type.GetType(entry.TypeName)
+                            if not (isNull t) then
+                                let state = System.Text.Json.JsonSerializer.Deserialize(entry.StateJson, t, jsonOptions)
+                                entry.BoxedState <- Some state
+                                return Ok state
+                            else
+                                return Error (sprintf "Could not resolve type %s" entry.TypeName)
+                        with ex ->
+                            return Error ex.Message
+                else
+                    return Error "aggregate not found"
+            }
+
+        member this.Memoize (f: unit -> Result<EventId * obj, string>) (aggregateId: AggregateId): Result<EventId * obj, string> =
+            let key = aggregateId.ToString()
+            let entry = statePerAggregate.GetOrDefault<CachedAggregateEntry>(key, null)
+            if not (obj.ReferenceEquals(entry, null)) then
                 recordAccess key
-                task {
-                    let! res = v
+                match entry.BoxedState with
+                | Some state -> Ok (entry.EventId, state)
+                | None ->
+                    try
+                        let t = Type.GetType(entry.TypeName)
+                        if not (isNull t) then
+                            let state = System.Text.Json.JsonSerializer.Deserialize(entry.StateJson, t, jsonOptions)
+                            entry.BoxedState <- Some state
+                            Ok (entry.EventId, state)
+                        else
+                            let res = f()
+                            match res with
+                            | Ok (eventId, state) ->
+                                this.Memoize2 (eventId, state) aggregateId
+                                Ok (eventId, state)
+                            | Error e -> Error e
+                    with ex ->
+                        logger.LogError (sprintf "Error deserializing cached entry for %s: %A" key ex)
+                        let res = f()
+                        match res with
+                        | Ok (eventId, state) ->
+                            this.Memoize2 (eventId, state) aggregateId
+                            Ok (eventId, state)
+                        | Error e -> Error e
+            else
+                let res = f()
+                match res with
+                | Ok (eventId, state) ->
+                    this.Memoize2 (eventId, state) aggregateId
+                    Ok (eventId, state)
+                | Error e ->
+                    Error e
+
+        member this.MemoizeAsync (f: Option<CancellationToken> -> Task<Result<EventId * obj, string>>) (aggregateId: AggregateId) (ct: Option<CancellationToken>): Task<Result<EventId * obj, string>> =
+            let key = aggregateId.ToString()
+            let token = ct |> Option.defaultValue CancellationToken.None
+            task {
+                let! entry = statePerAggregate.GetOrDefaultAsync<CachedAggregateEntry>(key, null, token = token)
+                if not (obj.ReferenceEquals(entry, null)) then
+                    recordAccess key
+                    match entry.BoxedState with
+                    | Some state -> return Ok (entry.EventId, state)
+                    | None ->
+                        try
+                            let t = Type.GetType(entry.TypeName)
+                            if not (isNull t) then
+                                let state = System.Text.Json.JsonSerializer.Deserialize(entry.StateJson, t, jsonOptions)
+                                entry.BoxedState <- Some state
+                                return Ok (entry.EventId, state)
+                            else
+                                let! res = f ct
+                                match res with
+                                | Ok (eventId, state) ->
+                                    this.Memoize2 (eventId, state) aggregateId
+                                    return Ok (eventId, state)
+                                | Error e -> return Error e
+                        with ex ->
+                            logger.LogError (sprintf "Error deserializing cached entry for %s: %A" key ex)
+                            let! res = f ct
+                            match res with
+                            | Ok (eventId, state) ->
+                                this.Memoize2 (eventId, state) aggregateId
+                                return Ok (eventId, state)
+                            | Error e -> return Error e
+                else
+                    let! res = f ct
                     match res with
-                    | Ok (_, state) -> return Ok state
-                    | Error e -> return Error e
-                }
-            else task {
-                return Error "aggregate not found"
+                    | Ok (eventId, state) ->
+                        this.Memoize2 (eventId, state) aggregateId
+                        return Ok (eventId, state)
+                    | Error e ->
+                        return Error e
             }
 
     type StateCache2<'A> private () =

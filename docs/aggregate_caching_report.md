@@ -1,12 +1,12 @@
 # Aggregate Invalidation & L2 Cache Flow Report
 
-This report outlines the mechanisms behind aggregate cache invalidation, details the role of the L2 SQL Cache, and summarizes what is (and isn't) stored in L2, providing a big-picture overview of the Sharpino cache architecture.
+This report outlines the mechanisms behind aggregate cache invalidation, details the role and operation of the multi-tier Level 2 (L2) Distributed Cache for `AggregateCache3`, and summarizes what is (and isn't) stored across L1 and L2 cache layers in Sharpino.
 
 ---
 
 ## 1. Aggregate Cache Invalidation & Update Flows
 
-When an aggregate is modified or updated on a node, there are two distinct backplane message types that trigger cache invalidation on peer nodes: **EntryRemove** (eviction) and **EntrySet** (state update).
+When an aggregate is modified or updated on a node, there are two distinct backplane message types that trigger cache actions on peer nodes: **EntryRemove** (eviction) and **EntrySet** (state update).
 
 ### Flow A: Explicit Eviction / Clean (EntryRemove)
 When an aggregate is explicitly evicted (e.g., calling `Clean`):
@@ -14,103 +14,132 @@ When an aggregate is explicitly evicted (e.g., calling `Clean`):
 ```mermaid
 sequenceDiagram
     participant Node1 as Node 1 (Sender)
-    participant BP as Backplane (Service Bus / MQTT)
+    participant BP as Backplane (PG Notify / Redis / Service Bus)
+    participant L2 as L2 Cache (Postgres / Redis / SQL Server)
     participant Node2 as Node 2 (Receiver)
     
     Note over Node1: Clean aggregate X called
-    Node1->>Node1: 1. Remove X from L1 statePerAggregate
-    Node1->>BP: 2. Publish EntryRemove Message ("statePerAggregate:X")
+    Node1->>Node1: 1. Remove X from L1 memory
+    Node1->>L2: 2. Remove X from L2 Distributed Cache
+    Node1->>BP: 3. Publish EntryRemove Message ("statePerAggregate:X")
     
-    BP->>Node2: 3. Deliver EntryRemove Message
-    Node2->>Node2: 4. Remove X from L1 statePerAggregate
-    Node2->>Node2: 5. Evict/Refresh dependent details (DetailsCache)
+    BP->>Node2: 4. Deliver EntryRemove Message
+    Node2->>Node2: 5. Evict X from L1 memory (keeps L2 intact)
+    Node2->>Node2: 6. Evict/Refresh dependent details (DetailsCache)
 ```
 
 ### Flow B: State Update / Memoization (EntrySet)
-When Node 1 produces a new event and updates its local cache (e.g., via `Memoize2` -> `TryCacheTask`):
+When Node 1 processes an event and records the new state (e.g., via `Memoize2`):
 
 ```mermaid
 sequenceDiagram
     participant Node1 as Node 1 (Sender)
-    participant BP as Backplane (Service Bus / MQTT)
+    participant L2 as L2 Cache (Postgres / Redis / SQL Server)
+    participant BP as Backplane (PG Notify / Redis / Service Bus)
     participant Node2 as Node 2 (Receiver)
     
     Note over Node1: Node 1 updates state for X
-    Node1->>Node1: 1. Clean X (triggers EntryRemove flow above)
-    Node1->>Node1: 2. Set new state in local statePerAggregate
+    Node1->>Node1: 1. Store in L1 memory with direct BoxedState pointer
+    Node1->>L2: 2. Serialize CachedAggregateEntry (EventId, TypeName, StateJson)
     Node1->>BP: 3. Publish EntrySet Message ("statePerAggregate:X")
     
     BP->>Node2: 4. Deliver EntrySet Message
-    Node2->>Node2: 5. Remove/Invalidate X from local statePerAggregate
+    Node2->>Node2: 5. Invalidate L1 memory only (SkipDistributedCacheWrite = true)
     Node2->>Node2: 6. Evict/Refresh dependent details (DetailsCache)
+    Note over Node2: Next read on Node 2 fetches from L2 without DB snapshot query
 ```
 
 ### Flow Breakdown
-1. **Local Eviction on Node 1**:
-   - Node 1 calls `Clean` on `AggregateCache3.Instance` for aggregate ID `X`.
-   - Node 1 removes `X` from its internal L1 cache (`statePerAggregate`) and its LRU tracking.
+1. **Local State Update on Node 1**:
+   - `Memoize2 (eventId, state) aggregateId` wraps state into a serializable `CachedAggregateEntry`:
+     - `EventId`: the latest event sequence number.
+     - `TypeName`: assembly-qualified type name.
+     - `StateJson`: JSON-serialized representation of the aggregate state.
+     - `BoxedState`: in-memory boxed reference (for zero-deserialization L1 access).
+   - Writes to `statePerAggregate` (FusionCache). FusionCache places the object into L1 memory and serializes it to the configured L2 distributed cache provider (PostgreSQL, Redis, or SQL Server).
 2. **Backplane Notification**:
-   - Node 1 broadcasts a `BackplaneMessage.CreateForEntryRemove` message with the key `"statePerAggregate:X"` over the backplane.
-3. **Local State Update on Node 1**:
-   - When a new event is processed, `Memoize2` caches the new state via `TryCacheTask`.
-   - `TryCacheTask` sets the new Task in Node 1's local `statePerAggregate` and broadcasts a `BackplaneMessage.CreateForEntrySet` message.
-4. **Invalidation & Refresh on Node 2**:
-   - Node 2 receives the backplane message (`EntryRemove` or `EntrySet`) via `statePerAggregate.Events.Backplane.add_MessageReceived`.
-   - Because the task itself cannot be sent across the wire, Node 2 handles **both** `EntryRemove` and `EntrySet` actions by invalidating (removing) its local cache entry for that aggregate key:
+   - Node 1 broadcasts a `BackplaneMessage.CreateForEntrySet` (or `CreateForEntryRemove`) message with key `"statePerAggregate:X"`.
+3. **Invalidation & Refresh on Node 2**:
+   - Node 2 receives the message via its backplane subscription (`Events.Backplane.add_MessageReceived`).
+   - Node 2 evicts its **local L1 memory entry** using `receiverOptions`:
      ```fsharp
-     statePerAggregate.Remove(key, receiverOptions)
+     opt.SkipDistributedCacheRead <- true
+     opt.SkipDistributedCacheWrite <- true
+     opt.SkipBackplaneNotifications <- true
      ```
-   - Node 2 then parses the key as a Guid (`X`) and triggers a refresh on dependent details:
+     This evicts stale memory on Node 2 **without removing the valid entry from L2**.
+   - Node 2 parses the aggregate ID Guid (`X`) and triggers a refresh on dependent details:
      ```fsharp
      DetailsCache.Instance.RefreshDependentDetailsAsync(guidKey, Some CancellationToken.None) |> ignore
      ```
-   - This in turn executes `RefreshAsync` on all detail items associated with aggregate `X`, ensuring that read-model projections/details are immediately re-cached or updated.
+   - Subsequent reads on Node 2 can instantly fetch the latest aggregate state from L2 rather than querying the database snapshot table.
 
 ---
 
-## 2. Involvement of L2 Cache in Aggregate Cache
+## 2. Involvement of L2 Distributed Cache in `AggregateCache3`
 
-> [!IMPORTANT]
-> **The L2 Cache is NOT involved in the aggregate cache (`AggregateCache3`) flow.**
+> [!NOTE]
+> **L2 Distributed Cache is fully enabled and active for `AggregateCache3`.**
 
-A cache miss on the aggregate cache (`statePerAggregate`) for any object **cannot** use the L2 cache as a fallback. 
-- In `AggregateCache3.SetupL2AndBackplane`, the initialization of the L2 distributed cache is explicitly commented out:
+### Evolution & Resolution of the Serialization Limitation
+- **Historical Limitation**: Previously, `AggregateCache3` stored runtime `Task<Result<EventId * obj, string>>` objects in FusionCache. Because `Task` instances cannot be serialized across process boundaries, `SetupDistributedCache` was disabled, restricting `AggregateCache3` to a single-node in-memory cache.
+- **The Solution (`CachedAggregateEntry`)**:
   ```fsharp
-  // We do NOT configure L2 Cache because this cache stores Task objects which cannot be serialized
-  // if dc.IsSome && ser.IsSome then
-  //     (statePerAggregate :> IFusionCache).SetupDistributedCache(dc.Value, ser.Value) |> ignore
+  [<CLIMutable>]
+  type CachedAggregateEntry = {
+      EventId: EventId
+      TypeName: string
+      StateJson: string
+      [<System.Text.Json.Serialization.JsonIgnore>]
+      mutable BoxedState: obj option
+  }
   ```
-- Because it stores `Task<Result<EventId * obj, string>>` objects (runtime concurrency tasks returning arbitrary state objects), it is fundamentally incompatible with standard L2 serialization.
+  1. **L1 Performance**: For local cache hits, `BoxedState` holds the live aggregate object reference. Retrieving cached state executes in sub-microsecond time with **zero JSON deserialization overhead**.
+  2. **L2 Multi-Node Sharing**: When written to L2, the entry cleanly serializes to PostgreSQL / Redis / SQL Server.
+  3. **L2 Rehydration**: When a node cold-starts or experiences an L1 eviction, FusionCache fetches `CachedAggregateEntry` from L2. `GetState` / `GetStateAsync` lazily deserializes `StateJson` once using `TypeName`, populates `BoxedState`, and resumes fast in-memory operation.
 
-### Rebuilding Aggregate State
-Instead of using L2 cache, aggregate state reconstruction relies on:
-1. **Event Replay**: Re-reading events from the event store.
-2. **Database Snapshots**: Rebuilding is kept highly efficient by loading the latest **snapshot** from the database (e.g. the `snapshots` table in PostgreSQL) and applying only the events occurring *after* that snapshot.
+### Read-Through Aggregate Snapshot Acceleration (`StateView`)
+In `StateView.fs`, aggregate state reconstitution now benefits from multi-tier cache acceleration:
+1. `getLastAggregateSnapshot` and `getLastAggregateSnapshotAsync` check `AggregateCache3.Instance.GetEntry / GetEntryAsync(aggregateId)` first.
+2. If the aggregate exists in L1 or L2, `StateView` loads the cached snapshot directly:
+   - Supports both `string` (JSON) and `byte[]` binary event stores via `convertStateJsonToFormat<'F>`.
+3. If not found in cache, it falls back to querying the database snapshot table (`TryGetLastAggregateSnapshot`).
+4. Rebuilding an aggregate requires replaying only the delta events occurring *after* the cached/persisted snapshot event ID.
 
 ---
 
-## 3. L2 Cache Contents: What is and isn't stored?
+## 3. Cache Contents Breakdown: What is and isn't stored in L2?
 
-Below is a breakdown of the caches managed in `Cache.fs` and their L2 cache eligibility:
+Below is a breakdown of the caches managed in `Cache.fs` and their multi-tier distribution:
 
-| Cache Component | Purpose | Stored in L1? | Stored in L2? | Why / Why Not? |
+| Cache Component | Purpose | Stored in L1? | Stored in L2? | Format / Serialization Notes |
 | :--- | :--- | :---: | :---: | :--- |
-| **`objectDetailsAssociationsCache`** | Maps aggregate IDs to lists of details keys (`List<DetailsCacheKey>`). | **Yes** | **Yes** | It contains only plain list/GUID string combinations which are fully JSON-serializable. |
-| **`statesDetails`** | Caches the actual projected/memoized detail values. | **Yes** | **No** | It caches `RefreshableAsync<'T>` wrappers. These wrappers capture F# live closures and reference types (e.g., `System.Type`), which throw serialization exceptions. |
-| **`statePerAggregate`** | Caches the reconstructed aggregate states. | **Yes** | **No** | It stores `Task` objects representing the asynchronous state reconstruction, which cannot be serialized. |
+| **`statePerAggregate`** (`AggregateCache3`) | Caches latest calculated aggregate states. | **Yes** | **Yes** | Uses `CachedAggregateEntry`. Holds live object reference in `BoxedState` (L1) and JSON text in `StateJson` (L2). |
+| **`objectDetailsAssociationsCache`** | Maps aggregate IDs to lists of details keys (`List<DetailsCacheKey>`). | **Yes** | **Yes** | Stores plain lists of string keys; fully JSON-serializable. |
+| **`statesDetails`** | Caches projected/memoized detail view values. | **Yes** | **No** | Stores `RefreshableAsync<'T>` wrappers that capture live closures and `System.Type` instances. Remains an ultra-fast L1-only cache. |
 
 ---
 
-## 4. Big Picture: Storing Information in L2 Cache
+## 4. Big Picture: Multi-Tier Hierarchy
 
-### Stored in L2 Cache
-- **Entity/Aggregate-to-Details associations** (`objectDetailsAssociationsCache`).
-- *Note: While the projected details themselves (in `statesDetails`) cannot be stored in L2 because of the wrapper closures, the associations are stored, allowing nodes to quickly identify which projections need to be invalidated or updated.*
+### The Reconstitution Cascade
+When a command or query requires an aggregate's state, Sharpino evaluates the following hierarchy:
 
-### Rebuilding vs Caching State
-- **Rebuilding is costly**: Replaying thousands of events is slow.
-- **The Snapshot fallback**: To mitigate the absence of L2 caching for aggregate state, Sharpino uses DB-backed snapshots.
-- **Why not store aggregate state in L2?**
-  1. Caching live `Task` objects in L1 is great for avoiding redundant concurrently running rebuilds, but Tasks can't cross process boundaries (L2).
-  2. Aggregate states can be complex, deeply nested, or dynamic. Serializing them directly to JSON for L2 cache might introduce schema-drift or versioning issues upon node restarts.
-  3. The DB-backed snapshot system already functions as a persistent, transaction-safe "L2 cache" for aggregate states, making an additional SQL-based L2 cache redundant for this specific data.
+```
+[1. L1 Memory Cache]  --> Sub-microsecond hit via BoxedState pointer
+       ↓ (miss / cold node)
+[2. L2 Distributed Cache] --> Fast hit from PostgreSQL / Redis (CachedAggregateEntry)
+       ↓ (miss / expired)
+[3. DB Snapshots Table]   --> Database snapshot (e.g. snapshots table)
+       ↓
+[4. Event Store Delta]    --> Replay only events occurring after snapshot EventId
+```
+
+### Key Operational Takeaways
+1. **L2 TTL vs L1 TTL**:
+   - L2 TTL is configured shorter than L1 (e.g., L2 = 120–600s, L1 = 600s) to avoid stale distributed entries polluting fresh nodes after restarts.
+2. **Backplane Non-Destructive Invalidation**:
+   - Backplane message handlers evict L1 memory without purging L2, maintaining cache warmth across the cluster while ensuring stale memory is discarded.
+3. **Provider Flexibility**:
+   - L2 Cache: PostgreSQL (`Community.Microsoft.Extensions.Caching.PostgreSql`), Redis, or SQL Server.
+   - Backplane: PostgreSQL `LISTEN / NOTIFY`, Redis Pub/Sub, or Azure Service Bus.

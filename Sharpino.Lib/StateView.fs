@@ -124,6 +124,14 @@ module StateView =
                     }, eventStoreTimeout)
                             
 
+    let inline private convertStateJsonToFormat<'F> (json: string) : 'F =
+        if typeof<'F> = typeof<string> then
+            box json :?> 'F
+        elif typeof<'F> = typeof<byte[]> then
+            box (System.Text.Encoding.UTF8.GetBytes(json)) :?> 'F
+        else
+            box json :?> 'F
+
     let inline  getLastAggregateSnapshot<'A, 'F 
         when 
         'A: (static member Deserialize: 'F -> Result<'A, string>) and
@@ -141,14 +149,29 @@ module StateView =
                 (async {
                     return
                         result {
-                            let found = storage.TryGetLastAggregateSnapshot version storageName aggregateId
-                            match found with
-                            | Ok (eventId, snapshot) ->
-                                let deserialized = 'A.Deserialize snapshot
-                                match deserialized with
-                                | Ok deserialized -> return (eventId , deserialized) |> Some 
+                            let cached = Cache.AggregateCache3.Instance.GetEntry(aggregateId)
+                            match cached with
+                            | Some entry ->
+                                match entry.BoxedState with
+                                | Some state ->
+                                    let! unboxed = unboxCacheState<'A> state
+                                    let evId = if entry.EventId > 0 then Some entry.EventId else None
+                                    return (evId, unboxed) |> Some
+                                | None ->
+                                    let raw = convertStateJsonToFormat<'F> entry.StateJson
+                                    let! deserialized = 'A.Deserialize raw
+                                    entry.BoxedState <- Some (box deserialized)
+                                    let evId = if entry.EventId > 0 then Some entry.EventId else None
+                                    return (evId, deserialized) |> Some
+                            | None ->
+                                let found = storage.TryGetLastAggregateSnapshot version storageName aggregateId
+                                match found with
+                                | Ok (eventId, snapshot) ->
+                                    let deserialized = 'A.Deserialize snapshot
+                                    match deserialized with
+                                    | Ok deserialized -> return (eventId , deserialized) |> Some 
+                                    | Error e -> return! Error e
                                 | Error e -> return! Error e
-                            | Error e -> return! Error e
                         }
                 }, eventStoreTimeout)
                 
@@ -167,11 +190,26 @@ module StateView =
             let ct = ct |> Option.defaultValue CancellationToken.None
             taskResult
                 {
-                    let! (eventId, snapshot ) =  
-                        storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
+                    let! cached = Cache.AggregateCache3.Instance.GetEntryAsync(aggregateId, ct)
+                    match cached with
+                    | Some entry ->
+                        match entry.BoxedState with
+                        | Some state ->
+                            let! unboxed = unboxCacheState<'A> state
+                            let evId = if entry.EventId > 0 then Some entry.EventId else None
+                            return (evId, unboxed)
+                        | None ->
+                            let raw = convertStateJsonToFormat<'F> entry.StateJson
+                            let! deserialized = 'A.Deserialize raw
+                            entry.BoxedState <- Some (box deserialized)
+                            let evId = if entry.EventId > 0 then Some entry.EventId else None
+                            return (evId, deserialized)
+                    | None ->
+                        let! (eventId, snapshot ) =  
+                            storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
 
-                    let! deserialized = 'A.Deserialize snapshot
-                    return (eventId, deserialized) 
+                        let! deserialized = 'A.Deserialize snapshot
+                        return (eventId, deserialized) 
                 }
                 
     // todo: it's safe to remove

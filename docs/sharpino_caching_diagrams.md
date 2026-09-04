@@ -59,20 +59,16 @@ graph TD
     subgraph Node_A_Writer
         A_App[App Command] --> A_AC[AggregateCache3]
         A_AC --> A_EventStore[Database / EventStore]
-        A_AC -. "1. Update Local" .-> A_L1[L1 Cache]
-        A_AC -- "2. Publish Message" --> ASB((Azure Service Bus / MQTT<br/>Backplane))
+        A_AC -. "1. Update L1 (BoxedState)" .-> A_L1[L1 Memory Cache]
+        A_AC -. "2. Serialize Entry" .-> L2[(L2 Distributed Cache<br/>Postgres / Redis / SQL Server)]
+        A_AC -- "3. Publish Message" --> BP((Backplane<br/>PG Notify / Redis / Service Bus))
     end
 
     subgraph Node_B_Reader
-        ASB -- "3. Receive Message" --> B_AC[AggregateCache3]
-        B_AC -. "4. Invalidate/Remove" .-> B_L1_Agg[Aggregate L1 Cache]
-        B_AC -- "5. Trigger Refresh" --> B_DC[DetailsCache]
-        B_DC -. "6. Recompute View" .-> B_L1_Det[statesDetails L1 Cache]
-    end
-
-    subgraph External
-        L2[(Azure SQL L2 Cache)]
-        A_AC -. "Optional Sync" .-> L2
-        B_AC -. "Optional Request" .-> L2
+        BP -- "4. Receive Message" --> B_AC[AggregateCache3]
+        B_AC -. "5. Invalidate L1 Only" .-> B_L1_Agg[Aggregate L1 Cache]
+        B_AC -- "6. Trigger Refresh" --> B_DC[DetailsCache]
+        B_DC -. "7. Recompute View" .-> B_L1_Det[statesDetails L1 Cache]
+        B_AC -. "8. Rehydrate from L2" .-> L2
     end
 ```

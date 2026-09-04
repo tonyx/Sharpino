@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,6 +15,7 @@
     <Compile Include="Models/ContextObject/Events.fs" />
     <Compile Include="Models/ContextObject/Commands.fs" />
     <Compile Include="EventStoreTests.fs" />
+    <Compile Include="AggregateCache3Tests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
   </ItemGroup>
