@@ -25,6 +25,9 @@ module StateView =
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
     let eventStoreTimeout = config.GetValue<int>("EventStoreTimeout", 100000)
+    let semaphoreSlimLimit =
+        let limit = config.GetValue<int>("SemaphorseSlimLimit", config.GetValue<int>("SemaphoreSlimLimit", 50))
+        if limit > 0 then limit else 50
 
     let inline private unboxCacheState<'A> (stateValue: obj) : Result<'A, string> =
         match stateValue with
@@ -1003,8 +1006,7 @@ module StateView =
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
 
-                    // todo: stay on 50 or make a config parameter and tune it
-                    use semaphore = new SemaphoreSlim 50
+                    use semaphore = new SemaphoreSlim(semaphoreSlimLimit)
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
@@ -1045,7 +1047,7 @@ module StateView =
                 | Error e ->
                     yield Error e
                 | Ok ids ->
-                    use semaphore = new SemaphoreSlim 50
+                    use semaphore = new SemaphoreSlim(semaphoreSlimLimit)
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
@@ -1086,8 +1088,7 @@ module StateView =
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
 
-                    // todo: stay on 50 or make a config parameter and tune it
-                    use semaphore = new SemaphoreSlim 50
+                    use semaphore = new SemaphoreSlim(semaphoreSlimLimit)
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
@@ -1156,8 +1157,7 @@ module StateView =
                     let! (ids: Guid list) =
                         eventStore.GetUndeletedAggregateIdsAsync('A.Version, 'A.StorageName, ct)
 
-                    // todo: stay on 50 or make a config parameter and tune it
-                    use semaphore = new SemaphoreSlim 50
+                    use semaphore = new SemaphoreSlim(semaphoreSlimLimit)
                     let tasks =
                         ids |> List.map (fun id ->
                             task {
@@ -1217,7 +1217,7 @@ module StateView =
                 | Error e ->
                     yield Error e
                 | Ok ids ->
-                    use semaphore = new SemaphoreSlim 50
+                    use semaphore = new SemaphoreSlim(semaphoreSlimLimit)
                     let tasks =
                         ids |> List.map (fun id ->
                             task {

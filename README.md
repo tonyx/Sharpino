@@ -121,7 +121,7 @@ __Faq__ and __trivia__:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
-
+- Version 6.2.4 introduced SemaphorseSlimLimit as parameter to tune the degree of parallelism when loading aggregates, considering the connection pool size. 
 - Version 6.2.3 Improved L2 cache. Instad of caching Task, now full objects are cached in L2.
 - A [video](https://youtu.be/bXA4-Y589sQ) of a scalable architectural solution using Blazor/Webassebly/Azure functions using Sharpino
 
