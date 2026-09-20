@@ -171,9 +171,9 @@
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
     <PackageReference Include="StackExchange.Redis" Version="3.1.31" />
-    <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.7.2" />
-    <PackageReference Include="ZiggyCreatures.FusionCache.Backplane.StackExchangeRedis" Version="2.7.2" />
-    <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.7.2" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Locking.AsyncKeyed" Version="2.8.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Backplane.StackExchangeRedis" Version="2.8.0" />
+    <PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.8.0" />
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->

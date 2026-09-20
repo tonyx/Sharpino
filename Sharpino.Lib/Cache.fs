@@ -31,6 +31,7 @@ open System.Text.Json.Serialization
 open FsToolkit.ErrorHandling
 open MQTTnet
 open ZiggyCreatures.Caching.Fusion.Backplane.StackExchangeRedis
+open ZiggyCreatures.Caching.Fusion.Locking.AsyncKeyed
 
 module Cache =
     let builder = Host.CreateApplicationBuilder()
@@ -91,7 +92,7 @@ module Cache =
             CacheKeyPrefix = "statesDetails:",
             IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
         )
-        let statesDetails = new FusionCache(detailsOptions)
+        let statesDetails = new FusionCache(detailsOptions, memoryLocker = new AsyncKeyedMemoryLocker());
             
         let detailsCacheExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheExpiration", 300)
         let detailsCacheDependenciesExpirationConfigInSeconds = config.GetValue<float>("DetailsCacheDependenciesExpiration", 301)
@@ -113,7 +114,7 @@ module Cache =
             CacheKeyPrefix = "objectDetails:",
             IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
         )
-        let objectDetailsAssociationsCache = new FusionCache(assocOptions)
+        let objectDetailsAssociationsCache = new FusionCache(assocOptions, memoryLocker = new AsyncKeyedMemoryLocker())
         
         let mutable _backplane: IFusionCacheBackplane option = None
         let detailsRefreshed = new Microsoft.FSharp.Control.Event<string * Guid>()
@@ -374,7 +375,7 @@ module Cache =
             CacheKeyPrefix = "statePerAggregate:",
             IgnoreIncomingBackplaneNotifications = ignoreIncomingBackplane
         )
-        let statePerAggregate = new FusionCache(aggregateOptions)
+        let statePerAggregate = new FusionCache(aggregateOptions, memoryLocker = new AsyncKeyedMemoryLocker())
         let cacheExpirationConfigInSeconds = config.GetValue<float>("AggregateCacheExpiration", 600)
         let l2CacheExpirationConfigInSeconds = config.GetValue<float>("Cache:L2CacheExpirationSeconds", 120)
         let entryOptions =
