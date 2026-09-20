@@ -12,6 +12,9 @@ open System.Runtime.CompilerServices
 open System.Collections
 open FSharp.Core
 
+open System.Threading.Tasks
+open FsToolkit.ErrorHandling
+
 module MailBoxProcessors =
     let builder = Host.CreateApplicationBuilder()
     let config = builder.Configuration
@@ -26,7 +29,12 @@ module MailBoxProcessors =
     let setLogger (newLogger: ILogger) =
         ()
 
-    type UnitResult = ((unit -> Result<unit, string>) * AsyncReplyChannel<Result<unit, string>>)
+    type Command =
+        | AsyncTaskCommand of (unit -> Task<Result<unit, string>>)
+        | AsyncComputationCommand of (unit -> Async<Result<unit, string>>)
+        | SyncCommand of (unit -> Result<unit, string>)
+
+    type UnitResult = Command * AsyncReplyChannel<Result<unit, string>>
     
     type Processors private() =
         let processors = Generic.Dictionary<string, MailboxProcessor<UnitResult>>()
@@ -61,15 +69,44 @@ module MailBoxProcessors =
             MailboxProcessor<UnitResult>.Start (fun inbox ->
                 let rec loop () =
                     async {
-                        let! (f, reply) = inbox.Receive()
-                        let result = f()
-                        reply.Reply result
+                        let! (cmd, reply) = inbox.Receive()
+                        try
+                            match cmd with
+                            | AsyncTaskCommand f ->
+                                let! result = f() |> Async.AwaitTask
+                                reply.Reply result
+                            | AsyncComputationCommand f ->
+                                let! result = f()
+                                reply.Reply result
+                            | SyncCommand f ->
+                                let result = f()
+                                reply.Reply result
+                        with ex ->
+                            logger.LogError(sprintf "Exception executing command in MailboxProcessor: %A" ex)
+                            reply.Reply (Error ex.Message)
                         do! loop()
                     }
                 loop()
             )
    
-    let postToTheProcessor (processor: MailboxProcessor<UnitResult>) f =
-        // timeout is harcode here. next release will be a conf
-        Async.RunSynchronously (processor.PostAndAsyncReply (fun reply -> (f, reply)), Commons.generalAsyncTimeOut)
+    let postToTheProcessorAsync (processor: MailboxProcessor<UnitResult>) (f: unit -> Task<Result<unit, string>>) : Task<Result<unit, string>> =
+        // timeout is hardcoded here. next release will be a conf
+        Async.StartAsTask (processor.PostAndAsyncReply ((fun reply -> (AsyncTaskCommand f, reply)), Commons.generalAsyncTimeOut))
+
+    let postToTheProcessorComputationAsync (processor: MailboxProcessor<UnitResult>) (f: unit -> Async<Result<unit, string>>) : Async<Result<unit, string>> =
+        processor.PostAndAsyncReply ((fun reply -> (AsyncComputationCommand f, reply)), Commons.generalAsyncTimeOut)
+
+    let postToTheProcessorSync (processor: MailboxProcessor<UnitResult>) (f: unit -> Result<unit, string>) : Result<unit, string> =
+        Async.RunSynchronously (processor.PostAndAsyncReply ((fun reply -> (SyncCommand f, reply)), Commons.generalAsyncTimeOut))
+
+    type PostInvoker =
+        static member inline Invoke (_: PostInvoker, processor: MailboxProcessor<UnitResult>, f: unit -> Task<Result<unit, string>>) : Task<Result<unit, string>> =
+            postToTheProcessorAsync processor f
+        static member inline Invoke (_: PostInvoker, processor: MailboxProcessor<UnitResult>, f: unit -> Async<Result<unit, string>>) : Async<Result<unit, string>> =
+            postToTheProcessorComputationAsync processor f
+        static member inline Invoke (_: PostInvoker, processor: MailboxProcessor<UnitResult>, f: unit -> Result<unit, string>) : Result<unit, string> =
+            postToTheProcessorSync processor f
+
+    let inline postToTheProcessor (processor: MailboxProcessor<UnitResult>) (f: 'F) =
+        ((^Invoker or ^F) : (static member Invoke: ^Invoker * MailboxProcessor<UnitResult> * 'F -> 'Res) (Unchecked.defaultof<PostInvoker>, processor, f))
         
