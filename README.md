@@ -121,6 +121,7 @@ __Faq__ and __trivia__:
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
+- Version 6.2.6 Reintroduces Mailboxprocessor for single stream/aggregate commands. Added two separate read/write connection strings for EventStore, for eventual physical read/write separation. 
 - Version 6.2.5 Make use of the AsyncKeyedLock locker (p.r. https://github.com/tonyx/Sharpino/pull/72  - Courtesy: [MarkCiliaVincenti](https://github.com/MarkCiliaVincenti))
 - Version 6.2.4 introduced SemaphorseSlimLimit as parameter to tune the degree of parallelism when loading aggregates, considering the connection pool size. 
 - Version 6.2.3 Improved L2 cache. Instad of caching Task, now full objects are cached in L2.
