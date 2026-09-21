@@ -511,26 +511,33 @@ module CommandHandler =
         (predicate: 'A1 -> bool)
         =
             logger.LogDebug (sprintf "runDelete %A" 'A1.StorageName)
-            result {
-                let! eventId, state =
-                    StateView.getAggregateFreshState<'A1, 'E, 'F> id eventStore
-                do!
-                    predicate (state |> unbox)
-                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
-                
-                let serializedState =
-                    state.Serialize
-               
-                let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
-                AggregateCache3.Instance.Clean id
-                DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
-                 
-                let _ =
-                    let queueName = 'A1.Version + 'A1.StorageName
-                    optionallySendDeleteMessageAsync<'A1> queueName messageSenders id
-                  
-                return ()
-            }
+            let command = fun () ->
+                result {
+                    let! eventId, state =
+                        StateView.getAggregateFreshState<'A1, 'E, 'F> id eventStore
+                    do!
+                        predicate (state |> unbox)
+                        |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
+                    
+                    let serializedState =
+                        state.Serialize
+                   
+                    let! _ = eventStore.SnapshotAndMarkDeleted 'A1.Version 'A1.StorageName eventId id serializedState
+                    AggregateCache3.Instance.Clean id
+                    DetailsCache.Instance.RefreshDependentDetailsAsync(id, Some CancellationToken.None).GetAwaiter().GetResult()
+                     
+                    let _ =
+                        let queueName = 'A1.Version + 'A1.StorageName
+                        optionallySendDeleteMessageAsync<'A1> queueName messageSenders id
+                      
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR         
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A1.StorageName (id.ToString()))
+            MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
             
     let inline runDeleteAsync<'A1, 'E, 'F
         when 'E :> Event<'A1>
@@ -548,27 +555,34 @@ module CommandHandler =
         (predicate: 'A1 -> bool)
         (ct: Option<CancellationToken>) =
             logger.LogDebug (sprintf "runDeleteAsync %A" 'A1.StorageName)
-            taskResult {
-                let! eventId, state =
-                    StateView.getAggregateFreshStateAsync<'A1, 'E, 'F> id eventStore ct
-                do!
-                    predicate (state |> unbox)
-                    |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
-                
-                let serializedState =
-                    state.Serialize
-               
-                let! _ = eventStore.SnapshotAndMarkDeletedAsync('A1.Version, 'A1.StorageName, eventId, id, serializedState, ct |> Option.defaultValue CancellationToken.None)
-                AggregateCache3.Instance.Clean id
-                
-                DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [id]
-                 
-                let _ =
-                    let queueName = 'A1.Version + 'A1.StorageName
-                    optionallySendDeleteMessageAsync<'A1> queueName messageSenders id
-                  
-                return ()
-            }
+            let command = fun () ->
+                taskResult {
+                    let! eventId, state =
+                        StateView.getAggregateFreshStateAsync<'A1, 'E, 'F> id eventStore ct
+                    do!
+                        predicate (state |> unbox)
+                        |> Result.ofBool (sprintf "cannot delete aggregate with id %A of type %s as it is not safe according to the predicate" id 'A1.StorageName)
+                    
+                    let serializedState =
+                        state.Serialize
+                   
+                    let! _ = eventStore.SnapshotAndMarkDeletedAsync('A1.Version, 'A1.StorageName, eventId, id, serializedState, ct |> Option.defaultValue CancellationToken.None)
+                    AggregateCache3.Instance.Clean id
+                    
+                    DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [id]
+                     
+                    let _ =
+                        let queueName = 'A1.Version + 'A1.StorageName
+                        optionallySendDeleteMessageAsync<'A1> queueName messageSenders id
+                      
+                    return ()
+                }
+        #if USING_MAILBOXPROCESSOR         
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A1.StorageName (id.ToString()))
+            MailBoxProcessors.postToTheProcessor processor command
+        #else
+            command ()
+        #endif
    
     // from here and beyond the techniques are to try to pass commands that mixes different objects
     // the convoluted sequence of generics is to help the static checking being effective
@@ -1192,68 +1206,6 @@ module CommandHandler =
             command ()
         #endif
 
-    let inline runInitAndAggregateCommandMdAsync<'A1, 'E1, 'A2, 'F
-        when 'A1 : (member Id: Guid)
-        and 'A1 : (member Serialize: 'F)
-        and 'E1 :> Event<'A1>
-        and 'E1 : (member Serialize: 'F)
-        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
-        and 'A1: (static member StorageName: string)
-        and 'A1: (static member Version: string)
-        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
-        and 'A2 : (member Id: Guid)
-        and 'A2 : (member Serialize: 'F)
-        and 'A2: (static member StorageName: string)
-        and 'A2: (static member Version: string)
-        >
-        (aggregateId: Guid)
-        (storage: IEventStore<'F>)
-        (messageSenders: MessageSenders) 
-        (initialInstance: 'A2)
-        (md: Metadata)
-        (command: AggregateCommand<'A1, 'E1>)
-        (ct: Option<CancellationToken>)
-        =
-            logger.LogDebug (sprintf "runInitAndAggregateCommandMdAsync %A %A" 'A1.StorageName command)
-            let command = fun () ->
-                // todo: why asyncResult instead of taskResult
-                asyncResult {
-                    let ct = 
-                        match ct with
-                        | Some c -> c
-                        | None -> CancellationToken.None
-                    let! eventId, state = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId storage (Some ct)
-                    let! newState, events =
-                        state
-                        |> unbox
-                        |> command.Execute
-                    let events' =
-                        events 
-                        |>> fun x -> x.Serialize
-                    let! ids = 
-                        storage.SetInitialAggregateStateAndAddAggregateEventsMdAsync(eventId, initialInstance.Id, 'A2.Version, 'A2.StorageName, aggregateId, initialInstance.Serialize, 'A1.Version, 'A1.StorageName, md, events', ct)
-                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
-                    AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
-
-                    DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [aggregateId]
-                    
-                    let _ =
-                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
-                    let _ =
-                        optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
-                    let _ =
-                        optionallySendInitialInstanceAsync<'A2, _> ('A2.Version + 'A2.StorageName) messageSenders initialInstance.Id initialInstance
-                        
-                    return ()    
-                }
-                
-        #if USING_MAILBOXPROCESSOR         
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A1.StorageName (aggregateId.ToString()))
-            MailBoxProcessors.postToTheProcessor processor command
-        #else
-            command ()
-        #endif
-
     let inline runInitAndTwoAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'F, 'A3
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -1336,12 +1288,7 @@ module CommandHandler =
 
                     return ()    
                 }
-        #if USING_MAILBOXPROCESSOR        
-            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command()
-        #endif
 
     let inline runInitAndThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
         when 'A1 : (member Id: Guid)
@@ -1446,12 +1393,7 @@ module CommandHandler =
 
                     return ()    
                 }
-        #if USING_MAILBOXPROCESSOR        
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command()
-        #endif
 
 
     let inline runInitAndNAggregateCommandsMd<'A1, 'E1, 'A2, 'F
@@ -1540,12 +1482,7 @@ module CommandHandler =
                         
                     return ()
                 }
-        #if USING_MAILBOXPROCESSOR         
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
-            MailBoxProcessors.postToTheProcessor processor command
-        #else
             command ()
-        #endif
 
     let inline runInitAndNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'F
         when 'A1: (member Id: Guid)
@@ -1632,13 +1569,76 @@ module CommandHandler =
                         
                     return ()
                 }
+            command ()
+    let inline runInitAndAggregateCommandMdAsync<'A1, 'E1, 'A2, 'F
+        when 'A1 : (member Id: Guid)
+        and 'A1 : (member Serialize: 'F)
+        and 'E1 :> Event<'A1>
+        and 'E1 : (member Serialize: 'F)
+        and 'E1 : (static member Deserialize: 'F -> Result<'E1, string>)
+        and 'A1: (static member StorageName: string)
+        and 'A1: (static member Version: string)
+        and 'A1: (static member Deserialize: 'F -> Result<'A1, string>)
+        and 'A2 : (member Id: Guid)
+        and 'A2 : (member Serialize: 'F)
+        and 'A2: (static member StorageName: string)
+        and 'A2: (static member Version: string)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders) 
+        (initialInstance: 'A2)
+        (md: Metadata)
+        (command: AggregateCommand<'A1, 'E1>)
+        (ct: Option<CancellationToken>)
+        =
+            logger.LogDebug (sprintf "runInitAndAggregateCommandMdAsync %A %A" 'A1.StorageName command)
+            let ct = ct |> Option.defaultValue CancellationToken.None
+            let command = fun () ->
+                taskResult {
+                    let! eventId, state = getAggregateFreshStateAsync<'A1, 'E1, 'F> aggregateId storage (Some ct)
+                    let! newState, events =
+                        state
+                        |> unbox
+                        |> command.Execute
+                    let events' =
+                        events 
+                        |>> fun (z: 'E1) -> z.Serialize
+                    let currentStateEventIdEventsAndAggregateIds =
+                        [ (eventId, events', 'A1.Version, 'A1.StorageName, aggregateId) ]
+                    let! eventIds = 
+                        storage.SetInitialAggregateStateAndMultiAddAggregateEventsMdAsync (
+                            initialInstance.Id,
+                            'A2.Version,
+                            'A2.StorageName,
+                            initialInstance.Serialize,
+                            md,
+                            currentStateEventIdEventsAndAggregateIds,
+                            ct
+                        )
+                    let ids = eventIds.[0]
+                    AggregateCache3.Instance.Memoize2 (0, initialInstance |> box) initialInstance.Id
+                    AggregateCache3.Instance.Memoize2 (ids |> List.last, newState |> box) aggregateId
+
+                    DetailsCache.Instance.RefreshDependentDetailsSafeFireAndForget [aggregateId]
+                    
+                    let _ =
+                        mkAggregateSnapshotIfIntervalPassed2<'A1, 'E1, 'F> storage aggregateId newState (ids |> List.last)
+                    let _ =
+                        optionallySendAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateId events eventId (ids |> List.last)
+                    let _ =
+                        let snapshotStreamName = sprintf "%s%s" 'A2.Version 'A2.StorageName
+                        optionallySendInitialInstanceAsync<'A2, _> snapshotStreamName messageSenders initialInstance.Id initialInstance
+                        
+                    return ()    
+                }
+                
         #if USING_MAILBOXPROCESSOR         
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor 'A1.StorageName
+            let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A1.StorageName (aggregateId.ToString()))
             MailBoxProcessors.postToTheProcessor processor command
         #else
             command ()
         #endif
-
     let inline runThreeAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -1734,12 +1734,7 @@ module CommandHandler =
                     return ()
                 }
                     
-        #if USING_MAILBOXPROCESSOR        
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command()
-        #endif
 
     let inline runThreeAggregateCommandsMdAsync3<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
@@ -1836,12 +1831,7 @@ module CommandHandler =
                     return ()
                 }
                     
-        #if USING_MAILBOXPROCESSOR        
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command()
-        #endif
     let inline runThreeAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -1987,12 +1977,7 @@ module CommandHandler =
                     
                     return ()
                 }
-        #if USING_MAILBOXPROCESSOR        
-            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command()
-        #endif
             
     let inline runInitAndTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F, 'A3
         when 'A1 : (member Id: Guid)
@@ -2117,12 +2102,7 @@ module CommandHandler =
                  
                     return ()
                 }
-        #if USING_MAILBOXPROCESSOR       
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) command
-        #else    
             command ()
-        #endif     
             
     let inline runInitAndThreeAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F, 'A4
         when 'A1 : (member Id: Guid)
@@ -2620,13 +2600,7 @@ module CommandHandler =
                     return ()    
                 }
             
-        #if USING_MAILBOXPROCESSOR    
-            let lookupName = 'A1.StorageName
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
-            MailBoxProcessors.postToTheProcessor processor commands
-        #else    
             commands ()
-        #endif
         
     let inline forceRunNAggregateCommands<'A1, 'E1, 'F
         when 'A1 : (member Id: Guid)
@@ -2730,13 +2704,7 @@ module CommandHandler =
                     
                     return ()    
                 }
-        #if USING_MAILBOXPROCESSOR    
-            let lookupName = 'A1.StorageName
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
-            MailBoxProcessors.postToTheProcessor processor commands
-        #else    
             commands ()
-        #endif    
                 
     let inline runNAggregateCommandsMdAsync<'A1, 'E1, 'F
         when 'A1 : (member Id: Guid)
@@ -2824,7 +2792,6 @@ module CommandHandler =
                     optionallySendMultipleAggregateEventsAsync<'A1, 'E1> ('A1.Version + 'A1.StorageName) messageSenders aggregateIdAndInitialEventIdEndEventIdAndEvents 
                 return () 
             }
-        // there is no USING_MAILBOXPROCESSOR anymore
 
     let inline runNAggregateCommands<'A1, 'E1, 'F
         when 'A1 : (member Id: Guid)
@@ -3123,6 +3090,8 @@ module CommandHandler =
      
     // proof of concept: This is a possible way of extend the library to check cross-aggregates invariants (i.e. related to something different than 'A1 and 'A2)
     // note: the crossAggregateConstriant may contains environment related to any other aggregate state (see the example in the tests)
+    // we handled this in another 
+    [<Obsolete("extended boundaries are handled by member called ...Async2 and ..Async3 ")>]
     let inline runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -3193,13 +3162,9 @@ module CommandHandler =
                     
                     return ()     
                 }
-        #if USING_MAILBOXPROCESSOR
-            let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands () 
-        #endif    
 
+    [<Obsolete("extended boundaries are handled by member called ...Async2 and ..Async3 ")>]
     let inline runTwoAggregateCommandsCheckingCrossAggregatesConstraintsMd2<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -3269,12 +3234,7 @@ module CommandHandler =
                     
                     return ()     
                 }
-        #if USING_MAILBOXPROCESSOR
-            let lookupName = sprintf "%s_%s" 'A1.StorageName  'A2.StorageName
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands () 
-        #endif    
             
     let inline runTwoAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
@@ -3524,12 +3484,7 @@ module CommandHandler =
                        
                     return ()
                 }
-        #if USING_MAILBOXPROCESSOR
-            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else    
             commands ()
-        #endif    
 
     let inline forceRunTwoNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
@@ -4188,12 +4143,7 @@ module CommandHandler =
                         
                     return ()
                 }
-        #if USING_MAILBOXPROCESSOR   
-            let lookupName = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName // aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands ()
-        #endif
 
     let inline runTwoNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
@@ -4531,6 +4481,7 @@ module CommandHandler =
                 command2
                 (fun () -> Ok(Map.empty))
                 ct
+
     let inline runTwoNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -4835,12 +4786,7 @@ module CommandHandler =
                         return ()
                 }
         
-        #if USING_MAILBOXPROCESSOR 
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands ()
-        #endif    
                 
     let inline forceRunThreeNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
@@ -5133,12 +5079,7 @@ module CommandHandler =
                         return ()
                 }
         
-        #if USING_MAILBOXPROCESSOR 
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands ()
-        #endif    
 
     let inline forceRunThreeNAggregateCommandsMdAsync3<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
@@ -5431,12 +5372,7 @@ module CommandHandler =
                         return ()
                 }
         
-        #if USING_MAILBOXPROCESSOR 
-            let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
-            MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-        #else
             commands ()
-        #endif    
 
     let inline forceRunThreeNAggregateCommandsMdAsync<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
@@ -5475,7 +5411,6 @@ module CommandHandler =
         (command3: List<AggregateCommand<'A3, 'E3>>)
         (ct: Option<CancellationToken>)
         =
-
             forceRunThreeNAggregateCommandsMdAsync2<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F>
                 (aggregateIds1)
                 (aggregateIds2)
@@ -5713,12 +5648,7 @@ module CommandHandler =
 
                         return ()
                     }
-            #if USING_MAILBOXPROCESSOR     
-                let lookupName = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName // aggregateIds
-                MailBoxProcessors.postToTheProcessor (MailBoxProcessors.Processors.Instance.GetProcessor lookupName) commands
-            #else    
                 commands ()
-            #endif    
     let inline runThreeNAggregateCommands<'A1, 'E1, 'A2, 'E2, 'A3, 'E3, 'F
         when 'A1 : (member Id: Guid)
         and 'A1 : (member Serialize: 'F)
@@ -5927,13 +5857,7 @@ module CommandHandler =
                     return ()
                 }
                     
-            let lookupNames = sprintf "%s_%s" 'A1.StorageName 'A2.StorageName
-        #if USING_MAILBOXPROCESSOR    
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
-            MailBoxProcessors.postToTheProcessor processor commands
-        #else
             commands ()
-        #endif
 
     let inline runTwoCommands<'A1, 'A2, 'E1, 'E2, 'F
         when 'A1: (static member Zero: 'A1)
@@ -6038,14 +5962,7 @@ module CommandHandler =
 
                     return ()
                 } 
-            let lookupNames = sprintf "%s_%s_%s" 'A1.StorageName 'A2.StorageName 'A3.StorageName
-        #if USING_MAILBOXPROCESSOR 
-            let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupNames
-            MailBoxProcessors.postToTheProcessor processor commands
-        #else
             commands ()
-        #endif
-            
     let inline runThreeCommands<'A1, 'A2, 'A3, 'E1, 'E2, 'E3, 'F
         when 'A1: (static member Zero: 'A1)
         and 'A1: (static member StorageName: string)
@@ -6107,11 +6024,9 @@ module CommandHandler =
                     eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName aggregateId
                     |> Result.ofOption (sprintf "GDPRResetSnapshotsAndEventsOfAnAggregate %s - %s" 'A.StorageName 'A.Version)
                 let _ = AggregateCache3.Instance.Memoize2 (lastAggregateEventId, emptyGDPRState |> box) aggregateId
-                return ()
-            }
-        let lookupName = sprintf "%s" 'A.StorageName
+                return () }
     #if USING_MAILBOXPROCESSOR
-        let processor = MailBoxProcessors.Processors.Instance.GetProcessor lookupName
+        let processor = MailBoxProcessors.Processors.Instance.GetProcessor (sprintf "%s_%s" 'A.StorageName (aggregateId.ToString()))
         MailBoxProcessors.postToTheProcessor processor reset
     #else    
         reset ()

@@ -8,6 +8,7 @@ open Sharpino.EventBroker
 open Sharpino.Lib.Test.Models.SampleObject.Events
 open Sharpino.MemoryStorage
 open Sharpino.PgStorage
+open Sharpino.PgBinaryStore
 open Sharpino.CommandHandler
 open Sharpino.StateView
 open Sharpino.Storage
@@ -427,6 +428,32 @@ let tests =
             let retrieved = AggregateCache3.Instance.GetState(id1)
             Expect.isOk retrieved "State should be found in cache"
             Expect.equal retrieved.OkValue (box state1) "Cached state should match"
+
+        testCase "PgEventStore single connection constructor sets both ReadConnection and WriteConnection" <| fun () ->
+            let conn = "Server=myServer;Database=myDb;"
+            let store = PgEventStore(conn)
+            Expect.equal store.ReadConnection conn "ReadConnection should match"
+            Expect.equal store.WriteConnection conn "WriteConnection should match"
+
+        testCase "PgEventStore dual connection constructor sets ReadConnection and WriteConnection separately" <| fun () ->
+            let readConn = "Server=readServer;Database=myDb;"
+            let writeConn = "Server=writeServer;Database=myDb;"
+            let store = PgEventStore(readConn, writeConn)
+            Expect.equal store.ReadConnection readConn "ReadConnection should match read connection"
+            Expect.equal store.WriteConnection writeConn "WriteConnection should match write connection"
+
+        testCase "PgBinaryStore single connection constructor sets both ReadConnection and WriteConnection" <| fun () ->
+            let conn = "Server=myServer;Database=myDb;"
+            let store = PgBinaryStore(conn)
+            Expect.equal store.ReadConnection conn "ReadConnection should match"
+            Expect.equal store.WriteConnection conn "WriteConnection should match"
+
+        testCase "PgBinaryStore dual connection constructor sets ReadConnection and WriteConnection separately" <| fun () ->
+            let readConn = "Server=readServer;Database=myDb;"
+            let writeConn = "Server=writeServer;Database=myDb;"
+            let store = PgBinaryStore(readConn, writeConn)
+            Expect.equal store.ReadConnection readConn "ReadConnection should match read connection"
+            Expect.equal store.WriteConnection writeConn "WriteConnection should match write connection"
     ]
     |> testSequenced
         

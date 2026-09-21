@@ -37,54 +37,56 @@ module MailBoxProcessors =
     type UnitResult = Command * AsyncReplyChannel<Result<unit, string>>
     
     type Processors private() =
-        let processors = Generic.Dictionary<string, MailboxProcessor<UnitResult>>()
+        let processors = Concurrent.ConcurrentDictionary<string, MailboxProcessor<UnitResult>>()
+        let idleTimeoutMs = config.GetValue<int>("MailBoxIdleTimeoutMs", 300_000)
         static let instance = Processors()
-        let queue = Generic.Queue<string>()
         static member Instance = instance
 
         member this.GetProcessor (name: string) =
-            let (b, processor) = processors.TryGetValue name
-            if b then
-                processor
-            else
-                this.addAndGetNewProcessor name
-  
-        [<MethodImpl(MethodImplOptions.Synchronized)>]
-        member this.addAndGetNewProcessor name =
-            if (queue.Count > config.GetValue<int>("MailBoxCommandProcessorsSize", 100)) then
-                try
-                    let removed = queue.Dequeue()
-                    let processor = processors.[removed]
-                    processor.Dispose()
-                    processors.Remove removed |> ignore
-                with :? _ as e ->
-                    logger.LogError(sprintf "error: cache is doing something wrong. Resetting. %A\n" e)
-                
-            let processor = this.createProcessor ()
-            processors.Add(name, processor)
-            queue.Enqueue name
-            processor
-        
-        member this.createProcessor () =
+            processors.GetOrAdd(name, fun key -> this.createProcessor key)
+
+        member private this.createProcessor (name: string) =
+            let executeCommand (cmd: Command, reply: AsyncReplyChannel<Result<unit, string>>) =
+                async {
+                    try
+                        match cmd with
+                        | AsyncTaskCommand f ->
+                            let! result = f() |> Async.AwaitTask
+                            reply.Reply result
+                        | AsyncComputationCommand f ->
+                            let! result = f()
+                            reply.Reply result
+                        | SyncCommand f ->
+                            let result = f()
+                            reply.Reply result
+                    with ex ->
+                        logger.LogError(sprintf "Exception executing command in MailboxProcessor %s: %A" name ex)
+                        reply.Reply (Error ex.Message)
+                }
+
             MailboxProcessor<UnitResult>.Start (fun inbox ->
                 let rec loop () =
                     async {
-                        let! (cmd, reply) = inbox.Receive()
-                        try
-                            match cmd with
-                            | AsyncTaskCommand f ->
-                                let! result = f() |> Async.AwaitTask
-                                reply.Reply result
-                            | AsyncComputationCommand f ->
-                                let! result = f()
-                                reply.Reply result
-                            | SyncCommand f ->
-                                let result = f()
-                                reply.Reply result
-                        with ex ->
-                            logger.LogError(sprintf "Exception executing command in MailboxProcessor: %A" ex)
-                            reply.Reply (Error ex.Message)
-                        do! loop()
+                        let! msgOpt = inbox.TryReceive(idleTimeoutMs)
+                        match msgOpt with
+                        | Some msg ->
+                            do! executeCommand msg
+                            return! loop()
+                        | None ->
+                            let kvp = Generic.KeyValuePair<string, MailboxProcessor<UnitResult>>(name, inbox)
+                            let removed = processors.TryRemove(kvp)
+                            if removed then
+                                let! finalCheck = inbox.TryReceive(0)
+                                match finalCheck with
+                                | Some msg ->
+                                    processors.TryAdd(name, inbox) |> ignore
+                                    do! executeCommand msg
+                                    return! loop()
+                                | None ->
+                                    logger.LogDebug(sprintf "MailboxProcessor for %s timed out due to inactivity and was retired." name)
+                                    ()
+                            else
+                                return! loop()
                     }
                 loop()
             )

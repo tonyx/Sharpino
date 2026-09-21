@@ -32,18 +32,28 @@ module PgBinaryStore =
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) = ()
 
-    type PgBinaryStore(connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+    type PgBinaryStore(readConnection: string, writeConnection: string, readAsBinary: RowReader -> (string -> byte[])) =
         let logger =
             builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgBinaryStore>>()
 
-        new(connection: string) = PgBinaryStore(connection, readAsBinary)
+        new(readConnection: string, writeConnection: string) =
+            PgBinaryStore(readConnection, writeConnection, readAsBinary)
+
+        new(connection: string, readAsBinary: RowReader -> (string -> byte[])) =
+            PgBinaryStore(connection, connection, readAsBinary)
+
+        new(connection: string) =
+            PgBinaryStore(connection, connection)
+
+        member this.ReadConnection = readConnection
+        member this.WriteConnection = writeConnection
 
         member this.Reset version name =
             if isTestEnv then
                 try
                     let res1 =
                         Async.RunSynchronously(
-                            connection
+                            writeConnection
                             |> Sql.connect
                             |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                             |> Sql.executeNonQueryAsync
@@ -54,7 +64,7 @@ module PgBinaryStore =
                     let res2 =
                         Async.RunSynchronously
 
-                        (connection
+                        (writeConnection
                          |> Sql.connect
                          |> Sql.query (sprintf "DELETE from events%s%s" version name)
                          |> Sql.executeNonQueryAsync
@@ -72,7 +82,7 @@ module PgBinaryStore =
                 try
 
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -82,7 +92,7 @@ module PgBinaryStore =
                     |> ignore
 
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -113,7 +123,7 @@ module PgBinaryStore =
 
                     cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(readConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                     use command = new NpgsqlCommand(query, conn)
@@ -172,7 +182,7 @@ module PgBinaryStore =
 
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
@@ -276,7 +286,7 @@ module PgBinaryStore =
 
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
@@ -428,7 +438,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -491,7 +501,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -527,7 +537,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
 
                         use cts =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -579,7 +589,7 @@ module PgBinaryStore =
                     let lastEventId =
                         (this :> IEventStore<byte[]>).TryGetLastAggregateEventId version name aggregateId
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                     if
@@ -627,7 +637,7 @@ module PgBinaryStore =
                         stream_name
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -693,7 +703,7 @@ module PgBinaryStore =
                         stream_name
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -752,7 +762,7 @@ module PgBinaryStore =
                 logger.LogDebug(sprintf "MultiAddAggregateEventsMdAsync %A" arg)
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -843,7 +853,7 @@ module PgBinaryStore =
                 logger.LogDebug(sprintf "MultiAddAggregateEventsMdAsync2 %A" arg)
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -945,7 +955,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         use! reader = command.ExecuteReaderAsync().ConfigureAwait(false)
@@ -979,7 +989,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -1017,7 +1027,7 @@ module PgBinaryStore =
                 Async.RunSynchronously(
                     async {
                         return
-                            connection
+                            readConnection
                             |> Sql.connect
                             |> Sql.query query
                             |> Sql.execute (fun read -> read.int "id")
@@ -1036,7 +1046,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> read.int "event_id")
@@ -1061,7 +1071,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
@@ -1091,7 +1101,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    readConnection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
@@ -1115,7 +1125,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "id", Sql.int id ]
@@ -1143,7 +1153,7 @@ module PgBinaryStore =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1197,7 +1207,7 @@ module PgBinaryStore =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1278,7 +1288,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("id", id) |> ignore
@@ -1321,7 +1331,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1351,7 +1361,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
 
@@ -1396,7 +1406,7 @@ module PgBinaryStore =
                     sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -1445,7 +1455,7 @@ module PgBinaryStore =
             member this.SetInitialAggregateStateAsync(aggregateId, version, name, json, ?ct) =
                 logger.LogDebug(sprintf "SetInitialAggregateStateAsync %s %s %A" version name aggregateId)
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -1519,7 +1529,7 @@ module PgBinaryStore =
                             return
                                 try
                                     let _ =
-                                        connection
+                                        writeConnection
                                         |> Sql.connect
                                         |> Sql.executeTransaction
                                             [ insertSnapshot,
@@ -1572,7 +1582,7 @@ module PgBinaryStore =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1597,7 +1607,7 @@ module PgBinaryStore =
                                                     result :?> int
 
                                             let _ =
-                                                connection
+                                                writeConnection
                                                 |> Sql.connect
                                                 |> Sql.executeTransaction
                                                     [ insertSnapshot,
@@ -1673,7 +1683,7 @@ module PgBinaryStore =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1708,7 +1718,7 @@ module PgBinaryStore =
                                                 newId)
 
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ insertSnapshot,
@@ -1761,7 +1771,7 @@ module PgBinaryStore =
                 let result =
                     fun _ ->
 
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
 
                         let transaction = conn.BeginTransaction()
@@ -1819,7 +1829,7 @@ module PgBinaryStore =
                                                     newId))
 
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ insertSnapshot,
@@ -1872,7 +1882,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1899,7 +1909,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1931,7 +1941,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -1960,7 +1970,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -1990,7 +2000,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -2024,7 +2034,7 @@ module PgBinaryStore =
 
                     cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(readConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -2059,7 +2069,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -2098,7 +2108,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -2135,7 +2145,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    readConnection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.parameters
@@ -2168,7 +2178,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
@@ -2190,7 +2200,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
@@ -2223,7 +2233,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
@@ -2246,7 +2256,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -2288,7 +2298,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -2328,7 +2338,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
@@ -2366,7 +2376,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.int "event_id", read.int "id"))
@@ -2391,7 +2401,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2413,7 +2423,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("id", id) |> ignore
@@ -2444,7 +2454,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
@@ -2489,7 +2499,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -2537,7 +2547,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "id", Sql.int id ]
@@ -2563,7 +2573,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2590,7 +2600,7 @@ module PgBinaryStore =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2624,7 +2634,7 @@ module PgBinaryStore =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -2727,7 +2737,7 @@ module PgBinaryStore =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync().ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("aggregateId", aggregateId) |> ignore
@@ -2769,7 +2779,7 @@ module PgBinaryStore =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -2800,7 +2810,7 @@ module PgBinaryStore =
                         event
                 )
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
 
                 let sqlReplaceAllAggregates =
                     (sprintf
@@ -2821,7 +2831,7 @@ module PgBinaryStore =
                                 let result =
                                     try
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ sqlReplaceAllAggregates,
@@ -2872,7 +2882,7 @@ module PgBinaryStore =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -2935,7 +2945,7 @@ module PgBinaryStore =
                 try
                     Async.RunSynchronously(
                         async {
-                            use conn = new NpgsqlConnection(connection)
+                            use conn = new NpgsqlConnection(writeConnection)
                             conn.Open()
                             let transaction = conn.BeginTransaction()
 
@@ -2969,7 +2979,7 @@ module PgBinaryStore =
                                         newId)
 
                                 let _ =
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ snapCommand,
@@ -3006,7 +3016,7 @@ module PgBinaryStore =
                             |>> fst
 
                         try
-                            connection
+                            writeConnection
                             |> Sql.connect
                             |> Sql.executeTransaction
                                 [ sqlUpdate,
@@ -3035,7 +3045,7 @@ module PgBinaryStore =
                     asyncResult {
                         let! snapshots =
                             try
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -3060,7 +3070,7 @@ module PgBinaryStore =
 
                         try
                             if not updates.IsEmpty then
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransaction
                                     [ updateCommand,
@@ -3095,7 +3105,7 @@ module PgBinaryStore =
                 let getSnapshotsAsync () =
                     taskResult {
                         let! snapshots =
-                            connection
+                            readConnection
                             |> Sql.connect
                             |> Sql.query query
                             |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -3115,7 +3125,7 @@ module PgBinaryStore =
                     try
                         if not updates.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ updateCommand,
@@ -3153,7 +3163,7 @@ module PgBinaryStore =
                     try
                         if not eventsIdsMatchingPredicate.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ sqlUpdate,
@@ -3182,7 +3192,7 @@ module PgBinaryStore =
                 let getSnapshotsAsync () =
                     taskResult {
                         let! snapshots =
-                            connection
+                            readConnection
                             |> Sql.connect
                             |> Sql.query query
                             |> Sql.executeAsync (fun read -> (read.int "id", readAsBinary read "snapshot"))
@@ -3205,7 +3215,7 @@ module PgBinaryStore =
                     try
                         if not updates.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ updateCommand,
@@ -3250,7 +3260,7 @@ module PgBinaryStore =
                      || (lastEventId.IsSome && lastEventId.Value = s1EventId))
                 then
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
                     conn.Open()
                     let transaction = conn.BeginTransaction()
 
@@ -3300,7 +3310,7 @@ module PgBinaryStore =
                                             newId)
 
                                 let _ =
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ snapCommand,

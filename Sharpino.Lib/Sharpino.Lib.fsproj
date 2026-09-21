@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>6.2.5</Version>
+    <Version>6.2.6</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -17,7 +17,7 @@
     <Copyright>Copyright ©2026 Antonio Lucca</Copyright>
     <PackageTags>eventsourcing, F#, FSharp, PostgreSQL</PackageTags>
 
-<!--    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants> -->
+    <DefineConstants>USING_MAILBOXPROCESSOR</DefineConstants>
 <!--      previous to be removed-->
 
     <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>

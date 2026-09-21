@@ -49,17 +49,27 @@ module PgStorage =
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) = ()
 
-    type PgEventStore(connection: string, readAsText: RowReader -> (string -> string)) =
+    type PgEventStore(readConnection: string, writeConnection: string, readAsText: RowReader -> (string -> string)) =
         let logger =
             builder.Services.BuildServiceProvider().GetRequiredService<ILogger<PgEventStore>>()
 
-        new(connection: string) = PgEventStore(connection, readAsText)
+        new(readConnection: string, writeConnection: string) =
+            PgEventStore(readConnection, writeConnection, readAsText)
+
+        new(connection: string, readAsText: RowReader -> (string -> string)) =
+            PgEventStore(connection, connection, readAsText)
+
+        new(connection: string) =
+            PgEventStore(connection, connection)
+
+        member this.ReadConnection = readConnection
+        member this.WriteConnection = writeConnection
 
         member this.Reset version name =
             if isTestEnv then
                 try
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -69,7 +79,7 @@ module PgStorage =
                     |> ignore
 
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from events%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -87,7 +97,7 @@ module PgStorage =
                 try
 
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from aggregate_events%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -97,7 +107,7 @@ module PgStorage =
                     |> ignore
 
                     Async.RunSynchronously(
-                        connection
+                        writeConnection
                         |> Sql.connect
                         |> Sql.query (sprintf "DELETE from snapshots%s%s" version name)
                         |> Sql.executeNonQueryAsync
@@ -128,7 +138,7 @@ module PgStorage =
 
                     cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(readConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                     use command = new NpgsqlCommand(query, conn)
@@ -187,7 +197,7 @@ module PgStorage =
 
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
@@ -292,7 +302,7 @@ module PgStorage =
 
                 cts.CancelAfter(cancellationTokenSourceExpiration)
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
                 do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                 use transaction = conn.BeginTransaction()
@@ -447,7 +457,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -491,7 +501,7 @@ module PgStorage =
 
                 task {
                     try
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
 
                         use cts =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -543,7 +553,7 @@ module PgStorage =
                     let lastEventId =
                         (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId
 
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
 
                     if
@@ -573,7 +583,7 @@ module PgStorage =
                 logger.LogDebug(sprintf "MultiAddAggregateEventsMdAsync %A" arg)
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -664,7 +674,7 @@ module PgStorage =
                 logger.LogDebug(sprintf "MultiAddAggregateEventsMdAsync2 %A" arg)
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -794,7 +804,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
 
@@ -861,7 +871,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use transaction = conn.BeginTransaction()
 
@@ -917,7 +927,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read ->
@@ -947,7 +957,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -987,7 +997,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    readConnection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.execute (fun read -> read.int "id")
@@ -1012,7 +1022,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> read.int "event_id")
@@ -1037,7 +1047,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
@@ -1067,7 +1077,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    readConnection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.parameters [ "aggregate_id", Sql.uuid aggregateId ]
@@ -1091,7 +1101,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "id", Sql.int id ]
@@ -1114,7 +1124,7 @@ module PgStorage =
                 let command =
                     sprintf "SELECT insert_md%s_event_and_return_id(@event,@md);" stream_name
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
 
                 let result =
                     fun _ ->
@@ -1171,7 +1181,7 @@ module PgStorage =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1260,7 +1270,7 @@ module PgStorage =
                             async {
                                 return
                                     try
-                                        connection
+                                        readConnection
                                         |> Sql.connect
                                         |> Sql.query query
                                         |> Sql.parameters [ "id", Sql.int id ]
@@ -1298,7 +1308,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1316,7 +1326,7 @@ module PgStorage =
 
             member this.SetInitialAggregateStateAsync(aggregateId, version, name, json, ?ct) =
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -1391,7 +1401,7 @@ module PgStorage =
                                 return
                                     try
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ insertSnapshot,
@@ -1429,7 +1439,7 @@ module PgStorage =
                     sprintf "INSERT INTO aggregate_events%s%s (aggregate_id) VALUES (@aggregate_id)" version name
 
                 task {
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(writeConnection)
 
                     use cts =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
@@ -1493,7 +1503,7 @@ module PgStorage =
                             return
                                 try
                                     let _ =
-                                        connection
+                                        writeConnection
                                         |> Sql.connect
                                         |> Sql.executeTransaction
                                             [ insertSnapshot,
@@ -1549,7 +1559,7 @@ module PgStorage =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1574,7 +1584,7 @@ module PgStorage =
                                                     result :?> int
 
                                             let _ =
-                                                connection
+                                                writeConnection
                                                 |> Sql.connect
                                                 |> Sql.executeTransaction
                                                     [ insertSnapshot,
@@ -1657,7 +1667,7 @@ module PgStorage =
                 // this will be simplified: avoid assigning the result and then use it in a new try with
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -1692,7 +1702,7 @@ module PgStorage =
                                                 newId)
 
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ insertSnapshot,
@@ -1752,7 +1762,7 @@ module PgStorage =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
 
                         let transaction = conn.BeginTransaction()
@@ -1810,7 +1820,7 @@ module PgStorage =
                                                     newId))
 
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ insertSnapshot,
@@ -1867,7 +1877,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1894,7 +1904,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -1926,7 +1936,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
@@ -1957,7 +1967,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -2000,7 +2010,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -2034,7 +2044,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters
@@ -2076,7 +2086,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -2115,7 +2125,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
@@ -2151,7 +2161,7 @@ module PgStorage =
                         CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                     cts.CancelAfter(cancellationTokenSourceExpiration)
-                    use conn = new NpgsqlConnection(connection)
+                    use conn = new NpgsqlConnection(readConnection)
                     do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                     use command = new NpgsqlCommand(query, conn)
                     command.CommandTimeout <- max 1 (eventStoreTimeout / 100)
@@ -2183,7 +2193,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    readConnection
                                     |> Sql.connect
                                     |> Sql.query query
                                     |> Sql.parameters
@@ -2209,7 +2219,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.int "event_id", read.int "id"))
@@ -2234,7 +2244,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2258,7 +2268,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "id", Sql.int id ]
@@ -2281,7 +2291,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "id", Sql.int id ]
@@ -2307,7 +2317,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             let result =
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2344,7 +2354,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -2395,7 +2405,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2422,7 +2432,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2454,7 +2464,7 @@ module PgStorage =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -2555,7 +2565,7 @@ module PgStorage =
                             async {
                                 return
                                     try
-                                        connection
+                                        readConnection
                                         |> Sql.connect
                                         |> Sql.query query
                                         |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -2592,7 +2602,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.CommandTimeout <- max 1 (eventStoreTimeout / 1000)
@@ -2634,7 +2644,7 @@ module PgStorage =
 
                 let result =
                     fun _ ->
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(writeConnection)
                         conn.Open()
                         let transaction = conn.BeginTransaction()
 
@@ -2643,7 +2653,7 @@ module PgStorage =
                                 let result =
                                     try
                                         let _ =
-                                            connection
+                                            writeConnection
                                             |> Sql.connect
                                             |> Sql.executeTransaction
                                                 [ sqlReplaceAllAggregates,
@@ -2687,7 +2697,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "dateFrom", Sql.timestamp dateFrom; "dateTo", Sql.timestamp dateTo ]
@@ -2717,7 +2727,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         command.Parameters.AddWithValue("dateFrom", dateFrom) |> ignore
@@ -2753,7 +2763,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
@@ -2781,7 +2791,7 @@ module PgStorage =
                     Async.RunSynchronously(
                         async {
                             return
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.execute (fun read -> (read.uuid "aggregate_id"))
@@ -2804,7 +2814,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -2853,7 +2863,7 @@ module PgStorage =
                             CancellationTokenSource.CreateLinkedTokenSource(defaultArg ct CancellationToken.None)
 
                         cts.CancelAfter(cancellationTokenSourceExpiration)
-                        use conn = new NpgsqlConnection(connection)
+                        use conn = new NpgsqlConnection(readConnection)
                         do! conn.OpenAsync(cts.Token).ConfigureAwait(false)
                         use command = new NpgsqlCommand(query, conn)
                         use! reader = command.ExecuteReaderAsync(cts.Token).ConfigureAwait(false)
@@ -2898,7 +2908,7 @@ module PgStorage =
                         Async.RunSynchronously(
                             async {
                                 return
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ command,
@@ -2961,7 +2971,7 @@ module PgStorage =
                 try
                     Async.RunSynchronously(
                         async {
-                            use conn = new NpgsqlConnection(connection)
+                            use conn = new NpgsqlConnection(writeConnection)
                             conn.Open()
                             let transaction = conn.BeginTransaction()
 
@@ -2995,7 +3005,7 @@ module PgStorage =
                                         newId)
 
                                 let _ =
-                                    connection
+                                    writeConnection
                                     |> Sql.connect
                                     |> Sql.executeTransaction
                                         [ snapCommand,
@@ -3032,7 +3042,7 @@ module PgStorage =
                             |>> fst
 
                         try
-                            connection
+                            writeConnection
                             |> Sql.connect
                             |> Sql.executeTransaction
                                 [ sqlUpdate,
@@ -3061,7 +3071,7 @@ module PgStorage =
                     asyncResult {
                         let! snapshots =
                             try
-                                connection
+                                readConnection
                                 |> Sql.connect
                                 |> Sql.query query
                                 |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -3086,7 +3096,7 @@ module PgStorage =
 
                         try
                             if not updates.IsEmpty then
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransaction
                                     [ updateCommand,
@@ -3120,7 +3130,7 @@ module PgStorage =
                 let getSnapshotsAsync () =
                     taskResult {
                         let! snapshots =
-                            connection
+                            readConnection
                             |> Sql.connect
                             |> Sql.query query
                             |> Sql.parameters [ "aggregateId", Sql.uuid aggregateId ]
@@ -3141,7 +3151,7 @@ module PgStorage =
                     try
                         if not updates.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ updateCommand,
@@ -3180,7 +3190,7 @@ module PgStorage =
                     try
                         if not eventsIdsMatchingPredicate.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ sqlUpdate,
@@ -3209,7 +3219,7 @@ module PgStorage =
                 let getSnapshotsAsync () =
                     taskResult {
                         let! snapshots =
-                            connection
+                            readConnection
                             |> Sql.connect
                             |> Sql.query query
                             |> Sql.executeAsync (fun read -> (read.int "id", readAsText read "snapshot"))
@@ -3232,7 +3242,7 @@ module PgStorage =
                     try
                         if not updates.IsEmpty then
                             let! _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransactionAsync
                                     [ updateCommand,
@@ -3269,7 +3279,7 @@ module PgStorage =
                         s1Version
                         s1name
 
-                use conn = new NpgsqlConnection(connection)
+                use conn = new NpgsqlConnection(writeConnection)
                 conn.Open()
                 let transaction = conn.BeginTransaction()
 
@@ -3330,7 +3340,7 @@ module PgStorage =
                                         newId)
 
                             let _ =
-                                connection
+                                writeConnection
                                 |> Sql.connect
                                 |> Sql.executeTransaction
                                     [ snapCommand,
