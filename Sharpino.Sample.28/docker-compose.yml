@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:18
     environment:
       POSTGRES_DB: sharpino
       POSTGRES_USER: sharpino
@@ -16,7 +16,7 @@ services:
   # Exposed on port 6380 to avoid conflicts with a local Redis on the default 6379.
   # Use setup-redis-cache.sh to start this container.
   redis-cache:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "6380:6379"
     command: redis-server --save "" --appendonly no

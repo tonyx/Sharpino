@@ -6,6 +6,7 @@ CONNECTION_STRING="Server=127.0.0.1;Database=sharpino_sample_10;User Id=youruser
 password=safe
 ```
 
+
 Note: you probably can just use the operaing system credential to connect to the db. 
 This is true for example if you install Postgres using Homebrew on MacOS.
 Alteratively, you may have to specify a proper username and password with enough permissions.

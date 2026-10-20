@@ -1,6 +1,6 @@
-\restrict 1KTLO3VdkDNEIOrUw9HaIRsqe2xEbhgSUnmjj1BDoRmWPTb5hkgMOHJZksML0Hx
+\restrict gaLB25f9auSHhJy8e4n9z7z2DaPlGa6ACtOViVdP4zDF6h1MmizZitBCHhCD3o1
 
--- Dumped from database version 15.17 (Debian 15.17-1.pgdg13+1)
+-- Dumped from database version 15.18 (Debian 15.18-1.pgdg13+1)
 -- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
@@ -49,8 +49,8 @@ BEGIN
         END IF;
     ELSE
         -- Acquire a per-aggregate advisory lock for the duration of this transaction.
-        -- This serializes concurrent writes to the same aggregate, closing the TOCTOU
-        -- window between the SELECT (check) and the INSERT (write) in the caller.
+        -- This prevents concurrent writes to the same aggregate from interleaving
+        -- between our SELECT (below) and the INSERT performed by the caller.
         -- pg_advisory_xact_lock is released automatically on COMMIT / ROLLBACK.
         lock_key := hashtext(full_stream_name || '|' || target_aggregate_id::text);
         PERFORM pg_advisory_xact_lock(lock_key);
@@ -727,7 +727,7 @@ ALTER TABLE ONLY public.snapshots_01_user
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1KTLO3VdkDNEIOrUw9HaIRsqe2xEbhgSUnmjj1BDoRmWPTb5hkgMOHJZksML0Hx
+\unrestrict gaLB25f9auSHhJy8e4n9z7z2DaPlGa6ACtOViVdP4zDF6h1MmizZitBCHhCD3o1
 
 
 --
@@ -740,4 +740,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260415115952'),
     ('20260529160000'),
     ('20260629160000'),
-    ('20260629170000');
+    ('20260629170000'),
+    ('20260801200000');

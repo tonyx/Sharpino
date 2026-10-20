@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:18
     environment:
       POSTGRES_DB: sharpino
       POSTGRES_USER: sharpino
@@ -13,7 +13,7 @@ services:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
 
   sqledge:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:latest
     platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"

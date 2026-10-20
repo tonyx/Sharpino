@@ -1,20 +1,26 @@
 # Sharpino Template
-```shell
-dotnet install Sharpino.Templates
-dotnet new sharpino
-docker compose up -d
-dotnet run (run the tests)
-```
 
 ## Overview
-using port5434 for postgres docker container 
-you can change it in .env
 
-You should not need to setup the db manually.
-However, you may do it by running the following command (requires dbmate to be installed):
+This example uses the local db postgres installation (no docker)
+
+
+User the following env file:
+```
+port=5432
+database=sharpino
+userId=sharpino
+password=sharpino
+DATABASE_URL="postgres://sharpino:sharpino@127.0.0.1:5432/sharpino?sslmode=disable"
+```
+
 
 ```shell
     dbmate up 
+```
+run
+```shell
+    dotnet run
 ```
 
 More info about [Sharpino](https://github.com/tonyx/Sharpino)

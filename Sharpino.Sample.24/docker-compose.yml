@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:18
     environment:
       POSTGRES_DB: sharpino
       POSTGRES_USER: sharpino
@@ -13,7 +13,7 @@ services:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
 
   sqledge:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:latest
     platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"
@@ -29,7 +29,7 @@ services:
       start_period: 30s
 
   servicebus-emulator:
-    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:1.1.2-arm64
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:2.0.1
     platform: linux/arm64
     environment:
       ACCEPT_EULA: "Y"

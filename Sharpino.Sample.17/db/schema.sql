@@ -1,4 +1,4 @@
-\restrict bcrx6d7x93gJOmkxpLAAJnPKdRjXUiDNKa6IbjQdCb3UBJx8fm7DIp6adehg8rg
+\restrict uqbBEmQzZsujCwJlblsVvfbaH7k7IH9gIc8HXD47IEsOW7jvtiMBwbfYEftIjil
 
 -- Dumped from database version 17.10 (Debian 17.10-1.pgdg13+1)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -21,7 +21,7 @@ SET row_security = off;
 
 CREATE FUNCTION public.check_last_event_id_opt_lock(stream_name text, target_aggregate_id uuid, expected_last_event_id integer) RETURNS void
     LANGUAGE plpgsql
-    AS $
+    AS $_$
 DECLARE
     found_last_event_id integer;
     query text;
@@ -39,7 +39,7 @@ BEGIN
 
     -- If target_aggregate_id is null, try to resolve it from the expected_last_event_id
     IF target_aggregate_id IS NULL THEN
-        query := format('SELECT aggregate_id FROM %I WHERE id = ', full_stream_name);
+        query := format('SELECT aggregate_id FROM %I WHERE id = $1', full_stream_name);
         EXECUTE query INTO target_aggregate_id USING expected_last_event_id;
     END IF;
 
@@ -49,13 +49,13 @@ BEGIN
         END IF;
     ELSE
         -- Acquire a per-aggregate advisory lock for the duration of this transaction.
-        -- This serializes concurrent writes to the same aggregate, closing the TOCTOU
-        -- window between the SELECT (check) and the INSERT (write) in the caller.
+        -- This prevents concurrent writes to the same aggregate from interleaving
+        -- between our SELECT (below) and the INSERT performed by the caller.
         -- pg_advisory_xact_lock is released automatically on COMMIT / ROLLBACK.
         lock_key := hashtext(full_stream_name || '|' || target_aggregate_id::text);
         PERFORM pg_advisory_xact_lock(lock_key);
 
-        query := format('SELECT id FROM %I WHERE aggregate_id =  ORDER BY id DESC LIMIT 1', full_stream_name);
+        query := format('SELECT id FROM %I WHERE aggregate_id = $1 ORDER BY id DESC LIMIT 1', full_stream_name);
         EXECUTE query INTO found_last_event_id USING target_aggregate_id;
 
         IF expected_last_event_id = 0 THEN
@@ -69,7 +69,9 @@ BEGIN
         END IF;
     END IF;
 END;
-$;
+$_$;
+
+
 --
 -- Name: insert_01_materials_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
@@ -1196,7 +1198,7 @@ ALTER TABLE ONLY public.snapshots_01_workorders
 -- PostgreSQL database dump complete
 --
 
-\unrestrict bcrx6d7x93gJOmkxpLAAJnPKdRjXUiDNKa6IbjQdCb3UBJx8fm7DIp6adehg8rg
+\unrestrict uqbBEmQzZsujCwJlblsVvfbaH7k7IH9gIc8HXD47IEsOW7jvtiMBwbfYEftIjil
 
 
 --
@@ -1213,4 +1215,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260307135746'),
     ('20260529160000'),
     ('20260629160000'),
-    ('20260629170000');
+    ('20260629170000'),
+    ('20260801200000');

@@ -74,7 +74,8 @@ DATABASE_URL="postgres://sharpino:password@127.0.0.1:5435/sharpino?sslmode=disab
 
 3. execute the docker setup (docker-compose up -d, or similar commands to setup and run the images according to docker-compose.yml). Note that the docker images target the mac OS arm architecture. You may need to adapt them for a Linux/Windows Docker setup.
 4. The dockerized postgres db  based event-store should be ready, but you may need to wipe and restore it by the commands `dbmate drop` and `dbmate up`.
-5. Make sure that the sql server contains the L2 cache table by executing the sql-cache-schema.sql script.
+5. Make sure that the sql server contains the L2 cache table by executing the setup-cache.sh script.
+
 6. open a terminal and execute "dotnet run"
 7. open a different terminal and execute "ASPNETCORE_ENVIRONMENT=Session2 dotnet run" (in unix terminal, or an equivalent in dos/powershell)
 8. what is expected is that if the first terminal "renames" an object then the second terminal is able to see the object renamed because of the L1 cache invalidation message.

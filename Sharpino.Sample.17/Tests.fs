@@ -47,7 +47,6 @@ let setUp () =
 let materialsViewer =  getAggregateStorageFreshStateViewer<Material, MaterialEvents, string> pgEventStore
 let productsViewer = getAggregateStorageFreshStateViewer<Product, ProductEvents, string> pgEventStore
 let workOrdersViewer =  getAggregateStorageFreshStateViewer<WorkOrder, WorkOrderEvents, string> pgEventStore
-let messagesReceiver = MailBoxProcessors.Processors.Instance.createProcessor ()
 
     
 let emptyMessageSender =
