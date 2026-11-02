@@ -110,4 +110,35 @@ let tests =
             Expect.isTrue (finalCount > 0) "SQL L2 Cache should have populated entries"
             let hasObjectDetailsKey = keys |> List.exists (fun k -> k.Contains("objectDetails:"))
             Expect.isTrue hasObjectDetailsKey "SQL L2 Cache should contain keys starting with 'objectDetails:'"
+
+        testCase "Expect that runAggregateCommand populates SQL Server L2 cache and another node resolves L1 miss with L2 hit" <| fun () ->
+            // Arrange
+            pgReset()
+            clearL2SqlCache()
+
+            // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+            let todo = Todo.New "SQL L2 Cache Stress Test"
+            let addTodoResult = manager.AddTodo todo
+            Expect.isOk addTodoResult "Should successfully add todo"
+
+            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in SQL"
+            Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
+
+            // Wait briefly for async L2 writes to settle
+            System.Threading.Thread.Sleep(200)
+
+            // Assert: L2 SQL cache table has the statePerAggregate entry
+            let keys = getL2SqlCacheKeys()
+            printfn "SQL L2 Cache Keys after command: %A" keys
+            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+            Expect.isTrue hasAggregateKey "SQL L2 Cache should contain an entry for the updated aggregate"
+
+            // Act 2: Simulate another node evicting its L1 cache entry
+            AggregateCache3.Instance.ClearL1()
+
+            // Act 3: Retrieve the todo on this node (L1 cache miss)
+            let retrievedTodoResult = manager.GetTodo todo.TodoId
+            Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
+            let retrievedTodo = retrievedTodoResult |> Result.get
+            Expect.equal retrievedTodo.PrivateData "Updated private info in SQL" "Retrieved todo should reflect the state updated in L2"
     ]

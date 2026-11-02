@@ -187,6 +187,38 @@ let postgresTests =
             let newValue = "New value"
             let result3 = AggregateCache3.Instance.Memoize (fun () -> Ok (2, box newValue)) aggregateId
             Expect.equal (result3 |> Result.map (snd >> unbox<string>)) (Ok newValue) "Cache should invoke resolver and return the new value after L1 invalidation"
+
+        testCase "Expect that runAggregateCommand populates Postgres L2 cache and another node resolves L1 miss with L2 hit" <| fun () ->
+            // Arrange
+            pgReset()
+            clearL2PgCache()
+
+            // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+            let todo = Todo.New "Postgres L2 Cache Stress Test"
+            let addTodoResult = manager.AddTodo todo
+            Expect.isOk addTodoResult "Should successfully add todo"
+
+            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in PG"
+            Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
+
+            // Wait briefly for async L2 writes to settle
+            System.Threading.Thread.Sleep(200)
+
+            // Assert: L2 Postgres cache table has the statePerAggregate entry
+            let keys = getL2PgCacheKeys()
+            printfn "Postgres L2 Cache Keys after command: %A" keys
+            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+            Expect.isTrue hasAggregateKey "Postgres L2 Cache should contain an entry for the updated aggregate"
+
+            // Act 2: Simulate another node evicting its L1 cache entry (via backplane notification)
+            AggregateCache3.Instance.ClearL1()
+
+            // Act 3: Retrieve the todo on this node (L1 cache miss)
+            // It will query L2 cache, find the updated entry, deserialize, and return it
+            let retrievedTodoResult = manager.GetTodo todo.TodoId
+            Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
+            let retrievedTodo = retrievedTodoResult |> Result.get
+            Expect.equal retrievedTodo.PrivateData "Updated private info in PG" "Retrieved todo should reflect the state updated in L2"
     ]
 
 [<Tests>]
@@ -278,4 +310,45 @@ let redisTests =
                 let newValue = "New Redis value"
                 let result3 = AggregateCache3.Instance.Memoize (fun () -> Ok (2, box newValue)) aggregateId
                 Expect.equal (result3 |> Result.map (snd >> unbox<string>)) (Ok newValue) "Cache should be invalidated by Redis pub/sub and resolver should be called"
+
+        testCase "Expect that runAggregateCommand populates Redis L2 cache and another node resolves L1 miss with L2 hit" <| fun () ->
+            match tryConnectRedis() with
+            | None ->
+                Tests.skiptest "Redis is not available on localhost:6380 — start it with ./setup-redis-cache.sh"
+            | Some conn ->
+                use _ = conn
+
+                let provider = Sharpino.Cache.config.["Cache:L2CacheProvider"]
+                if not (String.Equals(provider, "Redis", StringComparison.OrdinalIgnoreCase)) then
+                    Tests.skiptest (sprintf "L2CacheProvider is '%s', not 'Redis'" provider)
+
+                // Arrange
+                pgReset()
+                clearL2RedisCache conn
+
+                // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+                let todo = Todo.New "Redis L2 Cache Stress Test"
+                let addTodoResult = manager.AddTodo todo
+                Expect.isOk addTodoResult "Should successfully add todo"
+
+                let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in Redis"
+                Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
+
+                // Wait briefly for async L2 writes to settle
+                System.Threading.Thread.Sleep(200)
+
+                // Assert: Redis L2 cache contains the aggregate key
+                let keys = getL2RedisCacheKeys conn
+                printfn "Redis L2 Cache Keys after command: %A" keys
+                let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+                Expect.isTrue hasAggregateKey "Redis L2 Cache should contain an entry for the updated aggregate"
+
+                // Act 2: Simulate another node evicting its L1 cache entry (via backplane notification)
+                AggregateCache3.Instance.ClearL1()
+
+                // Act 3: Retrieve the todo on this node (L1 cache miss)
+                let retrievedTodoResult = manager.GetTodo todo.TodoId
+                Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
+                let retrievedTodo = retrievedTodoResult |> Result.get
+                Expect.equal retrievedTodo.PrivateData "Updated private info in Redis" "Retrieved todo should reflect the state updated in L2"
     ]

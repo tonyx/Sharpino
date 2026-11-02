@@ -8,9 +8,16 @@ open Microsoft.Extensions.Caching.Distributed
 open Microsoft.Extensions.Caching.Memory
 open Microsoft.Extensions.Options
 open Sharpino
+open Sharpino.Core
 open Sharpino.Cache
 open Sharpino.Storage
+open Sharpino.CommandHandler
+open Sharpino.StateView
+open Sharpino.EventBroker
+open Sharpino.MemoryStorage
 open Sharpino.Lib.Test.Models.SampleObject.SampleObject
+open Sharpino.Lib.Test.Models.SampleObject.Events
+open Sharpino.Lib.Test.Models.SampleObject.Commands
 
 let createMemoryDistributedCache () =
     let opts = Options.Create(MemoryDistributedCacheOptions())
@@ -40,7 +47,10 @@ let tests =
             let unboxed = stateRes |> Result.get :?> SampleObject
             Expect.equal unboxed.Name "FirstObject" "State should match"
 
-            // Assert L2 distributed cache contains the entry
+            // Assert L2 distributed cache contains the entry (FusionCache 2.x prefixes wire keys with "v2:")
+            let l2Bytes = distCache.Get("v2:statePerAggregate:" + sampleId.ToString())
+            Expect.isNotNull (box l2Bytes) "L2 distributed cache must contain the entry under v2:statePerAggregate:<id>"
+
             let entryOpt = AggregateCache3.Instance.GetEntry sampleId
             Expect.isSome entryOpt "Entry should be retrieved via GetEntry"
             let entry = entryOpt.Value
@@ -136,4 +146,90 @@ let tests =
             // Assert: Missing in L1 and L2
             Expect.isNone (AggregateCache3.Instance.LastEventId sampleId) "Should be None after Clean"
             Expect.isError (AggregateCache3.Instance.GetState sampleId) "GetState should return error after Clean"
+
+        testCase "runAggregateCommand stores events, updates L1 and L2 cache, and another node resolves L1 miss via L2 hit" <| fun () ->
+            let distCache = createMemoryDistributedCache ()
+            AggregateCache3.Instance.SetupL2AndBackplane(Some distCache, Some serializer, None)
+            AggregateCache3.Instance.Clear()
+
+            let memStore = MemoryStorage() :> IEventStore<string>
+            let sampleId = Guid.NewGuid()
+            let initialSample = SampleObject.MkSampleObject(sampleId, "InitialName")
+
+            // Initialize aggregate
+            let initRes = runInit<SampleObject, SampleObjectEvents, string> memStore MessageSenders.NoSender initialSample
+            Expect.isOk initRes "runInit should succeed"
+
+            // Verify initial state in cache
+            Expect.equal (AggregateCache3.Instance.LastEventId sampleId) (Some 0) "Initial event id should be 0"
+
+            // Act 1: Execute runAggregateCommand on Node 1
+            let renameCmd = RenameSampleObject "UpdatedName" :> AggregateCommand<SampleObject, SampleObjectEvents>
+            let cmdRes = runAggregateCommand<SampleObject, SampleObjectEvents, string> sampleId memStore MessageSenders.NoSender renameCmd
+            Expect.isOk cmdRes "runAggregateCommand should succeed"
+
+            // Assert: L1 on Node 1 is updated with the new state
+            let node1StateRes = AggregateCache3.Instance.GetState sampleId
+            Expect.isOk node1StateRes "GetState on Node 1 should return Ok"
+            let node1Sample = node1StateRes |> Result.get :?> SampleObject
+            Expect.equal node1Sample.Name "UpdatedName" "Node 1 L1 state should be 'UpdatedName'"
+            Expect.equal (AggregateCache3.Instance.LastEventId sampleId) (Some 1) "EventId should be 1"
+
+            // Wait briefly for async L2 writes to settle
+            System.Threading.Thread.Sleep(200)
+
+            // Assert: L2 distributed cache was updated by runAggregateCommand (FusionCache 2.x uses "v2:statePerAggregate:<id>")
+            let l2Bytes = distCache.Get("v2:statePerAggregate:" + sampleId.ToString())
+            Expect.isNotNull (box l2Bytes) "L2 distributed cache must contain the entry for the aggregate"
+
+            // Act 2: Simulate any other node (Node 2) evicting its L1 cache entry (via backplane notification)
+            // ClearL1() purges memory cache while preserving L2 distributed cache
+            AggregateCache3.Instance.ClearL1()
+
+            // To strictly prove that Node 2 does NOT rebuild state from the event store on an L1 miss,
+            // we use an empty event store: if it attempted to query the event store, it would fail to find events.
+            let wipingStore = MemoryStorage() :> IEventStore<string>
+
+            // Act 3: Node 2 resolves aggregate fresh state
+            let node2FreshStateRes = getAggregateFreshState<SampleObject, SampleObjectEvents, string> sampleId wipingStore
+            Expect.isOk node2FreshStateRes "Node 2 should successfully get fresh state via L2 cache hit without querying event store"
+
+            let (eventId, node2Sample) = node2FreshStateRes |> Result.get
+            Expect.equal eventId 1 "Node 2 eventId resolved from L2 must be 1"
+            Expect.equal node2Sample.Name "UpdatedName" "Node 2 state resolved from L2 must be 'UpdatedName'"
+
+        testCaseAsync "runAggregateCommandMdAsync stores events, updates L1 and L2 cache, and resolves L1 miss via L2 hit asynchronously" <| async {
+            let distCache = createMemoryDistributedCache ()
+            AggregateCache3.Instance.SetupL2AndBackplane(Some distCache, Some serializer, None)
+            AggregateCache3.Instance.Clear()
+
+            let memStore = MemoryStorage() :> IEventStore<string>
+            let sampleId = Guid.NewGuid()
+            let initialSample = SampleObject.MkSampleObject(sampleId, "AsyncInitialName")
+
+            let initRes = runInit<SampleObject, SampleObjectEvents, string> memStore MessageSenders.NoSender initialSample
+            Expect.isOk initRes "runInit should succeed"
+
+            // Act 1: Execute runAggregateCommandMdAsync
+            let renameCmd = RenameSampleObject "AsyncUpdatedName" :> AggregateCommand<SampleObject, SampleObjectEvents>
+            let! cmdRes = runAggregateCommandMdAsync<SampleObject, SampleObjectEvents, string> sampleId memStore MessageSenders.NoSender Metadata.Empty renameCmd None |> Async.AwaitTask
+            Expect.isOk cmdRes "runAggregateCommandMdAsync should succeed"
+
+            // Assert L2 has entry (FusionCache 2.x uses "v2:statePerAggregate:<id>")
+            do! Task.Delay(200) |> Async.AwaitTask
+            let l2Bytes = distCache.Get("v2:statePerAggregate:" + sampleId.ToString())
+            Expect.isNotNull (box l2Bytes) "L2 cache must contain entry after async command"
+
+            // Act 2: Evict L1 (simulate Node 2 L1 eviction)
+            AggregateCache3.Instance.ClearL1()
+
+            // Act 3: Query fresh state asynchronously on Node 2 using empty event store
+            let wipingStore = MemoryStorage() :> IEventStore<string>
+            let! node2FreshStateRes = getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> sampleId wipingStore None |> Async.AwaitTask
+            Expect.isOk node2FreshStateRes "Node 2 async fresh state should succeed via L2 cache hit"
+
+            let (eventId, node2Sample) = node2FreshStateRes |> Result.get
+            Expect.equal eventId 1 "Node 2 eventId resolved from L2 must be 1"
+            Expect.equal node2Sample.Name "AsyncUpdatedName" "Node 2 state resolved from L2 must be 'AsyncUpdatedName'"
+        }
     ]

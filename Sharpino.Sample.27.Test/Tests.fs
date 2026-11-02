@@ -143,4 +143,36 @@ let tests =
             let newValue = "New value"
             let result3 = AggregateCache3.Instance.Memoize (fun () -> Ok (2, box newValue)) aggregateId
             Expect.equal (result3 |> Result.map (snd >> unbox<string>)) (Ok newValue) "Cache should invoke resolver and return the new value after L1 invalidation"
+
+        testCase "Expect that runAggregateCommand populates L2 cache and another node resolves L1 miss with L2 hit" <| fun () ->
+            // Arrange
+            pgReset()
+            clearL2PgCache()
+
+            // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+            let todo = Todo.New "L2 Cache Stress Test"
+            let addTodoResult = manager.AddTodo todo
+            Expect.isOk addTodoResult "Should successfully add todo"
+
+            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info"
+            Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
+
+            // Wait briefly for async L2 writes to settle
+            System.Threading.Thread.Sleep(200)
+
+            // Assert: L2 Postgres cache table has the statePerAggregate entry
+            let keys = getL2PgCacheKeys()
+            printfn "Postgres L2 Cache Keys after command: %A" keys
+            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+            Expect.isTrue hasAggregateKey "Postgres L2 Cache should contain an entry for the updated aggregate"
+
+            // Act 2: Simulate any other node evicting its L1 cache entry (via backplane notification)
+            AggregateCache3.Instance.ClearL1()
+
+            // Act 3: Retrieve the todo on this node (L1 cache miss)
+            // It will query L2 cache, find the updated entry, deserialize, and return it
+            let retrievedTodoResult = manager.GetTodo todo.TodoId
+            Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
+            let retrievedTodo = retrievedTodoResult |> Result.get
+            Expect.equal retrievedTodo.PrivateData "Updated private info" "Retrieved todo should reflect the state updated in L2"
     ]
