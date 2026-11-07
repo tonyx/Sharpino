@@ -16,6 +16,7 @@
     <Compile Include="Models/ContextObject/Commands.fs" />
     <Compile Include="EventStoreTests.fs" />
     <Compile Include="AggregateCache3Tests.fs" />
+    <Compile Include="EvolveSkippingErrorsTests.fs" />
     <Compile Include="Main.fs" />
     <Content Include=".env" />
   </ItemGroup>
