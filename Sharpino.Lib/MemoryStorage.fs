@@ -344,6 +344,21 @@ module MemoryStorage =
                     events: List<string>,
                     ?ct: CancellationToken
                 ) =
+                (this :> IEventStore<string>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events, Some (Guid.NewGuid()), None, ?ct = ct)
+
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
+            member this.AddAggregateEventsMdAsync
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    correlationId: Option<Guid>,
+                    causationId: Option<Guid>,
+                    ?ct: CancellationToken
+                ) =
                 taskResult {
                     let newEvents =
                         [ for e in events do
@@ -351,6 +366,8 @@ module MemoryStorage =
                                   { AggregateId = aggregateId
                                     Id = next_aggregate_event_id version name aggregateId
                                     JsonEvent = e
+                                    CorrelationId = correlationId
+                                    CausationId = causationId
                                     KafkaOffset = None
                                     KafkaPartition = None
                                     Timestamp = DateTime.UtcNow } ]
@@ -382,7 +399,38 @@ module MemoryStorage =
                         name, 
                         aggregateId, 
                         md, 
+                        events,
+                        None,
+                        None, 
+                        ct')
+
+            member this.AddAggregateEventsMdAsync2
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<string>,
+                    extraConstraints: Map<System.Guid * string, EventId>,
+                    correlationId: Option<Guid>,
+                    causationId: Option<Guid>,
+                    ?ct: CancellationToken
+                ) =
+                    let ct' =
+                        match ct with
+                        | Some c -> c
+                        | None -> CancellationToken.None
+
+                    (this:>IEventStore<string>).AddAggregateEventsMdAsync
+                        (eventId, 
+                        version, 
+                        name, 
+                        aggregateId, 
+                        md, 
                         events, 
+                        correlationId,
+                        causationId,
                         ct')
 
             member this.GetDistanceFromLatestSnapshotAsync
@@ -392,6 +440,9 @@ module MemoryStorage =
 
             // not handling metadata in memory storage
             member this.AddEventsMd _ version name md xs : Result<List<int>, string> =
+                (this :> IEventStore<string>).AddEventsWithCausalityMd 0 version name md xs (Some (Guid.NewGuid())) None
+
+            member this.AddEventsWithCausalityMd _ version name md xs correlationId causationId : Result<List<int>, string> =
                 logger.LogDebug(sprintf "AddEvents %s %s" version name)
 
                 let newEvents =
@@ -399,12 +450,20 @@ module MemoryStorage =
                           yield
                               { Id = next_event_id version name
                                 JsonEvent = e
+                                CorrelationId = correlationId
+                                CausationId = causationId
                                 Timestamp = DateTime.UtcNow } ]
 
                 let events = getExistingEvents version name @ newEvents
                 storeEvents version name events
                 let ids = newEvents |>> (fun x -> x.Id)
                 ids |> Ok
+
+            member this.AddEventsMdAsync(eventId, version, name, md, xs, ?ct) =
+                task { return (this :> IEventStore<string>).AddEventsMd eventId version name md xs }
+
+            member this.AddEventsMdAsync(eventId, version, name, md, xs, correlationId, causationId, ?ct) =
+                task { return (this :> IEventStore<string>).AddEventsWithCausalityMd eventId version name md xs correlationId causationId }
 
             member this.SetInitialAggregateStateAndAddEventsMd
                 _
@@ -553,10 +612,11 @@ module MemoryStorage =
             member this.MultiAddEventsMd md (arg: List<_ * List<Json> * Version * Name>) =
                 logger.LogDebug(sprintf "MultiAddEvents %A" arg)
 
+                let correlationId = Guid.NewGuid()
                 let cmds =
                     arg
                     |> List.map (fun (_, xs, version, name) ->
-                        (this :> IEventStore<string>).AddEventsMd 0 version name "" xs |> Result.get)
+                        (this :> IEventStore<string>).AddEventsWithCausalityMd 0 version name md xs (Some correlationId) None |> Result.get)
 
                 cmds |> Ok
 
@@ -576,14 +636,27 @@ module MemoryStorage =
             member this.TryGetEvent version id name =
                 logger.LogDebug(sprintf "TryGetEvent %s %A %s" version id name)
 
-                if
-                    (events_dic.ContainsKey version |> not)
-                    || (events_dic.[version].ContainsKey name |> not)
-                then
-                    None
-                else
-                    let res = events_dic.[version].[name] |> List.tryFind (fun x -> x.Id = id)
-                    res
+                let fromContext =
+                    if events_dic.ContainsKey version && events_dic.[version].ContainsKey name then
+                        events_dic.[version].[name] |> List.tryFind (fun x -> x.Id = id)
+                    else
+                        None
+
+                match fromContext with
+                | Some ev -> Some ev
+                | None ->
+                    if aggregate_events_dic.ContainsKey version && aggregate_events_dic.[version].ContainsKey name then
+                        aggregate_events_dic.[version].[name].Values
+                        |> Seq.concat
+                        |> Seq.tryFind (fun x -> x.Id = id)
+                        |>> (fun x ->
+                            { Id = x.Id
+                              JsonEvent = x.JsonEvent
+                              CorrelationId = x.CorrelationId
+                              CausationId = x.CausationId
+                              Timestamp = x.Timestamp })
+                    else
+                        None
 
             member this.SetInitialAggregateState aggregateId version name snapshot =
                 let initialState =
@@ -1007,16 +1080,21 @@ module MemoryStorage =
             member this.MultiAddAggregateEventsMd md (arg: List<_ * List<Json> * Version * Name * AggregateId>) =
                 logger.LogDebug(sprintf "MultiAddAggregateEvents %A" arg)
 
+                let correlationId = Guid.NewGuid()
                 let cmds =
                     arg
                     |> List.map (fun (_, xs, version, name, aggregateId) ->
-                        (this :> IEventStore<string>).AddAggregateEventsMd 0 version name aggregateId "" xs
+                        (this :> IEventStore<string>).AddAggregateEventsWithCausalityMd 0 version name aggregateId md xs (Some correlationId) None
                         |> Result.get)
 
                 cmds |> Ok
 
             [<MethodImpl(MethodImplOptions.Synchronized)>]
-            member this.AddAggregateEventsMd _ version name aggregateId _ events =
+            member this.AddAggregateEventsMd eventId version name aggregateId md events =
+                (this :> IEventStore<string>).AddAggregateEventsWithCausalityMd eventId version name aggregateId md events (Some (Guid.NewGuid())) None
+
+            [<MethodImpl(MethodImplOptions.Synchronized)>]
+            member this.AddAggregateEventsWithCausalityMd _ version name aggregateId _ events correlationId causationId =
                 logger.LogDebug(sprintf "AddAggregateEvents %s %s %A" version name aggregateId)
 
                 let newEvents =
@@ -1025,6 +1103,8 @@ module MemoryStorage =
                               { AggregateId = aggregateId
                                 Id = next_aggregate_event_id version name aggregateId
                                 JsonEvent = e
+                                CorrelationId = correlationId
+                                CausationId = causationId
                                 KafkaOffset = None
                                 KafkaPartition = None
                                 Timestamp = DateTime.UtcNow } ]
@@ -1264,4 +1344,73 @@ module MemoryStorage =
                 taskResult {
                     return 0
                 }
+
+            member this.PatchEventWithNoOp version name aggregateId eventId noOp =
+                if aggregate_events_dic.ContainsKey version && aggregate_events_dic.[version].ContainsKey name && aggregate_events_dic.[version].[name].ContainsKey aggregateId then
+                    let currentEvents = aggregate_events_dic.[version].[name].[aggregateId]
+                    let updated =
+                        currentEvents
+                        |> List.map (fun ev ->
+                            if ev.Id = eventId then { ev with JsonEvent = noOp } else ev
+                        )
+                    aggregate_events_dic.[version].[name].[aggregateId] <- updated
+                    (this :> IEventStore<string>).DeleteSnapshotsFromEventId version name aggregateId eventId |> ignore
+                    Ok ()
+                else
+                    Error "Aggregate stream not found"
+
+            member this.PatchEventWithNoOpAsync(version, name, aggregateId, eventId, noOp, ?ct) =
+                task { return (this :> IEventStore<string>).PatchEventWithNoOp version name aggregateId eventId noOp }
+
+            member this.PatchContextEventWithNoOp version name eventId noOp =
+                if events_dic.ContainsKey version && events_dic.[version].ContainsKey name then
+                    let currentEvents = events_dic.[version].[name]
+                    let updated =
+                        currentEvents
+                        |> List.map (fun ev ->
+                            if ev.Id = eventId then { ev with JsonEvent = noOp } else ev
+                        )
+                    events_dic.[version].[name] <- updated
+                    if snapshots_dic.ContainsKey version && snapshots_dic.[version].ContainsKey name then
+                        let currentSnaps = snapshots_dic.[version].[name]
+                        snapshots_dic.[version].[name] <- currentSnaps |> List.filter (fun s -> s.EventId < eventId)
+                    Ok ()
+                else
+                    Error "Context stream not found"
+
+            member this.PatchContextEventWithNoOpAsync(version, name, eventId, noOp, ?ct) =
+                task { return (this :> IEventStore<string>).PatchContextEventWithNoOp version name eventId noOp }
+
+            member this.DeleteSnapshotsFromEventId version name aggregateId fromEventId =
+                if aggregate_snapshots_dic.ContainsKey version && aggregate_snapshots_dic.[version].ContainsKey name && aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId then
+                    let currentSnaps = aggregate_snapshots_dic.[version].[name].[aggregateId]
+                    let remaining = currentSnaps |> List.filter (fun s -> s.EventId.IsNone || s.EventId.Value < fromEventId)
+                    aggregate_snapshots_dic.[version].[name].[aggregateId] <- remaining
+                    Ok ()
+                else
+                    Ok ()
+
+            member this.DeleteSnapshotsFromEventIdAsync(version, name, aggregateId, fromEventId, ?ct) =
+                task { return (this :> IEventStore<string>).DeleteSnapshotsFromEventId version name aggregateId fromEventId }
+
+            member this.FindEventsByCorrelationId version name correlationId =
+                if aggregate_events_dic.ContainsKey version && aggregate_events_dic.[version].ContainsKey name then
+                    let results =
+                        aggregate_events_dic.[version].[name]
+                        |> Seq.collect (fun kv ->
+                            kv.Value
+                            |> List.choose (fun ev ->
+                                if ev.CorrelationId = Some correlationId then
+                                    Some (ev.AggregateId, ev.Id, ev.JsonEvent)
+                                else
+                                    None
+                            )
+                        )
+                        |> List.ofSeq
+                    Ok results
+                else
+                    Ok []
+
+            member this.FindEventsByCorrelationIdAsync(version, name, correlationId, ?ct) =
+                task { return (this :> IEventStore<string>).FindEventsByCorrelationId version name correlationId }
 

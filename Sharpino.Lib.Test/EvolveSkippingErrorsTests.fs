@@ -134,13 +134,11 @@ let tests =
             let resSkipping = evolveSkippingErrors (Ok initial) events initial
             Expect.equal resSkipping (Ok initial) "All failing events should preserve initial state"
 
-        testCase "evolve function falls back to evolveSkippingErrors when EVOLVE_SKIPS_ERRORS is enabled" <| fun () ->
+        testCase "evolve function strictly calls unforgiving evolve and halts on error" <| fun () ->
             let initial = CounterState.Zero
             let events: CounterEvent list = [ Add 50; Sub 100; Add 20 ]
             let result = evolve initial events
-            Expect.isOk result "evolve should succeed via evolveSkippingErrors fallback"
-            let state = result |> Result.get
-            Expect.equal state.Value 70 "Should skip Sub 100 and apply Add 50 and Add 20"
+            Expect.isError result "evolve should strictly fail on bad event"
 
         testCase "Deep event stream verifies tail recursion without stack overflow" <| fun () ->
             let initial = CounterState.Zero

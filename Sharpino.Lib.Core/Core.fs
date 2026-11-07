@@ -18,6 +18,26 @@ module Core =
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         ()
+
+    type AnomalyContext = {
+        AggregateId: Option<AggregateId>
+        EventId: Option<EventId>
+        ErrorMessage: string
+        AggregateType: Type
+    }
+
+    type IEvolveAnomalyHandler =
+        abstract member OnEvolveAnomaly: AnomalyContext -> unit
+
+    type DefaultLoggingAnomalyHandler(logger: Microsoft.Extensions.Logging.ILogger) =
+        interface IEvolveAnomalyHandler with
+            member _.OnEvolveAnomaly(ctx) =
+                logger.LogCritical(sprintf "Evolve anomaly on aggregate type %s (id: %A, event: %A): %s" ctx.AggregateType.Name ctx.AggregateId ctx.EventId ctx.ErrorMessage)
+
+    let mutable currentAnomalyHandler: IEvolveAnomalyHandler = DefaultLoggingAnomalyHandler(logger)
+    let getAnomalyHandler () = currentAnomalyHandler
+    let setAnomalyHandler (handler: IEvolveAnomalyHandler) =
+        currentAnomalyHandler <- handler
     type StateViewer<'A> = unit -> Result<EventId * 'A, string>
     type AggregateViewer<'A> = AggregateId -> Result<EventId * 'A,string>
     type AggregateViewerAsync<'A> = AggregateId -> Option<CancellationToken> -> TaskResult<EventId * 'A,string>
@@ -50,12 +70,19 @@ module Core =
                             (fun x ->
                                 let msg = sprintf "Error processing event %A: %s" e x
                                 logger.LogError msg
+                                currentAnomalyHandler.OnEvolveAnomaly({
+                                    AggregateId = None
+                                    EventId = None
+                                    ErrorMessage = msg
+                                    AggregateType = typeof<'A>
+                                })
                                 msg
                             )
                     )
                 )
             ) (h |> Ok)
 
+    [<Obsolete("evolveSkippingErrors is deprecated in favor of strict evolve and ex-post sanitization")>]
     [<TailCall>]
     let rec evolveSkippingErrors (acc: Result<'A, string>) (events: List<'E>) (guard: 'A) =
         match acc, events with
@@ -82,14 +109,4 @@ module Core =
         | Ok h, [] -> h |> Ok
         
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
-        #if EVOLVE_SKIPS_ERRORS
-            let result =
-                evolveUNforgivingErrors h events
-            match result with
-            | Ok x -> Ok x
-            | Error e ->
-                logger.LogCritical (sprintf "!!!! Unconsistency detected in eventstore. A reboot or cache clear (of the involved aggregate at least) is highly recommended: %s" e)
-                evolveSkippingErrors (h |> Ok) events h 
-        #else    
-            evolveUNforgivingErrors h events
-        #endif     
+        evolveUNforgivingErrors h events

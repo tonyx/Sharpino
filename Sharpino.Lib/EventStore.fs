@@ -12,12 +12,16 @@ module Storage =
     type StoragePgEvent<'T> =
         { JsonEvent: 'T
           Id: int
+          CorrelationId: Option<Guid>
+          CausationId: Option<Guid>
           Timestamp: System.DateTime }
 
     type StorageEventJsonRef =
         { AggregateId: Guid
           JsonEvent: Json
           Id: int
+          CorrelationId: Option<Guid>
+          CausationId: Option<Guid>
           KafkaOffset: Option<int64>
           KafkaPartition: Option<int>
           Timestamp: System.DateTime }
@@ -98,6 +102,15 @@ module Storage =
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
         abstract member AddEventsMd: EventId -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
+
+        abstract member AddEventsWithCausalityMd:
+            EventId -> Version -> Name -> Metadata -> List<'F> -> Option<Guid> -> Option<Guid> -> Result<List<int>, string>
+
+        abstract member AddEventsMdAsync:
+            EventId * Version * Name * Metadata * List<'F> * ?ct: CancellationToken -> Task<Result<List<int>, string>>
+
+        abstract member AddEventsMdAsync:
+            EventId * Version * Name * Metadata * List<'F> * Option<Guid> * Option<Guid> * ?ct: CancellationToken -> Task<Result<List<int>, string>>
 
         abstract member SetInitialAggregateState: AggregateId -> Version -> Name -> 'F -> Result<unit, string>
 
@@ -199,12 +212,23 @@ module Storage =
         abstract member AddAggregateEventsMd:
             EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Result<List<EventId>, string>
 
+        abstract member AddAggregateEventsWithCausalityMd:
+            EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Option<Guid> -> Option<Guid> -> Result<List<EventId>, string>
+
         abstract member AddAggregateEventsMdAsync:
             EventId * Version * Name * System.Guid * Metadata * List<'F> * ?ct: CancellationToken ->
                 Task<Result<List<int>, string>>
 
+        abstract member AddAggregateEventsMdAsync:
+            EventId * Version * Name * System.Guid * Metadata * List<'F> * Option<Guid> * Option<Guid> * ?ct: CancellationToken ->
+                Task<Result<List<int>, string>>
+
         abstract member AddAggregateEventsMdAsync2:
             EventId * Version * Name * System.Guid * Metadata * List<'F> * extraConstraints:Map<System.Guid * string, EventId> * ?ct: CancellationToken ->
+                Task<Result<List<int>, string>>
+
+        abstract member AddAggregateEventsMdAsync2:
+            EventId * Version * Name * System.Guid * Metadata * List<'F> * extraConstraints:Map<System.Guid * string, EventId> * Option<Guid> * Option<Guid> * ?ct: CancellationToken ->
                 Task<Result<List<int>, string>>
 
         abstract member MultiAddEventsMd:
@@ -304,6 +328,30 @@ module Storage =
 
         abstract member BulkSnapshotsUpcast:
             Version * Name * ('F -> Result<'F, string>) * ?ct: CancellationToken -> Task<Result<int, string>>
+
+        abstract member PatchEventWithNoOp:
+            Version -> Name -> AggregateId -> EventId -> 'F -> Result<unit, string>
+
+        abstract member PatchEventWithNoOpAsync:
+            Version * Name * AggregateId * EventId * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
+
+        abstract member PatchContextEventWithNoOp:
+            Version -> Name -> EventId -> 'F -> Result<unit, string>
+
+        abstract member PatchContextEventWithNoOpAsync:
+            Version * Name * EventId * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
+
+        abstract member DeleteSnapshotsFromEventId:
+            Version -> Name -> AggregateId -> EventId -> Result<unit, string>
+
+        abstract member DeleteSnapshotsFromEventIdAsync:
+            Version * Name * AggregateId * EventId * ?ct: CancellationToken -> Task<Result<unit, string>>
+
+        abstract member FindEventsByCorrelationId:
+            Version -> Name -> Guid -> Result<List<AggregateId * EventId * 'F>, string>
+
+        abstract member FindEventsByCorrelationIdAsync:
+            Version * Name * Guid * ?ct: CancellationToken -> Task<Result<List<AggregateId * EventId * 'F>, string>>
 
     // this must be deleted
     type IEventBroker<'F> =

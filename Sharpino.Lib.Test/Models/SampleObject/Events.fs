@@ -8,10 +8,12 @@ open Sharpino.Lib.Test.Models.SampleObject.SampleObject
 
 type SampleObjectEvents =
     | SampleObjectRenamed of string
+    | SampleObjectNoOp
     interface Event<SampleObject> with
         member this.Process (sampleObject: SampleObject) =
             match this with
             | SampleObjectRenamed name -> sampleObject.Rename name
+            | SampleObjectNoOp -> Ok sampleObject
 
     static member Deserialize x =
         jsonPSerializer.Deserialize<SampleObjectEvents> x

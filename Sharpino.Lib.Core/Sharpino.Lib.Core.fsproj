@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0; net9.0; net8.0</TargetFrameworks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino.Core</PackageId>
-    <Version>6.2.7</Version>
+    <Version>7.0.0</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -14,7 +14,6 @@
     <ReleaseNotes>Core of Sharpino library</ReleaseNotes> 
     <Copyright>Copyright © 2026 Antonio Lucca</Copyright>
     <PackageTags>event-sourcing, F#</PackageTags>
-    <DefineConstants>EVOLVE_SKIPS_ERRORS</DefineConstants>
 
   </PropertyGroup>
 
@@ -29,11 +28,11 @@
     <PackageReference Include="Expecto" Version="11.1.1" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Farmer" Version="1.9.33" />
+    <PackageReference Include="Farmer" Version="1.9.36" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
     
@@ -41,11 +40,11 @@
     <PackageReference Include="Expecto" Version="11.1.1" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Farmer" Version="1.9.33" />
+    <PackageReference Include="Farmer" Version="1.9.36" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.11" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.22" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.22" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
   </ItemGroup>
     
@@ -53,7 +52,7 @@
     <PackageReference Include="Expecto" Version="11.1.1" />
     <PackageReference Include="FsPickler" Version="5.3.2" />
     <PackageReference Include="FsPickler.Json" Version="5.3.2" />
-    <PackageReference Include="Farmer" Version="1.9.33" />
+    <PackageReference Include="Farmer" Version="1.9.36" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />

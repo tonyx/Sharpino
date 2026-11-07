@@ -17,12 +17,15 @@
     <Compile Include="EventStoreTests.fs" />
     <Compile Include="AggregateCache3Tests.fs" />
     <Compile Include="EvolveSkippingErrorsTests.fs" />
+    <Compile Include="SanitizerAndCausalityTests.fs" />
     <Compile Include="Main.fs" />
-    <Content Include=".env" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="appSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include=".env">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

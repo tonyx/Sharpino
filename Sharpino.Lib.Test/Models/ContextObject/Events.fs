@@ -9,12 +9,14 @@ type SampleContextEvents =
     | SampleContextTagAdded of tag: Tag
     | SampleContextTagRemoved of tag: Tag
     | SampleContextRenamed of name: string
+    | SampleContextNoOp
         interface Event<SampleContext> with
             member this.Process(state: SampleContext) =
                 match this with
                 | SampleContextTagAdded tag -> state.AddTag tag
                 | SampleContextTagRemoved tag -> state.RemoveTag tag
                 | SampleContextRenamed name -> state.Rename name
+                | SampleContextNoOp -> Ok state
             
     static member Deserialize x =
         jsonPSerializer.Deserialize<SampleContextEvents> x

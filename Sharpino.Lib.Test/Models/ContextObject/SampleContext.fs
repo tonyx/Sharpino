@@ -36,4 +36,5 @@ type SampleContext =
         static member StorageName = "_sampleContext"
         static member Version = "_01"
         static member SnapshotsInterval = 15
+        static member Zero = { Name = ""; Tags = [] }
             

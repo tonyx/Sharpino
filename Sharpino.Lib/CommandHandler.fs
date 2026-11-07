@@ -261,6 +261,42 @@ module CommandHandler =
                         return Ok () 
                 }
            
+    let inline runCommandWithCausalityMd<'A, 'E, 'F 
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (static member SnapshotsInterval : int)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F) 
+        >
+        (eventStore: IEventStore<'F>) 
+        (eventBroker: IEventBroker<'F>)
+        (md: Metadata)
+        (correlationId: Option<Guid>)
+        (causationId: Option<Guid>)
+        (command: Command<'A, 'E>) =
+            logger.LogDebug (sprintf "runCommandWithCausalityMd %A\n" command)
+            let commandAction = fun ()  ->
+                result {
+                    let! (eventId, state) = getFreshState<'A, 'E, 'F> eventStore
+                    let! (newState, events) =
+                        state
+                        |> command.Execute
+                        
+                    let! ids =
+                        eventStore.AddEventsWithCausalityMd eventId 'A.Version 'A.StorageName md (events |>> _.Serialize) correlationId causationId
+                    
+                    StateCache2<'A>.Instance.Memoize2 newState (ids |> List.last)
+                   
+                    let _ = mkSnapshotIfIntervalPassed2<'A, 'E, 'F> eventStore newState (ids |> List.last)
+                    
+                    return ()
+                }
+            commandAction ()
+
     // eventBroker is not considered as at the moment there is no message sending infrastracture for single instance (i.e. context) aggregates       
     let inline runCommandMd<'A, 'E, 'F 
         when 'A: (static member Zero: 'A)
@@ -2323,6 +2359,47 @@ module CommandHandler =
         #else    
             command ()
         #endif
+
+    let inline runAggregateCommandWithCausalityMd<'A, 'E, 'F
+        when 'A : (member Id: Guid)
+        and 'A : (member Serialize: 'F)
+        and 'E :> Event<'A>
+        and 'A : (static member Deserialize: 'F -> Result<'A, string>) 
+        and 'A : (static member StorageName: string) 
+        and 'A : (static member Version: string)
+        and 'E : (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E : (member Serialize: 'F)
+        >
+        (aggregateId: Guid)
+        (storage: IEventStore<'F>)
+        (messageSenders: MessageSenders)
+        (md: Metadata)
+        (correlationId: Option<Guid>)
+        (causationId: Option<Guid>)
+        (command: AggregateCommand<'A, 'E>)
+        =
+            logger.LogDebug (sprintf "runAggregateCommandWithCausalityMd %A, %A, id: %A" 'A.StorageName command aggregateId)
+            let commandAction =
+                fun () ->
+                    result {
+                        let! executedCommand = preExecuteAggregateCommandMd<'A, 'E, 'F> aggregateId storage messageSenders md command
+                        let! typedEvents =
+                            executedCommand.SerializedEvents
+                            |> List.traverseResultM (fun s -> 'E.Deserialize s)
+                            
+                        let! ids =
+                            storage.AddAggregateEventsWithCausalityMd executedCommand.EventId executedCommand.Version executedCommand.StorageName executedCommand.AggregateId executedCommand.Metadata executedCommand.SerializedEvents correlationId causationId
+                        AggregateCache3.Instance.Memoize2 (ids |> List.last, executedCommand.NewState |> box) aggregateId
+                         
+                        DetailsCache.Instance.RefreshDependentDetailsAsync(aggregateId, Some CancellationToken.None).GetAwaiter().GetResult()
+                        let _ =
+                            mkAggregateSnapshotIfIntervalPassed2<'A, 'E, 'F> storage aggregateId (executedCommand.NewState |> unbox) (ids |> List.last)
+                        let _ =
+                            optionallySendAggregateEventsAsync<'A, 'E> ('A.Version + 'A.StorageName) messageSenders aggregateId typedEvents executedCommand.EventId (ids |> List.last)
+                            
+                        return ()
+                    }
+            commandAction ()
 
     let inline runAggregateCommandMdAsync2<'A, 'E, 'F
         when 'E :> Event<'A>

@@ -628,12 +628,26 @@ module PgBinaryStore =
                     events: List<byte[]>,
                     ?ct: CancellationToken
                 ) =
+                (this :> IEventStore<byte[]>).AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events, None, None, ?ct = ct)
+
+            member this.AddAggregateEventsMdAsync
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<byte[]>,
+                    correlationId: Option<Guid>,
+                    causationId: Option<Guid>,
+                    ?ct: CancellationToken
+                ) =
                 logger.LogDebug(sprintf "AddAggregateEventsMdAsync %s %s %A %A %s" version name aggregateId events md)
                 let stream_name = version + name
 
                 let commandText =
                     sprintf
-                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id);"
+                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @correlation_id, @causation_id);"
                         stream_name
 
                 task {
@@ -667,6 +681,8 @@ module PgBinaryStore =
 
                                 command'.Parameters.AddWithValue("md", md) |> ignore
                                 command'.Parameters.AddWithValue("last_event_id", currentEventId) |> ignore
+                                command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
                                 let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                 let newId = unbox<int> scalar
                                 ids.Add(newId)
@@ -694,12 +710,27 @@ module PgBinaryStore =
                     extraConstraints:Map<System.Guid * string, EventId>,
                     ?ct: CancellationToken
                 ) =
+                (this :> IEventStore<byte[]>).AddAggregateEventsMdAsync2(eventId, version, name, aggregateId, md, events, extraConstraints, None, None, ?ct = ct)
+
+            member this.AddAggregateEventsMdAsync2
+                (
+                    eventId: EventId,
+                    version: Version,
+                    name: Name,
+                    aggregateId: System.Guid,
+                    md: Metadata,
+                    events: List<byte[]>,
+                    extraConstraints:Map<System.Guid * string, EventId>,
+                    correlationId: Option<Guid>,
+                    causationId: Option<Guid>,
+                    ?ct: CancellationToken
+                ) =
                 logger.LogDebug(sprintf "AddAggregateEventsMdAsync2 %s %s %A %A %s" version name aggregateId events md)
                 let stream_name = version + name
 
                 let commandText =
                     sprintf
-                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock2(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @extra_stream_names, @extra_event_ids, @extra_aggregate_ids);"
+                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock2(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @extra_stream_names, @extra_event_ids, @extra_aggregate_ids, @correlation_id, @causation_id);"
                         stream_name
 
                 task {
@@ -740,6 +771,8 @@ module PgBinaryStore =
                                 command'.Parameters.AddWithValue("@extra_stream_names", extraStreamNames) |> ignore
                                 command'.Parameters.AddWithValue("@extra_event_ids", extraEventIds) |> ignore
                                 command'.Parameters.AddWithValue("@extra_aggregate_ids", extraStreamsAggregateIds) |> ignore
+                                command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
                                 let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                 let newId = unbox<int> scalar
                                 ids.Add(newId)
@@ -785,6 +818,7 @@ module PgBinaryStore =
                         let distancesFromLatestSnapshots = Map.ofArray distancesFromLatestSnapshotsArray
 
 
+                        let correlationId = Guid.NewGuid()
                         let result =
                             try
                                 let idLists = ResizeArray<ResizeArray<int>>()
@@ -806,7 +840,7 @@ module PgBinaryStore =
                                             let command =
                                                 new NpgsqlCommand(
                                                     sprintf
-                                                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id);"
+                                                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @correlation_id, @causation_id);"
                                                         stream_name,
                                                     conn
                                                 )
@@ -823,6 +857,8 @@ module PgBinaryStore =
 
                                             command.Parameters.AddWithValue("md", md) |> ignore
                                             command.Parameters.AddWithValue("last_event_id", currentEventId) |> ignore
+                                            command.Parameters.AddWithValue("correlation_id", correlationId |> box) |> ignore
+                                            command.Parameters.AddWithValue("causation_id", DBNull.Value |> box) |> ignore
                                             let scalar = command.ExecuteScalar()
                                             let newId = unbox<int> scalar
                                             ids.Add(newId)
@@ -1133,6 +1169,8 @@ module PgBinaryStore =
                                     let result: StoragePgEvent<byte[]> =
                                         { Id = read.int "id"
                                           JsonEvent = readAsBinary read "event"
+                                          CorrelationId = read.uuidOrNone "correlation_id"
+                                          CausationId = read.uuidOrNone "causation_id"
                                           Timestamp = read.dateTime "timestamp" }
 
                                     result)
@@ -1145,11 +1183,14 @@ module PgBinaryStore =
                     None
 
             member this.AddEventsMd eventId version name metadata events =
-                logger.LogDebug(sprintf "AddEventsMd %s %s %A %s" version name events metadata)
+                (this :> IEventStore<byte[]>).AddEventsWithCausalityMd eventId version name metadata events (Some (Guid.NewGuid())) None
+
+            member this.AddEventsWithCausalityMd eventId version name metadata events correlationId causationId =
+                logger.LogDebug(sprintf "AddEventsWithCausalityMd %s %s %A %s" version name events metadata)
                 let stream_name = version + name
 
                 let command =
-                    sprintf "SELECT insert_md%s_event_and_return_id(@event, @md);" stream_name
+                    sprintf "SELECT insert_md%s_event_and_return_id(@event, @md, @correlation_id, @causation_id);" stream_name
 
                 let result =
                     fun _ ->
@@ -1173,6 +1214,8 @@ module PgBinaryStore =
                                                     let command' = new NpgsqlCommand(command, conn)
                                                     command'.Parameters.AddWithValue("event", event) |> ignore
                                                     command'.Parameters.AddWithValue("md", metadata) |> ignore
+                                                    command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                                    command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
                                                     let result = command'.ExecuteScalar()
                                                     result :?> int
 
@@ -1199,8 +1242,16 @@ module PgBinaryStore =
                 try
                     result ()
                 with _ as ex ->
-                    logger.LogError(sprintf "an error occurred: %A" ex.Message)
+                    logger.LogError(sprintf "AddEventsWithCausalityMd. an error occurred: %A" ex.Message)
                     Error ex.Message
+
+            member this.AddEventsMdAsync(eventId, version, name, metadata, events, ?ct) =
+                (this :> IEventStore<byte[]>).AddEventsMdAsync(eventId, version, name, metadata, events, Some (Guid.NewGuid()), None, ?ct = ct)
+
+            member this.AddEventsMdAsync(eventId, version, name, metadata, events, correlationId, causationId, ?ct) =
+                task {
+                    return (this :> IEventStore<byte[]>).AddEventsWithCausalityMd eventId version name metadata events correlationId causationId
+                }
 
             member this.MultiAddEventsMd md (arg: List<EventId * List<byte[]> * Version * Name>) =
                 logger.LogDebug(sprintf "MultiAddEventsMd %A %s" arg md)
@@ -1235,6 +1286,7 @@ module PgBinaryStore =
                                 let result =
                                     if checkIds then
                                         try
+                                            let correlationId = Guid.NewGuid()
                                             let cmdList =
                                                 arg
                                                 |>>
@@ -1246,13 +1298,15 @@ module PgBinaryStore =
                                                         let command =
                                                             new NpgsqlCommand(
                                                                 sprintf
-                                                                    "SELECT insert_md%s_event_and_return_id(@event, @md);"
+                                                                    "SELECT insert_md%s_event_and_return_id(@event, @md, @correlation_id, @causation_id);"
                                                                     stream_name,
                                                                 conn
                                                             )
 
                                                         command.Parameters.AddWithValue("event", event) |> ignore
                                                         command.Parameters.AddWithValue("md", md) |> ignore
+                                                        command.Parameters.AddWithValue("correlation_id", correlationId |> box) |> ignore
+                                                        command.Parameters.AddWithValue("causation_id", DBNull.Value |> box) |> ignore
                                                         let result = command.ExecuteScalar()
                                                         result :?> int
 
@@ -2622,7 +2676,20 @@ module PgBinaryStore =
                 (events: List<byte[]>)
                 : Result<List<int>, string> =
                 (this :> IEventStore<byte[]>)
-                    .AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events)
+                    .AddAggregateEventsWithCausalityMd eventId version name aggregateId md events (Some (Guid.NewGuid())) None
+
+            member this.AddAggregateEventsWithCausalityMd
+                (eventId: EventId)
+                (version: Version)
+                (name: Name)
+                (aggregateId: System.Guid)
+                (md: Metadata)
+                (events: List<byte[]>)
+                (correlationId: Option<Guid>)
+                (causationId: Option<Guid>)
+                : Result<List<int>, string> =
+                (this :> IEventStore<byte[]>)
+                    .AddAggregateEventsMdAsync(eventId, version, name, aggregateId, md, events, correlationId, causationId)
                     .GetAwaiter()
                     .GetResult()
 
@@ -2642,6 +2709,7 @@ module PgBinaryStore =
                             async {
                                 let result =
                                     try
+                                        let correlationId = Guid.NewGuid()
                                         let cmdList =
                                             arg
                                             |>> fun (eventId, events, version, name, aggregateId) ->
@@ -2668,7 +2736,7 @@ module PgBinaryStore =
                                                     let command =
                                                         new NpgsqlCommand(
                                                             sprintf
-                                                                "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id);"
+                                                                "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @correlation_id, @causation_id);"
                                                                 stream_name,
                                                             conn
                                                         )
@@ -2686,6 +2754,8 @@ module PgBinaryStore =
 
                                                     command.Parameters.AddWithValue("md", md) |> ignore
                                                     command.Parameters.AddWithValue("last_event_id", currentEventId) |> ignore
+                                                    command.Parameters.AddWithValue("correlation_id", correlationId |> box) |> ignore
+                                                    command.Parameters.AddWithValue("causation_id", DBNull.Value |> box) |> ignore
                                                     let result = command.ExecuteScalar()
                                                     let newId = result :?> int
                                                     currentEventId <- newId
@@ -3335,3 +3405,85 @@ module PgBinaryStore =
                         "optimistic lock failure: "
                         + $"lastEventId: {lastEventId}, eventId: {s1EventId}"
                     )
+
+            member this.PatchEventWithNoOp version name aggregateId eventId (noOp: byte[]) =
+                (this :> IEventStore<byte[]>).PatchEventWithNoOpAsync(version, name, aggregateId, eventId, noOp).GetAwaiter().GetResult()
+
+            member this.PatchEventWithNoOpAsync(version, name, aggregateId, eventId, (noOp: byte[]), ?ct) =
+                task {
+                    try
+                        use conn = new NpgsqlConnection(writeConnection)
+                        do! conn.OpenAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        let commandText = sprintf "SELECT patch_event_noop_and_purge_snapshots_%s%s(@aggregate_id, @event_id, @noop);" version name
+                        use cmd = new NpgsqlCommand(commandText, conn)
+                        cmd.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                        cmd.Parameters.AddWithValue("event_id", eventId) |> ignore
+                        cmd.Parameters.AddWithValue("noop", noOp) |> ignore
+                        let! _ = cmd.ExecuteNonQueryAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        return Ok ()
+                    with ex ->
+                        logger.LogError(sprintf "PatchEventWithNoOpAsync error: %s" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.PatchContextEventWithNoOp version name eventId (noOp: byte[]) =
+                (this :> IEventStore<byte[]>).PatchContextEventWithNoOpAsync(version, name, eventId, noOp).GetAwaiter().GetResult()
+
+            member this.PatchContextEventWithNoOpAsync(version, name, eventId, (noOp: byte[]), ?ct) =
+                task {
+                    try
+                        use conn = new NpgsqlConnection(writeConnection)
+                        do! conn.OpenAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        let commandText = sprintf "SELECT patch_event_noop_and_purge_snapshots_%s%s(@event_id, @noop);" version name
+                        use cmd = new NpgsqlCommand(commandText, conn)
+                        cmd.Parameters.AddWithValue("event_id", eventId) |> ignore
+                        cmd.Parameters.AddWithValue("noop", noOp) |> ignore
+                        let! _ = cmd.ExecuteNonQueryAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        return Ok ()
+                    with ex ->
+                        logger.LogError(sprintf "PatchContextEventWithNoOpAsync error: %s" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.DeleteSnapshotsFromEventId version name aggregateId fromEventId =
+                (this :> IEventStore<byte[]>).DeleteSnapshotsFromEventIdAsync(version, name, aggregateId, fromEventId).GetAwaiter().GetResult()
+
+            member this.DeleteSnapshotsFromEventIdAsync(version, name, aggregateId, fromEventId, ?ct) =
+                task {
+                    try
+                        use conn = new NpgsqlConnection(writeConnection)
+                        do! conn.OpenAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        let commandText = sprintf "DELETE FROM snapshots%s%s WHERE aggregate_id = @aggregate_id AND (event_id >= @from_event_id OR event_id IS NULL);" version name
+                        use cmd = new NpgsqlCommand(commandText, conn)
+                        cmd.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
+                        cmd.Parameters.AddWithValue("from_event_id", fromEventId) |> ignore
+                        let! _ = cmd.ExecuteNonQueryAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        return Ok ()
+                    with ex ->
+                        logger.LogError(sprintf "DeleteSnapshotsFromEventIdAsync error: %s" ex.Message)
+                        return Error ex.Message
+                }
+
+            member this.FindEventsByCorrelationId version name correlationId =
+                (this :> IEventStore<byte[]>).FindEventsByCorrelationIdAsync(version, name, correlationId).GetAwaiter().GetResult()
+
+            member this.FindEventsByCorrelationIdAsync(version, name, correlationId, ?ct) =
+                task {
+                    try
+                        use conn = new NpgsqlConnection(readConnection)
+                        do! conn.OpenAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        let commandText = sprintf "SELECT aggregate_id, id, event FROM events%s%s WHERE correlation_id = @correlation_id ORDER BY id;" version name
+                        use cmd = new NpgsqlCommand(commandText, conn)
+                        cmd.Parameters.AddWithValue("correlation_id", correlationId) |> ignore
+                        use! reader = cmd.ExecuteReaderAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
+                        let results = ResizeArray<AggregateId * EventId * byte[]>()
+                        while! reader.ReadAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false) do
+                            let aggId = reader.GetGuid(0)
+                            let evId = reader.GetInt32(1)
+                            let evPayload = reader.GetFieldValue<byte[]>(2)
+                            results.Add((aggId, evId, evPayload))
+                        return Ok (List.ofSeq results)
+                    with ex ->
+                        logger.LogError(sprintf "FindEventsByCorrelationIdAsync error: %s" ex.Message)
+                        return Error ex.Message
+                }
