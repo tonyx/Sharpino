@@ -12,11 +12,13 @@ module CourseEvents =
     type CourseEvents =
         | StudentAdded of Guid
         | StudentRemoved of Guid
+        | CourseNoOp
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
                 | StudentAdded id -> course.AddStudent id
                 | StudentRemoved id -> course.RemoveStudent id
+                | CourseNoOp -> Ok course
        
         static member Deserialize (x: byte[]): Result<CourseEvents, string> =
             binarySerializer.Deserialize<CourseEvents> x

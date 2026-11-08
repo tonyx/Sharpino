@@ -17,6 +17,7 @@ open Sharpino.Sample._15.EnrollmentEvents
 open Sharpino.Sample._15.CourseManager
 open Sharpino.EventBroker
 open Sharpino.Core
+open Sharpino.Sanitizer
 open Sharpino.Sample._15.Commons.Definitions
 open FsToolkit.ErrorHandling
 
@@ -372,9 +373,11 @@ let tests =
                 Expect.hasLength eventsList 1 "Enrollment event was not recorded"
                 
                 let actualEvent = List.head eventsList
-                let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-                Expect.equal item.StudentId student.StudentId "Student ID does not match"
-                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                match actualEvent with
+                | EnrollmentEvents.EnrollmentAdded item ->
+                    Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                    Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                | _ -> failwith "Unexpected event"
             }
             
         testCaseTask "enroll a student to a course and retrieve the related enrollment events 2" <| fun _ ->
@@ -399,9 +402,11 @@ let tests =
                 Expect.hasLength eventsList 1 "Enrollment event was not recorded"
                 
                 let actualEvent = List.head eventsList
-                let (_,EnrollmentEvents.EnrollmentAdded item) = actualEvent
-                Expect.equal item.StudentId student.StudentId "Student ID does not match"
-                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                match actualEvent with
+                | (_, EnrollmentEvents.EnrollmentAdded item) ->
+                    Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                    Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                | _ -> failwith "Unexpected event"
             }
             
         testCaseTask "enroll a student to a course and retrieve the related enrollment events 3" <| fun _ ->
@@ -426,9 +431,11 @@ let tests =
                 Expect.hasLength eventsList 1 "Enrollment event was not recorded"
                 
                 let (_, _, actualEvent) = eventsList.Item 0
-                let (EnrollmentEvents.EnrollmentAdded item) = actualEvent
-                Expect.equal item.StudentId student.StudentId "Student ID does not match"
-                Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                match actualEvent with
+                | EnrollmentEvents.EnrollmentAdded item ->
+                    Expect.equal item.StudentId student.StudentId "Student ID does not match"
+                    Expect.equal item.CourseId course.CourseId "Course ID does not match"
+                | _ -> failwith "Unexpected event"
             }
         
         testCaseTask "create a course and then retrieve the related snapshot by means of eventStore direct access"  <| fun _ ->
@@ -495,5 +502,42 @@ let tests =
                 Expect.isOk states  "Could not get aggregate states"   
                 Expect.equal states.OkValue.Length 1 "should be 1"
             }
+
+        testCase "Sanitization How-To: Course stream with corrupted event is healed via CourseNoOp" <| fun _ ->
+            setUp ()
+            let math = Course.MkCourse "Math" 10
+            let addCourse = courseManager.AddCourse math
+            Expect.isOk addCourse "Course created"
+            
+            // Inject an invalid event directly into the course event stream:
+            // e.g. renaming to the exact same name fails validation
+            let invalidEvent = (CourseEvents.Renamed "Math").Serialize
+            let injectRes = pgEventStore.AddAggregateEventsMd 0 Course.Version Course.StorageName math.CourseId.Id "test" [invalidEvent]
+            Expect.isOk injectRes "Injected raw event"
+            
+            // Invalidate cache so viewer is forced to replay from the event store
+            AggregateCache3.Instance.Clean math.CourseId.Id
+            
+            // Replay/State retrieval must now FAIL under strict unforgiving evolve
+            let stateBefore = courseViewer math.CourseId.Id
+            Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+            
+            // Execute Sanitization using CourseNoOp
+            let sanitizeRes = 
+                Sharpino.Sanitizer.sanitizeAggregateStream<Course, CourseEvents, string> 
+                    pgEventStore 
+                    math.CourseId.Id 
+                    CourseNoOp 
+                    None
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to CourseNoOp"
+            
+            // Verify: Course state now evolves cleanly!
+            let stateAfter = courseViewer math.CourseId.Id
+            Expect.isOk stateAfter "Course must evolve cleanly after sanitization"
+            let (_, healedCourse) = stateAfter |> Result.get
+            Expect.equal healedCourse.Name "Math" "Healed course retains valid state"
     ]
     |> testSequenced

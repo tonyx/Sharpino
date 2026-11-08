@@ -193,12 +193,12 @@ let postgresTests =
             pgReset()
             clearL2PgCache()
 
-            // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+            // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.RenameTodo
             let todo = Todo.New "Postgres L2 Cache Stress Test"
             let addTodoResult = manager.AddTodo todo
             Expect.isOk addTodoResult "Should successfully add todo"
 
-            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in PG"
+            let updateResult = manager.RenameTodo todo.TodoId "Updated private info in PG"
             Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
 
             // Wait briefly for async L2 writes to settle
@@ -207,7 +207,7 @@ let postgresTests =
             // Assert: L2 Postgres cache table has the statePerAggregate entry
             let keys = getL2PgCacheKeys()
             printfn "Postgres L2 Cache Keys after command: %A" keys
-            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.Value.ToString()))
             Expect.isTrue hasAggregateKey "Postgres L2 Cache should contain an entry for the updated aggregate"
 
             // Act 2: Simulate another node evicting its L1 cache entry (via backplane notification)
@@ -218,7 +218,7 @@ let postgresTests =
             let retrievedTodoResult = manager.GetTodo todo.TodoId
             Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
             let retrievedTodo = retrievedTodoResult |> Result.get
-            Expect.equal retrievedTodo.PrivateData "Updated private info in PG" "Retrieved todo should reflect the state updated in L2"
+            Expect.equal retrievedTodo.Text "Updated private info in PG" "Retrieved todo should reflect the state updated in L2"
     ]
 
 [<Tests>]
@@ -326,12 +326,12 @@ let redisTests =
                 pgReset()
                 clearL2RedisCache conn
 
-                // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.UpdatePrivateData
+                // Act 1: Execute runAggregateCommand via manager.AddTodo and manager.RenameTodo
                 let todo = Todo.New "Redis L2 Cache Stress Test"
                 let addTodoResult = manager.AddTodo todo
                 Expect.isOk addTodoResult "Should successfully add todo"
 
-                let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in Redis"
+                let updateResult = manager.RenameTodo todo.TodoId "Updated private info in Redis"
                 Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
 
                 // Wait briefly for async L2 writes to settle
@@ -340,7 +340,7 @@ let redisTests =
                 // Assert: Redis L2 cache contains the aggregate key
                 let keys = getL2RedisCacheKeys conn
                 printfn "Redis L2 Cache Keys after command: %A" keys
-                let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+                let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.Value.ToString()))
                 Expect.isTrue hasAggregateKey "Redis L2 Cache should contain an entry for the updated aggregate"
 
                 // Act 2: Simulate another node evicting its L1 cache entry (via backplane notification)
@@ -350,5 +350,5 @@ let redisTests =
                 let retrievedTodoResult = manager.GetTodo todo.TodoId
                 Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
                 let retrievedTodo = retrievedTodoResult |> Result.get
-                Expect.equal retrievedTodo.PrivateData "Updated private info in Redis" "Retrieved todo should reflect the state updated in L2"
+                Expect.equal retrievedTodo.Text "Updated private info in Redis" "Retrieved todo should reflect the state updated in L2"
     ]

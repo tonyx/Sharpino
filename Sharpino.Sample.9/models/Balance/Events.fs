@@ -12,12 +12,14 @@ module BalanceEvents =
         | AmountAdded of decimal
         | CourseCreationFeePaid of Guid
         | CourseCancellationFeePaid of Guid
+        | BalanceNoOp
         interface Event<Balance> with
             member this.Process (balance: Balance) =
                 match this with
                 | AmountAdded amount -> balance.AddAmount amount
                 | CourseCreationFeePaid id -> balance.PayCourseCreationFee id
                 | CourseCancellationFeePaid id -> balance.PayCourseCancellationFee id
+                | BalanceNoOp -> Ok balance
        
         static member Deserialize x =
             jsonPSerializer.Deserialize<BalanceEvents> x

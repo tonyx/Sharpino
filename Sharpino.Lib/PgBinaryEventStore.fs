@@ -646,9 +646,15 @@ module PgBinaryStore =
                 let stream_name = version + name
 
                 let commandText =
-                    sprintf
-                        "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @correlation_id, @causation_id);"
-                        stream_name
+                    match correlationId, causationId with
+                    | None, None ->
+                        sprintf
+                            "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id);"
+                            stream_name
+                    | _ ->
+                        sprintf
+                            "SELECT insert_md%s_aggregate_event_and_return_id_opt_lock(@event, @aggregate_id, @distance_from_latest_snapshot, @md, @last_event_id, @correlation_id, @causation_id);"
+                            stream_name
 
                 task {
                     use conn = new NpgsqlConnection(writeConnection)
@@ -681,8 +687,9 @@ module PgBinaryStore =
 
                                 command'.Parameters.AddWithValue("md", md) |> ignore
                                 command'.Parameters.AddWithValue("last_event_id", currentEventId) |> ignore
-                                command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
-                                command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                if correlationId.IsSome || causationId.IsSome then
+                                    command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                    command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
                                 let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                 let newId = unbox<int> scalar
                                 ids.Add(newId)
@@ -771,8 +778,9 @@ module PgBinaryStore =
                                 command'.Parameters.AddWithValue("@extra_stream_names", extraStreamNames) |> ignore
                                 command'.Parameters.AddWithValue("@extra_event_ids", extraEventIds) |> ignore
                                 command'.Parameters.AddWithValue("@extra_aggregate_ids", extraStreamsAggregateIds) |> ignore
-                                command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
-                                command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                if correlationId.IsSome || causationId.IsSome then
+                                    command'.Parameters.AddWithValue("correlation_id", (match correlationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
+                                    command'.Parameters.AddWithValue("causation_id", (match causationId with Some g -> box g | None -> box DBNull.Value)) |> ignore
                                 let! scalar = command'.ExecuteScalarAsync(cts.Token).ConfigureAwait(false)
                                 let newId = unbox<int> scalar
                                 ids.Add(newId)
@@ -3453,7 +3461,7 @@ module PgBinaryStore =
                     try
                         use conn = new NpgsqlConnection(writeConnection)
                         do! conn.OpenAsync(defaultArg ct CancellationToken.None).ConfigureAwait(false)
-                        let commandText = sprintf "DELETE FROM snapshots%s%s WHERE aggregate_id = @aggregate_id AND (event_id >= @from_event_id OR event_id IS NULL);" version name
+                        let commandText = sprintf "DELETE FROM snapshots%s%s WHERE aggregate_id = @aggregate_id AND event_id IS NOT NULL AND event_id >= @from_event_id;" version name
                         use cmd = new NpgsqlCommand(commandText, conn)
                         cmd.Parameters.AddWithValue("aggregate_id", aggregateId) |> ignore
                         cmd.Parameters.AddWithValue("from_event_id", fromEventId) |> ignore

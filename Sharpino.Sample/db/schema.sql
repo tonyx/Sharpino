@@ -1,4 +1,4 @@
-\restrict GVanAjH63Cn4twHdgdCb8NEhNGLVncVkoepcgNYbjFE5Wda7Ia0fJzY13bcUXuL
+\restrict U5umMFMKplO20XTOdfxFdgE0vLE8csKtL8GWtlI9JAgaYYZ2NdL5d03ykayNk8d
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -145,73 +145,145 @@ $$;
 
 
 --
--- Name: insert_md_01_tags_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_tags_event_and_return_id(text, text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_tags_event_and_return_id(event_in text, md_in text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_tags_event_and_return_id(event_in text, md_in text, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
 BEGIN
-INSERT INTO events_01_tags(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
-return inserted_id;
-
+    INSERT INTO events_01_tags(event, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, now(), md_in, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_todo_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_todo_event_and_return_id(text, text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_todo_event_and_return_id(event_in text, md_in text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_todo_event_and_return_id(event_in text, md_in text, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
 BEGIN
-INSERT INTO events_01_todo(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
-return inserted_id;
-
+    INSERT INTO events_01_todo(event, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, now(), md_in, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_02_categories_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_02_categories_event_and_return_id(text, text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_02_categories_event_and_return_id(event_in text, md_in text) RETURNS integer
+CREATE FUNCTION public.insert_md_02_categories_event_and_return_id(event_in text, md_in text, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
 BEGIN
-INSERT INTO events_02_categories(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
-return inserted_id;
-
+    INSERT INTO events_02_categories(event, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, now(), md_in, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_02_todo_event_and_return_id(text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_02_todo_event_and_return_id(text, text, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_02_todo_event_and_return_id(event_in text, md_in text) RETURNS integer
+CREATE FUNCTION public.insert_md_02_todo_event_and_return_id(event_in text, md_in text, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
-inserted_id integer;
+    inserted_id integer;
 BEGIN
-INSERT INTO events_02_todo(event, timestamp, md)
-VALUES(event_in::text, now(), md_in) RETURNING id INTO inserted_id;
-return inserted_id;
+    INSERT INTO events_02_todo(event, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, now(), md_in, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
+END;
+$$;
 
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__01_tags(integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__01_tags(in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_01_tags
+    SET event = in_noop_payload
+    WHERE id = in_event_id;
+
+    DELETE FROM snapshots_01_tags
+    WHERE event_id >= in_event_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__01_todo(integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__01_todo(in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_01_todo
+    SET event = in_noop_payload
+    WHERE id = in_event_id;
+
+    DELETE FROM snapshots_01_todo
+    WHERE event_id >= in_event_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__02_categories(integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__02_categories(in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_02_categories
+    SET event = in_noop_payload
+    WHERE id = in_event_id;
+
+    DELETE FROM snapshots_02_categories
+    WHERE event_id >= in_event_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__02_todo(integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__02_todo(in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_02_todo
+    SET event = in_noop_payload
+    WHERE id = in_event_id;
+
+    DELETE FROM snapshots_02_todo
+    WHERE event_id >= in_event_id;
 END;
 $$;
 
@@ -229,7 +301,9 @@ CREATE TABLE public.events_01_tags (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -256,7 +330,9 @@ CREATE TABLE public.events_01_todo (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -283,7 +359,9 @@ CREATE TABLE public.events_02_categories (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -310,7 +388,9 @@ CREATE TABLE public.events_02_todo (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    md text
+    md text,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -506,6 +586,62 @@ ALTER TABLE ONLY public.snapshots_01_todo
 
 
 --
+-- Name: ix_01_events_tags_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_tags_causation_id ON public.events_01_tags USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_tags_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_tags_correlation_id ON public.events_01_tags USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_todo_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_todo_causation_id ON public.events_01_todo USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_todo_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_todo_correlation_id ON public.events_01_todo USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
+-- Name: ix_02_events_categories_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_02_events_categories_causation_id ON public.events_02_categories USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_02_events_categories_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_02_events_categories_correlation_id ON public.events_02_categories USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
+-- Name: ix_02_events_todo_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_02_events_todo_causation_id ON public.events_02_todo USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_02_events_todo_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_02_events_todo_correlation_id ON public.events_02_todo USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
 -- Name: snapshots_01_tags event_01_tags_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -541,7 +677,7 @@ ALTER TABLE ONLY public.snapshots_02_todo
 -- PostgreSQL database dump complete
 --
 
-\unrestrict GVanAjH63Cn4twHdgdCb8NEhNGLVncVkoepcgNYbjFE5Wda7Ia0fJzY13bcUXuL
+\unrestrict U5umMFMKplO20XTOdfxFdgE0vLE8csKtL8GWtlI9JAgaYYZ2NdL5d03ykayNk8d
 
 
 --
@@ -554,4 +690,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20230618084416'),
     ('20230618084628'),
     ('20260629160000'),
-    ('20260801200000');
+    ('20260801200000'),
+    ('20261221100000');

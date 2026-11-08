@@ -7,6 +7,7 @@ type WorkOrderEvents =
     | Started of ProductId
     | Completed of ProductId
     | Failed of ProductId * Quantity
+    | WorkOrderNoOp
     
     interface Event<WorkOrder> with
         member this.Process (state: WorkOrder) =
@@ -17,6 +18,8 @@ type WorkOrderEvents =
                 state.Complete productId
             | Failed (productId, quantity) ->
                 state.Fail productId quantity
+            | WorkOrderNoOp ->
+                Ok state
                 
     static member Deserialize (data: string) =
         try

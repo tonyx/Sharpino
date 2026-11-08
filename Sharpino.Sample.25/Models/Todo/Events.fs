@@ -10,12 +10,14 @@ type TodoEvents =
     | Activated of DateTime
     | Completed of DateTime
     | PrivateDataUpdated of string
+    | TodoNoOp
     interface Event<Todo> with
         member this.Process todo =
             match this with
             | Activated  dateTime -> todo.Activate dateTime
             | Completed  dateTime -> todo.Complete dateTime
             | PrivateDataUpdated privateData -> todo.UpdatePrivateData privateData
+            | TodoNoOp -> Ok todo
 
     static member Deserialize (x: string): Result<TodoEvents, string> =
         try

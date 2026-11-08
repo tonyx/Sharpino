@@ -12,12 +12,14 @@ open Sharpino.Sample.Saga.Domain.Vaucher.Voucher
 
 type VoucherEvents =
     | Consumed of int
+    | VoucherNoOp
 
     interface Event<Voucher> with
         member
             this.Process (x: Voucher) =
                 match this with
                 | Consumed n -> x.Consume n
+                | VoucherNoOp -> Ok x
 
     member this.Serialize =
             jsonPSerializer.Serialize this

@@ -293,6 +293,43 @@ let tests =
             let dishDetails = pubSystem.GetDishDetails dish.Id
             Expect.isOk dishDetails "dish details not retrieved"
             
+        testCase "Sanitization How-To: Dish stream with corrupted event is healed via DishNoOp" <| fun _ ->
+            setUp ()
+            let pubSystemPg = PubSystem.PubSystem(pgEventStore, MessageSenders.NoSender, getAggregateStorageFreshStateViewer<Ingredient, IngredientEvents, string> pgEventStore)
+            let dish = Dish(Guid.NewGuid(), "pizza margherita", [])
+            let addDish = pubSystemPg.AddDish dish
+            Expect.isOk addDish "dish added"
+
+            // Inject an invalid/corrupted event directly into dish stream
+            let invalidEvent = """{"BadEvent":{"invalid": 123}}"""
+            let injectRes = pgEventStore.AddAggregateEventsMd 0 Dish.Version Dish.StorageName dish.Id "test" [invalidEvent]
+            Expect.isOk injectRes "Injected raw event"
+
+            // Invalidate cache so viewer is forced to replay from event store
+            AggregateCache3.Instance.Clean dish.Id
+
+            // Replay/State retrieval must now FAIL under strict unforgiving evolve
+            let viewer = getAggregateStorageFreshStateViewer<Dish, DishEvents, string> pgEventStore
+            let stateBefore = viewer dish.Id
+            Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+
+            // Execute Sanitization using DishNoOp
+            let sanitizeRes =
+                Sharpino.Sanitizer.sanitizeAggregateStream<Dish, DishEvents, string>
+                    pgEventStore
+                    dish.Id
+                    DishNoOp
+                    None
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to DishNoOp"
+
+            // Verify: Dish state now evolves cleanly!
+            let stateAfter = viewer dish.Id
+            Expect.isOk stateAfter "Dish must evolve cleanly after sanitization"
+            let (_, healedDish) = stateAfter |> Result.get
+            Expect.equal healedDish.Name "pizza margherita" "Healed dish retains valid state"
     ]
     |> testSequenced
         

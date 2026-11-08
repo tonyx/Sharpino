@@ -18,6 +18,7 @@ open Sharpino.Sample._14.Student
 open Sharpino.Sample._14.StudentEvents
 open Sharpino.Sample._14.Definitions
 open Sharpino.Storage
+open Sharpino.Sanitizer
 
 open DotNetEnv
 
@@ -533,6 +534,43 @@ let tests =
 
             Expect.isOk students "students should be retrieved"
             Expect.equal students.OkValue.Length 2 "students should be 2"
+
+        testCase "Sanitization How-To: Course stream with corrupted event is healed via CourseNoOp" <| fun _ ->
+            setUp ()
+            let math = Course.MkCourse ("Math", 10)
+            let courseAdded = courseManager.AddCourse math
+            Expect.isOk courseAdded "Course created"
+            
+            // Inject an invalid event directly into the course event stream:
+            // e.g. invalid rename to the exact same name (fails domain validation)
+            let invalidEvent = (CourseEvents.Renamed "Math").Serialize
+            let injectRes = pgEventStore.AddAggregateEventsMd 0 Course.Version Course.StorageName math.CourseId.Id "test" [invalidEvent]
+            Expect.isOk injectRes "Injected raw event"
+            
+            // Invalidate cache so viewer is forced to replay from the event store
+            AggregateCache3.Instance.Clean math.CourseId.Id
+            
+            // Replay/State retrieval must now FAIL under strict unforgiving evolve
+            let stateBefore = courseViewer math.CourseId.Id
+            Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+            
+            // Execute Sanitization using CourseNoOp
+            let sanitizeRes = 
+                Sharpino.Sanitizer.sanitizeAggregateStream<Course, CourseEvents, string> 
+                    pgEventStore 
+                    math.CourseId.Id 
+                    CourseNoOp 
+                    None
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to CourseNoOp"
+            
+            // Verify: Course state now evolves cleanly!
+            let stateAfter = courseViewer math.CourseId.Id
+            Expect.isOk stateAfter "Course must evolve cleanly after sanitization"
+            let (_, healedCourse) = stateAfter |> Result.get
+            Expect.equal healedCourse.Name "Math" "Healed course retains valid state"
     ]
     |> testSequenced
     

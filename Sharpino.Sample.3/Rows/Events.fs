@@ -20,6 +20,7 @@ module RowAggregateEvent =
         | SeatRemoved of Seat
         | InvariantAdded of InvariantContainer
         | InvariantRemoved of InvariantContainer
+        | RowAggregateNoOp
             interface Event<SeatsRow> with
                 member this.Process (x: SeatsRow) =
                     match this with
@@ -35,6 +36,7 @@ module RowAggregateEvent =
                         x.AddInvariant invariant
                     | InvariantRemoved invariant ->
                         x.RemoveInvariant invariant
+                    | RowAggregateNoOp -> Ok x
 
         member this.Serialize =
             this |> jsonPSerializer.Serialize

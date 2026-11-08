@@ -72,12 +72,28 @@ module Sanitizer =
                     
                     let! _ = storage.DeleteSnapshotsFromEventId 'A.Version 'A.StorageName aggregateId eventId
                     AggregateCache3.Instance.Clean aggregateId
+                    DetailsCache.Instance.EvictDependentDetails aggregateId
                     
                     let evOpt = storage.TryGetEvent 'A.Version eventId 'A.StorageName
                     let corrIdOpt = evOpt |> Option.bind (fun e -> e.CorrelationId)
                     
                     actions <- PatchedToNoOp(eventId, corrIdOpt) :: actions
                     
+                    match corrIdOpt with
+                    | Some corrId ->
+                        match storage.FindEventsByCorrelationId 'A.Version 'A.StorageName corrId with
+                        | Ok relatedEvents ->
+                            let relatedAggIds =
+                                relatedEvents
+                                |> List.map (fun (id, _, _) -> id)
+                                |> List.distinct
+                            for relId in relatedAggIds do
+                                if relId <> aggregateId then
+                                    AggregateCache3.Instance.Clean relId
+                                    DetailsCache.Instance.EvictDependentDetails relId
+                        | Error _ -> ()
+                    | None -> ()
+
                     match corrIdOpt, compensator with
                     | Some corrId, Some comp ->
                         logger.LogInformation(sprintf "Triggering ex-post compensator for correlationId %A, poisoned event %d" corrId eventId)
@@ -96,6 +112,7 @@ module Sanitizer =
             
             if not actions.IsEmpty then
                 AggregateCache3.Instance.Clean aggregateId
+                DetailsCache.Instance.EvictDependentDetails aggregateId
                 
             let isClean = actions.IsEmpty
             let report =

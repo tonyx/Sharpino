@@ -1,18 +1,22 @@
 # Sharpino Migration Guide: Causality Tracking, Unforgiving Evolution & Event Patching
 
-This guide details the architectural enhancements introduced in Sharpino 7.0.0 and provides step-by-step instructions for upgrading existing databases and applications.
+This guide details the architectural enhancements introduced in Sharpino 7.0.1 and provides step-by-step instructions for upgrading existing databases and applications.
 
 ---
 
 ## 1. Architectural Overview
 
 ### 1.1 From "Forgiving" to Strict Evolution
-Previous versions included `evolveSkippingErrors`, an error-filtering fold intended to skip corrupt or schema-drifted events during replay. As formally proven and verified in the test suite:
+Previous versions included `evolveSkippingErrors`, an error-filtering fold intended to skip corrupt or schema-drifted events during replay. During development you may break existing contract and exising events and so a workaround was to try to skipn them. 
+Apart from development and apart from the fact that optimistic lockand MailBoxProcessor on single stream must prevent this possibility, there is still a newer workaround that is somehow preferrable as the previous approach had potential issues.
+It leads to silent domain invariant violations in subsequent dependent events.
+As formally proven and verified in the test suite:
 - Skipping an event creates silent domain invariant violations in subsequent dependent events.
 - Replayed states diverge from cached snapshots.
 - Concurrency locks give a false sense of safety if replay history differs from original command execution.
 
-In this release:
+In this release some improvement are related to the idea that inconsistency must not be there, but if thet are then the event store can be "patched", the cache can be cleaned and the application can continue working logging the anomaly.
+So we have:
 - **Strict unforgiving evolution** is the default and only evolution path (`evolveUNforgivingErrors`).
 - When an anomaly or deserialization error is encountered, evolution halts immediately.
 - Pluggable anomaly reporting is enabled via `IEvolveAnomalyHandler` (e.g. log, quarantine aggregate, or halt host).

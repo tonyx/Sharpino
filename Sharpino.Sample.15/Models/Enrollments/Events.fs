@@ -13,11 +13,13 @@ open Sharpino.Sample._15.Commons.Definitions
 module EnrollmentEvents =
     type EnrollmentEvents =
         | EnrollmentAdded of Enrollment
+        | EnrollmentNoOp
 
         interface Event<Enrollments> with
             member this.Process (enrollments: Enrollments) =
                 match this with
                 | EnrollmentAdded item -> enrollments.AddEnrollment item
+                | EnrollmentNoOp -> Ok enrollments
         
         static member Deserialize (x: string): Result<EnrollmentEvents, string> =
             try

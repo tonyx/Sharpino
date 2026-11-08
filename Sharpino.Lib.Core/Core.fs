@@ -60,10 +60,10 @@ module Core =
         abstract member Execute: 'A -> Result<'A * List<'E>, string>
         abstract member Undoer: AggregateCommandUndoer<'A, 'E>
 
-    let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+    let inline evolveUNforgivingErrorsWithContext<'A, 'E when 'E :> Event<'A>> (aggregateId: Option<AggregateId>) (h: 'A) (events: List<EventId * 'E>) =
         events
         |> List.fold
-            (fun (acc: Result<'A, string>) (e: 'E) ->
+            (fun (acc: Result<'A, string>) (eventId: EventId, e: 'E) ->
                 acc |> Result.bind (fun s ->
                     (e.Process s 
                         |> Result.mapError
@@ -71,8 +71,8 @@ module Core =
                                 let msg = sprintf "Error processing event %A: %s" e x
                                 logger.LogError msg
                                 currentAnomalyHandler.OnEvolveAnomaly({
-                                    AggregateId = None
-                                    EventId = None
+                                    AggregateId = aggregateId
+                                    EventId = Some eventId
                                     ErrorMessage = msg
                                     AggregateType = typeof<'A>
                                 })
@@ -81,6 +81,11 @@ module Core =
                     )
                 )
             ) (h |> Ok)
+
+    let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+        events
+        |> List.map (fun e -> (0, e))
+        |> evolveUNforgivingErrorsWithContext<'A, 'E> None h
 
     [<Obsolete("evolveSkippingErrors is deprecated in favor of strict evolve and ex-post sanitization")>]
     [<TailCall>]
@@ -110,3 +115,6 @@ module Core =
         
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
         evolveUNforgivingErrors h events
+
+    let inline evolveWithContext<'A, 'E when 'E :> Event<'A>> (aggregateId: Option<AggregateId>) (h: 'A) (events: List<EventId * 'E>): Result<'A, string> =
+        evolveUNforgivingErrorsWithContext<'A, 'E> aggregateId h events

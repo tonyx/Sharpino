@@ -44,6 +44,8 @@ module Common =
         eventStore.ResetAggregateStream Balance.Version Balance.StorageName
         eventStore.Reset Teacher.Version Teacher.StorageName
         eventStore.ResetAggregateStream Teacher.Version Teacher.StorageName
+        eventStore.Reset Reservation.Reservation.Version Reservation.Reservation.StorageName
+        eventStore.ResetAggregateStream Reservation.Reservation.Version Reservation.Reservation.StorageName
         AggregateCache3.Instance.Clear()
 
     let inline getHistoryAggregateStorageFreshStateViewer<'A, 'E, 'F

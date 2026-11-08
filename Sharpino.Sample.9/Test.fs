@@ -15,6 +15,8 @@ open Sharpino.Sample._9.ItemConsumer
 open Sharpino.Sample._9.ReservationConsumer
 open Sharpino.Sample._9.Reservation
 open Sharpino.TestUtils
+open Sharpino.Cache
+open Sharpino.Sanitizer
 
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
@@ -212,7 +214,46 @@ let tests =
             Async.Sleep delay |> Async.RunSynchronously
             let retrieveItem = itemManager.GetItem item.Id
             Expect.isError retrieveItem "should be error"
-            
+
+        testCase "Sanitization How-To: Item stream with corrupted event is healed via ItemNoOp" <| fun _ ->
+            setUp pgEventStore
+            let itemManager = ItemManager(pgEventStore, pgStorageItemViewer, pgStorageReservationViewer)
+            let item = Item.MkItem ("Widget", "A test widget")
+            let addItem = itemManager.AddItem item
+            Expect.isOk addItem "Item added successfully"
+
+            let lastEventId = pgEventStore.TryGetLastAggregateEventId Item.Version Item.StorageName item.Id |> Option.defaultValue 0
+
+            // Inject corrupt event into item aggregate stream
+            let corruptJson = """{"Case":"InvalidItemEvent","Item":999}"""
+            let insertRes =
+                pgEventStore.AddAggregateEventsMd
+                    lastEventId Item.Version Item.StorageName item.Id "corrupt test" [corruptJson]
+            Expect.isOk insertRes "Corrupt event inserted"
+
+            // Unforgiving evolve fails
+            AggregateCache3.Instance.Clear()
+            let itemStateRes = itemManager.GetItem item.Id
+            Expect.isError itemStateRes "Unforgiving evolve should fail on corrupt event"
+
+            // Run aggregate sanitization using ItemNoOp
+            let sanitizeRes =
+                Sharpino.Sanitizer.sanitizeAggregateStream<Item, ItemEvent, string>
+                    pgEventStore
+                    item.Id
+                    ItemEvent.ItemNoOp
+                    None
+
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to ItemNoOp"
+
+            // Clear cache and retrieve again -> now succeeds
+            AggregateCache3.Instance.Clear()
+            let cleanItemRes = itemManager.GetItem item.Id
+            Expect.isOk cleanItemRes "Should successfully rebuild aggregate after sanitization"
+            Expect.equal cleanItemRes.OkValue.Name "Widget" "Item name matches"
     ]
     |> testSequenced
     

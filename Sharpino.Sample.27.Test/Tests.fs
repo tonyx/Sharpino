@@ -154,7 +154,7 @@ let tests =
             let addTodoResult = manager.AddTodo todo
             Expect.isOk addTodoResult "Should successfully add todo"
 
-            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info"
+            let updateResult = manager.RenameTodo todo.TodoId "Updated private info"
             Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
 
             // Wait briefly for async L2 writes to settle
@@ -163,7 +163,7 @@ let tests =
             // Assert: L2 Postgres cache table has the statePerAggregate entry
             let keys = getL2PgCacheKeys()
             printfn "Postgres L2 Cache Keys after command: %A" keys
-            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.ToString()))
+            let hasAggregateKey = keys |> List.exists (fun k -> k.Contains(todo.TodoId.Value.ToString()))
             Expect.isTrue hasAggregateKey "Postgres L2 Cache should contain an entry for the updated aggregate"
 
             // Act 2: Simulate any other node evicting its L1 cache entry (via backplane notification)
@@ -174,5 +174,5 @@ let tests =
             let retrievedTodoResult = manager.GetTodo todo.TodoId
             Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
             let retrievedTodo = retrievedTodoResult |> Result.get
-            Expect.equal retrievedTodo.PrivateData "Updated private info" "Retrieved todo should reflect the state updated in L2"
+            Expect.equal retrievedTodo.Text "Updated private info" "Retrieved todo should reflect the state updated in L2"
     ]

@@ -10,11 +10,14 @@ open Sharpino.Sample._9.Reservation
 module ReservationEvents =
     type ReservationEvents =
         | ItemClosed of Guid
+        | ReservationNoOp
         interface Event<Reservation> with
             member this.Process (x: Reservation.Reservation) = 
                 match this with
                 | ItemClosed id ->
                     x.CloseItem id
+                | ReservationNoOp ->
+                    Ok x
                 
         static member Deserialize x =
             jsonPSerializer.Deserialize<ReservationEvents> x

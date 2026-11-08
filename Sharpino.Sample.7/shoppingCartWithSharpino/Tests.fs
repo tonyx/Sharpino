@@ -30,6 +30,7 @@ open Expecto
 open Sharpino.MemoryStorage
 open Sharpino.CommandHandler
 open Sharpino.Cache
+open Sharpino.Sanitizer
 open DotNetEnv
 
 open Microsoft.Extensions.DependencyInjection
@@ -647,6 +648,47 @@ let tests =
                 """
             let deserializedMessage = jsonPSerializer.Deserialize<AggregateMessage<Good, GoodEvents>> sut
             Expect.isOk deserializedMessage "should be ok"
+
+        testCase "Sanitization How-To: Good stream with corrupted event is healed via GoodNoOp" <| fun _ ->
+            setupPgEventStore ()
+            let supermarket = Supermarket(eventStorePostgres, MessageSenders.NoSender, jsonDbGoodsContainerViewer, jsonDbGoodsViewer, jsonDbCartViewer)
+            let good = Good.MkGood (Guid.NewGuid(), "Sample Good", 15.0m)
+            let added = supermarket.AddGood good
+            Expect.isOk added "should be ok"
+
+            let pgStorage: IEventStore<string> = eventStorePostgres :> IEventStore<string>
+            let lastEventId = pgStorage.TryGetLastAggregateEventId Good.Version Good.StorageName good.Id |> Option.defaultValue 0
+            
+            // Inject corrupt event into good aggregate stream
+            let corruptJson = """{"Case":"InvalidGoodEvent","Item":123}"""
+            let insertRes = 
+                pgStorage.AddAggregateEventsMd 
+                    lastEventId Good.Version Good.StorageName good.Id "corrupt test" [corruptJson]
+            Expect.isOk insertRes "Corrupt event inserted"
+
+            // Unforgiving evolve fails
+            AggregateCache3.Instance.Clear()
+            let goodStateRes = supermarket.RetrieveGoodBypassingContainer good.Id
+            Expect.isError goodStateRes "Unforgiving evolve should fail on corrupt event"
+
+            // Run aggregate sanitization using GoodNoOp
+            let sanitizeRes = 
+                Sharpino.Sanitizer.sanitizeAggregateStream<Good, GoodEvents, string>
+                    pgStorage
+                    good.Id
+                    GoodEvents.GoodNoOp
+                    None
+
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to GoodNoOp"
+
+            // Clear cache and retrieve again -> now succeeds
+            AggregateCache3.Instance.Clear()
+            let cleanGoodRes = supermarket.RetrieveGoodBypassingContainer good.Id
+            Expect.isOk cleanGoodRes "Should successfully rebuild aggregate after sanitization"
+            Expect.equal cleanGoodRes.OkValue.Name "Sample Good" "Good name matches"
         
     ]
     |> testSequenced

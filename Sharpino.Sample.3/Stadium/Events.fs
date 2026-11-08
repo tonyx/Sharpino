@@ -10,6 +10,7 @@ module StadiumEvents =
     type StadiumEvent =
         | RowReferenceAdded of Guid
         | RowReferenceRemoved of Guid
+        | StadiumNoOp
             interface Event<Stadium> with
                 member this.Process (x: Stadium) =
                     match this with
@@ -17,6 +18,7 @@ module StadiumEvents =
                         x.AddRowReference id
                     | RowReferenceRemoved id ->
                         x.RemoveRowReference id
+                    | StadiumNoOp -> Ok x
 
         static member Deserialize  (json: Json) =
             jsonPSerializer.Deserialize<StadiumEvent> json

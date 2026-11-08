@@ -14,12 +14,15 @@ open Sharpino.TransportTycoon.Transporter
 
 module TruckEvents =
     type TruckEvents =
-        SiteSet of Guid
+        | SiteSet of Guid
+        | TruckNoOp
             interface Event<Transporter> with
                 member this.Process (x: Transporter) =
                     match this with
                     | SiteSet siteId ->
                         x.SetSite siteId
+                    | TruckNoOp ->
+                        Ok x
            static member Deserialize x =
                 jsonPSerializer.Deserialize<TruckEvents> x
            member this.Serialize =

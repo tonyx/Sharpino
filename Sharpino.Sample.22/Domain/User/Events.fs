@@ -11,6 +11,7 @@ type UserEvents =
     | Renamed of string
     | TodoAssigned of TodoId
     | TodoDetatched of TodoId
+    | UserNoOp
     
     interface Event<User> with
         member this.Process user =
@@ -18,6 +19,7 @@ type UserEvents =
             | Renamed newName -> user.Rename newName
             | TodoAssigned todoId -> user.AssignTodo todoId
             | TodoDetatched todoId -> user.DetatchTodo todoId
+            | UserNoOp -> Ok user
 
     static member Deserialize (x: string): Result<UserEvents, string> =
         try

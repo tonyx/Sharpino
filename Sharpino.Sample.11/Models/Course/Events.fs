@@ -12,11 +12,13 @@ module CourseEvents =
     type CourseEvents =
         | Enrolled of StudentId
         | Unenrolled of StudentId
+        | CourseNoOp
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
                 | Enrolled id -> course.Enroll id
                 | Unenrolled id -> course.Unenroll id
+                | CourseNoOp -> Ok course
        
         static member Deserialize (x: string): Result<CourseEvents, string> =
             try

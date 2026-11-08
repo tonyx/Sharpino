@@ -14,11 +14,13 @@ module StudentEvents =
     type StudentEvents =
         | EnrolledCourse of CourseId
         | UnenrolledCourse of CourseId
+        | StudentNoOp
         interface Event<Student> with
             member this.Process (student: Student) =
                 match this with
                 | EnrolledCourse id -> student.EnrollCourse id
                 | UnenrolledCourse id -> student.UnenrollCourse id
+                | StudentNoOp -> Ok student
        
         static member Deserialize (x: string) =
             try

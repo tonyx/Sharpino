@@ -20,6 +20,7 @@ open Expecto
 open Sharpino.MemoryStorage
 open Sharpino.CommandHandler
 open Sharpino.Cache
+open Sharpino.Sanitizer
 open DotNetEnv
 open Sharpino.TransportTycoon.Definitions
 open DotNetEnv
@@ -520,12 +521,45 @@ let tests =
             let tick = transportTycoon.Tick ()
             Expect.isOk tick "should be ok"
 
-            // Expect.isOk tick "should be ok"
-            // let retrieveTruck2 = transportTycoon.GetTruck truck.Id
-            // Expect.isOk retrieveTruck2 "should be ok"
-            // let retrieveTruckValue2 = retrieveTruck2.OkValue
-            // Expect.isSome retrieveTruckValue2.ConnectionChosen "should be none"
+        testCase "Sanitization How-To: Truck stream with corrupted event is healed via TruckNoOp" <| fun _ ->
+            setUp eventStorePg
+            let transportTycoon = TransportTycoon(eventStorePg, MessageSenders.NoSender, siteViewerPg, truckViewerPg)
+            let truck = Transporter.MkTransporter (Guid.NewGuid(), "Truck Sanitization", Guid.NewGuid())
+            let truckAdded = transportTycoon.AddTruck truck
+            Expect.isOk truckAdded "should be ok"
 
+            let lastEventId = eventStorePg.TryGetLastAggregateEventId Transporter.Version Transporter.StorageName truck.Id |> Option.defaultValue 0
+            
+            // Inject corrupt event into truck aggregate stream
+            let corruptJson = """{"Case":"InvalidTruckEvent","Item":999}"""
+            let insertRes = 
+                eventStorePg.AddAggregateEventsMd 
+                    lastEventId Transporter.Version Transporter.StorageName truck.Id "corrupt test" [corruptJson]
+            Expect.isOk insertRes "Corrupt event inserted"
+
+            // Unforgiving evolve fails
+            AggregateCache3.Instance.Clear()
+            let truckStateRes = transportTycoon.GetTruck truck.Id
+            Expect.isError truckStateRes "Unforgiving evolve should fail on corrupt event"
+
+            // Run aggregate sanitization using TruckNoOp
+            let sanitizeRes = 
+                Sharpino.Sanitizer.sanitizeAggregateStream<Transporter, TruckEvents, string>
+                    eventStorePg
+                    truck.Id
+                    TruckEvents.TruckNoOp
+                    None
+
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to TruckNoOp"
+
+            // Clear cache and retrieve again -> now succeeds
+            AggregateCache3.Instance.Clear()
+            let cleanTruckRes = transportTycoon.GetTruck truck.Id
+            Expect.isOk cleanTruckRes "Should successfully rebuild aggregate after sanitization"
+            Expect.equal cleanTruckRes.OkValue.DestinationCode "Truck Sanitization" "Truck DestinationCode matches"
     ]
     |> testSequenced
 

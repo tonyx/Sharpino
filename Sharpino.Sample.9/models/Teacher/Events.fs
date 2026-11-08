@@ -9,6 +9,7 @@ module TeacherEvents =
     type TeacherEvents =
         | CourseAdded of Guid
         | CourseRemoved of Guid
+        | TeacherNoOp
         interface Event<Teacher> with
             member this.Process (x: Teacher.Teacher) = 
                 match this with
@@ -16,6 +17,8 @@ module TeacherEvents =
                     x.AddCourse id
                 | CourseRemoved id ->
                     x.RemoveCourse id
+                | TeacherNoOp ->
+                    Ok x
         static member Deserialize x =
             jsonPSerializer.Deserialize<TeacherEvents> x
         member this.Serialize =

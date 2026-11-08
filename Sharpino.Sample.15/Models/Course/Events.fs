@@ -13,10 +13,12 @@ open Sharpino.Sample._15.Commons.Definitions
 module CourseEvents =
     type CourseEvents =
         | Renamed of string
+        | CourseNoOp
         interface Event<Course> with
             member this.Process (course: Course) =
                 match this with
                 | Renamed newName -> course.Rename newName
+                | CourseNoOp -> Ok course
         
         static member Deserialize (x: string): Result<CourseEvents, string> =
             try

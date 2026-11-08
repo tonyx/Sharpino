@@ -21,6 +21,7 @@ open Sharpino.Sample._11.CourseManager
 open DotNetEnv
 open Sharpino.Sample._11.Student
 open Sharpino.Sample._11.StudentEvents
+open Sharpino.Sanitizer
 open Sharpino.Storage
 
 open Microsoft.Extensions.DependencyInjection
@@ -149,6 +150,45 @@ let tests =
           let studentRetrieved = courseManager.GetStudent student.StudentId
           Expect.isOk courseRetrieved "Course not retrieved"
           Expect.isOk studentRetrieved "Student not retrieved"
+
+       testCase "Sanitization How-To: Student stream with corrupted event is healed via StudentNoOp" <| fun _ ->
+          setUp ()
+          let student = Student.MkStudent ("SanitizedStudent", 4)
+          let studentCreated = courseManager.AddStudent student
+          Expect.isTrue studentCreated.IsOk "student created"
+
+          let lastEventId = pgEventStore.TryGetLastAggregateEventId Student.Version Student.StorageName student.StudentId.Id |> Option.defaultValue 0
+
+          // Inject corrupt event into student aggregate stream
+          let corruptJson = """{"Case":"InvalidStudentEvent","Item":999}"""
+          let insertRes =
+             pgEventStore.AddAggregateEventsMd
+                lastEventId Student.Version Student.StorageName student.StudentId.Id "corrupt test" [corruptJson]
+          Expect.isOk insertRes "Corrupt event inserted"
+
+          // Unforgiving evolve fails
+          AggregateCache3.Instance.Clear()
+          let studentStateRes = courseManager.GetStudent student.StudentId
+          Expect.isError studentStateRes "Unforgiving evolve should fail on corrupt event"
+
+          // Run aggregate sanitization using StudentNoOp
+          let sanitizeRes =
+             Sharpino.Sanitizer.sanitizeAggregateStream<Student, StudentEvents, string>
+                pgEventStore
+                student.StudentId.Id
+                StudentEvents.StudentNoOp
+                None
+
+          Expect.isOk sanitizeRes "Sanitization should succeed"
+          let report = sanitizeRes |> Result.get
+          Expect.isFalse report.IsClean "Stream was repaired"
+          Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to StudentNoOp"
+
+          // Clear cache and retrieve again -> now succeeds
+          AggregateCache3.Instance.Clear()
+          let cleanStudentRes = courseManager.GetStudent student.StudentId
+          Expect.isOk cleanStudentRes "Should successfully rebuild aggregate after sanitization"
+          Expect.equal cleanStudentRes.OkValue.Name "SanitizedStudent" "Student name matches"
           
        testCase "insert 1000 students" <| fun _ ->
           setUp ()

@@ -121,7 +121,7 @@ let tests =
             let addTodoResult = manager.AddTodo todo
             Expect.isOk addTodoResult "Should successfully add todo"
 
-            let updateResult = manager.UpdatePrivateData todo.TodoId "Updated private info in SQL"
+            let updateResult = manager.RenameTodo todo.TodoId "Updated private info in SQL"
             Expect.isOk updateResult "Should successfully update private data via runAggregateCommand"
 
             // Wait briefly for async L2 writes to settle
@@ -140,5 +140,5 @@ let tests =
             let retrievedTodoResult = manager.GetTodo todo.TodoId
             Expect.isOk retrievedTodoResult "Should successfully retrieve todo from L2 hit following L1 miss"
             let retrievedTodo = retrievedTodoResult |> Result.get
-            Expect.equal retrievedTodo.PrivateData "Updated private info in SQL" "Retrieved todo should reflect the state updated in L2"
+            Expect.equal retrievedTodo.Text "Updated private info in SQL" "Retrieved todo should reflect the state updated in L2"
     ]

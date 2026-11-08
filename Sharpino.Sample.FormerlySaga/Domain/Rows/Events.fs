@@ -10,6 +10,7 @@ type RowEvents =
     | BookingsAdded of List<Guid> * int
     | SeatsAdded of int
     | SeatsRemoved of int
+    | RowNoOp
     
     interface Event<Row> with
         member
@@ -20,6 +21,7 @@ type RowEvents =
                 | BookingsAdded (ids, n) -> x.AddBookings (ids, n)
                 | SeatsAdded n -> x.AddSeats n
                 | SeatsRemoved n -> x.RemoveSeats n
+                | RowNoOp -> Ok x
 
     member
         this.Serialize =

@@ -229,4 +229,141 @@ module SanitizerAndCausalityTests =
                 Expect.equal lastId 3 "last event ID must be 3"
                 Expect.equal state.Name "ContextName" "name must match"
                 Expect.equal state.Tags [Music] "tags must match"
+
+            testCase "Sanitization evicts dependent views from DetailsCache for healed aggregate" <| fun () ->
+                DetailsCache.Instance.Clear()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initial = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initial.Serialize
+                
+                // Event 1: Rename to "First"
+                let ev1 = (SampleObjectRenamed "First").Serialize
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1]
+                
+                // Memoize a view depending on aggId
+                let viewKey = DetailsCacheKey ("SampleObjectView", aggId)
+                let viewBuilder () =
+                    let refreshable = mkRefreshableAsyncFromSync (fun () ->
+                        getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
+                        |> Result.map (fun (_, s) -> s.Name)
+                    )
+                    Ok (refreshable, [aggId])
+                
+                let memoized = DetailsCache.Instance.Memoize viewBuilder viewKey
+                Expect.isOk memoized "memoizing view should succeed"
+                Expect.isTrue (DetailsCache.Instance.ContainsKey viewKey) "view must be cached in DetailsCache"
+                
+                // Poison the aggregate with an invalid rename to "First" again
+                let ev2_poison = (SampleObjectRenamed "First").Serialize
+                let _ = storage.AddAggregateEventsMd 1 SampleObject.Version SampleObject.StorageName aggId "md" [ev2_poison]
+                
+                // Sanitize the aggregate
+                let sanitizeRes = sanitizeAggregateStream<SampleObject, SampleObjectEvents, string> storage aggId SampleObjectNoOp None
+                Expect.isOk sanitizeRes "sanitization should succeed"
+                let report = sanitizeRes |> Result.get
+                Expect.isFalse report.IsClean "stream should have had anomalies"
+                
+                // DetailsCache MUST now be evicted for this viewKey!
+                Expect.isFalse (DetailsCache.Instance.ContainsKey viewKey) "dependent view must be evicted from DetailsCache after sanitization"
+                Expect.isNone (DetailsCache.Instance.TryGet viewKey) "TryGet must return None for evicted view"
+
+            testCase "Sanitization evicts DetailsCache across correlated sibling aggregates" <| fun () ->
+                DetailsCache.Instance.Clear()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggAId = Guid.NewGuid()
+                let aggBId = Guid.NewGuid()
+                let sharedCorrId = Guid.NewGuid()
+                
+                let initialA = SampleObject.MkSampleObject(aggAId, "AggA_Initial")
+                let initialB = SampleObject.MkSampleObject(aggBId, "AggB_Initial")
+                let _ = storage.SetInitialAggregateState aggAId SampleObject.Version SampleObject.StorageName initialA.Serialize
+                let _ = storage.SetInitialAggregateState aggBId SampleObject.Version SampleObject.StorageName initialB.Serialize
+                
+                // Legitimate multi-aggregate transaction stamped with shared correlation ID
+                let evA1 = (SampleObjectRenamed "AggA_Valid").Serialize
+                let evB1 = (SampleObjectRenamed "AggB_Valid").Serialize
+                let _ = storage.AddAggregateEventsWithCausalityMd 0 SampleObject.Version SampleObject.StorageName aggAId "md" [evA1] (Some sharedCorrId) None
+                let _ = storage.AddAggregateEventsWithCausalityMd 0 SampleObject.Version SampleObject.StorageName aggBId "md" [evB1] (Some sharedCorrId) None
+                
+                // Memoize views for both Agg A and Agg B
+                let viewAKey = DetailsCacheKey ("ViewA", aggAId)
+                let viewBKey = DetailsCacheKey ("ViewB", aggBId)
+                
+                let viewABuilder () =
+                    let refreshable = mkRefreshableAsyncFromSync (fun () ->
+                        getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggAId storage
+                        |> Result.map (fun (_, s) -> s.Name)
+                    )
+                    Ok (refreshable, [aggAId])
+                    
+                let viewBBuilder () =
+                    let refreshable = mkRefreshableAsyncFromSync (fun () ->
+                        getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggBId storage
+                        |> Result.map (fun (_, s) -> s.Name)
+                    )
+                    Ok (refreshable, [aggBId])
+                
+                let _ = DetailsCache.Instance.Memoize viewABuilder viewAKey
+                let _ = DetailsCache.Instance.Memoize viewBBuilder viewBKey
+                
+                Expect.isTrue (DetailsCache.Instance.ContainsKey viewAKey) "View A must be cached"
+                Expect.isTrue (DetailsCache.Instance.ContainsKey viewBKey) "View B must be cached"
+                
+                // Poison Agg A with an invalid event that shares the same correlation ID
+                let evA2_poison = (SampleObjectRenamed "AggA_Valid").Serialize
+                let _ = storage.AddAggregateEventsWithCausalityMd 1 SampleObject.Version SampleObject.StorageName aggAId "md" [evA2_poison] (Some sharedCorrId) None
+                
+                // Sanitize Agg A
+                let sanitizeRes = sanitizeAggregateStream<SampleObject, SampleObjectEvents, string> storage aggAId SampleObjectNoOp None
+                Expect.isOk sanitizeRes "sanitization should succeed"
+                
+                // Both View A and correlated sibling View B must be evicted from DetailsCache!
+                Expect.isFalse (DetailsCache.Instance.ContainsKey viewAKey) "View A must be evicted from DetailsCache"
+                Expect.isFalse (DetailsCache.Instance.ContainsKey viewBKey) "Correlated View B must also be evicted from DetailsCache"
+
+            testCase "Automated interceptor sanitization: evolve anomaly triggers automatic healing via IEvolveAnomalyHandler" <| fun () ->
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+
+                // Event 1: Valid rename to "Step1"
+                let ev1 = (SampleObjectRenamed "Step1").Serialize
+                // Event 2: Poison event -> duplicate rename to "Step1" (violates domain rule "this.Name <> name")
+                let ev2 = (SampleObjectRenamed "Step1").Serialize
+                // Event 3: Valid rename to "Step2"
+                let ev3 = (SampleObjectRenamed "Step2").Serialize
+
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2; ev3]
+
+                // Set up an automated interceptor anomaly handler (simulating an ASP.NET Core service/handler)
+                let mutable healedAggregates = []
+                let autoHealingHandler =
+                    { new IEvolveAnomalyHandler with
+                        member this.OnEvolveAnomaly(ctx: AnomalyContext) =
+                            match ctx.AggregateId with
+                            | Some id when ctx.AggregateType = typeof<SampleObject> ->
+                                let res = sanitizeAggregateStream<SampleObject, SampleObjectEvents, string> storage id SampleObjectNoOp None
+                                if Result.isOk res then
+                                    healedAggregates <- id :: healedAggregates
+                            | _ -> ()
+                    }
+
+                let prevHandler = currentAnomalyHandler
+                currentAnomalyHandler <- autoHealingHandler
+                try
+                    // Initial fresh state read encounters the poison event during evolveWithContext,
+                    // which triggers the autoHealingHandler to patch the stream.
+                    let freshAttempt1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
+                    Expect.isError freshAttempt1 "First read should halt due to the anomaly"
+                    Expect.contains healedAggregates aggId "Anomaly interceptor must have been triggered with the aggregate ID and healed the stream"
+
+                    // Next read automatically succeeds because the stream has been healed with NoOp!
+                    let freshAttempt2 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
+                    Expect.isOk freshAttempt2 "Subsequent read must succeed on the healed stream"
+                    let (_, finalState) = freshAttempt2 |> Result.get
+                    Expect.equal finalState.Name "Step2" "State should evolve cleanly to Step2"
+                finally
+                    currentAnomalyHandler <- prevHandler
         ]

@@ -9,6 +9,7 @@ module Events =
         | ChangedDescription of string
         | ReferenceCounterDecremented of int
         | ReferenceCounterIncremented of int
+        | ItemNoOp
         interface Event<Item> with
             member this.Process (item: Item) =
                 match this with
@@ -16,6 +17,7 @@ module Events =
                 | ChangedDescription description -> item.ChangeDescription description
                 | ReferenceCounterDecremented i -> item.DecrementReferenceCounter i
                 | ReferenceCounterIncremented i -> item.IncrementReferenceCounter i 
+                | ItemNoOp -> Ok item 
             
         static member Deserialize x =
             jsonPSerializer.Deserialize<ItemEvent> x

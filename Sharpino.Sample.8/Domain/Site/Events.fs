@@ -14,6 +14,7 @@ module SiteEvents =
     type SiteEvents =
         | TruckPlaced of Guid
         | ConnectionAdded of Connection
+        | SiteNoOp
             interface Event<Site.Site> with
                 member this.Process (x: Site.Site) =
                     match this with
@@ -21,6 +22,8 @@ module SiteEvents =
                         x.PlaceTruck truckRef
                     | ConnectionAdded connection->
                         x.AddConnection connection
+                    | SiteNoOp ->
+                        Ok x
            static member Deserialize x =
                 jsonPSerializer.Deserialize<SiteEvents> x
            member this.Serialize =

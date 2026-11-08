@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>7.0.0</Version>
+    <Version>7.0.1</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -70,7 +70,7 @@
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
 
-        <PackageReference Include="Sharpino.Core" Version="7.0.0" />
+        <PackageReference Include="Sharpino.Core" Version="7.0.1" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -109,7 +109,7 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
     
-    <PackageReference Include="Sharpino.Core" Version="7.0.0" />
+    <PackageReference Include="Sharpino.Core" Version="7.0.1" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -148,7 +148,7 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
     
-    <PackageReference Include="Sharpino.Core" Version="7.0.0" />
+    <PackageReference Include="Sharpino.Core" Version="7.0.1" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -179,10 +179,8 @@
   </ItemGroup>
 
   <!-- needed if you are developing the core: -->
-<!--    -->
-    
- <!-- <ItemGroup>
-  <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
- </ItemGroup> -->
+  <!-- <ItemGroup>
+    <ProjectReference Include="..\Sharpino.Lib.Core\Sharpino.Lib.Core.fsproj" />
+  </ItemGroup> -->
 
 </Project>

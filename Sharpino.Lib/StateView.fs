@@ -417,10 +417,9 @@ module StateView =
                                     let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
                                     let! deserEvents =
                                         events 
-                                        |>> snd 
-                                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                                        |> List.traverseResultM (fun (evId, raw) -> 'E.Deserialize raw |> Result.map (fun e -> (evId, e)))
                                     let! newState = 
-                                        deserEvents |> evolve<'A, 'E> state
+                                        deserEvents |> evolveWithContext<'A, 'E> None state
                                     return newState
                                 }
             
@@ -452,11 +451,10 @@ module StateView =
                         let! (eventId, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
                         let! deserEvents =
                             events 
-                            |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                            |> List.traverseResultM (fun (evId, raw) -> 'E.Deserialize raw |> Result.map (fun e -> (evId, e)))
                         let! unboxedState = unboxCacheState<'A> state
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> unboxedState
+                            deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState
                         let lastEventId =
                             if (events.Length > 0)
                                 then (events |> List.last |> fst)
@@ -493,11 +491,10 @@ module StateView =
 
                     let! deserEvents =
                         events 
-                        |>> snd 
-                        |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                        |> List.traverseResultM (fun (evId, raw) -> 'E.Deserialize raw |> Result.map (fun e -> (evId, e)))
                     let! unboxedState = unboxCacheState<'A> state
                     let! newState = 
-                        deserEvents |> evolve<'A, 'E> unboxedState   
+                        deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState   
                     let lastEventId =
                         if (events.Length > 0)
                             then (events |> List.last |> fst)
@@ -562,11 +559,10 @@ module StateView =
                         let! (_, state, events) = snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
                         let! deserEvents =
                             events 
-                            |>> snd 
-                            |> List.traverseResultM (fun x -> 'E.Deserialize x)
+                            |> List.traverseResultM (fun (evId, raw) -> 'E.Deserialize raw |> Result.map (fun e -> (evId, e)))
                         let! unboxedState = unboxCacheState<'A> state
                         let! newState = 
-                            deserEvents |> evolve<'A, 'E> unboxedState
+                            deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState
                         return newState
                     }
             

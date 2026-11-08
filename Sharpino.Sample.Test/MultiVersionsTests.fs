@@ -23,6 +23,7 @@ open Sharpino.Sample.Todos.TodoEvents
 open Tests.Sharpino.Shared
 
 open Sharpino.TestUtils
+open Sharpino.CommandHandler
 open System.Threading
 open FsToolkit.ErrorHandling
 open Sharpino.Storage
@@ -513,6 +514,44 @@ let multiVersionsTests =
 
             let result = ap.getAllTodos().OkValue 
             Expect.equal (result |> List.head).TagIds [tagId2] "should be equal"
+
+        testCase "Sanitization How-To: Context stream with corrupted event is healed via TagNoOp" <| fun _ ->
+            let ap = currentPostgresApp
+            let _ = ap._reset()
+            let tagId = Guid.NewGuid()
+            let tag1 = mkTag tagId "test" Color.Blue
+            let added = ap.addTag tag1
+            Expect.isOk added "Tag added"
+
+            // Inject an invalid event directly into tags stream
+            let lastEventId = (pgStorage :> IEventStore<string>).TryGetLastEventId TagsContext.Version TagsContext.StorageName |> Option.defaultValue 0
+            let invalidEvent = """{"BadEvent":{"invalid": 123}}"""
+            let injectRes = (pgStorage :> IEventStore<string>).AddEventsMd lastEventId TagsContext.Version TagsContext.StorageName "test" [invalidEvent]
+            Expect.isOk injectRes "Injected raw event"
+
+            // Invalidate cache
+            StateCache2<TagsContext>.Instance.Invalidate ()
+
+            // Replay/State retrieval must now FAIL under strict unforgiving evolve
+            let viewer = getStorageFreshStateViewer<TagsContext, TagEvent, string> (pgStorage :> IEventStore<string>)
+            let stateBefore = viewer ()
+            Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+
+            // Execute Sanitization using TagNoOp
+            let sanitizeRes =
+                Sharpino.Sanitizer.sanitizeContextStream<TagsContext, TagEvent, string>
+                    (pgStorage :> IEventStore<string>)
+                    TagNoOp
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to TagNoOp"
+
+            // Verify: TagsContext now evolves cleanly!
+            let stateAfter = viewer ()
+            Expect.isOk stateAfter "TagsContext must evolve cleanly after sanitization"
+            let (_, (healedContext: TagsContext)) = stateAfter |> Result.get
+            Expect.equal (healedContext.GetTags().Length) 1 "Healed context retains valid state"
 
     ] 
     |> testSequenced

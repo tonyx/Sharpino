@@ -1,4 +1,4 @@
-\restrict KYvgAd2i3Vf1jCZ1TVC4UyrDFO3X9cIOUxg7QN92EhXbh3cBQrZ3alw5ez4elpI
+\restrict m9SJR5Rx79zNyuLTqEQiwwfmats3spgDpbyUiDP0LFdZAdLou6aunAXzAxRr3R5
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -669,7 +669,7 @@ ALTER TABLE ONLY public.snapshots_01_sampleobject
 -- PostgreSQL database dump complete
 --
 
-\unrestrict KYvgAd2i3Vf1jCZ1TVC4UyrDFO3X9cIOUxg7QN92EhXbh3cBQrZ3alw5ez4elpI
+\unrestrict m9SJR5Rx79zNyuLTqEQiwwfmats3spgDpbyUiDP0LFdZAdLou6aunAXzAxRr3R5
 
 
 --

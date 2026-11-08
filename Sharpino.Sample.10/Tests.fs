@@ -309,4 +309,44 @@ module Tests =
                     |> List.map _.OkValue
                 
                 Expect.isTrue (retrievedCounters |> List.forall (fun x -> x.Value = 1)) "should be all 2"
+
+            testCase "Sanitization How-To: Counter stream with corrupted event is healed via CounterNoOp" <| fun _ ->
+                let eventStore = PgBinaryStore connection
+                setUp eventStore
+                let api = counterApi ()
+                let counter = Counter.Initial
+                Expect.isOk (api.CreateCounter counter) "should be ok"
+                Expect.isOk (api.IncrementCounter counter.Id) "should be ok"
+
+                let pgStorage: IEventStore<byte[]> = eventStore :> IEventStore<byte[]>
+                let lastEventId = pgStorage.TryGetLastAggregateEventId Counter.Version Counter.StorageName counter.Id |> Option.defaultValue 0
+
+                // Inject a corrupt (undeserializable) binary event into the counter stream
+                let corruptBytes: byte[] = [| 0uy; 1uy; 2uy; 3uy; 4uy |]
+                let insertRes =
+                    pgStorage.AddAggregateEventsMd
+                        lastEventId Counter.Version Counter.StorageName counter.Id "corrupt test" [corruptBytes]
+                Expect.isOk insertRes "Corrupt event inserted"
+
+                // Unforgiving evolve fails
+                AggregateCache3.Instance.Clear()
+                Expect.isError (api.GetCounter counter.Id) "Unforgiving evolve should fail on corrupt event"
+
+                // Run aggregate sanitization using CounterNoOp
+                let sanitizeRes =
+                    Sharpino.Sanitizer.sanitizeAggregateStream<Counter, CounterEvents, byte[]>
+                        pgStorage
+                        counter.Id
+                        CounterEvents.CounterNoOp
+                        None
+                Expect.isOk sanitizeRes "Sanitization should succeed"
+                let report = sanitizeRes |> Result.get
+                Expect.isFalse report.IsClean "Stream was repaired"
+                Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to CounterNoOp"
+
+                // Clear cache and retrieve again -> now succeeds, valid history preserved
+                AggregateCache3.Instance.Clear()
+                let cleanCounterRes = api.GetCounter counter.Id
+                Expect.isOk cleanCounterRes "Should successfully rebuild aggregate after sanitization"
+                Expect.equal cleanCounterRes.OkValue.Value 1 "Valid increment preserved"
         ]

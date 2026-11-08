@@ -9,11 +9,13 @@ module AccountEvents =
     type AccountEvents =
         | AmountAdded of int
         | AmountRemoved of int
+        | AccountNoOp
         interface Event<Account> with
             member this.Process (account: Account) =
                 match this with
                 | AmountAdded amount -> account.AddAmount amount
                 | AmountRemoved amount -> account.AddAmount (-amount)
+                | AccountNoOp -> Ok account
         static member Deserialize x =
             binarySerializer.Deserialize<AccountEvents> x
         member this.Serialize =

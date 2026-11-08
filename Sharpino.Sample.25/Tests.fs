@@ -386,5 +386,43 @@ let tests =
                   Expect.equal decodedV2_2.OkValue.Tag "upcasted" "the upcasted snapshot must still contain the V2 tag"
               }
 
+          testCase "Sanitization How-To: Todo stream with corrupted event is healed via TodoNoOp"
+          <| fun _ ->
+              setUp ()
+              let todoManager = TodoManager(MessageSenders.NoSender, pgEventStore, todoViewer)
+              let learnFSharp = Todo.New "Learn F#"
+              let addRes = todoManager.AddTodo learnFSharp
+              Expect.isOk addRes "Todo created"
+
+              // Inject an invalid/corrupted event directly into todo stream
+              let invalidEvent = """{"BadEvent":{"invalid": 123}}"""
+              let injectRes = (pgEventStore :> IEventStore<string>).AddAggregateEventsMd 0 Todo.Version Todo.StorageName learnFSharp.Id "test" [invalidEvent]
+              Expect.isOk injectRes "Injected raw event"
+
+              // Invalidate cache
+              AggregateCache3.Instance.Clean learnFSharp.Id
+
+              // Replay/State retrieval must now FAIL under strict unforgiving evolve
+              let stateBefore = todoViewer learnFSharp.Id
+              Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+
+              // Execute Sanitization using TodoNoOp
+              let sanitizeRes =
+                  Sharpino.Sanitizer.sanitizeAggregateStream<Todo, TodoEvents, string>
+                      (pgEventStore :> IEventStore<string>)
+                      learnFSharp.Id
+                      TodoNoOp
+                      None
+              Expect.isOk sanitizeRes "Sanitization should succeed"
+              let report = sanitizeRes |> Result.get
+              Expect.isFalse report.IsClean "Stream was repaired"
+              Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to TodoNoOp"
+
+              // Verify: Todo state now evolves cleanly!
+              let stateAfter = todoViewer learnFSharp.Id
+              Expect.isOk stateAfter "Todo must evolve cleanly after sanitization"
+              let (_, healedTodo) = stateAfter |> Result.get
+              Expect.equal healedTodo.Text "Learn F#" "Healed todo retains valid state"
+
           ]
     |> testSequenced

@@ -13,6 +13,7 @@ open Sharpino.EventBroker
 open Sharpino.Template.Models
 open Sharpino.Cache
 open Sharpino.CommandHandler
+open Sharpino.Sanitizer
 open Sharpino.Template
 open Sharpino.Template.Manager
 open Sharpino.Template.Commons
@@ -31,7 +32,7 @@ let connection =
     $"User Id={userId};" +
     $"Password={password}"
 
-let pgEventStore = PgStorage.PgEventStore connection
+let pgEventStore: Storage.IEventStore<string> = PgStorage.PgEventStore connection
 
 let setUp () =
     pgEventStore.Reset Material.Version Material.StorageName |> ignore
@@ -429,5 +430,44 @@ let tests =
             let material = materialManager.GetMaterial pistacchio.MaterialId
             Expect.isOk material "should be ok"
             Expect.equal material.OkValue.Availability.Value 1 "should be 1"
+
+        testCase "Sanitization How-To: Material stream with corrupted event is healed via MaterialNoOp" <| fun _ ->
+            setUp ()
+            let material = Material.New "Vanilla" (Quantity.New 5).OkValue
+            let addRes = materialManager.AddMaterial material
+            Expect.isOk addRes "material added"
+
+            let lastEventId = pgEventStore.TryGetLastAggregateEventId Material.Version Material.StorageName material.MaterialId.Value |> Option.defaultValue 0
+
+            // Inject corrupt event into material aggregate stream
+            let corruptJson = """{"Case":"InvalidMaterialEvent","Item":999}"""
+            let insertRes =
+                pgEventStore.AddAggregateEventsMd
+                    lastEventId Material.Version Material.StorageName material.MaterialId.Value "corrupt test" [corruptJson]
+            Expect.isOk insertRes "Corrupt event inserted"
+
+            // Unforgiving evolve fails
+            AggregateCache3.Instance.Clear()
+            let materialStateRes = materialManager.GetMaterial material.MaterialId
+            Expect.isError materialStateRes "Unforgiving evolve should fail on corrupt event"
+
+            // Run aggregate sanitization using MaterialNoOp
+            let sanitizeRes =
+                Sharpino.Sanitizer.sanitizeAggregateStream<Material, MaterialEvents, string>
+                    pgEventStore
+                    material.MaterialId.Value
+                    MaterialEvents.MaterialNoOp
+                    None
+
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to MaterialNoOp"
+
+            // Clear cache and retrieve again -> now succeeds
+            AggregateCache3.Instance.Clear()
+            let cleanMaterialRes = materialManager.GetMaterial material.MaterialId
+            Expect.isOk cleanMaterialRes "Should successfully rebuild aggregate after sanitization"
+            Expect.equal cleanMaterialRes.OkValue.Name "Vanilla" "Material name matches"
     ] 
     |> testSequenced

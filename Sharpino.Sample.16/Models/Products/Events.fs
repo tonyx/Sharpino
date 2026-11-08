@@ -8,9 +8,11 @@ open FsToolkit.ErrorHandling
 open System
 
 type ProductEvents =
+    | ProductNoOp
     interface Event<Product> with
         member this.Process item =
-            failwith "nont implemented"
+            match this with
+            | ProductNoOp -> Ok item
             
     static member Deserialize (s: string) =
         JsonUtils.DeserializeJson<ProductEvents> s

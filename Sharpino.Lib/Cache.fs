@@ -300,6 +300,9 @@ module Cache =
                 for key in keys do
                     this.Evict key
                 ()
+
+        member this.EvictDependentDetails (aggregateId: AggregateId) =
+            this.evictDependentDetails aggregateId
         
         member private this.TryCacheAsync (key: string, value: RefreshableAsync<_>) =
             try
@@ -358,6 +361,14 @@ module Cache =
         member this.ClearL2 () =
             statesDetails.Clear(false)
             objectDetailsAssociationsCache.Clear(false)
+
+        member this.ContainsKey (key: DetailsCacheKey) =
+            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
+            not (obj.ReferenceEquals(v, null))
+
+        member this.TryGet (key: DetailsCacheKey) : Option<obj> =
+            let v = statesDetails.GetOrDefault<obj>(key.Value, null)
+            if obj.ReferenceEquals(v, null) then None else Some v
 
     [<CLIMutable>]
     type CachedAggregateEntry = {
@@ -471,13 +482,19 @@ module Cache =
                                 logger.LogInformation (sprintf "[Cache] AggregateCache3: IsCurrentlyUsable = %A" (usableMethod.Invoke(bpa, [| null; null |])))
                             logger.LogInformation (sprintf "[Cache] AggregateCache3: SkipBackplane = %A" entryOptions.SkipBackplaneNotifications)
                 
-                // Add event listeners (evicts only L1 upon EntrySet so L2 remains intact)
-                let receiverOptions =
+                // Add event listeners (evicts only L1 upon EntrySet so L2 remains intact; evicts both L1 and L2 upon EntryRemove)
+                let entrySetOptions =
                     let opt = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions()
                     opt.SkipBackplaneNotifications <- true
                     opt.SkipDistributedCacheRead <- true
                     opt.SkipDistributedCacheWrite <- true
                     opt
+
+                let entryRemoveOptions =
+                    let opt = ZiggyCreatures.Caching.Fusion.FusionCacheEntryOptions()
+                    opt.SkipBackplaneNotifications <- true
+                    opt
+
                 statePerAggregate.Events.Backplane.add_MessagePublished(System.EventHandler<ZiggyCreatures.Caching.Fusion.Events.FusionCacheBackplaneMessageEventArgs>(fun sender e ->
                     logger.LogDebug (sprintf "[Cache Event] MessagePublished: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
                 ))
@@ -485,11 +502,31 @@ module Cache =
                     logger.LogDebug (sprintf "[Cache Event] MessageReceived: Action=%A, Key=%s, SourceId=%s" e.Message.Action e.Message.CacheKey e.Message.SourceId)
                     // Manually invalidate L1 cache
                     if e.Message.SourceId <> statePerAggregate.InstanceId then
-                        if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove || e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                        if e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntryRemove then
                             let prefix = "statePerAggregate:"
                             if e.Message.CacheKey.StartsWith(prefix) then
                                 let key = e.Message.CacheKey.Substring(prefix.Length)
-                                statePerAggregate.Remove(key, receiverOptions)
+                                statePerAggregate.Remove(key, entryRemoveOptions)
+
+                                lock lruLock (fun () ->
+                                    match lruDict.TryGetValue(key) with
+                                    | true, node ->
+                                        lruList.Remove(node)
+                                        lruDict.Remove(key) |> ignore
+                                    | false, _ -> ()
+                                )
+
+                                let (isGuid, guidKey) = Guid.TryParse(key)
+                                if isGuid then
+                                    DetailsCache.Instance.RefreshDependentDetailsAsync(guidKey, Some CancellationToken.None) |> ignore
+                                else
+                                    logger.LogWarning (sprintf "[Cache Event] AggregateCache3: Could not parse Guid from key %s" key)
+                                logger.LogDebug (sprintf "[Cache Event] AggregateCache3 manually removed entry for %s" key)
+                        elif e.Message.Action = ZiggyCreatures.Caching.Fusion.Backplane.BackplaneMessageAction.EntrySet then
+                            let prefix = "statePerAggregate:"
+                            if e.Message.CacheKey.StartsWith(prefix) then
+                                let key = e.Message.CacheKey.Substring(prefix.Length)
+                                statePerAggregate.Remove(key, entrySetOptions)
 
                                 lock lruLock (fun () ->
                                     match lruDict.TryGetValue(key) with

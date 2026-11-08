@@ -10,6 +10,7 @@ open Sharpino.Sample.Saga.Domain.Booking.Booking
 type BookingEvents =
     | Assigned of Guid
     | UnAssigned  
+    | BookingNoOp
 
     interface Event<Booking> with
         member
@@ -17,6 +18,7 @@ type BookingEvents =
                 match this with
                 | Assigned rowId -> x.Assign rowId
                 | UnAssigned -> x.UnAssign ()
+                | BookingNoOp -> Ok x
 
     member this.Serialize =
             jsonPSerializer.Serialize this

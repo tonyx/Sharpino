@@ -8,6 +8,7 @@ module GoodEvents =
     | PriceChanged of decimal
     | QuantityAdded of int
     | QuantityRemoved of int
+    | GoodNoOp
      
         interface Event<Good> with
             member this.Process (good: Good) =
@@ -15,6 +16,7 @@ module GoodEvents =
                 | PriceChanged price -> good.SetPrice price
                 | QuantityAdded quantity -> good.AddQuantity quantity
                 | QuantityRemoved quantity -> good.RemoveQuantity quantity
+                | GoodNoOp -> Ok good
 
         static member Deserialize x =
             binarySerializer.Deserialize<GoodEvents> x // |> Ok

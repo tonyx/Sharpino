@@ -11,6 +11,7 @@ open System
 type DishEvents =
     | IngredientAdded of Guid
     | IngredientRemoved of Guid
+    | DishNoOp
 
         interface Event<Dish> with
             member this.Process (x: Dish) =
@@ -19,6 +20,7 @@ type DishEvents =
                     x.AddIngredient id
                 | IngredientRemoved id ->
                     x.RemoveIngredient id
+                | DishNoOp -> Ok x
     static member Deserialize x =
         serializer.Deserialize<DishEvents> x    
     member this.Serialize =

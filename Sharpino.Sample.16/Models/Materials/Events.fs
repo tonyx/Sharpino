@@ -9,11 +9,13 @@ open Sharpino.Template.Models
 type MaterialEvents =
     | Consumed of Quantity
     | Added of Quantity
+    | MaterialNoOp
     interface Event<Material> with
         member this.Process (state: Material) =
             match this with
             | Consumed quantity -> state.Consume quantity
             | Added quantity -> state.Add quantity
+            | MaterialNoOp -> Ok state
     
     static member Deserialize (x: string) =
         JsonUtils.DeserializeJson<MaterialEvents> x

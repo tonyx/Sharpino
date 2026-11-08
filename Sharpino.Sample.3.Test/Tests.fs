@@ -37,7 +37,7 @@ let emptyMessageSenders =
             
 let connection = Environment.GetEnvironmentVariable("CONNECTION_STRING")
 let memoryStorage = MemoryStorage.MemoryStorage()
-let pgEventStore = PgEventStore(connection)
+let pgEventStore: IEventStore<string> = PgEventStore(connection)
 let memoryStadiumSystem = StadiumBookingSystem(memoryStorage, MessageSenders.NoSender)
 let stadiumSystem = StadiumBookingSystem(pgEventStore, MessageSenders.NoSender)
 
@@ -1045,5 +1045,41 @@ let tests =
             // now make a valid booking on both
             Expect.isError tryMultiBooking "should be error"
             
+        testCase "Sanitization How-To: SeatsRow stream with corrupted event is healed via RowAggregateNoOp" <| fun _ ->
+            pgReset ()
+            let row = SeatsRow ()
+            let rowId = row.Id
+            let addRow = stadiumSystem.AddRow row
+            Expect.isOk addRow "Row created"
+
+            // Inject an invalid/corrupted event directly into seatsrow stream
+            let invalidEvent = """{"BadEvent":{"invalid": 123}}"""
+            let injectRes = pgEventStore.AddAggregateEventsMd 0 SeatsRow.Version SeatsRow.StorageName rowId "test" [invalidEvent]
+            Expect.isOk injectRes "Injected raw event"
+
+            // Invalidate cache
+            AggregateCache3.Instance.Clean rowId
+
+            // Replay/State retrieval must now FAIL under strict unforgiving evolve
+            let stateBefore = stadiumSystem.GetRow rowId
+            Expect.isError stateBefore "Unforgiving evolve halts on invalid event"
+
+            // Execute Sanitization using RowAggregateNoOp
+            let sanitizeRes =
+                Sharpino.Sanitizer.sanitizeAggregateStream<SeatsRow, RowAggregateEvent, string>
+                    pgEventStore
+                    rowId
+                    RowAggregateNoOp
+                    None
+            Expect.isOk sanitizeRes "Sanitization should succeed"
+            let report = sanitizeRes |> Result.get
+            Expect.isFalse report.IsClean "Stream was repaired"
+            Expect.equal report.Actions.Length 1 "Exactly 1 corrupted event was patched to RowAggregateNoOp"
+
+            // Verify: SeatsRow state now evolves cleanly!
+            let stateAfter = stadiumSystem.GetRow rowId
+            Expect.isOk stateAfter "SeatsRow must evolve cleanly after sanitization"
+            let healedRow = stateAfter |> Result.get
+            Expect.equal healedRow.Id rowId "Healed row retains valid state"
     ]
     |> testSequenced

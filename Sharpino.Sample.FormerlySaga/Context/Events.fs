@@ -17,6 +17,7 @@ type TheaterEvents =
     | BookingReferenceRemoved of Guid
     | VoucherReferenceAdded of Guid
     | VoucherReferenceRemoved of Guid
+    | TheaterNoOp
     
     interface Event<Theater> with
         member
@@ -28,6 +29,7 @@ type TheaterEvents =
                 | BookingReferenceRemoved bookingId -> x.RemoveBookingReference bookingId
                 | VoucherReferenceAdded voucherId -> x.AddVoucherReference voucherId
                 | VoucherReferenceRemoved voucherId -> x.RemoveVoucherReference voucherId
+                | TheaterNoOp -> Ok x
     member this.Serialize =
         jsonPSerializer.Serialize this
     static member

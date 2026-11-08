@@ -21,7 +21,10 @@ module Course =
               MaxStudents = maxStudents }
     
         member this.Rename newName =
-            { this with Name = newName } |> Ok
+            result {
+                do! (newName <> this.Name) |> Result.ofBool "course name is the same"
+                return { this with Name = newName }
+            }
         
         //////
          

@@ -13,6 +13,7 @@ type IngredientEvents =
     | RemoveIngredientType of IngredientType
     | AddMeasureType of MeasureType
     | RemoveMeasureType of MeasureType
+    | IngredientNoOp
         interface Event<Ingredient> with
             member this.Process (x: Ingredient) =
                 match this with
@@ -24,6 +25,7 @@ type IngredientEvents =
                     x.RemoveMeasureType t
                 | AddMeasureType t ->
                     x.AddMeasureType t     
+                | IngredientNoOp -> Ok x
     static member Deserialize  json =
         serializer.Deserialize<IngredientEvents> json
     member this.Serialize =

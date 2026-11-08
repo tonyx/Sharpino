@@ -8,6 +8,7 @@ open Tonyx.Sharpino.Pub.Supplier
 type SupplierEvents =
     | PhoneChanged of string
     | EmailChanged of string
+    | SupplierNoOp
         interface Event<Supplier> with
             member this.Process (supplier: Supplier) =
                 match this with
@@ -15,6 +16,7 @@ type SupplierEvents =
                     supplier.ChangePhone phone
                 | EmailChanged email ->
                     supplier.ChangeEmail email
+                | SupplierNoOp -> Ok supplier
     static member Deserialize x =
         serializer.Deserialize<SupplierEvents> x    
     member this.Serialize  =   

@@ -10,12 +10,14 @@ module Events =
     type CounterEvents =
         | Incremented
         | Decremented
+        | CounterNoOp
         
         interface Event<Counter> with
             member this.Process (counter: Counter) =
                 match this with
                 | Incremented -> counter.Increment ()
                 | Decremented -> counter.Decrement ()
+                | CounterNoOp -> Ok counter
                 
         static member Deserialize x =
             binarySerializer.Deserialize<CounterEvents> x

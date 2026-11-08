@@ -14,12 +14,14 @@ module StudentEvents2 =
         | EnrolledCourse of Guid
         | UnenrolledCourse of Guid
         | AnnotationAdded of string
+        | Student2NoOp
         interface Event<Student2> with
             member this.Process (student: Student2) =
                 match this with
                 | EnrolledCourse id -> student.EnrollCourse id
                 | UnenrolledCourse id -> student.UnenrollCourse id
                 | AnnotationAdded note -> student.AddAnnotations note
+                | Student2NoOp -> Ok student
        
         static member Deserialize (x: string) =
             try

@@ -1,4 +1,4 @@
-\restrict cZ4kIfG4OKGTg5cNgvc927XX5zcEYRJsTepfDnhiuYHvO0fYQenrSairxF80QHM
+\restrict rYcBsnOF9oU5QPNXTdRU4YHtky7ozhfNFRdndtOZD08vFz72pCE7vcn0UP9klV6
 
 -- Dumped from database version 17.9 (Homebrew)
 -- Dumped by pg_dump version 17.9 (Homebrew)
@@ -224,67 +224,44 @@ $$;
 
 
 --
--- Name: insert_md_01_course_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_course_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer) RETURNS integer
+CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
-    found_last_event_id integer;
 BEGIN
-    SELECT id INTO found_last_event_id
-    FROM events_01_course
-    WHERE events_01_course.aggregate_id = insert_md_01_course_aggregate_event_and_return_id_opt_lock.aggregate_id
-    ORDER BY id DESC LIMIT 1;
-
-    IF last_event_id = 0 THEN
-        IF found_last_event_id IS NOT NULL THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
-        END IF;
-    ELSIF last_event_id > 0 THEN
-        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
-        END IF;
-    END IF;
-
-    event_id := insert_md_01_course_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    PERFORM check_last_event_id_opt_lock('events_01_course', aggregate_id, last_event_id);
+    INSERT INTO events_01_course(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_course_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_course_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[], uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[]) RETURNS integer
+CREATE FUNCTION public.insert_md_01_course_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[], correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
 BEGIN
-    -- Perform the main optimistic locking check for the aggregate itself
     PERFORM check_last_event_id_opt_lock('events_01_course', aggregate_id, last_event_id);
-
-    -- Perform the checks for extra constraints
     IF extra_stream_names IS NOT NULL THEN
         FOR i IN 1..cardinality(extra_stream_names) LOOP
             PERFORM check_last_event_id_opt_lock(extra_stream_names[i], extra_aggregate_ids[i], extra_event_ids[i]);
         END LOOP;
     END IF;
-
-    event_id := insert_md_01_course_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_course(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    INSERT INTO events_01_course(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
@@ -364,67 +341,44 @@ $$;
 
 
 --
--- Name: insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer) RETURNS integer
+CREATE FUNCTION public.insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
-    found_last_event_id integer;
 BEGIN
-    SELECT id INTO found_last_event_id
-    FROM events_01_enrollments
-    WHERE events_01_enrollments.aggregate_id = insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock.aggregate_id
-    ORDER BY id DESC LIMIT 1;
-
-    IF last_event_id = 0 THEN
-        IF found_last_event_id IS NOT NULL THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
-        END IF;
-    ELSIF last_event_id > 0 THEN
-        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
-        END IF;
-    END IF;
-
-    event_id := insert_md_01_enrollments_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_enrollments(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    PERFORM check_last_event_id_opt_lock('events_01_enrollments', aggregate_id, last_event_id);
+    INSERT INTO events_01_enrollments(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer, text[], integer[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer, text[], integer[], uuid[], uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[]) RETURNS integer
+CREATE FUNCTION public.insert_md_01_enrollments_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[], correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
 BEGIN
-    -- Perform the main optimistic locking check for the aggregate itself
     PERFORM check_last_event_id_opt_lock('events_01_enrollments', aggregate_id, last_event_id);
-
-    -- Perform the checks for extra constraints
     IF extra_stream_names IS NOT NULL THEN
         FOR i IN 1..cardinality(extra_stream_names) LOOP
             PERFORM check_last_event_id_opt_lock(extra_stream_names[i], extra_aggregate_ids[i], extra_event_ids[i]);
         END LOOP;
     END IF;
-
-    event_id := insert_md_01_enrollments_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_enrollments(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    INSERT INTO events_01_enrollments(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
@@ -504,67 +458,44 @@ $$;
 
 
 --
--- Name: insert_md_01_student_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_student_aggregate_event_and_return_id_opt_lock(text, uuid, integer, text, integer, uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer) RETURNS integer
+CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id_opt_lock(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
-    found_last_event_id integer;
 BEGIN
-    SELECT id INTO found_last_event_id
-    FROM events_01_student
-    WHERE events_01_student.aggregate_id = insert_md_01_student_aggregate_event_and_return_id_opt_lock.aggregate_id
-    ORDER BY id DESC LIMIT 1;
-
-    IF last_event_id = 0 THEN
-        IF found_last_event_id IS NOT NULL THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected no previous events, but found event %', found_last_event_id;
-        END IF;
-    ELSIF last_event_id > 0 THEN
-        IF found_last_event_id IS NULL OR found_last_event_id <> last_event_id THEN
-            RAISE EXCEPTION 'Optimistic locking check failed: expected last event id %, but found %', last_event_id, found_last_event_id;
-        END IF;
-    END IF;
-
-    event_id := insert_md_01_student_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    PERFORM check_last_event_id_opt_lock('events_01_student', aggregate_id, last_event_id);
+    INSERT INTO events_01_student(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
 
 --
--- Name: insert_md_01_student_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[]); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_student_aggregate_event_and_return_id_opt_lock2(text, uuid, integer, text, integer, text[], integer[], uuid[], uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[]) RETURNS integer
+CREATE FUNCTION public.insert_md_01_student_aggregate_event_and_return_id_opt_lock2(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text, last_event_id integer, extra_stream_names text[], extra_event_ids integer[], extra_aggregate_ids uuid[], correlation_id uuid DEFAULT NULL::uuid, causation_id uuid DEFAULT NULL::uuid) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
     inserted_id integer;
-    event_id integer;
 BEGIN
-    -- Perform the main optimistic locking check for the aggregate itself
     PERFORM check_last_event_id_opt_lock('events_01_student', aggregate_id, last_event_id);
-
-    -- Perform the checks for extra constraints
     IF extra_stream_names IS NOT NULL THEN
         FOR i IN 1..cardinality(extra_stream_names) LOOP
             PERFORM check_last_event_id_opt_lock(extra_stream_names[i], extra_aggregate_ids[i], extra_event_ids[i]);
         END LOOP;
     END IF;
-
-    event_id := insert_md_01_student_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
-
-    INSERT INTO aggregate_events_01_student(aggregate_id, event_id)
-    VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-    return event_id;
+    INSERT INTO events_01_student(event, aggregate_id, distance_from_latest_snapshot, timestamp, md, correlation_id, causation_id)
+    VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md, correlation_id, causation_id)
+    RETURNING id INTO inserted_id;
+    return inserted_id;
 END;
 $$;
 
@@ -599,6 +530,66 @@ BEGIN
 INSERT INTO events_01_Student(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
 VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__01_course(uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__01_course(in_aggregate_id uuid, in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_01_course
+    SET event = in_noop_payload
+    WHERE id = in_event_id AND aggregate_id = in_aggregate_id;
+
+    DELETE FROM snapshots_01_course
+    WHERE aggregate_id = in_aggregate_id
+      AND event_id IS NOT NULL
+      AND event_id >= in_event_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__01_enrollments(uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__01_enrollments(in_aggregate_id uuid, in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_01_enrollments
+    SET event = in_noop_payload
+    WHERE id = in_event_id AND aggregate_id = in_aggregate_id;
+
+    DELETE FROM snapshots_01_enrollments
+    WHERE aggregate_id = in_aggregate_id
+      AND event_id IS NOT NULL
+      AND event_id >= in_event_id;
+END;
+$$;
+
+
+--
+-- Name: patch_event_noop_and_purge_snapshots__01_student(uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.patch_event_noop_and_purge_snapshots__01_student(in_aggregate_id uuid, in_event_id integer, in_noop_payload text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    UPDATE events_01_student
+    SET event = in_noop_payload
+    WHERE id = in_event_id AND aggregate_id = in_aggregate_id;
+
+    DELETE FROM snapshots_01_student
+    WHERE aggregate_id = in_aggregate_id
+      AND event_id IS NOT NULL
+      AND event_id >= in_event_id;
 END;
 $$;
 
@@ -687,7 +678,9 @@ CREATE TABLE public.events_01_course (
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     md text,
-    distance_from_latest_snapshot integer
+    distance_from_latest_snapshot integer,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -716,7 +709,9 @@ CREATE TABLE public.events_01_enrollments (
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     md text,
-    distance_from_latest_snapshot integer
+    distance_from_latest_snapshot integer,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -745,7 +740,9 @@ CREATE TABLE public.events_01_student (
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
     md text,
-    distance_from_latest_snapshot integer
+    distance_from_latest_snapshot integer,
+    correlation_id uuid,
+    causation_id uuid
 );
 
 
@@ -952,6 +949,20 @@ CREATE INDEX ix_01_aggregate_events_student_id ON public.aggregate_events_01_stu
 
 
 --
+-- Name: ix_01_events_course_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_course_causation_id ON public.events_01_course USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_course_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_course_correlation_id ON public.events_01_course USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
 -- Name: ix_01_events_course_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -966,6 +977,20 @@ CREATE INDEX ix_01_events_course_timestamp ON public.events_01_course USING btre
 
 
 --
+-- Name: ix_01_events_enrollments_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_enrollments_causation_id ON public.events_01_enrollments USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_enrollments_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_enrollments_correlation_id ON public.events_01_enrollments USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
+
+
+--
 -- Name: ix_01_events_enrollments_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -977,6 +1002,20 @@ CREATE INDEX ix_01_events_enrollments_id ON public.events_01_enrollments USING b
 --
 
 CREATE INDEX ix_01_events_enrollments_timestamp ON public.events_01_enrollments USING btree ("timestamp");
+
+
+--
+-- Name: ix_01_events_student_causation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_student_causation_id ON public.events_01_student USING btree (causation_id) WHERE (causation_id IS NOT NULL);
+
+
+--
+-- Name: ix_01_events_student_correlation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_events_student_correlation_id ON public.events_01_student USING btree (correlation_id) WHERE (correlation_id IS NOT NULL);
 
 
 --
@@ -1087,7 +1126,7 @@ ALTER TABLE ONLY public.snapshots_01_student
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cZ4kIfG4OKGTg5cNgvc927XX5zcEYRJsTepfDnhiuYHvO0fYQenrSairxF80QHM
+\unrestrict rYcBsnOF9oU5QPNXTdRU4YHtky7ozhfNFRdndtOZD08vFz72pCE7vcn0UP9klV6
 
 
 --
@@ -1105,4 +1144,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20260529160000'),
     ('20260629160000'),
     ('20260629170000'),
-    ('20260801200000');
+    ('20260801200000'),
+    ('20261221100000');
