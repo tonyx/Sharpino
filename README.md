@@ -224,6 +224,7 @@ type OrderController(resolver: ShardResolver, messageSenders: MessageSenders) =
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
+- Version 7.0.2: Events sanitization process on stored events (which should neve happen as events MUST be consistent, except for specific staging/testing/dev/debug cases) is moved on the StateView level.
 - Version 7.0.1: Change the behaviour of the _Evolve_ function to fail fast when inconsistencies are detected (see [MIGRATION_HOWTO.md](MIGRATION_HOWTO.md)). Must include the database patch adding correlation_id and causation_id columns. Some dead code in psql functions can be dropped. 
 - Version 6.2.7 update lib dependencies
 - I found a code assurance index of Sharpino: [Codeassuranceindex](https://codeassuranceindex.info/surveys/github/tonyx/sharpino/). Follow up: the performance metric dropped from 100% to 61% even if I didn't touch the related code. Apparently it's not easily discoverable by Google search anymore. Conclusion: I would try to run the tests by myself to understand what's happening and eventually remove the link.  
