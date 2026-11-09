@@ -22,7 +22,7 @@ module SanitizerAndCausalityTests =
 
     [<Tests>]
     let tests =
-        testList "Sanitizer and Causality Tests" [
+        testSequenced <| testList "Sanitizer and Causality Tests" [
 
             testCase "Causality tracking: correlationId and causationId are preserved and queryable" <| fun () ->
                 let storage = MemoryStorage() :> IEventStore<string>
@@ -322,7 +322,38 @@ module SanitizerAndCausalityTests =
                 Expect.isFalse (DetailsCache.Instance.ContainsKey viewAKey) "View A must be evicted from DetailsCache"
                 Expect.isFalse (DetailsCache.Instance.ContainsKey viewBKey) "Correlated View B must also be evicted from DetailsCache"
 
-            testCase "Automated interceptor sanitization: evolve anomaly triggers automatic healing via IEvolveAnomalyHandler" <| fun () ->
+            testCase "PatchEventWithNoOp preserves genesis snapshot (event_id IS NULL) while purging subsequent snapshots" <| fun () ->
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "Genesis")
+                let initRes = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+                Expect.isOk initRes "initial aggregate state should succeed"
+
+                let ev1 = (SampleObjectRenamed "Updated").Serialize
+                let addRes = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1]
+                Expect.isOk addRes "add should succeed"
+                let evId = (addRes |> Result.get).Head
+
+                let snap = (SampleObject.MkSampleObject(aggId, "Updated")).Serialize
+                let snapRes = storage.SetAggregateSnapshot SampleObject.Version (aggId, evId, snap) SampleObject.StorageName
+                Expect.isOk snapRes "snapshot should succeed"
+
+                let noOp = SampleObjectNoOp.Serialize
+                let patchRes = storage.PatchEventWithNoOp SampleObject.Version SampleObject.StorageName aggId evId noOp
+                Expect.isOk patchRes "patch should succeed"
+
+                // Genesis snapshot (event_id IS NULL) must be preserved
+                let firstSnapAfter = storage.TryGetFirstSnapshot SampleObject.Version SampleObject.StorageName aggId
+                Expect.isOk firstSnapAfter "genesis snapshot must be preserved after PatchEventWithNoOp"
+                let lastSnapAfter = storage.TryGetLastAggregateSnapshot SampleObject.Version SampleObject.StorageName aggId
+                Expect.isOk lastSnapAfter "TryGetLastAggregateSnapshot must fall back to genesis snapshot"
+                Expect.isNone (lastSnapAfter |> Result.get |> fst) "remaining snapshot must have event_id = None (genesis)"
+
+                let idsAfter = storage.GetUndeletedAggregateIds SampleObject.Version SampleObject.StorageName |> Result.get
+                Expect.contains idsAfter aggId "aggregate must remain visible to GetUndeletedAggregateIds"
+
+            testCase "Automated interceptor sanitization: evolve anomaly triggers automatic healing and retries once in StateView" <| fun () ->
+                AggregateCache3.Instance.Clear()
                 let storage = MemoryStorage() :> IEventStore<string>
                 let aggId = Guid.NewGuid()
                 let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
@@ -354,16 +385,67 @@ module SanitizerAndCausalityTests =
                 currentAnomalyHandler <- autoHealingHandler
                 try
                     // Initial fresh state read encounters the poison event during evolveWithContext,
-                    // which triggers the autoHealingHandler to patch the stream.
+                    // triggers the autoHealingHandler to patch the stream, and automatically retries once!
                     let freshAttempt1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
-                    Expect.isError freshAttempt1 "First read should halt due to the anomaly"
+                    Expect.isOk freshAttempt1 "First read must succeed after OnEvolveAnomaly heals the stream and StateView retries once"
                     Expect.contains healedAggregates aggId "Anomaly interceptor must have been triggered with the aggregate ID and healed the stream"
+                    let (_, finalState1) = freshAttempt1 |> Result.get
+                    Expect.equal finalState1.Name "Step2" "State should evolve cleanly to Step2 on first read"
 
-                    // Next read automatically succeeds because the stream has been healed with NoOp!
+                    // Subsequent read also succeeds cleanly
                     let freshAttempt2 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
                     Expect.isOk freshAttempt2 "Subsequent read must succeed on the healed stream"
-                    let (_, finalState) = freshAttempt2 |> Result.get
-                    Expect.equal finalState.Name "Step2" "State should evolve cleanly to Step2"
+                    let (_, finalState2) = freshAttempt2 |> Result.get
+                    Expect.equal finalState2.Name "Step2" "State should evolve cleanly to Step2"
+                finally
+                    currentAnomalyHandler <- prevHandler
+
+            testCase "getAllFilteredAggregateStatesUnskippedErrorsAsync heals and returns multiple poisoned aggregates in a single call" <| fun () ->
+                AggregateCache3.Instance.Clear()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggIds = [ for _ in 1..5 -> Guid.NewGuid() ]
+
+                for (i, aggId) in List.indexed aggIds do
+                    let initialObj = SampleObject.MkSampleObject(aggId, sprintf "Init_%d" i)
+                    let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+                    let ev1 = (SampleObjectRenamed (sprintf "Valid1_%d" i)).Serialize
+                    let ev2_poison = (SampleObjectRenamed (sprintf "Valid1_%d" i)).Serialize
+                    let ev3 = (SampleObjectRenamed (sprintf "Final_%d" i)).Serialize
+                    let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2_poison; ev3]
+                    ()
+
+                let healedLock = obj()
+                let mutable healedAggregates = []
+                let autoHealingHandler =
+                    { new IEvolveAnomalyHandler with
+                        member this.OnEvolveAnomaly(ctx: AnomalyContext) =
+                            match ctx.AggregateId with
+                            | Some id when ctx.AggregateType = typeof<SampleObject> ->
+                                let res = sanitizeAggregateStream<SampleObject, SampleObjectEvents, string> storage id SampleObjectNoOp None
+                                if Result.isOk res then
+                                    lock healedLock (fun () -> healedAggregates <- id :: healedAggregates)
+                            | _ -> ()
+                    }
+
+                let prevHandler = currentAnomalyHandler
+                currentAnomalyHandler <- autoHealingHandler
+                try
+                    let allRes =
+                        getAllFilteredAggregateStatesUnskippedErrorsAsync<SampleObject, SampleObjectEvents, string>
+                            (fun _ -> true)
+                            storage
+                            None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+
+                    Expect.isOk allRes "getAllFilteredAggregateStatesUnskippedErrorsAsync must heal and return all aggregates in a single call"
+                    let states = allRes |> Result.get
+                    Expect.equal states.Length 5 "All 5 aggregates must be returned"
+                    Expect.equal (healedAggregates |> List.distinct |> List.length) 5 "All 5 aggregates must have been healed in one batch"
+                    for (i, aggId) in List.indexed aggIds do
+                        let found = states |> List.tryFind (fun (_, s) -> s.Id = aggId)
+                        Expect.isSome found (sprintf "Aggregate %d must be present" i)
+                        Expect.equal (snd found.Value).Name (sprintf "Final_%d" i) "Final state must reflect post-poison event"
                 finally
                     currentAnomalyHandler <- prevHandler
         ]

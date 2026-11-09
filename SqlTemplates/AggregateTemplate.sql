@@ -186,9 +186,11 @@ BEGIN
     SET event = noop_payload
     WHERE aggregate_id = target_aggregate_id AND id = target_event_id;
 
-    -- 2. Drop all subsequent snapshots for this aggregate
+    -- 2. Drop all subsequent snapshots for this aggregate (preserves initial genesis snapshot where event_id IS NULL)
     DELETE FROM snapshots{Version}{AggregateStorageName}
-    WHERE aggregate_id = target_aggregate_id AND (event_id >= target_event_id OR event_id IS NULL);
+    WHERE aggregate_id = target_aggregate_id
+      AND event_id IS NOT NULL
+      AND event_id >= target_event_id;
 END;
 $$;
 

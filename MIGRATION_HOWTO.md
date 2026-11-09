@@ -168,11 +168,17 @@ BEGIN
     WHERE aggregate_id = target_aggregate_id AND id = target_event_id;
 
     -- Delete snapshots at or after target_event_id (preserves initial genesis snapshot where event_id IS NULL)
+    -- IMPORTANT: Never include `OR event_id IS NULL` here, as that would delete the aggregate's initial state!
     DELETE FROM snapshots{Version}{AggregateStorageName}
-    WHERE aggregate_id = target_aggregate_id AND (event_id >= target_event_id);
+    WHERE aggregate_id = target_aggregate_id
+      AND event_id IS NOT NULL
+      AND event_id >= target_event_id;
 END;
 $$;
 ```
+
+> [!NOTE]
+> **PostgreSQL 63-Character Identifier Limit (`NAMEDATALEN`)**: PostgreSQL truncates function names to 63 bytes. For aggregates with a `StorageName` longer than ~10 characters (e.g. `_Extracatalogue`), `insert_md{Version}{AggregateStorageName}_aggregate_event_and_return_id_opt_lock` and `..._opt_lock2` truncate to the same 63-byte identifier. They coexist safely in PostgreSQL because they have distinct parameter signatures (7 parameters vs. 10 parameters), so ensure you use `CREATE OR REPLACE FUNCTION` without dropping the 7-parameter overload when adding `opt_lock2`.
 
 ---
 

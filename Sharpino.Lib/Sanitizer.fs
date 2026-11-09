@@ -110,9 +110,9 @@ module Sanitizer =
                     | Error e ->
                         logger.LogCritical(sprintf "NoOp event itself failed to process! %s" e)
             
-            if not actions.IsEmpty then
-                AggregateCache3.Instance.Clean aggregateId
-                DetailsCache.Instance.EvictDependentDetails aggregateId
+            // Always evict AggregateCache3 (L1 + L2) and dependent DetailsCache entries at the end of sanitization
+            AggregateCache3.Instance.Clean aggregateId
+            DetailsCache.Instance.EvictDependentDetails aggregateId
                 
             let isClean = actions.IsEmpty
             let report =
@@ -142,7 +142,10 @@ module Sanitizer =
         result {
             let! (_, firstSnap) = storage.TryGetFirstSnapshot 'A.Version 'A.StorageName aggregateId
             let! initialState = 'A.Deserialize firstSnap
-            return! sanitizeAggregateStreamWithInitialState<'A, 'E, 'F> storage aggregateId initialState noOpEvent compensator
+            let! report = sanitizeAggregateStreamWithInitialState<'A, 'E, 'F> storage aggregateId initialState noOpEvent compensator
+            AggregateCache3.Instance.Clean aggregateId
+            DetailsCache.Instance.EvictDependentDetails aggregateId
+            return report
         }
 
     let inline sanitizeContextStream<'A, 'E, 'F

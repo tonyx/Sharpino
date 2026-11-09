@@ -232,7 +232,8 @@ module MemoryStorage =
                 else if (aggregate_snapshots_dic.[version].[name].ContainsKey aggregateId |> not) then
                     aggregate_snapshots_dic.[version].[name].Add(aggregateId, [ snapshot ])
                 else
-                    aggregate_snapshots_dic.[version].[name].[aggregateId] <- [ snapshot ]
+                    aggregate_snapshots_dic.[version].[name].[aggregateId] <-
+                        aggregate_snapshots_dic.[version].[name].[aggregateId] @ [ snapshot ]
 
         let getExistingSnapshots version name =
             logger.LogDebug(sprintf "getExistingSnapshots %s %s" version name)
@@ -965,8 +966,7 @@ module MemoryStorage =
                     aggregate_snapshots_dic.[version].[name]
                     |> Dictionary.keys
                     |> Seq.toList
-                    |> List.map (fun x -> aggregate_snapshots_dic.[version].[name].[x])
-                    |> List.last
+                    |> List.choose (fun x -> aggregate_snapshots_dic.[version].[name].[x] |> List.tryLast)
                     |> List.filter (fun x -> x.Deleted = false)
                     |> List.map (fun x -> x.AggregateId)
                     |> Ok
