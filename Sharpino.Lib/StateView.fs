@@ -45,6 +45,24 @@ module StateView =
              with _ ->
                 Error (sprintf "unboxCacheState: cannot cast %s to %s" (x.GetType().FullName) (typeof<'A>.FullName))
 
+    let inline private unboxCacheStateAsync<'A> (ct: Option<CancellationToken>) (stateValue: obj) : TaskResult<'A, string> =
+        match stateValue with
+        | :? 'A as state -> Task.FromResult(Ok state)
+        | :? Cache.Refreshable<'A> as r -> Task.FromResult(r.Refresh())
+        | :? Cache.RefreshableAsync<'A> as r -> r.RefreshAsync(ct)
+        | :? System.Text.Json.JsonElement as jsonElement ->
+            try
+                System.Text.Json.JsonSerializer.Deserialize<'A>(jsonElement, Cache.jsonOptions) |> Ok |> Task.FromResult
+            with ex ->
+                Error (sprintf "unboxCacheStateAsync: failed to deserialize JsonElement to %s using System.Text.Json. Error: %s" (typeof<'A>.FullName) ex.Message)
+                |> Task.FromResult
+        | x ->
+            try
+                Ok (x :?> 'A) |> Task.FromResult
+            with _ ->
+                Error (sprintf "unboxCacheStateAsync: cannot cast %s to %s" (x.GetType().FullName) (typeof<'A>.FullName))
+                |> Task.FromResult
+
     let logger = Cache.loggerFactory.CreateLogger("Sharpino.StateView")
     
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
@@ -103,6 +121,27 @@ module StateView =
                     | _ -> 
                         return (0, 'A.Zero)
                 }
+
+    let inline private getLastSnapshotAsync<'A, 'F 
+        when 'A: (static member Zero: 'A) 
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        >
+        (storage: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+            taskResult
+                {
+                    let ctVal = ct |> Option.defaultValue CancellationToken.None
+                    let! lastSnapshot = storage.TryGetLastSnapshotAsync('A.Version, 'A.StorageName, ctVal) |> Task.map Ok
+                    match lastSnapshot with
+                    | Some (_, evId, snapshot) -> 
+                        let! deserializedSnapshot = 'A.Deserialize snapshot
+                        return (evId, deserializedSnapshot)
+                    | _ -> 
+                        return (0, 'A.Zero)
+                }
                 
     let inline private getLastSnapshotOrStateCache<'A, 'F
         when 'A: (static member Zero: 'A) 
@@ -125,6 +164,23 @@ module StateView =
                             return! state
                         }
                     }, eventStoreTimeout)
+
+    let inline private getLastSnapshotOrStateCacheAsync<'A, 'F
+        when 'A: (static member Zero: 'A) 
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (member Serialize: 'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        >
+        (storage: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+            logger.LogDebug (sprintf "getLastSnapshotOrStateCacheAsync %s - %s" 'A.Version 'A.StorageName)
+            taskResult {
+                match Cache.StateCache2<'A>.Instance.GetEventIdAndState () with
+                | Some (evId, state) -> return (evId, state)
+                | _ ->
+                    return! getLastSnapshotAsync<'A, 'F> storage ct
+            }
                             
 
     let inline private convertStateJsonToFormat<'F> (json: string) : 'F =
@@ -190,15 +246,15 @@ module StateView =
         (storage: IEventStore<'F>)
         (ct: Option<CancellationToken>) : TaskResult<(Option<Definitions.EventId> * 'A) ,string> =
             logger.LogDebug (sprintf "getLastAggregateSnapshotAsync %A - %s - %s" aggregateId version storageName)
-            let ct = ct |> Option.defaultValue CancellationToken.None
+            let ctVal = ct |> Option.defaultValue CancellationToken.None
             taskResult
                 {
-                    let! cached = Cache.AggregateCache3.Instance.GetEntryAsync(aggregateId, ct)
+                    let! cached = Cache.AggregateCache3.Instance.GetEntryAsync(aggregateId, ctVal)
                     match cached with
                     | Some entry ->
                         match entry.BoxedState with
                         | Some state ->
-                            let! unboxed = unboxCacheState<'A> state
+                            let! unboxed = unboxCacheStateAsync<'A> ct state
                             let evId = if entry.EventId > 0 then Some entry.EventId else None
                             return (evId, unboxed)
                         | None ->
@@ -209,7 +265,7 @@ module StateView =
                             return (evId, deserialized)
                     | None ->
                         let! (eventId, snapshot ) =  
-                            storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ct)
+                            storage.TryGetLastAggregateSnapshotAsync(version, storageName, aggregateId, ctVal)
 
                         let! deserialized = 'A.Deserialize snapshot
                         return (eventId, deserialized) 
@@ -307,6 +363,26 @@ module StateView =
                         return res
                     }
             }, eventStoreTimeout)
+
+    let inline snapEventIdStateAndEventsAsync<'A, 'E, 'F
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>
+        and 'A: (member Serialize:  'F)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
+        >
+        (storage: IEventStore<'F>)
+        (ct: Option<CancellationToken>) =
+        logger.LogDebug (sprintf "snapEventIdStateAndEventsAsync %s - %s" 'A.Version 'A.StorageName)
+        let ctVal = ct |> Option.defaultValue CancellationToken.None
+        taskResult {
+            let! (eventId, state: 'A) = getLastSnapshotOrStateCacheAsync<'A, 'F> storage ct
+            let! events = storage.GetEventsAfterIdAsync('A.Version, eventId, 'A.StorageName, ctVal)
+            return (eventId, state, events)
+        }
 
     let inline snapAggregateEventIdStateAndEvents<'A, 'E, 'F
         when 'E :> Event<'A> and
@@ -413,39 +489,36 @@ module StateView =
                     let result =        
                         let computeNewState =
                             fun () ->
-                                let attempt isRetry =
+                                let attempt () : Result<'A, EvolveError> =
                                     result {
-                                        let! (_, state, events) = snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
+                                        let! (_, state, events) =
+                                            snapEventIdStateAndEvents<'A, 'E, 'F> eventStore
+                                            |> Result.mapError (fun e -> { EventId = 0; Message = e })
                                         let! deserEvents =
                                             events 
                                             |> List.traverseResultM (fun (evId, raw) ->
                                                 'E.Deserialize raw
                                                 |> Result.map (fun e -> (evId, e))
                                                 |> Result.mapError (fun err ->
-                                                    if not isRetry then
-                                                        let msg = sprintf "Error deserializing event %d: %s" evId err
-                                                        logger.LogError msg
-                                                        currentAnomalyHandler.OnEvolveAnomaly({
-                                                            AggregateId = None
-                                                            EventId = Some evId
-                                                            ErrorMessage = msg
-                                                            AggregateType = typeof<'A>
-                                                        })
-                                                    err
+                                                    { EventId = evId; Message = sprintf "Error deserializing event %d: %s" evId err }
                                                 ))
-                                        let! newState = 
-                                            if not isRetry then
-                                                deserEvents |> evolveWithContext<'A, 'E> None state
-                                            else
-                                                deserEvents |> List.fold (fun acc (_, (e: 'E)) -> acc |> Result.bind e.Process) (Ok state)
+                                        let! newState = deserEvents |> evolveWithContext<'A, 'E> state
                                         return newState
                                     }
-                                match attempt false with
+                                match attempt () with
                                 | Ok s -> Ok s
-                                | Error firstErr ->
-                                    match attempt true with
+                                | Error evolveErr when evolveErr.EventId > 0 ->
+                                    logger.LogError evolveErr.Message
+                                    currentAnomalyHandler.OnEvolveAnomaly({
+                                        AggregateId = None
+                                        EventId = Some evolveErr.EventId
+                                        ErrorMessage = evolveErr.Message
+                                        AggregateType = typeof<'A>
+                                    })
+                                    match attempt () with
                                     | Ok s -> Ok s
-                                    | Error _ -> Error firstErr
+                                    | Error _ -> Error evolveErr.Message
+                                | Error evolveErr -> Error evolveErr.Message
             
                         let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
                         let state = StateCache2<'A>.Instance.Memoize computeNewState lastEventId
@@ -457,6 +530,63 @@ module StateView =
                             Error e
                     return result
                 }, eventStoreTimeout)
+
+    let inline getFreshStateAsync<'A, 'E, 'F
+        when 'A: (static member Zero: 'A)
+        and 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+        and 'A: (member Serialize: 'F)
+        and 'E :> Event<'A>
+        and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+        and 'E: (member Serialize: 'F)
+        >
+        (eventStore: IEventStore<'F>)
+        (ct: Option<CancellationToken>) : TaskResult<EventId * 'A, string> =
+            logger.LogDebug (sprintf "getFreshStateAsync %s - %s" 'A.Version 'A.StorageName)
+            let computeNewState () =
+                let attempt () : TaskResult<'A, EvolveError> =
+                    taskResult {
+                        let! (_, state, events) =
+                            snapEventIdStateAndEventsAsync<'A, 'E, 'F> eventStore ct
+                            |> TaskResult.mapError (fun e -> { EventId = 0; Message = e })
+                        let! deserEvents =
+                            events
+                            |> List.traverseResultM (fun (evId, raw) ->
+                                'E.Deserialize raw
+                                |> Result.map (fun e -> (evId, e))
+                                |> Result.mapError (fun err ->
+                                    { EventId = evId; Message = sprintf "Error deserializing event %d: %s" evId err }
+                                ))
+                        let! newState = deserEvents |> evolveWithContext<'A, 'E> state
+                        return newState
+                    }
+                task {
+                    let! firstRes = attempt ()
+                    match firstRes with
+                    | Ok s -> return Ok s
+                    | Error evolveErr when evolveErr.EventId > 0 ->
+                        logger.LogError evolveErr.Message
+                        do! currentAnomalyHandler.OnEvolveAnomalyAsync({
+                            AggregateId = None
+                            EventId = Some evolveErr.EventId
+                            ErrorMessage = evolveErr.Message
+                            AggregateType = typeof<'A>
+                        })
+                        let! retryRes = attempt ()
+                        match retryRes with
+                        | Ok s -> return Ok s
+                        | Error _ -> return Error evolveErr.Message
+                    | Error evolveErr ->
+                        return Error evolveErr.Message
+                }
+            taskResult {
+                let ctVal = ct |> Option.defaultValue CancellationToken.None
+                let! lastEventIdOpt = eventStore.TryGetLastEventIdAsync('A.Version, 'A.StorageName, ctVal) |> Task.map Ok
+                let lastEventId = lastEventIdOpt |> Option.defaultValue 0
+                let! state' = StateCache2<'A>.Instance.MemoizeAsync computeNewState lastEventId
+                return (lastEventId, state')
+            }
 
     let inline getAggregateFreshState<'A, 'E, 'F
         when 'E :> Event<'A>
@@ -471,32 +601,23 @@ module StateView =
             logger.LogDebug (sprintf "getAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewStateAndLatestEventId =
                 fun () ->
-                    let attempt isRetry =
+                    let attempt () : Result<EventId * obj, EvolveError> =
                         result {
-                            let! (eventId, state, events) = snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                            let! (eventId, state, events) =
+                                snapAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                                |> Result.mapError (fun e -> { EventId = 0; Message = e })
                             let! deserEvents =
                                 events 
                                 |> List.traverseResultM (fun (evId, raw) ->
                                     'E.Deserialize raw
                                     |> Result.map (fun e -> (evId, e))
                                     |> Result.mapError (fun err ->
-                                        if not isRetry then
-                                            let msg = sprintf "Error deserializing event %d: %s" evId err
-                                            logger.LogError msg
-                                            currentAnomalyHandler.OnEvolveAnomaly({
-                                                AggregateId = Some id
-                                                EventId = Some evId
-                                                ErrorMessage = msg
-                                                AggregateType = typeof<'A>
-                                            })
-                                        err
+                                        { EventId = evId; Message = sprintf "Error deserializing event %d: %s" evId err }
                                     ))
-                            let! unboxedState = unboxCacheState<'A> state
-                            let! newState = 
-                                if not isRetry then
-                                    deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState
-                                else
-                                    deserEvents |> List.fold (fun acc (_, (e: 'E)) -> acc |> Result.bind e.Process) (Ok unboxedState)
+                            let! unboxedState =
+                                unboxCacheState<'A> state
+                                |> Result.mapError (fun e -> { EventId = 0; Message = e })
+                            let! newState = deserEvents |> evolveWithContext<'A, 'E> unboxedState
                             let lastEventId =
                                 if (events.Length > 0)
                                     then (events |> List.last |> fst)
@@ -504,12 +625,20 @@ module StateView =
                             let result = (lastEventId, newState |> box)
                             return result 
                         }
-                    match attempt false with
+                    match attempt () with
                     | Ok res -> Ok res
-                    | Error firstErr ->
-                        match attempt true with
+                    | Error evolveErr when evolveErr.EventId > 0 ->
+                        logger.LogError evolveErr.Message
+                        currentAnomalyHandler.OnEvolveAnomaly({
+                            AggregateId = Some id
+                            EventId = Some evolveErr.EventId
+                            ErrorMessage = evolveErr.Message
+                            AggregateType = typeof<'A>
+                        })
+                        match attempt () with
                         | Ok res -> Ok res
-                        | Error _ -> Error firstErr
+                        | Error _ -> Error evolveErr.Message
+                    | Error evolveErr -> Error evolveErr.Message
             let state = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
             match state with
             | Ok (eventId, stateValue) ->
@@ -534,9 +663,11 @@ module StateView =
             logger.LogDebug (sprintf "getAggregateFreshStateAsync %A - %s - %s" id 'A.Version 'A.StorageName)
 
             let computeNewStateAndLatestEventId (token: Option<CancellationToken>) =
-                let attempt isRetry =
+                let attempt () : TaskResult<EventId * obj, EvolveError> =
                     taskResult {
-                        let! (eventId, state, events) = snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore token
+                        let! (eventId, state, events) =
+                            snapAggregateEventIdStateAndEventsAsync<'A, 'E, 'F> id eventStore token
+                            |> TaskResult.mapError (fun e -> { EventId = 0; Message = e })
 
                         let! deserEvents =
                             events 
@@ -544,23 +675,12 @@ module StateView =
                                 'E.Deserialize raw
                                 |> Result.map (fun e -> (evId, e))
                                 |> Result.mapError (fun err ->
-                                    if not isRetry then
-                                        let msg = sprintf "Error deserializing event %d: %s" evId err
-                                        logger.LogError msg
-                                        currentAnomalyHandler.OnEvolveAnomaly({
-                                            AggregateId = Some id
-                                            EventId = Some evId
-                                            ErrorMessage = msg
-                                            AggregateType = typeof<'A>
-                                        })
-                                    err
+                                    { EventId = evId; Message = sprintf "Error deserializing event %d: %s" evId err }
                                 ))
-                        let! unboxedState = unboxCacheState<'A> state
-                        let! newState = 
-                            if not isRetry then
-                                deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState
-                            else
-                                deserEvents |> List.fold (fun acc (_, (e: 'E)) -> acc |> Result.bind e.Process) (Ok unboxedState)
+                        let! unboxedState =
+                            unboxCacheStateAsync<'A> token state
+                            |> TaskResult.mapError (fun e -> { EventId = 0; Message = e })
+                        let! newState = deserEvents |> evolveWithContext<'A, 'E> unboxedState
                         let lastEventId =
                             if (events.Length > 0)
                                 then (events |> List.last |> fst)
@@ -569,18 +689,27 @@ module StateView =
                         return result 
                     }
                 task {
-                    let! firstRes = attempt false
+                    let! firstRes = attempt ()
                     match firstRes with
                     | Ok res -> return Ok res
-                    | Error firstErr ->
-                        let! retryRes = attempt true
+                    | Error evolveErr when evolveErr.EventId > 0 ->
+                        logger.LogError evolveErr.Message
+                        do! currentAnomalyHandler.OnEvolveAnomalyAsync({
+                            AggregateId = Some id
+                            EventId = Some evolveErr.EventId
+                            ErrorMessage = evolveErr.Message
+                            AggregateType = typeof<'A>
+                        })
+                        let! retryRes = attempt ()
                         match retryRes with
                         | Ok res -> return Ok res
-                        | Error _ -> return Error firstErr
+                        | Error _ -> return Error evolveErr.Message
+                    | Error evolveErr ->
+                        return Error evolveErr.Message
                 }
             taskResult {
                 let! (eventId, stateValue) = AggregateCache3.Instance.MemoizeAsync computeNewStateAndLatestEventId id ct
-                let! unboxedState = unboxCacheState<'A> stateValue
+                let! unboxedState = unboxCacheStateAsync<'A> ct stateValue
                 return (eventId, unboxedState)
             }
 
@@ -602,7 +731,7 @@ module StateView =
             let! result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct |> Task.FromResult) key ct
             match result with
             | Error e -> return Error e
-            | Ok res -> return unboxCacheState<'A> res
+            | Ok res -> return! unboxCacheStateAsync<'A> ct res
         }
 
     let inline getRefreshableDetailsTaskResultAsync<'A>
@@ -615,7 +744,7 @@ module StateView =
             let! result = DetailsCache.Instance.MemoizeAsync (fun _ -> refreshableDetailsBuilder ct) key ct
             match result with
             | Error e -> return Error e
-            | Ok res -> return unboxCacheState<'A> res
+            | Ok res -> return! unboxCacheStateAsync<'A> ct res
         }
     
     let inline getHistoryAggregateFreshState<'A, 'E, 'F
@@ -631,40 +760,39 @@ module StateView =
             logger.LogDebug (sprintf "getHistoryAggregateFreshState %A - %s - %s" id 'A.Version 'A.StorageName)
             let computeNewState =
                 fun () ->
-                    let attempt isRetry =
+                    let attempt () : Result<'A, EvolveError> =
                         result {
-                            let! (_, state, events) = snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                            let! (_, state, events) =
+                                snapHistoryAggregateEventIdStateAndEvents<'A, 'E, 'F> id eventStore
+                                |> Result.mapError (fun e -> { EventId = 0; Message = e })
                             let! deserEvents =
                                 events 
                                 |> List.traverseResultM (fun (evId, raw) ->
                                     'E.Deserialize raw
                                     |> Result.map (fun e -> (evId, e))
                                     |> Result.mapError (fun err ->
-                                        if not isRetry then
-                                            let msg = sprintf "Error deserializing event %d: %s" evId err
-                                            logger.LogError msg
-                                            currentAnomalyHandler.OnEvolveAnomaly({
-                                                AggregateId = Some id
-                                                EventId = Some evId
-                                                ErrorMessage = msg
-                                                AggregateType = typeof<'A>
-                                            })
-                                        err
+                                        { EventId = evId; Message = sprintf "Error deserializing event %d: %s" evId err }
                                     ))
-                            let! unboxedState = unboxCacheState<'A> state
-                            let! newState = 
-                                if not isRetry then
-                                    deserEvents |> evolveWithContext<'A, 'E> (Some id) unboxedState
-                                else
-                                    deserEvents |> List.fold (fun acc (_, (e: 'E)) -> acc |> Result.bind e.Process) (Ok unboxedState)
+                            let! unboxedState =
+                                unboxCacheState<'A> state
+                                |> Result.mapError (fun e -> { EventId = 0; Message = e })
+                            let! newState = deserEvents |> evolveWithContext<'A, 'E> unboxedState
                             return newState
                         }
-                    match attempt false with
+                    match attempt () with
                     | Ok res -> Ok res
-                    | Error firstErr ->
-                        match attempt true with
+                    | Error evolveErr when evolveErr.EventId > 0 ->
+                        logger.LogError evolveErr.Message
+                        currentAnomalyHandler.OnEvolveAnomaly({
+                            AggregateId = Some id
+                            EventId = Some evolveErr.EventId
+                            ErrorMessage = evolveErr.Message
+                            AggregateType = typeof<'A>
+                        })
+                        match attempt () with
                         | Ok res -> Ok res
-                        | Error _ -> Error firstErr
+                        | Error _ -> Error evolveErr.Message
+                    | Error evolveErr -> Error evolveErr.Message
             
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0
             let state = computeNewState ()
@@ -1026,8 +1154,12 @@ module StateView =
 
                     let! ids =
                         eventStore.GetAggregateIdsInATimeIntervalAsync('A.Version, 'A.StorageName, start, end_, ct)
-                    let allStates =
-                        ids |>> (fun id -> getAggregateFreshState<'A, 'E, 'F> id eventStore)
+                    let! allStatesArr =
+                        ids
+                        |> List.map (fun id -> getAggregateFreshStateAsync<'A, 'E, 'F> id eventStore (Some ct))
+                        |> Task.WhenAll
+                        |> Task.map Ok
+                    let allStates = allStatesArr |> Array.toList
                         
                     let result =
                         allStates

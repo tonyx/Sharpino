@@ -57,14 +57,23 @@ module Storage =
 
         abstract member ResetAggregateStream: Version -> Name -> unit
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetLastSnapshot: Version -> Name -> Option<SnapId * EventId * 'F>
 
         abstract member TryGetLastSnapshotAsync:
             Version * Name * ?ct: CancellationToken -> Task<Option<SnapId * EventId * 'F>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetLastEventId: Version -> Name -> Option<EventId>
 
+        abstract member TryGetLastEventIdAsync:
+            Version * Name * ?ct: CancellationToken -> Task<Option<EventId>>
+
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetLastAggregateEventId: Version -> Name -> AggregateId -> Option<EventId>
+
+        abstract member TryGetLastAggregateEventIdAsync:
+            Version * Name * AggregateId * ?ct: CancellationToken -> Task<Option<EventId>>
 
         abstract member TryGetLastSnapshotEventId: Version -> Name -> Option<EventId>
         abstract member TryGetLastSnapshotId: Version -> Name -> Option<EventId * SnapshotId>
@@ -77,8 +86,13 @@ module Storage =
 
         abstract member TryGetLastAggregateSnapshotEventId: Version -> Name -> AggregateId -> Option<EventId>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetFirstSnapshot: Version -> Name -> AggregateId -> Result<SnapId * 'F, string>
 
+        abstract member TryGetFirstSnapshotAsync:
+            Version * Name * AggregateId * ?ct: CancellationToken -> Task<Result<SnapId * 'F, string>>
+
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetLastAggregateSnapshot:
             Version -> Name -> AggregateId -> Result<Option<EventId> * 'F, string>
 
@@ -88,21 +102,26 @@ module Storage =
         abstract member GetDistanceFromLatestSnapshotAsync:
             Version * Name * AggregateId * ?ct: CancellationToken -> Task<int>
 
-        [<Obsolete("")>]
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetSnapshotById: Version -> Name -> int -> Option<EventId * 'F>
 
-        [<Obsolete("")>]
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetAggregateSnapshotById:
             Version -> Name -> AggregateId -> EventId -> Option<Option<EventId> * 'F>
 
-        [<Obsolete("")>]
+        [<Obsolete("Use Async methods instead")>]
         abstract member TryGetEvent: Version -> EventId -> Name -> Option<StoragePgEvent<'F>>
+
+        abstract member TryGetEventAsync:
+            Version * EventId * Name * ?ct: CancellationToken -> Task<Option<StoragePgEvent<'F>>>
 
         abstract member SetSnapshot: Version -> EventId * 'F -> Name -> Result<unit, string>
         abstract member SetAggregateSnapshot: Version -> AggregateId * EventId * 'F -> Name -> Result<unit, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member AddEventsMd: EventId -> Version -> Name -> Metadata -> List<'F> -> Result<List<int>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member AddEventsWithCausalityMd:
             EventId -> Version -> Name -> Metadata -> List<'F> -> Option<Guid> -> Option<Guid> -> Result<List<int>, string>
 
@@ -112,16 +131,19 @@ module Storage =
         abstract member AddEventsMdAsync:
             EventId * Version * Name * Metadata * List<'F> * Option<Guid> * Option<Guid> * ?ct: CancellationToken -> Task<Result<List<int>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SetInitialAggregateState: AggregateId -> Version -> Name -> 'F -> Result<unit, string>
 
         abstract member SetInitialAggregateStateAsync:
             AggregateId * Version * Name * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SetInitialAggregateStates: Version -> Name -> (AggregateId * 'F)[] -> Result<unit, string>
 
         abstract member SetInitialAggregateStatesAsync:
             Version * Name * (AggregateId * 'F)[] * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SetInitialAggregateStateAndAddEventsMd:
             EventId ->
             AggregateId ->
@@ -134,6 +156,7 @@ module Storage =
             List<'F> ->
                 Result<List<int>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SetInitialAggregateStateAndMultiAddAggregateEventsMd:
             AggregateId ->
             Version ->
@@ -153,6 +176,7 @@ module Storage =
             ?ct: CancellationToken ->
                 Task<Result<List<List<EventId>>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SetInitialAggregateStateAndAddAggregateEventsMd:
             EventId ->
             AggregateId ->
@@ -180,6 +204,7 @@ module Storage =
             ?ct: CancellationToken ->
                 Task<Result<List<int>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SnapshotMarkDeletedAndAddAggregateEventsMd:
             Version ->
             Name ->
@@ -194,6 +219,7 @@ module Storage =
             List<'F> ->
                 Result<List<int>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SnapshotMarkDeletedAndMultiAddAggregateEventsMd:
             Metadata ->
             Version ->
@@ -204,14 +230,17 @@ module Storage =
             List<EventId * List<'F> * Version * Name * AggregateId> ->
                 Result<List<List<EventId>>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member SnapshotAndMarkDeleted: Version -> Name -> EventId -> AggregateId -> 'F -> Result<unit, string>
 
         abstract member SnapshotAndMarkDeletedAsync:
             Version * Name * EventId * AggregateId * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member AddAggregateEventsMd:
             EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Result<List<EventId>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member AddAggregateEventsWithCausalityMd:
             EventId -> Version -> Name -> AggregateId -> Metadata -> List<'F> -> Option<Guid> -> Option<Guid> -> Result<List<EventId>, string>
 
@@ -231,9 +260,11 @@ module Storage =
             EventId * Version * Name * System.Guid * Metadata * List<'F> * extraConstraints:Map<System.Guid * string, EventId> * Option<Guid> * Option<Guid> * ?ct: CancellationToken ->
                 Task<Result<List<int>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member MultiAddEventsMd:
             Metadata -> List<EventId * List<'F> * Version * Name> -> Result<List<List<EventId>>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member MultiAddAggregateEventsMd:
             Metadata -> List<EventId * List<'F> * Version * Name * AggregateId> -> Result<List<List<EventId>>, string>
 
@@ -245,25 +276,33 @@ module Storage =
             List<EventId * List<'F> * Version * Name * AggregateId> * Metadata * extraConstraints:Map<AggregateId * string, EventId> * ?ct: CancellationToken ->
                 Task<Result<List<List<EventId>>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetEventsAfterId: Version -> EventId -> Name -> Result<List<EventId * 'F>, string>
 
+        abstract member GetEventsAfterIdAsync:
+            Version * EventId * Name * ?ct: CancellationToken -> Task<Result<List<EventId * 'F>, string>>
+
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAggregateEventsAfterId:
             Version -> Name -> AggregateId -> EventId -> Result<List<EventId * 'F>, string>
 
         abstract member GetAggregateEventsAfterIdAsync:
             Version * Name * AggregateId * EventId * ?ct: CancellationToken -> Task<Result<List<EventId * 'F>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAggregateEvents: Version -> Name -> AggregateId -> Result<List<EventId * 'F>, string>
 
         abstract member GetAggregateEventsAsync:
             Version * Name * AggregateId * ?ct: CancellationToken -> Task<Result<List<EventId * 'F>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetEventsInATimeInterval:
             Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F>, string>
 
         abstract member GetEventsInATimeIntervalAsync:
             Version * Name * DateTime * DateTime * ?ct: CancellationToken -> Task<Result<List<EventId * 'F>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAggregateEventsInATimeInterval:
             Version -> Name -> Guid -> DateTime -> DateTime -> Result<List<EventId * 'F>, string>
 
@@ -271,6 +310,7 @@ module Storage =
             Version * Name * Guid * DateTime * DateTime * ?ct: CancellationToken ->
                 Task<Result<List<EventId * 'F>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetMultipleAggregateEventsInATimeInterval:
             Version ->
             Name ->
@@ -283,6 +323,7 @@ module Storage =
             Version * Name * List<AggregateId> * DateTime * DateTime * ?ct: CancellationToken ->
                 Task<Result<List<EventId * AggregateId * 'F>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAllAggregateEventsInATimeInterval:
             Version -> Name -> DateTime -> DateTime -> Result<List<EventId * 'F>, string>
 
@@ -294,13 +335,16 @@ module Storage =
         abstract member GetAggregateSnapshotsInATimeInterval:
             Version -> Name -> DateTime -> DateTime -> Result<List<int * AggregateId * DateTime * 'F>, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAggregateIdsInATimeInterval:
             Version -> Name -> DateTime -> DateTime -> Result<List<AggregateId>, string>
 
         abstract member GetAggregateIdsInATimeIntervalAsync:
             Version * Name * DateTime * DateTime * ?ct: CancellationToken -> Task<Result<List<AggregateId>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetAggregateIds: Version -> Name -> Result<List<AggregateId>, string>
+        [<Obsolete("Use Async methods instead")>]
         abstract member GetUndeletedAggregateIds: Version -> Name -> Result<List<AggregateId>, string>
 
         abstract member GetAggregateIdsAsync:
@@ -309,12 +353,15 @@ module Storage =
         abstract member GetUndeletedAggregateIdsAsync:
             Version * Name * ?ct: CancellationToken -> Task<Result<List<AggregateId>, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GDPRReplaceSnapshotsAndEventsOfAnAggregate:
             Version -> Name -> AggregateId -> 'F -> 'F -> Result<unit, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GDPRReplaceEventsByPredicate:
             Version -> Name -> AggregateId -> ('F -> Result<bool, string>) -> 'F -> Result<unit, string>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member GDPRPartialUpdateSnapshots:
             Version -> Name -> AggregateId -> ('F -> Result<'F, string>) -> Result<unit, string>
 
@@ -329,24 +376,28 @@ module Storage =
         abstract member BulkSnapshotsUpcast:
             Version * Name * ('F -> Result<'F, string>) * ?ct: CancellationToken -> Task<Result<int, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member PatchEventWithNoOp:
             Version -> Name -> AggregateId -> EventId -> 'F -> Result<unit, string>
 
         abstract member PatchEventWithNoOpAsync:
             Version * Name * AggregateId * EventId * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member PatchContextEventWithNoOp:
             Version -> Name -> EventId -> 'F -> Result<unit, string>
 
         abstract member PatchContextEventWithNoOpAsync:
             Version * Name * EventId * 'F * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member DeleteSnapshotsFromEventId:
             Version -> Name -> AggregateId -> EventId -> Result<unit, string>
 
         abstract member DeleteSnapshotsFromEventIdAsync:
             Version * Name * AggregateId * EventId * ?ct: CancellationToken -> Task<Result<unit, string>>
 
+        [<Obsolete("Use Async methods instead")>]
         abstract member FindEventsByCorrelationId:
             Version -> Name -> Guid -> Result<List<AggregateId * EventId * 'F>, string>
 

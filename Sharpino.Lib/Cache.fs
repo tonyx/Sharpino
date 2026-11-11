@@ -801,6 +801,21 @@ module Cache =
                     Ok result
                 | Error e ->
                     Error (e.ToString())
+
+        member this.MemoizeAsync (f: unit -> Task<Result<'A, string>>) (eventId: EventId) =
+            task {
+                match cachedValue with
+                | Some res -> return Ok res
+                | _ ->
+                    let! res = f()
+                    match res with
+                    | Ok result ->
+                        this.TryCache (result, eventId)
+                        return Ok result
+                    | Error e ->
+                        return Error e
+            }
+
         member this.GetEventIdAndState () =
             match cachedValue with
             | Some res -> Some (eventId, res)

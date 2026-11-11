@@ -201,40 +201,52 @@ type OrderEvents =
 ```
 
 ### 3.2 Configuring Evolve Anomaly Handlers
-Configure a custom anomaly handler via `Sharpino.Core.currentAnomalyHandler`:
+Configure a custom anomaly handler via `Sharpino.Core.currentAnomalyHandler` (prefer implementing `OnEvolveAnomalyAsync` so async read paths in `StateView` stay 100% non-blocking):
 
 ```fsharp
+open System.Threading.Tasks
 open Sharpino.Core
+open Sharpino.Sanitizer
 
-type QuarantineAnomalyHandler(logger: ILogger) =
+type AutoRecoveryAnomalyHandler(eventStore: IEventStore<string>, logger: ILogger) =
     interface IEvolveAnomalyHandler with
         member this.OnEvolveAnomaly(ctx: AnomalyContext) =
             logger.LogCritical("Poison pill detected in {Stream} event {Id}: {Error}", 
                 ctx.StreamName, ctx.EventId, ctx.ErrorMessage)
-            // Trigger alerting, aggregate quarantine, or host shutdown
+
+        member this.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
+            task {
+                logger.LogCritical("Poison pill detected in {Stream} event {Id}: {Error}", 
+                    ctx.StreamName, ctx.EventId, ctx.ErrorMessage)
+                match ctx.AggregateId with
+                | Some id when ctx.AggregateType = typeof<Order> ->
+                    let! _ = sanitizeAggregateStreamAsync<Order, OrderEvents, string> eventStore id OrderNoOp None
+                    ()
+                | _ -> ()
+            }
             
-currentAnomalyHandler <- QuarantineAnomalyHandler(myLogger)
+currentAnomalyHandler <- AutoRecoveryAnomalyHandler(eventStore, myLogger)
 ```
 
 ### 3.3 Running the Sanitizer
-To repair an aggregate stream containing an inconsistent event:
+To asynchronously repair an aggregate stream containing an inconsistent event (includes built-in per-aggregate `SemaphoreSlim` single-flight locking and a configurable cooldown window via `"SanitizerCooldownMs"` or `Sanitizer.setCooldownMs`):
 
 ```fsharp
+open FsToolkit.ErrorHandling
 open Sharpino.Sanitizer
 
-// Define optional cross-aggregate compensator
-let compensator (correlationId: Guid) (poisonEventId: EventId) =
-    // Query sibling events on correlated streams
-    let siblingEvents = eventStore.FindEventsByCorrelationId "01" "_booking" correlationId
-    match siblingEvents with
-    | Ok events ->
+// Define optional async cross-aggregate compensator
+let compensator (correlationId: Guid) (poisonEventId: EventId) : TaskResult<string, string> =
+    taskResult {
+        // Query sibling events on correlated streams
+        let! siblingEvents = eventStore.FindEventsByCorrelationIdAsync("01", "_booking", correlationId)
         // Issue compensating action against related booking
-        Ok "Compensated related booking"
-    | Error err -> Error err
+        return "Compensated related booking"
+    }
 
-// Execute sanitization
-let result = 
-    Sanitizer.sanitizeAggregateStream<Order, OrderEvents, string> 
+// Execute async sanitization
+let! result = 
+    Sanitizer.sanitizeAggregateStreamAsync<Order, OrderEvents, string> 
         eventStore 
         orderId 
         OrderNoOp 

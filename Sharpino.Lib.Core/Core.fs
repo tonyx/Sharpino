@@ -2,6 +2,7 @@ namespace Sharpino
 
 open System
 open System.Threading
+open System.Threading.Tasks
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -19,6 +20,11 @@ module Core =
     let setLogger (newLogger: Microsoft.Extensions.Logging.ILogger) =
         ()
 
+    type EvolveError = {
+        EventId: EventId
+        Message: string
+    }
+
     type AnomalyContext = {
         AggregateId: Option<AggregateId>
         EventId: Option<EventId>
@@ -27,12 +33,17 @@ module Core =
     }
 
     type IEvolveAnomalyHandler =
+        [<Obsolete("Use OnEvolveAnomalyAsync instead")>]
         abstract member OnEvolveAnomaly: AnomalyContext -> unit
+        abstract member OnEvolveAnomalyAsync: AnomalyContext -> Task<unit>
 
     type DefaultLoggingAnomalyHandler(logger: Microsoft.Extensions.Logging.ILogger) =
         interface IEvolveAnomalyHandler with
             member _.OnEvolveAnomaly(ctx) =
                 logger.LogCritical(sprintf "Evolve anomaly on aggregate type %s (id: %A, event: %A): %s" ctx.AggregateType.Name ctx.AggregateId ctx.EventId ctx.ErrorMessage)
+            member _.OnEvolveAnomalyAsync(ctx) =
+                logger.LogCritical(sprintf "Evolve anomaly on aggregate type %s (id: %A, event: %A): %s" ctx.AggregateType.Name ctx.AggregateId ctx.EventId ctx.ErrorMessage)
+                Task.FromResult(())
 
     let mutable currentAnomalyHandler: IEvolveAnomalyHandler = DefaultLoggingAnomalyHandler(logger)
     let getAnomalyHandler () = currentAnomalyHandler
@@ -60,32 +71,25 @@ module Core =
         abstract member Execute: 'A -> Result<'A * List<'E>, string>
         abstract member Undoer: AggregateCommandUndoer<'A, 'E>
 
-    let inline evolveUNforgivingErrorsWithContext<'A, 'E when 'E :> Event<'A>> (aggregateId: Option<AggregateId>) (h: 'A) (events: List<EventId * 'E>) =
+    let inline evolveUNforgivingErrorsWithContext<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<EventId * 'E>) : Result<'A, EvolveError> =
         events
         |> List.fold
-            (fun (acc: Result<'A, string>) (eventId: EventId, e: 'E) ->
+            (fun (acc: Result<'A, EvolveError>) (eventId: EventId, e: 'E) ->
                 acc |> Result.bind (fun s ->
-                    (e.Process s 
-                        |> Result.mapError
-                            (fun x ->
-                                let msg = sprintf "Error processing event %A: %s" e x
-                                logger.LogError msg
-                                currentAnomalyHandler.OnEvolveAnomaly({
-                                    AggregateId = aggregateId
-                                    EventId = Some eventId
-                                    ErrorMessage = msg
-                                    AggregateType = typeof<'A>
-                                })
-                                msg
-                            )
-                    )
+                    e.Process s 
+                    |> Result.mapError
+                        (fun x ->
+                            { EventId = eventId
+                              Message = sprintf "Error processing event %A: %s" e x }
+                        )
                 )
             ) (h |> Ok)
 
-    let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) =
+    let inline evolveUNforgivingErrors<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>) : Result<'A, string> =
         events
         |> List.map (fun e -> (0, e))
-        |> evolveUNforgivingErrorsWithContext<'A, 'E> None h
+        |> evolveUNforgivingErrorsWithContext<'A, 'E> h
+        |> Result.mapError (fun err -> err.Message)
 
     [<Obsolete("evolveSkippingErrors is deprecated in favor of strict evolve and ex-post sanitization")>]
     [<TailCall>]
@@ -116,5 +120,5 @@ module Core =
     let inline evolve<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<'E>): Result<'A, string> =
         evolveUNforgivingErrors h events
 
-    let inline evolveWithContext<'A, 'E when 'E :> Event<'A>> (aggregateId: Option<AggregateId>) (h: 'A) (events: List<EventId * 'E>): Result<'A, string> =
-        evolveUNforgivingErrorsWithContext<'A, 'E> aggregateId h events
+    let inline evolveWithContext<'A, 'E when 'E :> Event<'A>> (h: 'A) (events: List<EventId * 'E>): Result<'A, EvolveError> =
+        evolveUNforgivingErrorsWithContext<'A, 'E> h events

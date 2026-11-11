@@ -610,6 +610,9 @@ module MemoryStorage =
                     |>> (fun x -> x.Id, x.JsonEvent)
                     |> Ok
 
+            member this.GetEventsAfterIdAsync(version, id, name, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).GetEventsAfterId version id name }
+
             member this.MultiAddEventsMd md (arg: List<_ * List<Json> * Version * Name>) =
                 logger.LogDebug(sprintf "MultiAddEvents %A" arg)
 
@@ -658,6 +661,9 @@ module MemoryStorage =
                               Timestamp = x.Timestamp })
                     else
                         None
+
+            member this.TryGetEventAsync(version, id, name, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).TryGetEvent version id name }
 
             member this.SetInitialAggregateState aggregateId version name snapshot =
                 let initialState =
@@ -709,6 +715,9 @@ module MemoryStorage =
                     None
                 else
                     events_dic.[version].[name] |> List.tryLast |>> (fun x -> x.Id)
+
+            member this.TryGetLastEventIdAsync(version, name, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).TryGetLastEventId version name }
 
             member this.TryGetLastSnapshot version name =
                 logger.LogDebug(sprintf "TryGetLastSnapshot %s %s" version name)
@@ -834,6 +843,9 @@ module MemoryStorage =
                     |> List.tryHead
                     |> Result.ofOption (sprintf "aggregate %s%s id %A not found" version name aggregateId)
                     >>= (fun x -> (x.Id, x.Snapshot) |> Ok)
+
+            member this.TryGetFirstSnapshotAsync(version, name, aggregateId, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).TryGetFirstSnapshot version name aggregateId }
 
             member this.TryGetSnapshotById version name id =
                 logger.LogDebug(sprintf "TryGetSnapshotById %s %s %A" version name id)
@@ -1130,6 +1142,9 @@ module MemoryStorage =
                     |>> (fun x -> x.Id) //, x.KafkaOffset, x.KafkaPartition ))
                 else
                     None
+
+            member this.TryGetLastAggregateEventIdAsync(version, name, aggregateId, ?ct: CancellationToken) =
+                task { return (this :> IEventStore<string>).TryGetLastAggregateEventId version name aggregateId }
 
             member this.GetAggregateEventsAfterId version name aggregateId id =
                 if (aggregate_events_dic.ContainsKey version |> not) then

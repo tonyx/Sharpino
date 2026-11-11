@@ -1,7 +1,9 @@
 namespace Sharpino.Lib.Test
 
 open System
+open System.Threading.Tasks
 open Expecto
+open FsToolkit.ErrorHandling
 open Sharpino
 open Sharpino.Core
 open Sharpino.Definitions
@@ -101,17 +103,42 @@ module SanitizerAndCausalityTests =
                 let mutable capturedContext: Option<AnomalyContext> = None
                 let testHandler =
                     { new IEvolveAnomalyHandler with
-                        member this.OnEvolveAnomaly(ctx) = capturedContext <- Some ctx }
+                        member this.OnEvolveAnomaly(ctx) = capturedContext <- Some ctx
+                        member this.OnEvolveAnomalyAsync(ctx) =
+                            capturedContext <- Some ctx
+                            Task.FromResult(()) }
                 let prevHandler = currentAnomalyHandler
                 currentAnomalyHandler <- testHandler
                 try
+                    // 1. Pure domain evolve and evolveWithContext have zero side effects and return error details directly
                     let initial = { Value = 50; History = [] }
                     let badEvents = [ Sub 100 ]
                     let res = evolve initial badEvents
                     Expect.isError res "evolve must return error"
-                    Expect.isSome capturedContext "anomaly handler must be invoked"
+                    Expect.isNone capturedContext "pure evolve must not invoke anomaly handler directly"
+                    let ctxRes = evolveWithContext initial [ (1, Sub 100) ]
+                    Expect.isError ctxRes "evolveWithContext must return EvolveError"
+                    let evolveErr = match ctxRes with Error e -> e | Ok _ -> failwith "expected error"
+                    Expect.equal evolveErr.EventId 1 "EvolveError must capture failing EventId"
+                    Expect.stringContains evolveErr.Message "Underflow" "EvolveError must capture failure message"
+
+                    // 2. StateView orchestration invokes OnEvolveAnomalyAsync when evolveWithContext fails
+                    AggregateCache3.Instance.Clear()
+                    let storage = MemoryStorage() :> IEventStore<string>
+                    let aggId = Guid.NewGuid()
+                    let initialObj = SampleObject.MkSampleObject(aggId, "SameName")
+                    let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+                    let poisonEv = (SampleObjectRenamed "SameName").Serialize
+                    let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [poisonEv]
+                    let freshRes =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isError freshRes "getAggregateFreshStateAsync must return error when handler only logs"
+                    Expect.isSome capturedContext "StateView orchestration must invoke OnEvolveAnomalyAsync"
                     let ctx = capturedContext.Value
-                    Expect.stringContains ctx.ErrorMessage "Underflow" "error message must describe failure"
+                    Expect.equal ctx.AggregateId (Some aggId) "AnomalyContext must capture aggregateId"
+                    Expect.equal ctx.EventId (Some 1) "AnomalyContext must capture failing eventId"
                 finally
                     currentAnomalyHandler <- prevHandler
 
@@ -354,6 +381,7 @@ module SanitizerAndCausalityTests =
 
             testCase "Automated interceptor sanitization: evolve anomaly triggers automatic healing and retries once in StateView" <| fun () ->
                 AggregateCache3.Instance.Clear()
+                resetCooldowns()
                 let storage = MemoryStorage() :> IEventStore<string>
                 let aggId = Guid.NewGuid()
                 let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
@@ -379,6 +407,15 @@ module SanitizerAndCausalityTests =
                                 if Result.isOk res then
                                     healedAggregates <- id :: healedAggregates
                             | _ -> ()
+                        member this.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
+                            task {
+                                match ctx.AggregateId with
+                                | Some id when ctx.AggregateType = typeof<SampleObject> ->
+                                    let! res = sanitizeAggregateStreamAsync<SampleObject, SampleObjectEvents, string> storage id SampleObjectNoOp None
+                                    if Result.isOk res then
+                                        healedAggregates <- id :: healedAggregates
+                                | _ -> ()
+                            }
                     }
 
                 let prevHandler = currentAnomalyHandler
@@ -386,14 +423,20 @@ module SanitizerAndCausalityTests =
                 try
                     // Initial fresh state read encounters the poison event during evolveWithContext,
                     // triggers the autoHealingHandler to patch the stream, and automatically retries once!
-                    let freshAttempt1 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
-                    Expect.isOk freshAttempt1 "First read must succeed after OnEvolveAnomaly heals the stream and StateView retries once"
+                    let freshAttempt1 =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isOk freshAttempt1 "First read must succeed after OnEvolveAnomalyAsync heals the stream and StateView retries once"
                     Expect.contains healedAggregates aggId "Anomaly interceptor must have been triggered with the aggregate ID and healed the stream"
                     let (_, finalState1) = freshAttempt1 |> Result.get
                     Expect.equal finalState1.Name "Step2" "State should evolve cleanly to Step2 on first read"
 
                     // Subsequent read also succeeds cleanly
-                    let freshAttempt2 = getAggregateFreshState<SampleObject, SampleObjectEvents, string> aggId storage
+                    let freshAttempt2 =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
                     Expect.isOk freshAttempt2 "Subsequent read must succeed on the healed stream"
                     let (_, finalState2) = freshAttempt2 |> Result.get
                     Expect.equal finalState2.Name "Step2" "State should evolve cleanly to Step2"
@@ -402,6 +445,7 @@ module SanitizerAndCausalityTests =
 
             testCase "getAllFilteredAggregateStatesUnskippedErrorsAsync heals and returns multiple poisoned aggregates in a single call" <| fun () ->
                 AggregateCache3.Instance.Clear()
+                resetCooldowns()
                 let storage = MemoryStorage() :> IEventStore<string>
                 let aggIds = [ for _ in 1..5 -> Guid.NewGuid() ]
 
@@ -425,6 +469,15 @@ module SanitizerAndCausalityTests =
                                 if Result.isOk res then
                                     lock healedLock (fun () -> healedAggregates <- id :: healedAggregates)
                             | _ -> ()
+                        member this.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
+                            task {
+                                match ctx.AggregateId with
+                                | Some id when ctx.AggregateType = typeof<SampleObject> ->
+                                    let! res = sanitizeAggregateStreamAsync<SampleObject, SampleObjectEvents, string> storage id SampleObjectNoOp None
+                                    if Result.isOk res then
+                                        lock healedLock (fun () -> healedAggregates <- id :: healedAggregates)
+                                | _ -> ()
+                            }
                     }
 
                 let prevHandler = currentAnomalyHandler
@@ -446,6 +499,66 @@ module SanitizerAndCausalityTests =
                         let found = states |> List.tryFind (fun (_, s) -> s.Id = aggId)
                         Expect.isSome found (sprintf "Aggregate %d must be present" i)
                         Expect.equal (snd found.Value).Name (sprintf "Final_%d" i) "Final state must reflect post-poison event"
+                finally
+                    currentAnomalyHandler <- prevHandler
+
+            testCase "Concurrent async reads on poisoned aggregate deduplicate sanitization and heal without deadlock" <| fun () ->
+                AggregateCache3.Instance.Clear()
+                resetCooldowns()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+
+                let ev1 = (SampleObjectRenamed "Step1").Serialize
+                let ev2_poison = (SampleObjectRenamed "Step1").Serialize
+                let ev3 = (SampleObjectRenamed "Step2").Serialize
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2_poison; ev3]
+
+                let countLock = obj()
+                let mutable actualPatchRuns = 0
+                let mutable cooldownSkips = 0
+
+                let autoHealingHandler =
+                    { new IEvolveAnomalyHandler with
+                        member this.OnEvolveAnomaly(_ctx: AnomalyContext) = ()
+                        member this.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
+                            task {
+                                match ctx.AggregateId with
+                                | Some id when ctx.AggregateType = typeof<SampleObject> ->
+                                    let! res = sanitizeAggregateStreamAsync<SampleObject, SampleObjectEvents, string> storage id SampleObjectNoOp None
+                                    match res with
+                                    | Ok report ->
+                                        lock countLock (fun () ->
+                                            if not report.IsClean then
+                                                actualPatchRuns <- actualPatchRuns + 1
+                                            else
+                                                cooldownSkips <- cooldownSkips + 1
+                                        )
+                                    | Error _ -> ()
+                                | _ -> ()
+                            }
+                    }
+
+                let prevHandler = currentAnomalyHandler
+                currentAnomalyHandler <- autoHealingHandler
+                try
+                    let tasks =
+                        [| for _ in 1..10 ->
+                            Task.Run<Result<EventId * SampleObject, string>>(fun () ->
+                                getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                            ) |]
+                    let results =
+                        Task.WhenAll(tasks)
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+
+                    for r in results do
+                        Expect.isOk r "Every concurrent caller must succeed without deadlock"
+                        let (_, s) = r |> Result.get
+                        Expect.equal s.Name "Step2" "Every concurrent caller must observe the healed state"
+
+                    Expect.equal actualPatchRuns 1 "Single-flight lock + cooldown must ensure only 1 actual DB sanitization patch occurs"
                 finally
                     currentAnomalyHandler <- prevHandler
         ]
