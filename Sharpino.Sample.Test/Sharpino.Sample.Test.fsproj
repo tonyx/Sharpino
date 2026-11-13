@@ -7,7 +7,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
   </PropertyGroup>
   <ItemGroup>
-    <compile Include="Shared.fs" />
+    <Compile Include="Shared.fs" />
     <Compile Include="contexts/Tags/entities/TagsTests.fs" />
     <Compile Include="contexts/Tags/TagsContextTests.fs" />
     <Compile Include="contexts/Todos/TodosContextTests.fs" />
@@ -22,8 +22,8 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
-    <PackageReference Include="Expecto" Version="11.1.1" />
-    <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
+    <!-- <PackageReference Include="Expecto" Version="10.0.0" /> -->
+    <!-- <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" /> -->
     <ProjectReference Include="../Sharpino.Sample/Sharpino.Sample.fsproj" />
   </ItemGroup>
 
