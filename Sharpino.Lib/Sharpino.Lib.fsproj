@@ -1,12 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net10.0; net9.0; net8.0</TargetFrameworks>
+    <TargetFrameworks>net11.0; net10.0; net9.0; net8.0</TargetFrameworks>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>7.0.3</Version>
+    <Version>7.0.4</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -70,7 +70,7 @@
         <PackageReference Include="Microsoft.Extensions.Options" Version="11.0.0" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="11.0.0" />
 
-        <PackageReference Include="Sharpino.Core" Version="7.0.1" />
+        <PackageReference Include="Sharpino.Core" Version="7.0.4" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -85,6 +85,7 @@
         <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
         <PackageReference Include="Expecto" Version="11.1.1" />
         <PackageReference Include="Expecto.FsCheck" Version="11.1.1" />
@@ -108,7 +109,7 @@
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
 
-        <PackageReference Include="Sharpino.Core" Version="7.0.1" />
+        <PackageReference Include="Sharpino.Core" Version="7.0.4" />
 
         <PackageReference Include="System.Data.Common" Version="4.3.0" />
         <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -147,7 +148,7 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="11.0.0" />
     
-    <PackageReference Include="Sharpino.Core" Version="7.0.1" />
+    <PackageReference Include="Sharpino.Core" Version="7.0.4" />
 
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />
@@ -186,7 +187,7 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
     
-    <PackageReference Include="Sharpino.Core" Version="7.0.1" />
+    <PackageReference Include="Sharpino.Core" Version="7.0.3" />
     
     <PackageReference Include="System.Data.Common" Version="4.3.0" />
     <PackageReference Include="YoloDev.Expecto.TestSdk" Version="1.0.0" />

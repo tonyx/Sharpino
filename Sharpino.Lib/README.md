@@ -116,12 +116,125 @@ __Faq__ and __trivia__:
     - New business rules may imply new invariants that can escape the constraints of the current structure of aggregates anyway. 
 - Other questions? Just opened a discord channel: https://discord.com/channels/1274092774643339315/
 
+## Database Sharding and Horizontal Scalability (Multi-Tenancy)
+
+Sharpino supports database sharding in multi-tenant architectures **without requiring any changes to the core library**. Because Sharpino's command execution functions (`runAggregateCommandMd`, `runInit`, etc.) and state viewers (`StateView`) accept `storage: IEventStore<'F>` as an explicit dependency, sharding is achieved naturally by dynamically resolving the appropriate `IEventStore` instance based on a reference ID (such as a `tenantId`).
+
+### 1. Architectural Overview: Stateless Compute & Sharded Storage
+
+Horizontal scalability can be approached by decoupling the stateless compute tier from persistent database shards:
+
+* **Computational Nodes as Controllers (e.g., Azure Functions / Minimal APIs)**:
+  - Stateless compute nodes (such as serverless Azure Functions or ASP.NET Core controllers) process incoming HTTP commands and queries.
+  - The controller extracts the `tenantId` from the route, header, or JWT authentication context.
+  - The controller queries a lightweight `ShardResolver` to obtain the `IEventStore<'F>` mapped to that `tenantId`.
+  - The controller passes this `eventStore` instance directly to `runAggregateCommandMd` or `StateView`.
+  - Compute nodes scale out automatically based on traffic without stateful bottlenecks.
+
+* **Physical Database Shards**:
+  - Each shard is a separate, independent PostgreSQL database instance containing the Sharpino schema (events and snapshot tables).
+  - Leveraging Sharpino's physical CQRS support (version 6.2.6+), each shard instance can be configured with its own distinct `ReadConnection` (replica) and `WriteConnection` (primary):
+    ```fsharp
+    let shard0 = PgStorage.PgEventStore(shard0ReadConn, shard0WriteConn) :> IEventStore<string>
+    let shard1 = PgStorage.PgEventStore(shard1ReadConn, shard1WriteConn) :> IEventStore<string>
+    ```
+
+### 2. Multi-Node L1/L2 Cache Invalidation with PostgreSQL LISTEN/NOTIFY
+
+When running multiple compute nodes (e.g., multiple Azure Function instances or Web API pods) against multiple PostgreSQL shards, cache invalidation across L1 (in-memory) and L2 caches must be coordinated across the cluster.
+
+Instead of introducing additional infrastructure like Redis or Azure Service Bus, **you can continue using PostgreSQL for `LISTEN / NOTIFY` via `PgNotifyBackplane`**:
+* `PgNotifyBackplane` is completely decoupled from domain event tables; it only executes `LISTEN` and `SELECT pg_notify(...)`.
+* In `appsettings.json`, set `Cache:L2PgNotifyConnectionString` to point to a **dedicated coordination PostgreSQL database** (or a shared Tenant Catalog / Shard 0 database), independent of the shard databases:
+  ```json
+  {
+    "Cache": {
+      "L2PgNotifyBackplaneEnabled": true,
+      "L2PgNotifyConnectionString": "Host=coordination-db;Database=sharpino_backplane;Username=...;Password=...",
+      "L2PgNotifyChannelName": "sharpino_cache_eviction"
+    }
+  }
+  ```
+* **Benefits**:
+  - Keeps the entire technology stack 100% PostgreSQL.
+  - Every compute node maintains only **1 persistent `LISTEN` connection** to the coordination database, rather than $N$ connections to $N$ shards.
+  - When an aggregate state is updated on *any* shard, the node publishes an eviction notification to the coordination DB, immediately invalidating the L1 cache entry across all compute nodes.
+
+### 3. Shard Mapping: Moving Beyond Naive Modulo
+
+A naive mapping function such as:
+$$\text{shardId} = \text{abs}(\text{tenantId.GetHashCode}()) \pmod N$$
+works for a fixed number of shards ($N$). However, **increasing the number of shards from $N$ to $N+1$ breaks the mapping**: nearly all existing tenants will remap to different shards, which would require massive, impractical data migrations in an append-only event store.
+
+To maintain a **uniform distribution** while allowing the cluster of shards to scale dynamically, consider the following strategies:
+
+#### Strategy A: Fixed Virtual Buckets (Two-Tier Indirection) — *Recommended*
+* Fix the number of virtual buckets to a large constant (e.g., $M = 1024$ or $4096$).
+* The hash function maps tenants to virtual buckets using a stable hash (e.g., MurmurHash3 or MD5):
+  $$\text{bucketId} = \text{abs}(\text{Murmur3}(\text{tenantId})) \pmod{1024}$$
+* A routing lookup table (stored in configuration or the coordination database) maps each bucket to a physical shard:
+  $$\text{bucketId} \to \text{PhysicalShardId}$$
+* **Why this is better**:
+  - The modulo arithmetic is applied to a **constant** ($1024$), so a tenant's bucket assignment never changes.
+  - When adding a new physical shard (e.g., expanding from 2 shards to 3), you only reassign a subset of buckets (e.g., moving buckets 683–1023 to Shard 2).
+  - Only the event streams belonging to those migrated buckets need to be moved, leaving all other buckets and shards completely undisturbed.
+
+#### Strategy B: Consistent Hashing with Virtual Nodes (Hash Ring)
+* Both physical shards (with multiple virtual nodes) and tenants are hashed onto a continuous circular ring (e.g., using Ketama or Murmur3).
+* A tenant's shard is found by moving clockwise to the nearest shard node on the ring.
+* Adding a new shard node only absorbs a fraction ($\approx \frac{1}{N+1}$) of tenants from its immediate neighbors on the ring, avoiding disruption to the rest of the cluster.
+
+#### Strategy C: Tenant Catalog / Directory-Based Routing
+* An explicit catalog table (`TenantId -> ShardId`) in the coordination database tracks the shard assignment for each tenant.
+* New tenants are assigned to the least-loaded shard or placed according to business criteria (e.g., enterprise vs. shared tier, geographic data residency).
+
+### 4. Implementation Example in F#
+
+```fsharp
+type ShardResolver(shards: Map<int, IEventStore<string>>, bucketMap: Map<int, int>) =
+    let totalBuckets = 1024
+
+    member this.Resolve(tenantId: System.Guid) : IEventStore<string> =
+        // Stable bucket assignment (independent of physical shard count)
+        let bucketId = abs (tenantId.GetHashCode()) % totalBuckets
+        let physicalShardId = bucketMap.[bucketId]
+        shards.[physicalShardId]
+
+// Usage in an Azure Function or Application Controller:
+type OrderController(resolver: ShardResolver, messageSenders: MessageSenders) =
+    member this.HandleCreateOrder(tenantId: System.Guid, order: Order) =
+        let store = resolver.Resolve(tenantId)
+        runInit<Order, OrderEvents, string> store messageSenders order
+
+    member this.HandleAddOrderItem(tenantId: System.Guid, orderId: System.Guid, item: OrderItem) =
+        let store = resolver.Resolve(tenantId)
+        runAggregateCommandMd<Order, OrderEvents, string>
+            orderId
+            store
+            messageSenders
+            Metadata.Empty
+            (AddItem item)
+```
+
+> [!NOTE]
+> **Cross-Aggregate Transactions in Sharded Environments**: Multi-aggregate commands (such as `runTwoNAggregateCommandsMdAsync2`) execute within a single PostgreSQL ACID transaction. In a sharded architecture, these commands are only valid when all participating aggregates belong to the same tenant / shard.
+
 ## Acknowledgements
 
 A heartfelt thank you to  [Jetbrains](https://www.jetbrains.com) who have generously provided free licenses to support this project.
 
 ## News/Updates
+- Version 7.0.4: Introduced net11.0 support with slight change for Cache refresh tasks.
+- Version 7.0.3: Accelerating on ditching and deprecating residual async over async stuff. Sanitization adjusted in that direction as well (few changes may be needed if used for 7.0.1/7.0.2).
+- Version 7.0.2: Events sanitization process on stored events (which should neve happen as events MUST be consistent, except for specific staging/testing/dev/debug cases) is moved on the StateView level.
+- Version 7.0.1: Change the behaviour of the _Evolve_ function to fail fast when inconsistencies are detected (see [MIGRATION_HOWTO.md](MIGRATION_HOWTO.md)). Must include the database patch adding correlation_id and causation_id columns. Some dead code in psql functions can be dropped. 
+- Version 6.2.7 update lib dependencies
+- I found a code assurance index of Sharpino: [Codeassuranceindex](https://codeassuranceindex.info/surveys/github/tonyx/sharpino/). Follow up: the performance metric dropped from 100% to 61% even if I didn't touch the related code. Apparently it's not easily discoverable by Google search anymore. Conclusion: I would try to run the tests by myself to understand what's happening and eventually remove the link.  
 
+- Version 6.2.6 Reintroduces Mailboxprocessor for single stream/aggregate commands. Added two separate read/write connection strings for EventStore, for eventual physical read/write separation. 
+- Version 6.2.5 Make use of the AsyncKeyedLock locker (p.r. https://github.com/tonyx/Sharpino/pull/72  - Courtesy: [MarkCiliaVincenti](https://github.com/MarkCiliaVincenti))
+- Version 6.2.4 introduced SemaphorseSlimLimit as parameter to tune the degree of parallelism when loading aggregates, considering the connection pool size. 
+- Version 6.2.3 Improved L2 cache. Instad of caching Task, now full objects are cached in L2.
 - A [video](https://youtu.be/bXA4-Y589sQ) of a scalable architectural solution using Blazor/Webassebly/Azure functions using Sharpino
 
 - Version 6.2.2. Added getAllFilteredAggregateStatesUnskippedErrorsAsync which fails if an aggregate read fails for instance duet to an upcast failure or any other reason. Use case: you evolve an aggregate and upcast, then you want to reload all the aggregates, you get a failure and so you fix it. Previously getAllFilteredAggregateStatesAsync would have returned the other aggregates and silently ignored the failure of the upcasting of the current aggregate. Now it fails, 

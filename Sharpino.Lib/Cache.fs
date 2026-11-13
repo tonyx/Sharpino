@@ -263,12 +263,17 @@ module Cache =
                 )
                 _backplane.Value.PublishAsync(msg, detailsEntryOptions, System.Threading.CancellationToken.None).AsTask() |> ignore
 
+        [<Obsolete("Use RefreshDependentDetailsAsync instead")>] 
         member this.RefreshDependentDetails (aggregateId: AggregateId) =
             let keys = objectDetailsAssociationsCache.GetOrDefault<List<DetailsCacheKey>>(aggregateId.ToString(), Unchecked.defaultof<List<DetailsCacheKey>>)
             if not (obj.ReferenceEquals(keys, null)) then
                 for key in keys do
-                    let! _ = this.RefreshAsync (key, None)
-                    ()
+                    task
+                        {
+                           let! _ = this.RefreshAsync (key, None)
+                           return ()
+                        }
+                    |> ignore
 
         member this.RefreshDependentDetailsAsync (aggregateId: AggregateId, ct: Option<CancellationToken>) =
             task {
