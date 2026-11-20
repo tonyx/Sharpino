@@ -201,7 +201,38 @@ type OrderEvents =
 ```
 
 ### 3.2 Configuring Evolve Anomaly Handlers
-Configure a custom anomaly handler via `Sharpino.Core.currentAnomalyHandler` (prefer implementing `OnEvolveAnomalyAsync` so async read paths in `StateView` stay 100% non-blocking):
+
+> [!IMPORTANT]
+> **Recommended for Production — Non-Blocking `BackgroundSanitizer`:** Running full-stream sanitization inline inside `OnEvolveAnomalyAsync` holds `StateView` / FusionCache locks and DB connections while replaying streams, which can cause request timeouts or connection-pool starvation under concurrent traffic. Prefer registering `BackgroundSanitizer<'F>` as a singleton (`IHostedService`), which enqueues anomalies to an internal `MailboxProcessor` without blocking callers, deduplicates bursts in memory, performs an O(1) single-event `NoOp` patch by default (skipping extra `SELECT` queries unless a compensator is registered), and cleans local + backplane caches once done.
+
+#### Option A: Silent Background Sanitization (Recommended)
+```fsharp
+open Microsoft.Extensions.DependencyInjection
+open Sharpino.Sanitizer
+
+// Create and register streams once at startup (NoOp payloads are pre-serialized once)
+let bgSanitizer = new BackgroundSanitizer<string>(eventStore, cooldownMs = 5000)
+
+// Default: O(1) single-event patch using the exact EventId reported by StateView
+bgSanitizer.RegisterAggregate<Order, OrderEvents>(OrderNoOp)
+
+// Optional fallback: full-stream replay sanitization for streams that may have multiple poisoned events
+bgSanitizer.RegisterAggregate<Account, AccountEvents>(AccountNoOp, mode = FullStreamSanitize)
+
+// Context streams are supported the same way
+bgSanitizer.RegisterContext<TagsContext, TagEvent>(TagNoOp)
+
+// ASP.NET Core DI (installs global anomaly handler on StartAsync and drains cleanly on StopAsync):
+builder.Services.AddSingleton(bgSanitizer) |> ignore
+builder.Services.AddHostedService<BackgroundSanitizer<string>>(fun sp ->
+    sp.GetRequiredService<BackgroundSanitizer<string>>()) |> ignore
+
+// Or in a standalone / non-hosted app:
+// bgSanitizer.InstallAsGlobalAnomalyHandler()
+```
+
+#### Option B: Custom Inline Anomaly Handler
+If you need synchronous/inline healing and automatic single retry on the first read (e.g. for tests or dev tools), implement `IEvolveAnomalyHandler` directly via `Sharpino.Core.currentAnomalyHandler`:
 
 ```fsharp
 open System.Threading.Tasks
@@ -211,13 +242,13 @@ open Sharpino.Sanitizer
 type AutoRecoveryAnomalyHandler(eventStore: IEventStore<string>, logger: ILogger) =
     interface IEvolveAnomalyHandler with
         member this.OnEvolveAnomaly(ctx: AnomalyContext) =
-            logger.LogCritical("Poison pill detected in {Stream} event {Id}: {Error}", 
-                ctx.StreamName, ctx.EventId, ctx.ErrorMessage)
+            logger.LogCritical("Poison pill detected in {Type} event {Id}: {Error}", 
+                ctx.AggregateType.Name, ctx.EventId, ctx.ErrorMessage)
 
         member this.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
             task {
-                logger.LogCritical("Poison pill detected in {Stream} event {Id}: {Error}", 
-                    ctx.StreamName, ctx.EventId, ctx.ErrorMessage)
+                logger.LogCritical("Poison pill detected in {Type} event {Id}: {Error}", 
+                    ctx.AggregateType.Name, ctx.EventId, ctx.ErrorMessage)
                 match ctx.AggregateId with
                 | Some id when ctx.AggregateType = typeof<Order> ->
                     let! _ = sanitizeAggregateStreamAsync<Order, OrderEvents, string> eventStore id OrderNoOp None

@@ -6,7 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Sharpino</PackageId>
-    <Version>7.0.4</Version>
+    <Version>7.0.5</Version>
     <Authors>Antonio Lucca</Authors>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -81,7 +81,7 @@
         <PackageReference Include="FSharp.Data" Version="8.2.0" />
         <PackageReference Include="FSharpPlus" Version="1.9.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="Npgsql" Version="10.0.3" />
+        <PackageReference Include="Npgsql" Version="11.0.0" />
         <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -105,9 +105,9 @@
         <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.15" />
         <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.14" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.15" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.15" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.15" />
 
         <PackageReference Include="Sharpino.Core" Version="7.0.4" />
 
@@ -120,7 +120,7 @@
         <PackageReference Include="FSharp.Data" Version="8.2.0" />
         <PackageReference Include="FSharpPlus" Version="1.9.1" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-        <PackageReference Include="Npgsql" Version="10.0.3" />
+        <PackageReference Include="Npgsql" Version="10.0.4" />
         <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
         <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -145,8 +145,8 @@
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.23" />
 
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="11.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.15" />
     
     <PackageReference Include="Sharpino.Core" Version="7.0.4" />
 
@@ -159,7 +159,7 @@
     <PackageReference Include="FSharp.Data" Version="8.2.0" />
     <PackageReference Include="FSharpPlus" Version="1.9.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Npgsql" Version="10.0.4" />
     <PackageReference Include="Npgsql.FSharp" Version="8.0.0" />
     <PackageReference Include="System.collections" Version="4.3.0" />
   </ItemGroup>
@@ -184,8 +184,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.SqlServer" Version="8.0.25" />
     <PackageReference Include="Community.Microsoft.Extensions.Caching.PostgreSql" Version="6.0.2" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.33" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.14" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.15" />
     
     <PackageReference Include="Sharpino.Core" Version="7.0.3" />
     
