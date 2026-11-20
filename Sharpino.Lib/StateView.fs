@@ -64,6 +64,14 @@ module StateView =
                 |> Task.FromResult
 
     let logger = Cache.loggerFactory.CreateLogger("Sharpino.StateView")
+
+    type IAnomalyRetryPolicy =
+        abstract member ShouldRetryInline: bool
+
+    let shouldRetryAfterAnomaly () =
+        match box currentAnomalyHandler with
+        | :? IAnomalyRetryPolicy as policy -> policy.ShouldRetryInline
+        | _ -> true
     
     [<Obsolete("This method is deprecated and will be removed in a future version. Please config log on appsettings.json")>]
     let setLogger (newLogger: ILogger) =
@@ -515,9 +523,12 @@ module StateView =
                                         ErrorMessage = evolveErr.Message
                                         AggregateType = typeof<'A>
                                     })
-                                    match attempt () with
-                                    | Ok s -> Ok s
-                                    | Error _ -> Error evolveErr.Message
+                                    if shouldRetryAfterAnomaly () then
+                                        match attempt () with
+                                        | Ok s -> Ok s
+                                        | Error _ -> Error evolveErr.Message
+                                    else
+                                        Error evolveErr.Message
                                 | Error evolveErr -> Error evolveErr.Message
             
                         let lastEventId = eventStore.TryGetLastEventId 'A.Version 'A.StorageName |> Option.defaultValue 0
@@ -573,10 +584,13 @@ module StateView =
                             ErrorMessage = evolveErr.Message
                             AggregateType = typeof<'A>
                         })
-                        let! retryRes = attempt ()
-                        match retryRes with
-                        | Ok s -> return Ok s
-                        | Error _ -> return Error evolveErr.Message
+                        if shouldRetryAfterAnomaly () then
+                            let! retryRes = attempt ()
+                            match retryRes with
+                            | Ok s -> return Ok s
+                            | Error _ -> return Error evolveErr.Message
+                        else
+                            return Error evolveErr.Message
                     | Error evolveErr ->
                         return Error evolveErr.Message
                 }
@@ -635,9 +649,12 @@ module StateView =
                             ErrorMessage = evolveErr.Message
                             AggregateType = typeof<'A>
                         })
-                        match attempt () with
-                        | Ok res -> Ok res
-                        | Error _ -> Error evolveErr.Message
+                        if shouldRetryAfterAnomaly () then
+                            match attempt () with
+                            | Ok res -> Ok res
+                            | Error _ -> Error evolveErr.Message
+                        else
+                            Error evolveErr.Message
                     | Error evolveErr -> Error evolveErr.Message
             let state = AggregateCache3.Instance.Memoize computeNewStateAndLatestEventId id
             match state with
@@ -700,10 +717,13 @@ module StateView =
                             ErrorMessage = evolveErr.Message
                             AggregateType = typeof<'A>
                         })
-                        let! retryRes = attempt ()
-                        match retryRes with
-                        | Ok res -> return Ok res
-                        | Error _ -> return Error evolveErr.Message
+                        if shouldRetryAfterAnomaly () then
+                            let! retryRes = attempt ()
+                            match retryRes with
+                            | Ok res -> return Ok res
+                            | Error _ -> return Error evolveErr.Message
+                        else
+                            return Error evolveErr.Message
                     | Error evolveErr ->
                         return Error evolveErr.Message
                 }
@@ -789,9 +809,12 @@ module StateView =
                             ErrorMessage = evolveErr.Message
                             AggregateType = typeof<'A>
                         })
-                        match attempt () with
-                        | Ok res -> Ok res
-                        | Error _ -> Error evolveErr.Message
+                        if shouldRetryAfterAnomaly () then
+                            match attempt () with
+                            | Ok res -> Ok res
+                            | Error _ -> Error evolveErr.Message
+                        else
+                            Error evolveErr.Message
                     | Error evolveErr -> Error evolveErr.Message
             
             let lastEventId = eventStore.TryGetLastAggregateEventId 'A.Version 'A.StorageName id |> Option.defaultValue 0

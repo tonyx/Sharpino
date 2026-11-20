@@ -1,6 +1,7 @@
 namespace Sharpino.Lib.Test
 
 open System
+open System.Threading
 open System.Threading.Tasks
 open Expecto
 open FsToolkit.ErrorHandling
@@ -559,6 +560,199 @@ module SanitizerAndCausalityTests =
                         Expect.equal s.Name "Step2" "Every concurrent caller must observe the healed state"
 
                     Expect.equal actualPatchRuns 1 "Single-flight lock + cooldown must ensure only 1 actual DB sanitization patch occurs"
+                finally
+                    currentAnomalyHandler <- prevHandler
+
+            testCase "BackgroundSanitizer non-blocking single-event patch heals stream and cleans cache silently" <| fun () ->
+                AggregateCache3.Instance.Clear()
+                resetCooldowns()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+
+                let ev1 = (SampleObjectRenamed "Step1").Serialize
+                let ev2_poison = (SampleObjectRenamed "Step1").Serialize
+                let ev3 = (SampleObjectRenamed "Step2").Serialize
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2_poison; ev3]
+
+                let sanitizedSignal = new ManualResetEventSlim(false)
+                let mutable lastReport : Option<StreamSanitizationReport> = None
+
+                use bgSanitizer =
+                    new BackgroundSanitizer<string>(
+                        storage,
+                        cooldownMs = 5000,
+                        onSanitized = fun r ->
+                            lastReport <- Some r
+                            sanitizedSignal.Set()
+                    )
+                bgSanitizer.RegisterAggregate<SampleObject, SampleObjectEvents>(SampleObjectNoOp)
+
+                let prevHandler = currentAnomalyHandler
+                bgSanitizer.InstallAsGlobalAnomalyHandler()
+                try
+                    // First read fails fast without blocking or retrying inline, while enqueuing the anomaly
+                    let firstRead =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isError firstRead "First read should fail fast while BackgroundSanitizer heals asynchronously"
+
+                    // Wait for background MailboxProcessor to finish single-event patch
+                    let signaled = sanitizedSignal.Wait(TimeSpan.FromSeconds(5.0))
+                    Expect.isTrue signaled "BackgroundSanitizer must process the enqueued anomaly"
+                    Expect.equal bgSanitizer.ProcessedCount 1L "Exactly 1 single-event patch must have been executed"
+
+                    let report = lastReport.Value
+                    Expect.equal report.Actions.Length 1 "Only the single poisoned event should be patched"
+                    match report.Actions.Head with
+                    | PatchedToNoOp(evId, None) -> Expect.equal evId 2 "Exact poisoned event id 2 must be patched without fetching correlation when no compensator"
+                    | other -> failwithf "Unexpected action: %A" other
+
+                    // Next read succeeds cleanly because BackgroundSanitizer patched event 2 and cleaned the cache
+                    let secondRead =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isOk secondRead "Subsequent read must succeed cleanly after background sanitization"
+                    let (_, state) = secondRead |> Result.get
+                    Expect.equal state.Name "Step2" "Healed state must reflect Step2"
+                finally
+                    currentAnomalyHandler <- prevHandler
+
+            testCase "BackgroundSanitizer deduplicates burst of concurrent anomalies on same event" <| fun () ->
+                AggregateCache3.Instance.Clear()
+                resetCooldowns()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+
+                let ev1 = (SampleObjectRenamed "Step1").Serialize
+                let ev2_poison = (SampleObjectRenamed "Step1").Serialize
+                let ev3 = (SampleObjectRenamed "Step2").Serialize
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2_poison; ev3]
+
+                let sanitizedSignal = new ManualResetEventSlim(false)
+                use bgSanitizer =
+                    new BackgroundSanitizer<string>(
+                        storage,
+                        cooldownMs = 5000,
+                        onSanitized = fun _ -> sanitizedSignal.Set()
+                    )
+                bgSanitizer.RegisterAggregate<SampleObject, SampleObjectEvents>(SampleObjectNoOp)
+
+                // Enqueue a burst of 25 identical anomalies
+                let ctx = {
+                    AggregateId = Some aggId
+                    EventId = Some 2
+                    ErrorMessage = "duplicate anomaly burst"
+                    AggregateType = typeof<SampleObject>
+                }
+                for _ in 1..25 do
+                    bgSanitizer.Enqueue(ctx)
+
+                let signaled = sanitizedSignal.Wait(TimeSpan.FromSeconds(5.0))
+                Expect.isTrue signaled "BackgroundSanitizer must process the first anomaly"
+                bgSanitizer.StopAsync().GetAwaiter().GetResult()
+
+                Expect.equal bgSanitizer.ProcessedCount 1L "Only 1 DB patch must occur for a burst of 25 identical anomalies"
+                Expect.equal bgSanitizer.DeduplicatedCount 24L "Remaining 24 anomalies must be deduplicated in-memory"
+
+                let readAfter =
+                    getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously
+                Expect.isOk readAfter "Aggregate must evolve cleanly after burst sanitization"
+                Expect.equal (readAfter |> Result.get |> snd).Name "Step2" "Healed state must be Step2"
+
+            testCase "BackgroundSanitizer supports FullStreamSanitize fallback mode for multiple poisoned events" <| fun () ->
+                AggregateCache3.Instance.Clear()
+                resetCooldowns()
+                let storage = MemoryStorage() :> IEventStore<string>
+                let aggId = Guid.NewGuid()
+                let initialObj = SampleObject.MkSampleObject(aggId, "InitialState")
+                let _ = storage.SetInitialAggregateState aggId SampleObject.Version SampleObject.StorageName initialObj.Serialize
+
+                let ev1 = (SampleObjectRenamed "Step1").Serialize
+                let ev2_poison = (SampleObjectRenamed "Step1").Serialize
+                let ev3 = (SampleObjectRenamed "Step2").Serialize
+                let ev4_poison = (SampleObjectRenamed "Step2").Serialize
+                let ev5 = (SampleObjectRenamed "Step3").Serialize
+                let _ = storage.AddAggregateEventsMd 0 SampleObject.Version SampleObject.StorageName aggId "md" [ev1; ev2_poison; ev3; ev4_poison; ev5]
+
+                let sanitizedSignal = new ManualResetEventSlim(false)
+                let mutable lastReport : Option<StreamSanitizationReport> = None
+                use bgSanitizer =
+                    new BackgroundSanitizer<string>(
+                        storage,
+                        cooldownMs = 5000,
+                        onSanitized = fun r ->
+                            lastReport <- Some r
+                            sanitizedSignal.Set()
+                    )
+                bgSanitizer.RegisterAggregate<SampleObject, SampleObjectEvents>(SampleObjectNoOp, mode = FullStreamSanitize)
+
+                let prevHandler = currentAnomalyHandler
+                bgSanitizer.InstallAsGlobalAnomalyHandler()
+                try
+                    let firstRead =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isError firstRead "First read should fail fast"
+
+                    let signaled = sanitizedSignal.Wait(TimeSpan.FromSeconds(5.0))
+                    Expect.isTrue signaled "BackgroundSanitizer must finish full-stream fallback sanitization"
+                    Expect.equal lastReport.Value.Actions.Length 2 "Full-stream mode must patch both poisoned events in one pass"
+
+                    let secondRead =
+                        getAggregateFreshStateAsync<SampleObject, SampleObjectEvents, string> aggId storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isOk secondRead "Subsequent read must succeed cleanly"
+                    Expect.equal (secondRead |> Result.get |> snd).Name "Step3" "Healed state must reach Step3"
+                finally
+                    currentAnomalyHandler <- prevHandler
+
+            testCase "BackgroundSanitizer single-event patch works for Context streams" <| fun () ->
+                StateCache2<SampleContext>.Instance.Invalidate()
+                resetCooldowns()
+                let storage = MemoryStorage() :> IEventStore<string>
+
+                let ev1 = (SampleContextRenamed "ValidName").Serialize
+                let ev2_poison = "CORRUPTED_JSON_EVENT"
+                let _ = storage.AddEventsMd 0 SampleContext.Version SampleContext.StorageName "md" [ev1; ev2_poison]
+
+                let sanitizedSignal = new ManualResetEventSlim(false)
+                use bgSanitizer =
+                    new BackgroundSanitizer<string>(
+                        storage,
+                        cooldownMs = 5000,
+                        onSanitized = fun _ -> sanitizedSignal.Set()
+                    )
+                bgSanitizer.RegisterContext<SampleContext, SampleContextEvents>(SampleContextNoOp)
+
+                let prevHandler = currentAnomalyHandler
+                bgSanitizer.InstallAsGlobalAnomalyHandler()
+                try
+                    let firstRead =
+                        getFreshStateAsync<SampleContext, SampleContextEvents, string> storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isError firstRead "First context read should fail fast"
+
+                    let signaled = sanitizedSignal.Wait(TimeSpan.FromSeconds(5.0))
+                    Expect.isTrue signaled "BackgroundSanitizer must patch context event"
+                    Expect.equal bgSanitizer.ProcessedCount 1L "Exactly 1 context patch must occur"
+
+                    let secondRead =
+                        getFreshStateAsync<SampleContext, SampleContextEvents, string> storage None
+                        |> Async.AwaitTask
+                        |> Async.RunSynchronously
+                    Expect.isOk secondRead "Subsequent context read must succeed after cache invalidation"
+                    Expect.equal (secondRead |> Result.get |> snd).Name "ValidName" "Healed context state must preserve ValidName"
                 finally
                     currentAnomalyHandler <- prevHandler
         ]

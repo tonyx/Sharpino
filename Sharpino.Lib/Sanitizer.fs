@@ -6,12 +6,14 @@ open System.Threading
 open System.Threading.Tasks
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
 open Sharpino.Core
 open Sharpino.Definitions
 open Sharpino.Storage
 open Sharpino.CommandHandler
 open Sharpino.Cache
+open Sharpino.StateView
 open FsToolkit.ErrorHandling
 
 module Sanitizer =
@@ -507,3 +509,293 @@ module Sanitizer =
                 reports.Add(report)
             return reports |> List.ofSeq
         }
+
+    type SanitizationMode =
+        | SingleEventPatch
+        | FullStreamSanitize
+
+    let patchSingleAggregateEventByMetaAsync<'F>
+        (storage: IEventStore<'F>)
+        (version: string)
+        (storageName: string)
+        (aggregateId: Guid)
+        (eventId: EventId)
+        (noOpSerialized: 'F)
+        (compensator: Option<Guid -> EventId -> TaskResult<string, string>>)
+        : TaskResult<StreamSanitizationReport, string> =
+        taskResult {
+            logger.LogWarning(sprintf "Fast-patching single aggregate event %d for %s %s (aggregateId: %A) to NoOp." eventId version storageName aggregateId)
+            let! _ = storage.PatchEventWithNoOpAsync(version, storageName, aggregateId, eventId, noOpSerialized)
+            AggregateCache3.Instance.Clean aggregateId
+            DetailsCache.Instance.EvictDependentDetails aggregateId
+
+            let mutable actions = []
+            match compensator with
+            | None ->
+                actions <- [ PatchedToNoOp(eventId, None) ]
+            | Some comp ->
+                let! evOpt = storage.TryGetEventAsync(version, eventId, storageName)
+                let corrIdOpt = evOpt |> Option.bind (fun e -> e.CorrelationId)
+                actions <- [ PatchedToNoOp(eventId, corrIdOpt) ]
+                match corrIdOpt with
+                | Some corrId ->
+                    let! relatedEventsRes =
+                        task {
+                            let! r = storage.FindEventsByCorrelationIdAsync(version, storageName, corrId)
+                            return Ok r
+                        }
+                    match relatedEventsRes with
+                    | Ok relatedEvents ->
+                        let relatedAggIds =
+                            relatedEvents
+                            |> List.map (fun (id, _, _) -> id)
+                            |> List.distinct
+                        for relId in relatedAggIds do
+                            if relId <> aggregateId then
+                                AggregateCache3.Instance.Clean relId
+                                DetailsCache.Instance.EvictDependentDetails relId
+                    | Error _ -> ()
+
+                    logger.LogInformation(sprintf "Triggering ex-post compensator for correlationId %A, poisoned event %d" corrId eventId)
+                    let! compRes =
+                        task {
+                            let! r = comp corrId eventId
+                            return Ok r
+                        }
+                    match compRes with
+                    | Ok desc ->
+                        actions <- actions @ [ Compensated(aggregateId, corrId, eventId, desc) ]
+                    | Error compErr ->
+                        logger.LogError(sprintf "Compensator failed for correlationId %A: %s" corrId compErr)
+                | None -> ()
+
+            return
+                { AggregateId = Some aggregateId
+                  StreamName = storageName
+                  Version = version
+                  IsClean = false
+                  Actions = actions
+                  FinalEventId = eventId }
+        }
+
+    let inline patchSingleAggregateEventAsync<'A, 'E, 'F
+        when 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>
+        and 'E: (member Serialize: 'F)
+        >
+        (storage: IEventStore<'F>)
+        (aggregateId: Guid)
+        (eventId: EventId)
+        (noOpEvent: 'E)
+        (compensator: Option<Guid -> EventId -> TaskResult<string, string>>)
+        : TaskResult<StreamSanitizationReport, string> =
+        patchSingleAggregateEventByMetaAsync storage 'A.Version 'A.StorageName aggregateId eventId noOpEvent.Serialize compensator
+
+    let patchSingleContextEventByMetaAsync<'F>
+        (storage: IEventStore<'F>)
+        (version: string)
+        (storageName: string)
+        (eventId: EventId)
+        (noOpSerialized: 'F)
+        (invalidateCache: unit -> unit)
+        : TaskResult<StreamSanitizationReport, string> =
+        taskResult {
+            logger.LogWarning(sprintf "Fast-patching single context event %d for %s %s to NoOp." eventId version storageName)
+            let! _ = storage.PatchContextEventWithNoOpAsync(version, storageName, eventId, noOpSerialized)
+            invalidateCache ()
+            return
+                { AggregateId = None
+                  StreamName = storageName
+                  Version = version
+                  IsClean = false
+                  Actions = [ PatchedToNoOp(eventId, None) ]
+                  FinalEventId = eventId }
+        }
+
+    let inline patchSingleContextEventAsync<'A, 'E, 'F
+        when 'A: (static member StorageName: string)
+        and 'A: (static member Version: string)
+        and 'E :> Event<'A>
+        and 'E: (member Serialize: 'F)
+        >
+        (storage: IEventStore<'F>)
+        (eventId: EventId)
+        (noOpEvent: 'E)
+        : TaskResult<StreamSanitizationReport, string> =
+        patchSingleContextEventByMetaAsync storage 'A.Version 'A.StorageName eventId noOpEvent.Serialize (fun () -> StateCache2<'A>.Instance.Invalidate())
+
+    type private SanitizerMessage =
+        | EnqueueAnomaly of AnomalyContext
+        | Stop of AsyncReplyChannel<unit>
+
+    /// Non-blocking, MailboxProcessor-backed singleton sanitizer that consumes evolve anomalies
+    /// silently in the background, applies O(1) single-event NoOp patches by default (with optional
+    /// fallback to full-stream sanitization), and cleans caches after each patch.
+    type BackgroundSanitizer<'F>
+        (
+            storage: IEventStore<'F>,
+            ?cooldownMs: int,
+            ?maxQueueSize: int,
+            ?onSanitized: StreamSanitizationReport -> unit,
+            ?onError: AnomalyContext -> string -> unit
+        ) =
+        let effectiveCooldownMs = defaultArg cooldownMs sanitizerCooldownMs
+        let effectiveMaxQueueSize = defaultArg maxQueueSize 10_000
+        let handlers = ConcurrentDictionary<Type, AnomalyContext -> TaskResult<StreamSanitizationReport, string>>()
+        let mutable isStopped = 0
+        let mutable processedCount = 0L
+        let mutable deduplicatedCount = 0L
+        let mutable droppedCount = 0L
+
+        let mailbox =
+            MailboxProcessor<SanitizerMessage>.Start(fun inbox ->
+                let recentPatches = System.Collections.Generic.Dictionary<Type * Option<Guid> * Option<EventId>, DateTimeOffset>()
+                let pruneExpired (now: DateTimeOffset) =
+                    if recentPatches.Count > 1000 && effectiveCooldownMs > 0 then
+                        let expired =
+                            recentPatches
+                            |> Seq.filter (fun kv -> (now - kv.Value).TotalMilliseconds >= float effectiveCooldownMs)
+                            |> Seq.map (fun kv -> kv.Key)
+                            |> Seq.toList
+                        for k in expired do
+                            recentPatches.Remove(k) |> ignore
+
+                let rec loop () =
+                    async {
+                        let! msg = inbox.Receive()
+                        match msg with
+                        | Stop reply ->
+                            reply.Reply()
+                            return ()
+                        | EnqueueAnomaly ctx ->
+                            let now = DateTimeOffset.UtcNow
+                            pruneExpired now
+                            let dedupeKey = (ctx.AggregateType, ctx.AggregateId, ctx.EventId)
+                            let isDuplicate =
+                                match recentPatches.TryGetValue(dedupeKey) with
+                                | true, lastTime when effectiveCooldownMs > 0 && (now - lastTime).TotalMilliseconds < float effectiveCooldownMs ->
+                                    true
+                                | _ -> false
+
+                            if isDuplicate then
+                                Interlocked.Increment(&deduplicatedCount) |> ignore
+                                logger.LogDebug(sprintf "BackgroundSanitizer deduplicated anomaly for %s (id: %A, event: %A)" ctx.AggregateType.Name ctx.AggregateId ctx.EventId)
+                            else
+                                match handlers.TryGetValue(ctx.AggregateType) with
+                                | true, handler ->
+                                    try
+                                        let! res = handler ctx |> Async.AwaitTask
+                                        match res with
+                                        | Ok report ->
+                                            recentPatches.[dedupeKey] <- DateTimeOffset.UtcNow
+                                            Interlocked.Increment(&processedCount) |> ignore
+                                            onSanitized |> Option.iter (fun cb -> cb report)
+                                        | Error err ->
+                                            logger.LogError(sprintf "BackgroundSanitizer failed for %s (id: %A, event: %A): %s" ctx.AggregateType.Name ctx.AggregateId ctx.EventId err)
+                                            onError |> Option.iter (fun cb -> cb ctx err)
+                                    with ex ->
+                                        logger.LogError(ex, sprintf "BackgroundSanitizer exception for %s (id: %A, event: %A)" ctx.AggregateType.Name ctx.AggregateId ctx.EventId)
+                                        onError |> Option.iter (fun cb -> cb ctx ex.Message)
+                                | false, _ ->
+                                    logger.LogWarning(sprintf "BackgroundSanitizer has no registered handler for type %s (id: %A, event: %A)" ctx.AggregateType.Name ctx.AggregateId ctx.EventId)
+                            return! loop ()
+                    }
+                loop ()
+            )
+
+        member _.Storage = storage
+        member _.ProcessedCount = Volatile.Read(&processedCount)
+        member _.DeduplicatedCount = Volatile.Read(&deduplicatedCount)
+        member _.DroppedCount = Volatile.Read(&droppedCount)
+        member _.QueueLength = mailbox.CurrentQueueLength
+
+        member _.RegisterHandler(aggregateType: Type, handler: AnomalyContext -> TaskResult<StreamSanitizationReport, string>) =
+            handlers.[aggregateType] <- handler
+
+        member inline this.RegisterAggregate<'A, 'E
+            when 'A: (static member StorageName: string)
+            and 'A: (static member Version: string)
+            and 'A: (member Serialize: 'F)
+            and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+            and 'E :> Event<'A>
+            and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+            and 'E: (member Serialize: 'F)
+            >
+            (noOpEvent: 'E, ?mode: SanitizationMode, ?compensator: Guid -> EventId -> TaskResult<string, string>) =
+            let effectiveMode = defaultArg mode SingleEventPatch
+            let serializedNoOp = noOpEvent.Serialize
+            let version = 'A.Version
+            let storageName = 'A.StorageName
+            let store = this.Storage
+            let handler (ctx: AnomalyContext) =
+                match ctx.AggregateId, ctx.EventId, effectiveMode with
+                | Some aggId, Some evId, SingleEventPatch when evId > 0 ->
+                    patchSingleAggregateEventByMetaAsync store version storageName aggId evId serializedNoOp compensator
+                | Some aggId, _, _ ->
+                    sanitizeAggregateStreamAsync<'A, 'E, 'F> store aggId noOpEvent compensator
+                | None, _, _ ->
+                    Task.FromResult(Error (sprintf "Missing AggregateId for aggregate type %s" typeof<'A>.Name))
+            this.RegisterHandler(typeof<'A>, handler)
+
+        member inline this.RegisterContext<'A, 'E
+            when 'A: (static member Zero: 'A)
+            and 'A: (static member StorageName: string)
+            and 'A: (static member Version: string)
+            and 'A: (member Serialize: 'F)
+            and 'A: (static member Deserialize: 'F -> Result<'A, string>)
+            and 'E :> Event<'A>
+            and 'E: (static member Deserialize: 'F -> Result<'E, string>)
+            and 'E: (member Serialize: 'F)
+            >
+            (noOpEvent: 'E, ?mode: SanitizationMode) =
+            let effectiveMode = defaultArg mode SingleEventPatch
+            let serializedNoOp = noOpEvent.Serialize
+            let version = 'A.Version
+            let storageName = 'A.StorageName
+            let store = this.Storage
+            let handler (ctx: AnomalyContext) =
+                match ctx.EventId, effectiveMode with
+                | Some evId, SingleEventPatch when evId > 0 ->
+                    patchSingleContextEventByMetaAsync store version storageName evId serializedNoOp (fun () -> StateCache2<'A>.Instance.Invalidate())
+                | _, _ ->
+                    sanitizeContextStreamAsync<'A, 'E, 'F> store noOpEvent
+            this.RegisterHandler(typeof<'A>, handler)
+
+        member _.Enqueue(ctx: AnomalyContext) =
+            if Volatile.Read(&isStopped) = 0 then
+                if effectiveMaxQueueSize > 0 && mailbox.CurrentQueueLength >= effectiveMaxQueueSize then
+                    Interlocked.Increment(&droppedCount) |> ignore
+                    logger.LogWarning(sprintf "BackgroundSanitizer queue full (%d); dropping anomaly for %s (id: %A, event: %A)" effectiveMaxQueueSize ctx.AggregateType.Name ctx.AggregateId ctx.EventId)
+                else
+                    mailbox.Post(EnqueueAnomaly ctx)
+
+        member this.AnomalyHandler : IEvolveAnomalyHandler =
+            { new IEvolveAnomalyHandler with
+                member _.OnEvolveAnomaly(ctx: AnomalyContext) =
+                    this.Enqueue(ctx)
+                member _.OnEvolveAnomalyAsync(ctx: AnomalyContext) =
+                    this.Enqueue(ctx)
+                    Task.FromResult(())
+              interface IAnomalyRetryPolicy with
+                member _.ShouldRetryInline = false }
+
+        member this.InstallAsGlobalAnomalyHandler() =
+            setAnomalyHandler(this.AnomalyHandler)
+
+        member _.StopAsync() : Task =
+            if Interlocked.Exchange(&isStopped, 1) = 0 then
+                mailbox.PostAndAsyncReply(Stop) |> Async.StartAsTask :> Task
+            else
+                Task.CompletedTask
+
+        interface IHostedService with
+            member this.StartAsync(_ct: CancellationToken) =
+                this.InstallAsGlobalAnomalyHandler()
+                Task.CompletedTask
+            member this.StopAsync(_ct: CancellationToken) =
+                this.StopAsync()
+
+        interface IDisposable with
+            member this.Dispose() =
+                this.StopAsync().GetAwaiter().GetResult()
